@@ -1,0 +1,23 @@
+# Xcode / Swift
+apps/macos/.derivedData/
+/.derivedData/
+apps/macos/**/xcuserdata/
+*.xcuserstate
+.swiftpm/
+apps/macos/.build/
+/.build/
+
+# Editor directories and files
+.vscode/*
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+*.zip
+
+# Agent scratch space: design notes and build artifacts, never committed.
+.scratch/

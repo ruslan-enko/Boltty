@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	    One DerivedData for this project, in the repo, shared by Xcode and by
+	    every `xcodebuild` in README.md.
+
+	    Left at Xcode's default, ⌘R and the command line write to two different
+	    places and produce two different Boltty.app bundles. That is not a
+	    tidiness problem: on 2026-09-01 it cost an afternoon: a screenshot taken
+	    from the older bundle was measured against the newer source, the numbers
+	    disagreed, and the hunt that followed was through layout code that had
+	    been correct the whole time. A stale binary and a current one are
+	    indistinguishable on screen.
+
+	    WorkspaceRelativePath resolves against the directory holding the
+	    project, so this is apps/macos/.derivedData — already in .gitignore, and
+	    the path README.md's build and test commands pass to -derivedDataPath.
+	-->
+	<key>DerivedDataLocationStyle</key>
+	<string>WorkspaceRelativePath</string>
+	<key>DerivedDataCustomLocation</key>
+	<string>.derivedData</string>
+</dict>
+</plist>

@@ -1,0 +1,5 @@
+Sources/Boltty/UI/AgentPaletteView.swift:cifilter-blur
+Sources/Boltty/UI/AgentPaletteView.swift:nscolor-components
+Sources/Boltty/UI/PaletteGlassHost.swift:nscolor-components
+Sources/Boltty/UI/PaletteIconButton.swift:cifilter-blur
+Sources/Boltty/UI/Settings/SetupWindow.swift:font-size

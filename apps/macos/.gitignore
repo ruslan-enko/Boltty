@@ -1,0 +1,14 @@
+.derivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+.swiftpm/
+build/
+DerivedData/
+
+# scripts/release.sh writes each release here; it is built, never committed.
+.release/
+
+# This Mac's signing identity for Debug builds, from scripts/setup-local-signing.sh.
+Config/Signing.local.xcconfig

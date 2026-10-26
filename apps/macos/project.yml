@@ -1,0 +1,114 @@
+name: Boltty
+options:
+  bundleIdPrefix: com.boltty
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  # `LastUpgradeCheck` / the scheme's `LastUpgradeVersion`: Xcode 27's, so
+  # Xcode does not offer "Update to recommended settings" again.
+  xcodeVersion: "27.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    # Xcode 27's recommended settings, accepted in Xcode on 2026-10-11 and
+    # kept here so `xcodegen generate` does not take them back out.
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+targets:
+  Boltty:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Boltty
+      - path: AppIcon.icon
+        buildPhase: resources
+      - path: Resources/AgentIcons
+        type: folder
+        buildPhase: resources
+      # Files, not a folder reference: a banner's sound is looked up by name at
+      # the top of the bundle's Resources (`UNNotificationSound(named:)`), and
+      # a folder reference would put them one level down. Rendered by
+      # scripts/render-sounds.py — see `InterfaceSounds`.
+      - path: Resources/Sounds
+        buildPhase: resources
+      # Boltty's licence and the notices of what it ships from others, in
+      # every copy of the app — the GPL asks for the notice in a binary as much as
+      # in source.
+      - path: ../../LICENSE
+        buildPhase: resources
+      - path: ../../THIRD_PARTY_NOTICES.md
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boltty.app
+        PRODUCT_NAME: Boltty
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "3"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Boltty
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 Enko. GPL-3.0-or-later.
+        # Hardened runtime gates the microphone and Apple Events behind these
+        # two. Without them a notarized build drops dictation and Finder's
+        # selection silently — see AGENTS.md, *Releasing*.
+        CODE_SIGN_ENTITLEMENTS: Boltty.entitlements
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Boltty uses the microphone to turn what you say into a prompt for Boltty AI or Ask Boltty.
+        INFOPLIST_KEY_NSAppleEventsUsageDescription: "Boltty reads the files you have selected in Finder so you can talk about them without typing a path."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: Boltty uses Apple speech recognition to transcribe what you say to Boltty AI or Ask Boltty.
+        # @main AppDelegate owns startup — do not set NSPrincipalClass.
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_STRICT_CONCURRENCY: minimal
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/Boltty/Support/Boltty-Bridging-Header.h
+        DEAD_CODE_STRIPPING: YES
+      configs:
+        Debug:
+          # Signed with this Mac's own identity when it has one, so a grant
+          # survives every build — Config/Signing.xcconfig says why. Manual,
+          # because "-" or a self-signed certificate is not something
+          # automatic signing chooses.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "$(BOLTTY_LOCAL_SIGN_IDENTITY)"
+          # Off in Debug only. An ad hoc build had it switched off by Xcode
+          # anyway; with a self-signed certificate it turns on library
+          # validation, which refuses `Boltty.debug.dylib` for want of a Team
+          # ID and the app dies in dyld (measured 2026-09-20). Release keeps it.
+          ENABLE_HARDENED_RUNTIME: NO
+          # The unit tests' `@testable import`. Debug only: in a release it
+          # exports every internal symbol and holds back the optimiser.
+          ENABLE_TESTABILITY: YES
+    configFiles:
+      Debug: Config/Signing.xcconfig
+    scheme:
+      testTargets:
+        - BolttyTests
+        - BolttyUITests
+  BolttyTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/BolttyTests
+    dependencies:
+      - target: Boltty
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boltty.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        DEAD_CODE_STRIPPING: YES
+  BolttyUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests/BolttyUITests
+    dependencies:
+      - target: Boltty
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boltty.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        DEAD_CODE_STRIPPING: YES

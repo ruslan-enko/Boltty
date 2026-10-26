@@ -1,0 +1,17 @@
+// How a Debug build is signed — the Boltty target's Debug configuration.
+//
+// Ad hoc ("-") unless this Mac has an identity of its own:
+// scripts/setup-local-signing.sh writes Signing.local.xcconfig beside this
+// file (ignored by git) naming "Boltty Development", the certificate
+// `release.sh` signs with when there is no Developer ID.
+//
+// Why it matters: macOS keeps one privacy grant per bundle id and pins it to
+// the code's designated requirement. An ad hoc build's requirement is its own
+// hash, so every Xcode build was a new app to the Screen Recording,
+// Microphone and Automation grants — and, sharing `com.boltty.app` with the
+// copy in /Applications, it took the grant away from that copy too. Signed by
+// the same certificate, every build here has the release's requirement
+// (`identifier "com.boltty.app" and certificate root = H"…"`) and one grant
+// serves them all.
+BOLTTY_LOCAL_SIGN_IDENTITY = -
+#include? "Signing.local.xcconfig"
