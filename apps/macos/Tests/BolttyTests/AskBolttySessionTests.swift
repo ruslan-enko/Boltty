@@ -297,7 +297,7 @@ final class AskBolttySessionTests: XCTestCase {
     try await waitFor("the answer to settle") { self.askBoltty.phase == .idle }
     XCTAssertTrue(voice.said.isEmpty, "nothing is said")
     XCTAssertFalse(askBoltty.readsAloud)
-    XCTAssertEqual(askBoltty.caption, "Це кнопка «Поділитися». Натисни її.", "it is read, a sentence at a time")
+    XCTAssertEqual(askBoltty.caption, "Натисни її.", "it is read, a sentence at a time")
     XCTAssertNotNil(askBoltty.pointing, "it still points")
   }
 
@@ -335,7 +335,7 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertNotNil(store.conversation(id: kept.id))
   }
 
-  func testTheCaptionIsTheSentenceBeingSaidAndTheOneBefore() async throws {
+  func testTheCaptionIsTheSentenceBeingSaidAndTheAnswerStopsAtTwo() async throws {
     voice.holds = true
     askBoltty.begin()
     ears.words = "how do I share this?"
@@ -345,12 +345,14 @@ final class AskBolttySessionTests: XCTestCase {
     client.streamReply(
       sessionID: remote, messageID: "a1",
       chunks: ["Open the file. Click Share in the top right. Then pick Mail."])
-    try await waitFor("three sentences") { self.voice.said.count == 3 }
+    try await waitFor("two sentences") { self.voice.said.count == 2 }
     voice.held[0]()
     XCTAssertEqual(askBoltty.caption, "Open the file.")
     voice.held[1]()
-    XCTAssertEqual(askBoltty.caption, "Open the file. Click Share in the top right.")
-    voice.held[2]()
-    XCTAssertEqual(askBoltty.caption, "Click Share in the top right. Then pick Mail.", "two at most, and on")
+    XCTAssertEqual(askBoltty.caption, "Click Share in the top right.", "one at a time")
+    try await waitFor("the answer to settle") {
+      self.store.conversation(id: self.askBoltty.conversationID!)?.lastKnownState == .idle
+    }
+    XCTAssertEqual(voice.said.count, 2, "two sentences at most")
   }
 }

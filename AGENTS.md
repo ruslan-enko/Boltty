@@ -567,15 +567,18 @@ final text. A long silence sends, but only after speech was heard.
   and clears its drawings.
 - While held: the chat and session warm up, the screen is frozen, the pointer's
   path is drawn as a soft, short-lived line (`AskBolttyTrailLayer`, curves
-  through midpoints, runs of 20 points), and speech is recognised.
+  through midpoints, runs of 20 points), and speech is recognised and shown
+  beside the face as it comes (the latest words, up to three lines).
 - Sent: the whole screen at 1568 px with a ring at the pointer and the traced
   line, the window under the pointer, and `AskBolttyPrompt.bracket` (answer in
-  one to three sentences, in the asker's language, point and draw with tags).
+  one or two sentences, in the asker's language, point and draw with tags).
   Nothing said is nothing sent, and leaves no chat.
 - Tags: `<point x y label/>`, `<circle>`, `<box>`, `<arrow>`, `<line>`,
   `<path d>`, `<label>`, `<board>…</board>`, coordinates 0–1000 of the picture.
   Each is shown when the reading reaches its sentence; drawings stay until the
   next question, a click or Escape. The chat card strips the tags.
+- At most two sentences of an answer are said, one at a time: a new sentence
+  takes the last one's place (`captionSentences`, `answerSentences`).
 - The answer types out beside the face with blips (`AskBolttyBlips`, rendered on
   Core Audio's thread — its block is made `nonisolated`). Reading aloud
   (`SpeechOutput`, only Siri's 19 languages) exists behind

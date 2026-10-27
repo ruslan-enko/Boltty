@@ -75,7 +75,7 @@ enum AskBolttyPrompt {
     return """
       [Talk: the person asked this out loud about their screen. The picture is \(screen); \
       \(marks). Screenshot: \(screenshotPath). \
-      Your answer is read aloud: one to three short spoken sentences, in the language they \
+      Your answer is read aloud: one or two short spoken sentences, never more, in the language they \
       asked in, no markdown, no lists, no code, one step at a time. \
       To show them where something is, put <point x="…" y="…" label="…"/> right before the \
       sentence that names it: x and y from 0 to 1000 across the picture (0 0 is its top left), \

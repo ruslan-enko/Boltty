@@ -62,9 +62,11 @@ final class AskBolttySession: ObservableObject {
   /// the Mac's voices sound poor. The voice path
   /// stays, behind this, for when a good one is chosen.
   var speaksAloud = false
-  /// At most this many sentences are in the caption: the one being said and
-  /// the one before.
-  static let captionSentences = 2
+  /// The caption is the sentence being said: a new one takes the last one's
+  /// place.
+  static let captionSentences = 1
+  /// An answer is said up to this many sentences; the rest stays in the chat.
+  static let answerSentences = 2
 
   /// The line the pointer traced while the chord was held, in AppKit's
   /// global coordinates; sent drawn on the screen's picture.
@@ -106,6 +108,7 @@ final class AskBolttySession: ObservableObject {
   private var turnBegan = false
   private var spokenText = ""
   private var chunker = SentenceChunker()
+  private var sentencesSaid = 0
   private var language: String?
   private var captioned: [String] = []
   /// Decided once an answer's first piece is in: one answer is never half
@@ -299,6 +302,7 @@ final class AskBolttySession: ObservableObject {
     spokenText = ""
     turnBegan = false
     chunker = SentenceChunker()
+    sentencesSaid = 0
     guard coordinator.sendFollowUp(bracket + words, pictures: [picture], to: id) else {
       return fail("That question was not sent.")
     }
@@ -405,6 +409,8 @@ final class AskBolttySession: ObservableObject {
       show(carried)
       return
     }
+    guard sentencesSaid < Self.answerSentences else { return }
+    sentencesSaid += 1
     if !decidedVoice {
       decidedVoice = true
       readsAloud = speaksAloud && speech.canSpeak(language ?? SpeechOutput.language(of: text))

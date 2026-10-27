@@ -18,10 +18,13 @@ final class AskBolttyOverlayController {
   static let followTime: CFTimeInterval = 0.06
   static let edgeMargin: CGFloat = 8
   static let bubbleGap: CGFloat = 6
-  /// Two sentences at most are in the bubble (`AskBolttySession.caption`); this
-  /// is room for them at the bubble's size.
+  /// One sentence is in the bubble at a time (`AskBolttySession.caption`);
+  /// this is room for a long one at the bubble's size.
   static let bubbleMaxTextWidth: CGFloat = 340
   static let bubbleMaxLines = 5
+  /// What is heard while the chord is held: the latest words, on as many
+  /// lines as fit them, the oldest dropped first.
+  static let heardMaxLines = 3
   static let bubblePadding = CGSize(width: 14, height: 10)
   static let bubbleCornerRadius: CGFloat = 18
   /// Over the glass, under the words: bare glass over a bright page reads
@@ -131,7 +134,7 @@ final class AskBolttyOverlayController {
       }
       return
     case .listening:
-      next = heard.isEmpty ? "Listening…" : heard
+      next = heard.isEmpty ? "Listening…" : Self.latestWords(of: heard, lines: Self.heardMaxLines)
       emotion = .listening
       if previous != .listening {
         trail.clear()
@@ -536,11 +539,10 @@ final class AskBolttyOverlayController {
   /// pointer.
   static let bubbleFont = roundedAppFont(size: AgentPaletteMetrics.typePrimary, weight: .medium)
 
-  /// Listening, the words still coming are what matter: one line, its start
-  /// cut. Otherwise up to `bubbleMaxLines`, wrapped.
+  /// Listening, up to `heardMaxLines` of the latest words; otherwise up to
+  /// `bubbleMaxLines`, wrapped.
   private func setText(_ next: String, quiet: Bool) {
-    let listening = phase == .listening
-    let lines = listening ? 1 : Self.bubbleMaxLines
+    let lines = phase == .listening ? Self.heardMaxLines : Self.bubbleMaxLines
     label.textColor = quiet ? PaletteInk.secondary : PaletteInk.primary
     guard next != text || label.maximumNumberOfLines != lines else { return }
     if typesOut {
@@ -551,7 +553,7 @@ final class AskBolttyOverlayController {
     }
     text = next
     label.maximumNumberOfLines = lines
-    label.lineBreakMode = listening ? .byTruncatingHead : .byWordWrapping
+    label.lineBreakMode = .byWordWrapping
     label.stringValue = String(next.prefix(Int(typed)))
     // Measured whole, so the bubble does not grow letter by letter.
     bubbleSize = Self.bubbleSize(for: next, lines: lines)
@@ -560,6 +562,28 @@ final class AskBolttyOverlayController {
     // ended in "…" until the next word wrapped it.
     label.preferredMaxLayoutWidth = max(1, bubbleSize.width - Self.bubblePadding.width * 2)
     layoutFace()
+  }
+
+  /// The tail of `heard` that fits in `lines`, cut at a word and marked with
+  /// "…": the words still coming are what matter.
+  static func latestWords(of heard: String, lines: Int) -> String {
+    let limit = bubbleLineHeight * CGFloat(lines)
+    func fits(_ text: String) -> Bool {
+      let cell = NSTextFieldCell(textCell: text)
+      cell.font = bubbleFont
+      cell.wraps = true
+      cell.lineBreakMode = .byWordWrapping
+      return cell.cellSize(forBounds: NSRect(
+        x: 0, y: 0, width: bubbleMaxTextWidth, height: .greatestFiniteMagnitude)).height <= limit
+    }
+    guard !fits(heard) else { return heard }
+    var words = heard.split(separator: " ", omittingEmptySubsequences: true)
+    while words.count > 1 {
+      words.removeFirst()
+      let tail = "…" + words.joined(separator: " ")
+      if fits(tail) { return tail }
+    }
+    return "…" + (words.first.map(String.init) ?? "")
   }
 
   /// How much of `new` was already on screen in `old`: all of it when the
