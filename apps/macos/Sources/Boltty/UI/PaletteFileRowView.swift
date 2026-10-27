@@ -21,9 +21,15 @@ final class PaletteFileRowView: NSView {
   private let previewButton = PaletteIconButton()
   private let revealButton = PaletteIconButton()
   private let useButton = PaletteIconButton()
+  private let background = NSView()
+  private var actions: NSStackView!
+  private var trackingArea: NSTrackingArea?
+  private var isHovered = false
+  private var isPressed = false
 
   var isDimmedForTesting: Bool { alphaValue < 1 }
   var showsThumbnailForTesting: Bool { thumbnail.layer?.contents != nil }
+  var showsActionsForTesting: Bool { !actions.isHidden }
   var thumbnailOpacityForTesting: Float { thumbnail.layer?.opacity ?? 0 }
   var displayedNameForTesting: String { nameLabel.stringValue }
   var displayedSizeForTesting: String { sizeLabel.stringValue }
@@ -48,14 +54,16 @@ final class PaletteFileRowView: NSView {
     nameLabel.textColor = PaletteInk.primary
     nameLabel.stringValue = name ?? url.lastPathComponent
     nameLabel.lineBreakMode = .byTruncatingMiddle
+    nameLabel.isSelectable = false
     nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     nameLabel.toolTip = path
 
     sizeLabel.translatesAutoresizingMaskIntoConstraints = false
     sizeLabel.font = roundedAppFont(size: AgentPaletteMetrics.previewFileSizeFontSize)
     sizeLabel.textColor = PaletteInk.secondary
-    sizeLabel.stringValue = exists ? Self.formattedSize(ofPath: path) : "No longer on disk"
+    sizeLabel.stringValue = exists ? Self.detail(ofPath: path) : "No longer on disk"
     sizeLabel.setContentHuggingPriority(.required, for: .horizontal)
+    sizeLabel.isSelectable = false
 
     makeButton(
       previewButton,
@@ -83,8 +91,10 @@ final class PaletteFileRowView: NSView {
     )
 
     wantsLayer = true
-    layer?.borderWidth = 1
-    layer?.borderColor = AgentPaletteMetrics.previewFileCardBorder.cgColor
+    background.translatesAutoresizingMaskIntoConstraints = false
+    background.wantsLayer = true
+    background.layer?.backgroundColor = AgentPaletteMetrics.previewFileCardFill.cgColor
+    addSubview(background)
     tile.translatesAutoresizingMaskIntoConstraints = false
     tile.wantsLayer = true
     tile.layer?.backgroundColor = AgentPaletteMetrics.previewFileIconTileFill.cgColor
@@ -99,22 +109,29 @@ final class PaletteFileRowView: NSView {
     words.alignment = .leading
     words.spacing = 1
     words.setClippingResistancePriority(.defaultLow, for: .horizontal)
-    let row = NSStackView(views: [tile, words, previewButton, revealButton, useButton])
+    actions = NSStackView(views: [previewButton, revealButton, useButton])
+    actions.orientation = .horizontal
+    actions.spacing = 2
+    actions.isHidden = true
+    let row = NSStackView(views: [tile, words, actions])
     row.translatesAutoresizingMaskIntoConstraints = false
     row.orientation = .horizontal
     row.alignment = .centerY
-    row.spacing = 2
+    row.spacing = 6
     row.setCustomSpacing(10, after: tile)
-    row.setCustomSpacing(6, after: words)
     row.distribution = .fill
     words.setHuggingPriority(.init(1), for: .horizontal)
     words.setContentHuggingPriority(.init(1), for: .horizontal)
     row.setClippingResistancePriority(.defaultLow, for: .horizontal)
-    addSubview(row)
+    background.addSubview(row)
 
     let inset = AgentPaletteMetrics.previewFileCardInset
     NSLayoutConstraint.activate([
       heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewFileRowHeight),
+      background.leadingAnchor.constraint(equalTo: leadingAnchor),
+      background.trailingAnchor.constraint(equalTo: trailingAnchor),
+      background.topAnchor.constraint(equalTo: topAnchor),
+      background.bottomAnchor.constraint(equalTo: bottomAnchor),
       row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
       row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset),
       row.topAnchor.constraint(equalTo: topAnchor),
@@ -195,7 +212,7 @@ final class PaletteFileRowView: NSView {
 
   override func layout() {
     super.layout()
-    layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewFileCardCornerRadius)
+    background.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewFileCardCornerRadius)
     tile.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewFileIconTileCornerRadius)
     thumbnail.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewFileIconTileCornerRadius)
   }
@@ -229,12 +246,88 @@ final class PaletteFileRowView: NSView {
     button.setAccessibilityLabel(description)
   }
 
-  private static func formattedSize(ofPath path: String) -> String {
-    guard
-      let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.fileSizeKey]),
-      let bytes = values.fileSize
-    else { return "" }
-    return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+  /// "MP4 · 1.87 GB": the extension says what it is in fewer letters than
+  /// the type's description ("MPEG-4 movie"), and a folder has no size worth
+  /// a line.
+  static func detail(ofPath path: String) -> String {
+    let url = URL(fileURLWithPath: path)
+    let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
+    if values?.isDirectory == true { return "Folder" }
+    let kind = url.pathExtension.uppercased()
+    let size = values?.fileSize.map {
+      ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file)
+    }
+    return [kind.isEmpty ? nil : kind, size].compactMap { $0 }.joined(separator: " · ")
+  }
+
+  // MARK: Hover and press
+
+  override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    if let trackingArea { removeTrackingArea(trackingArea) }
+    let area = NSTrackingArea(
+      rect: bounds,
+      options: [.activeAlways, .mouseEnteredAndExited, .inVisibleRect],
+      owner: self,
+      userInfo: nil
+    )
+    addTrackingArea(area)
+    trackingArea = area
+  }
+
+  override func mouseEntered(with event: NSEvent) { setHovered(true) }
+  override func mouseExited(with event: NSEvent) {
+    setHovered(false)
+    setPressed(false)
+  }
+
+  /// A card taken out from under the pointer never hears `mouseExited`.
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    guard window == nil else { return }
+    setHovered(false)
+    setPressed(false)
+  }
+
+  override func mouseDown(with event: NSEvent) {
+    guard !isMissing else { return }
+    setPressed(true)
+  }
+
+  override func mouseUp(with event: NSEvent) {
+    guard isPressed else { return }
+    setPressed(false)
+    if bounds.contains(convert(event.locationInWindow, from: nil)) { didPressPreview() }
+  }
+
+  override func accessibilityPerformPress() -> Bool {
+    guard !isMissing else { return false }
+    didPressPreview()
+    return true
+  }
+
+  func setHoveredForTesting(_ hovered: Bool) { setHovered(hovered) }
+
+  private func setHovered(_ hovered: Bool) {
+    let shown = hovered && !isMissing
+    guard shown != isHovered else { return }
+    isHovered = shown
+    actions.isHidden = !shown
+    MotionPreferences.animate(duration: Motion.quick) {
+      background.layer?.backgroundColor = (shown
+        ? AgentPaletteMetrics.previewFileCardHoverFill
+        : AgentPaletteMetrics.previewFileCardFill).cgColor
+    }
+  }
+
+  private func setPressed(_ pressed: Bool) {
+    guard pressed != isPressed, let layer = background.layer else { return }
+    isPressed = pressed
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    MotionPreferences.springScale(
+      layer, to: pressed ? AgentPaletteMetrics.rowPressedScale : 1)
+    CATransaction.commit()
   }
 
   @objc private func didPressPreview() { onPreview?(url) }

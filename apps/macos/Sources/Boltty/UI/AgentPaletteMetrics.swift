@@ -1499,26 +1499,30 @@ enum AgentPaletteMetrics {
   static let previewWorkPillSpacingAbove: CGFloat = 26.5
   static let previewWorkPillSpacingBelow: CGFloat = 20
 
-  /// File result cards under a message: icon, name over size, three actions.
+  /// File result cards under a message: a picture, the name over its kind
+  /// and size, and the actions only while the pointer is on the card.
   ///
-  /// A messenger's attachment card: a hairline-bordered box
-  /// standing on its own under the bubbles, the icon on a tile, the name over
-  /// a grey line of detail, the action at the trailing edge. Literals, like the
-  /// bubbles' — there is no mock node to transcribe.
-  static let previewFileRowHeight: CGFloat = 52
+  /// A filled slab like the work pill — no hairline, which read as a form
+  /// field on the glass — with the picture large enough to recognise a film
+  /// or a photo by. The card itself is the preview button; the eye, folder
+  /// and plus come in on hover so the name has the width at rest. The tile is
+  /// concentric with the card (`card = tile + inset`).
+  static let previewFileRowHeight: CGFloat = 56
   static let previewFileRowSpacing: CGFloat = 6
   static let previewFileRowsTopMargin: CGFloat = 8
   /// Between the cards of what a person sent and the bubble of what they
   /// typed under them — one message, so the paragraphs' gap.
   static let previewSentFilesGap: CGFloat = 6
   static let previewFileCardWidth: CGFloat = 300
-  static let previewFileCardCornerRadius: CGFloat = 14
   static let previewFileCardInset: CGFloat = 8
-  static let previewFileCardBorder = PaletteInk.fill
-  static let previewFileIconTileSize: CGFloat = 36
-  static let previewFileIconTileFill = PaletteInk.secondaryFill
-  static let previewFileIconTileCornerRadius: CGFloat = 9
-  static let previewFileIconSize: CGFloat = 24
+  static let previewFileIconTileCornerRadius: CGFloat = 8
+  static let previewFileCardCornerRadius: CGFloat =
+    previewFileIconTileCornerRadius + previewFileCardInset
+  static let previewFileCardFill = PaletteInk.secondaryFill
+  static let previewFileCardHoverFill = PaletteInk.fill
+  static let previewFileIconTileSize: CGFloat = previewFileRowHeight - previewFileCardInset * 2
+  static let previewFileIconTileFill = PaletteInk.tertiaryFill
+  static let previewFileIconSize: CGFloat = 28
   static let previewFileButtonSize: CGFloat = 24
   static let previewFileGlyphPointSize: CGFloat = 13
   static let previewFileNameFontSize: CGFloat = typeMeta
