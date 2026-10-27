@@ -350,6 +350,7 @@ struct AgentsSettingsPage: View {
 
 struct UsageSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
+  @Environment(\.controlActiveState) private var activeState
 
   var body: some View {
     let rows = model.usageRows
@@ -377,14 +378,18 @@ struct UsageSettingsPage: View {
         .settingsGroupedPage()
       }
     }
-    .task { await model.refreshStatistics() }
+    .task { await model.refreshUsageIfStale() }
+    .onChange(of: activeState) { _, state in
+      guard state == .key else { return }
+      Task { await model.refreshUsageIfStale() }
+    }
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
         SettingsRefreshButton(
           title: "Refresh",
           busyTitle: "Refreshing",
-          help: "Read every agent's usage again",
-          busyHelp: "Reading every agent's usage…",
+          help: "Check every agent's sign-in and read its usage again",
+          busyHelp: "Reading every agent's sign-in and usage…",
           isBusy: model.isRefreshingUsage,
           identifier: "boltty.settings.refreshUsage"
         ) {
@@ -397,7 +402,11 @@ struct UsageSettingsPage: View {
   private func usageRow(_ row: BolttyAISettingsModel.UsageRow) -> some View {
     let tint = Color(nsColor: model.usageTint(for: row.agent))
     return VStack(alignment: .leading, spacing: 12) {
-      SettingsAgentTitle(model: model, agent: row.agent)
+      if row.isSignedOut {
+        signedOutTitle(row.agent)
+      } else {
+        SettingsAgentTitle(model: model, agent: row.agent)
+      }
       if let usage = row.usage {
         ForEach(usage.windows, id: \.title) { window in
           usageWindow(window)
@@ -410,6 +419,23 @@ struct UsageSettingsPage: View {
     .padding(.vertical, 4)
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("boltty.settings.usage.\(row.agent.rawValue)")
+  }
+
+  private func signedOutTitle(_ agent: AgentId) -> some View {
+    let command = agent.signInCommand ?? agent.program
+    return HStack(alignment: .center) {
+      SettingsAgentTitle(
+        model: model, agent: agent,
+        subtitle: "Signed out. Run `\(command)` in a terminal, then refresh."
+      )
+      Spacer()
+      Button("Copy Command") {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(command, forType: .string)
+      }
+      .help("Copy “\(command)”")
+      .accessibilityIdentifier("boltty.settings.usage.\(agent.rawValue).copySignIn")
+    }
   }
 
   private func usageWindow(_ window: AgentUsageWindow) -> some View {

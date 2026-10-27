@@ -21,7 +21,6 @@ struct BolttyAISettingsView: View {
     .task {
       await model.loadDictationLanguages()
       await model.refreshAgents()
-      await model.refreshUsage()
     }
   }
 

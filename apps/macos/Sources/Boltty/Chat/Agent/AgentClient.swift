@@ -137,6 +137,11 @@ enum AgentAvailability: Equatable, Sendable {
     return false
   }
 
+  var isSignedOut: Bool {
+    if case .needsLogin = self { return true }
+    return false
+  }
+
   var isInstalled: Bool {
     switch self {
     case .available, .needsLogin, .unavailable: return true

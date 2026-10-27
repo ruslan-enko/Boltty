@@ -53,6 +53,18 @@ enum AgentId: String, CaseIterable, Codable, Sendable, Equatable {
     }
   }
 
+  /// What signs this CLI in from a terminal, read off each CLI's own help
+  /// (claude 2.1.296, codex 0.164, grok 1.0.70). `agy` has no such
+  /// subcommand and OpenCode never reports a sign-in of its own.
+  var signInCommand: String? {
+    switch self {
+    case .claude: "claude auth login"
+    case .codex: "codex login"
+    case .grok: "grok login"
+    default: nil
+    }
+  }
+
   var iconAssetName: String { rawValue }
 
   var fallbackSymbolName: String {

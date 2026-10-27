@@ -188,6 +188,11 @@ final class ConversationEngine: ObservableObject {
       return
     }
     usageReadAt = Date()
+    // Limits read before a sign-out are not the account's any more.
+    for installation in registry.installations
+    where !installation.isReady && usageByProvider[installation.provider.rawValue] != nil {
+      usageByProvider.removeValue(forKey: installation.provider.rawValue)
+    }
     await withTaskGroup(of: (String, AgentUsage?).self) { group in
       for installation in registry.ready where installation.capabilities.contains(.usageLimits) {
         guard let client = registry.client(for: installation.provider) else { continue }

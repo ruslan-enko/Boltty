@@ -78,6 +78,9 @@ final class BolttyAISettingsModel: ObservableObject {
     let agent: AgentId
     let usage: AgentUsage?
     let history: AgentActivityHistory?
+    /// The CLI says it is signed out; its limits come back after a sign-in
+    /// and a refresh.
+    var isSignedOut = false
     var id: AgentId { agent }
   }
 
@@ -85,8 +88,10 @@ final class BolttyAISettingsModel: ObservableObject {
     AgentHistory.tabOrder.compactMap { agent in
       let usage = engine.usageByProvider[agent.rawValue]
       let history = engine.historyByProvider[agent.rawValue]
-      guard usage != nil || history != nil else { return nil }
-      return UsageRow(agent: agent, usage: usage, history: history)
+      let isSignedOut = appModel.settings.isProviderEnabled(agent.rawValue)
+        && engine.registry.installation(for: agent)?.availability.isSignedOut == true
+      guard usage != nil || history != nil || isSignedOut else { return nil }
+      return UsageRow(agent: agent, usage: usage, history: history, isSignedOut: isSignedOut)
     }
   }
 
@@ -120,13 +125,32 @@ final class BolttyAISettingsModel: ObservableObject {
     }
   }
 
+  /// Asks every CLI again whether it is signed in, then reads limits,
+  /// activity and the statistics. Signing in happens in a terminal, so
+  /// nothing here may trust an earlier answer.
   func refreshUsage() async {
+    guard !isRefreshingUsage else { return }
     isRefreshingUsage = true
-    defer { isRefreshingUsage = false }
+    defer {
+      isRefreshingUsage = false
+      usageReadAt = Date()
+    }
     async let statistics: Void = refreshStatistics()
+    await refreshAgents()
     await engine.refreshActivityHistory()
     await statistics
   }
+
+  /// The page re-reads on its own when it is shown or its window comes
+  /// forward, but not on every switch between windows.
+  func refreshUsageIfStale() async {
+    if let usageReadAt, Date().timeIntervalSince(usageReadAt) < Self.usageStaleAfter { return }
+    await refreshUsage()
+  }
+
+  private var usageReadAt: Date?
+  private var agentsRefresh: Task<Void, Never>?
+  static let usageStaleAfter: TimeInterval = 30
 
   func refreshStatistics() async {
     let reader = statisticsReader
@@ -323,10 +347,18 @@ final class BolttyAISettingsModel: ObservableObject {
   }
 
   func refreshAgents() async {
-    isLoadingModels = true
-    await engine.refreshAvailability()
-    modelsByProvider = engine.modelsByProvider
-    isLoadingModels = false
+    // Published before it suspends, so the Usage page joins this probe
+    // instead of starting a second one.
+    if let agentsRefresh { return await agentsRefresh.value }
+    let refresh = Task { @MainActor [engine] in
+      isLoadingModels = true
+      await engine.refreshAvailability()
+      modelsByProvider = engine.modelsByProvider
+      isLoadingModels = false
+    }
+    agentsRefresh = refresh
+    await refresh.value
+    agentsRefresh = nil
   }
 
   var dictationLocaleIdentifier: String {

@@ -34,15 +34,27 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   func probe() async -> AgentAvailability {
     guard locate() != nil else { return .notInstalled }
+    // A probe is a re-read: a sign-in made in the terminal since the last one
+    // must show up without restarting Boltty.
+    lock.withLock { cachedHandshake = nil }
     guard let handshake = await handshake() else {
       return .unavailable("Claude Code did not answer. Try running `claude` once in a terminal.")
     }
-    guard let account = handshake.object("account"),
-          account.string("email") != nil || account.string("apiProvider") != nil
-    else {
-      return .needsLogin("Signed out — run `claude` in a terminal and sign in.")
+    guard Self.isSignedIn(handshake.object("account")) else {
+      return .needsLogin("Signed out — run `claude auth login` in a terminal.")
     }
     return .available(version: await version())
+  }
+
+  /// An expired login still answers `initialize` with an `account`, as
+  /// `{"tokenSource": "none", "apiProvider": "firstParty"}` and no email
+  /// (2.1.296, `claude auth status`: "Login: Expired").
+  static func isSignedIn(_ account: JSONObject?) -> Bool {
+    guard let account else { return false }
+    if account.string("email") != nil { return true }
+    if let source = account.string("tokenSource"), source != "none" { return true }
+    if let provider = account.string("apiProvider"), provider != "firstParty" { return true }
+    return false
   }
 
   func availableModels() async throws -> [AgentModelOption] {

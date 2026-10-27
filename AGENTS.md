@@ -181,6 +181,10 @@ implementation first. Versions say what was measured.
   and `availableModels()` use a throwaway process for it. That process runs with
   `--strict-mcp-config` and `--settings {"disableAllHooks":true}` so it starts
   none of the person's MCP servers or hooks.
+- An expired login still answers `initialize` with an `account`:
+  `{"tokenSource": "none", "apiProvider": "firstParty"}`, no email (2.1.296;
+  `claude auth status` says "Login: Expired"). `ClaudeCodeClient.isSignedIn`
+  reads that; `probe()` drops the cached handshake so a new sign-in is seen.
 - `--permission-prompt-tool stdio` is what makes it ask; without it print mode
   decides alone.
 - A `deny` answer to `can_use_tool` carries a `message`, which the model reads
@@ -613,7 +617,12 @@ final text. A long silence sends, but only after speech was heard.
 - **Usage**: plan windows per agent, 14 days of activity, and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`). Never summed across
-  agents' different units.
+  agents' different units. Signing in happens in a terminal, so the page asks
+  every CLI again whether it is signed in before reading limits: when shown,
+  when its window comes forward (at most every 30 s), and on Refresh. A
+  signed-out agent's row is its face, name and `AgentId.signInCommand`
+  (`claude auth login`, `codex login`, `grok login`); its old limits are
+  dropped.
 - **Dictation**: Apple's engine only, optional second language as a second
   recognizer on the same audio (`BilingualDictationEngine`), decided per phrase
   by confidence (`BilingualTranscript`). `fastResults` lowers confidence, so with
