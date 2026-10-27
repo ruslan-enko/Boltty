@@ -70,9 +70,6 @@ struct BolttyAISessionPreview: Equatable, Sendable {
   var notice: String? = nil
   var retryPrompt: String? = nil
   var queuedPrompt: String? = nil
-  var isInitialThinking: Bool {
-    isBusy && question == nil && (!messages.isEmpty || body.isEmpty) && !messages.contains { $0.role == .agent && !$0.plainText.isEmpty }
-  }
   var statusLabel: String { BolttyAIFollowUp.statusLabel(reported: state) }
   var isBusy: Bool { BolttyAIFollowUp.isBusy(reported: state) }
 

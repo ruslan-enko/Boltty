@@ -1,14 +1,6 @@
 import AppKit
 
 final class BolttyAIPreviewCard: NSView {
-  var thinkingMascotVisibleForTesting: Bool { thinking.showsMascot }
-  var thinkingLayoutForTesting: (mascot: NSRect, label: NSRect, dots: NSRect, width: CGFloat) {
-    thinking.layoutForTesting
-  }
-  var thinkingTextForTesting: String { thinking.textForTesting }
-  var thinkingShimmerIsSweepingForTesting: Bool { thinking.shimmerIsSweepingForTesting }
-  var thinkingShimmerColorsForTesting: [CGColor] { thinking.shimmerColorsForTesting }
-  func thinkingBeatForTesting(big: Bool) { thinking.beatForTesting(big: big) }
   var messageCountForTesting: Int { messageRows.count }
   func messageIdentityForTesting(_ id: String) -> ObjectIdentifier? { messageRows[id].map(ObjectIdentifier.init) }
   var bodyForTesting: String {
@@ -151,7 +143,6 @@ final class BolttyAIPreviewCard: NSView {
       return messageRows.first { $0.value === view }?.key
     }
   }
-  private let thinking = PaletteThinkingView()
   private let workingLine = PaletteWorkingLineView()
   var workingLineForTesting: PaletteWorkingLineView { workingLine }
   private let streamingTail = PaletteStreamingTailView()
@@ -225,7 +216,6 @@ final class BolttyAIPreviewCard: NSView {
     messages.translatesAutoresizingMaskIntoConstraints = false
     messages.setHuggingPriority(.defaultHigh, for: .vertical)
     content.setHuggingPriority(.defaultLow - 1, for: .vertical)
-    thinking.translatesAutoresizingMaskIntoConstraints = false
     statusLabel.translatesAutoresizingMaskIntoConstraints = false
     statusLabel.textColor = .secondaryLabelColor
     statusLabel.font = roundedAppFont(size: AgentPaletteMetrics.previewBodyFontSize)
@@ -280,7 +270,7 @@ final class BolttyAIPreviewCard: NSView {
                               options, optionsFooter, approvalHost], in: .leading)
     questionSurface.setStyled(false)
     content.setViews(
-      [messages, streamingTail, thinking, workingLine, queuedRow, questionSurface, statusLabel, failureCard, recoverButton],
+      [messages, streamingTail, workingLine, queuedRow, questionSurface, statusLabel, failureCard, recoverButton],
       in: .leading
     )
     streamingTail.isHidden = true
@@ -311,7 +301,6 @@ final class BolttyAIPreviewCard: NSView {
         constant: AgentPaletteMetrics.previewCloseInset
       ),
       messages.widthAnchor.constraint(equalTo: content.widthAnchor),
-      thinking.widthAnchor.constraint(equalTo: content.widthAnchor),
       workingLine.widthAnchor.constraint(equalTo: content.widthAnchor),
       streamingTail.widthAnchor.constraint(equalTo: content.widthAnchor),
       statusLabel.widthAnchor.constraint(equalTo: content.widthAnchor),
@@ -698,7 +687,7 @@ final class BolttyAIPreviewCard: NSView {
   }
 
   private func applyWorkingLine(_ preview: BolttyAISessionPreview) {
-    workingLine.isHidden = !preview.isBusy || preview.question != nil || preview.isInitialThinking
+    workingLine.isHidden = !preview.isBusy || preview.question != nil
     guard !workingLine.isHidden else { return }
     workingLine.apply(preview)
   }
@@ -721,8 +710,8 @@ final class BolttyAIPreviewCard: NSView {
     recoverButton.button.isEnabled = false
   }
 
-  private func applyStreamingTail(_ preview: BolttyAISessionPreview, initial: Bool) {
-    guard let tail = preview.streamingTail, !initial else {
+  private func applyStreamingTail(_ preview: BolttyAISessionPreview) {
+    guard let tail = preview.streamingTail else {
       streamingTail.isHidden = true
       streamingTail.clear()
       return
@@ -746,13 +735,12 @@ final class BolttyAIPreviewCard: NSView {
   }
 
   private func streamingTailHeight(_ preview: BolttyAISessionPreview, width: CGFloat) -> CGFloat {
-    guard let tail = preview.streamingTail, !preview.isInitialThinking else { return 0 }
+    guard let tail = preview.streamingTail else { return 0 }
     return PaletteStreamingTailView.height(of: tail, width: width) + Self.streamingTailSpacing(preview)
   }
 
   func suspendAnimations() {
     streamingTail.suspend()
-    thinking.suspend()
     workingLine.suspend()
     stopTurnClock()
   }
@@ -766,7 +754,6 @@ final class BolttyAIPreviewCard: NSView {
 
   func measuredHeight() -> CGFloat {
     guard let preview = displayedPreview else { return AgentPaletteMetrics.previewMinHeight }
-    if preview.isInitialThinking { return 174 }
     let width = contentLayoutWidth
     let items = transcriptItems(for: preview)
     let copies = Self.copyOffers(in: items, isBusy: preview.isBusy)
@@ -885,14 +872,13 @@ final class BolttyAIPreviewCard: NSView {
 
   func apply(_ preview: BolttyAISessionPreview) {
     guard displayedPreview != preview else {
-      thinking.apply(preview, initial: preview.isInitialThinking)
       applyWorkingLine(preview)
       return
     }
     let previous = displayedPreview
     let changedConversation = previous?.id != preview.id
     let sent: ConversationMessage? = {
-      guard let previous, !changedConversation, !previous.isInitialThinking,
+      guard let previous, !changedConversation,
             let request = preview.visibleMessages.last(where: { $0.role == .user }),
             preview.visibleMessages.filter({ $0.role == .user }).count
               > previous.visibleMessages.filter({ $0.role == .user }).count
@@ -904,11 +890,8 @@ final class BolttyAIPreviewCard: NSView {
     displayedPreview = preview
     applyQuestion(preview.question)
     let isTranscript = !preview.visibleMessages.isEmpty || Self.bodyMessage(for: preview) != nil
-    let initial = preview.isInitialThinking
-    messages.isHidden = !isTranscript || initial
-    thinking.isHidden = !preview.isBusy || preview.question != nil || !initial
-    thinking.apply(preview, initial: initial)
-    applyStreamingTail(preview, initial: initial)
+    messages.isHidden = !isTranscript
+    applyStreamingTail(preview)
     if changedConversation {
       expandedActivities.removeAll()
       expandedTurns.removeAll()
@@ -916,13 +899,13 @@ final class BolttyAIPreviewCard: NSView {
     }
     renderTranscript(
       preview, changedConversation: changedConversation,
-      revealsArrivals: previous != nil && !changedConversation && previous?.isInitialThinking == false,
+      revealsArrivals: previous != nil && !changedConversation,
       sentID: sent?.id)
     applyWorkingLine(preview)
     let body = preview.question == nil
       ? ""
       : (isTranscript ? preview.question?.prompt ?? "" : preview.displayBody)
-    bodyLabel.isHidden = initial || preview.withholdsAnswer || body.isEmpty
+    bodyLabel.isHidden = preview.withholdsAnswer || body.isEmpty
     let bodyWeight: NSFont.Weight = preview.question == nil ? .regular : .semibold
     let bodyText = Self.bodyText(body, color: PaletteInk.primary, weight: bodyWeight)
     if !bodyLabel.attributedStringValue.isEqual(to: bodyText) {
@@ -948,18 +931,18 @@ final class BolttyAIPreviewCard: NSView {
     if report == nil, !preview.isBusy, preview.question == nil, isTranscript,
        Self.bodyMessage(for: preview) == nil,
        preview.messages.last?.role != .agent || preview.messages.last?.plainText.isEmpty == true { status = "Finished without a text response." }
-    if report == nil, !preview.isBusy, preview.question == nil, !isTranscript, !initial {
+    if report == nil, !preview.isBusy, preview.question == nil, !isTranscript {
       status = "No output yet."
     }
     recoverButton.isHidden = preview.retryPrompt == nil || report != nil
     if previous?.retryPrompt != preview.retryPrompt { recoverButton.button.isEnabled = true }
     statusLabel.stringValue = status
-    statusLabel.isHidden = status.isEmpty || initial
+    statusLabel.isHidden = status.isEmpty
     layoutSubtreeIfNeeded()
     if updatePinnedFloor() { layoutSubtreeIfNeeded() }
     if isFlying {
       pendingBottomScroll = pendingBottomScroll || follow
-    } else if (!preview.visibleMessages.isEmpty || preview.question != nil) && !initial {
+    } else if !preview.visibleMessages.isEmpty || preview.question != nil {
       pendingBottomScroll = follow
       if follow { scrollToLatest() } else { scroll.contentView.scroll(to: scrollPosition) }
     } else if changedConversation {
@@ -984,7 +967,7 @@ final class BolttyAIPreviewCard: NSView {
 
   private static func bodyMessage(for preview: BolttyAISessionPreview) -> ConversationMessage? {
     guard preview.visibleMessages.isEmpty, preview.question == nil,
-          !preview.withholdsAnswer, !preview.isInitialThinking else { return nil }
+          !preview.withholdsAnswer else { return nil }
     let body = preview.displayBody.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !body.isEmpty else { return nil }
     return ConversationMessage(
@@ -2205,256 +2188,6 @@ final class PaletteStreamingTailView: NSView {
     return t * t * (3 - 2 * t)
   }
 
-}
-
-enum BolttyAIThinkingWords {
-  static let all = [
-    "Thinking", "Pondering", "Noodling", "Brewing", "Musing", "Percolating",
-    "Ruminating", "Simmering", "Mulling", "Puzzling", "Deliberating",
-    "Tinkering", "Wondering", "Chewing", "Considering", "Stewing",
-  ]
-
-  static func next(after previous: String?) -> String {
-    let choices = all.filter { $0 != previous }
-    return choices.randomElement() ?? all[0]
-  }
-}
-
-private final class PaletteThinkingView: NSView {
-  var showsMascot: Bool { mascot?.isHidden == false }
-  var textForTesting: String { label.stringValue }
-  var shimmerIsSweepingForTesting: Bool { band.animation(forKey: "sweep") != nil }
-  var shimmerColorsForTesting: [CGColor] { (band.colors as? [CGColor]) ?? [] }
-  func beatForTesting(big: Bool) { beat(big: big) }
-  var layoutForTesting: (mascot: NSRect, label: NSRect, dots: NSRect, width: CGFloat) {
-    (mascot?.frame ?? .zero, label.frame, dots.frame, bounds.width)
-  }
-  private let label = NSTextField(labelWithString: "Thinking")
-  private let dots = NSTextField(labelWithString: "…")
-  private let glow = CALayer()
-  private let textMask = CALayer()
-  private let band = CAGradientLayer()
-  private let pill = CALayer()
-  var pillFrameForTesting: NSRect { pill.frame }
-  private var maskedText = ""
-  private var maskedSize = NSSize.zero
-  private static let sweepDuration: CFTimeInterval = 1.3
-  private var mascot: MascotNSView?
-  private var identity: UUID?
-  private var agent: AgentId?
-  private var step: String?
-  private var initial = false
-  private var animates = false
-  private var height: NSLayoutConstraint!
-
-  override init(frame: NSRect) {
-    super.init(frame: frame)
-    wantsLayer = true
-    for view in [label, dots] {
-      view.font = roundedAppFont(size: AgentPaletteMetrics.previewBodyFontSize)
-      view.textColor = PaletteInk.primary
-      view.wantsLayer = true
-      addSubview(view)
-    }
-    height = heightAnchor.constraint(equalToConstant: 30)
-    height.isActive = true
-    band.startPoint = CGPoint(x: 0, y: 0.5)
-    band.endPoint = CGPoint(x: 1, y: 0.5)
-    glow.mask = textMask
-    glow.addSublayer(band)
-    glow.isHidden = true
-    pill.backgroundColor = AgentPaletteMetrics.previewAgentBubbleFill.cgColor
-    layer?.insertSublayer(pill, at: 0)
-    layer?.addSublayer(glow)
-    NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(motionChanged), name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
-  }
-  required init?(coder: NSCoder) { nil }
-
-  func apply(_ preview: BolttyAISessionPreview, initial: Bool) {
-    self.initial = initial
-    height.constant = initial
-      ? 118
-      : AgentPaletteMetrics.workingFaceDiameter
-    if identity != preview.id {
-      mascot?.removeFromSuperview()
-      let face = MascotNSView(conversationID: preview.id, look: MascotLook.face(for: preview.agent))
-      face.emotion = .thinking
-      face.onBeat = { [weak self] big in self?.beat(big: big) }
-      mascot = face
-      identity = preview.id
-      addSubview(face)
-    }
-    if agent != preview.agent {
-      agent = preview.agent
-      paintBand(MascotLook.face(for: preview.agent).palette.glowColors)
-    }
-    mascot?.isHidden = isHidden
-    step = preview.currentStep
-    if let step {
-      show(step)
-    } else if !BolttyAIThinkingWords.all.contains(label.stringValue) {
-      show(BolttyAIThinkingWords.next(after: nil))
-    }
-    needsLayout = true
-    motionChanged()
-  }
-
-  private static func sideInset(of label: NSTextField) -> CGFloat {
-    max(0, (label.frame.width - label.attributedStringValue.size().width) / 2)
-  }
-
-  override func layout() {
-    super.layout()
-    label.sizeToFit()
-    dots.sizeToFit()
-    let seam = Self.sideInset(of: label) + Self.sideInset(of: dots)
-    label.lineBreakMode = .byTruncatingTail
-    label.toolTip = label.stringValue
-    let face = initial ? 0 : AgentPaletteMetrics.workingFaceDiameter
-    let gap = initial ? 0 : AgentPaletteMetrics.workingFaceSpacing
-    let padding = initial ? 0 : AgentPaletteMetrics.previewBubbleHorizontalPadding
-    let room = max(0, bounds.width - dots.frame.width + seam - face - gap - padding * 2)
-    label.setFrameSize(NSSize(width: min(label.frame.width, room), height: label.frame.height))
-    let group = face + gap + label.frame.width + dots.frame.width - seam
-    let x = initial ? max(0, (bounds.width - group) / 2) : 0
-    let text = (bounds.height - label.frame.height) / 2
-    label.setFrameOrigin(NSPoint(x: x + face + gap + padding, y: initial ? 0 : text))
-    dots.setFrameOrigin(NSPoint(x: label.frame.maxX - seam, y: label.frame.minY))
-    mascot?.frame = initial
-      ? NSRect(x: (bounds.width - 64) / 2, y: 50, width: 64, height: 64)
-      : NSRect(x: x, y: 0, width: face, height: face)
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    pill.isHidden = initial
-    pill.frame = NSRect(
-      x: x + face + gap, y: 0,
-      width: label.frame.width + dots.frame.width - seam + padding * 2, height: bounds.height)
-    pill.applyPaletteCorner(radius: bounds.height / 2)
-    glow.frame = label.frame
-    textMask.frame = glow.bounds
-    band.frame = NSRect(x: 0, y: 0, width: Self.bandWidth(for: label.frame.width), height: glow.bounds.height)
-    if !animates { band.position.x = -band.bounds.width / 2 }
-    CATransaction.commit()
-    refreshMask()
-  }
-
-  override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); motionChanged() }
-
-  func suspend() {
-    animates = false
-    band.removeAllAnimations()
-    mascot?.isHidden = true
-  }
-
-  private static func bandWidth(for word: CGFloat) -> CGFloat {
-    max(48, word * 0.6)
-  }
-
-  private func paintBand(_ colors: [NSColor]) {
-    let stops = colors.map(\.cgColor)
-    guard stops.count >= 3 else { return }
-    let clear = colors[0].withAlphaComponent(0).cgColor
-    band.colors = [clear, stops[0], stops[2], stops[1], colors[1].withAlphaComponent(0).cgColor]
-    band.locations = [0, 0.3, 0.5, 0.7, 1]
-  }
-
-  private func refreshMask() {
-    let size = label.bounds.size
-    guard size.width > 0, size.height > 0,
-          maskedText != label.stringValue || maskedSize != size,
-          let rep = label.bitmapImageRepForCachingDisplay(in: label.bounds)
-    else { return }
-    let ink = label.textColor
-    label.textColor = .white
-    label.cacheDisplay(in: label.bounds, to: rep)
-    label.textColor = ink
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    textMask.contents = rep.cgImage
-    textMask.contentsScale = window?.backingScaleFactor ?? 2
-    CATransaction.commit()
-    maskedText = label.stringValue
-    maskedSize = size
-  }
-
-  private func beat(big: Bool) {
-    guard big, animates else { return }
-    if step == nil { show(BolttyAIThinkingWords.next(after: label.stringValue)) }
-    sweep()
-  }
-
-  private func show(_ text: String) {
-    guard label.stringValue != text else { return }
-    let leaving = label.stringValue
-    label.stringValue = text
-    label.toolTip = text
-    needsLayout = true
-    guard animates, !leaving.isEmpty, window != nil else { return }
-    handOver(from: leaving)
-  }
-
-  private func handOver(from leaving: String) {
-    guard let host = layer, let incoming = label.layer else { return }
-    let lift: CGFloat = 6
-    let ghost = CATextLayer()
-    ghost.string = NSAttributedString(string: leaving, attributes: [
-      .font: label.font as Any, .foregroundColor: label.textColor as Any,
-    ])
-    ghost.contentsScale = window?.backingScaleFactor ?? 2
-    ghost.frame = label.frame.offsetBy(dx: 2, dy: 0)
-    host.addSublayer(ghost)
-    let out = CAAnimationGroup()
-    let rise = CABasicAnimation(keyPath: "position.y")
-    rise.byValue = lift
-    let fade = CABasicAnimation(keyPath: "opacity")
-    fade.fromValue = 1
-    fade.toValue = 0
-    out.animations = [rise, fade]
-    out.duration = Motion.standard
-    out.timingFunction = Motion.emphasizedCurve
-    out.fillMode = .forwards
-    out.isRemovedOnCompletion = false
-    CATransaction.begin()
-    CATransaction.setCompletionBlock { ghost.removeFromSuperlayer() }
-    ghost.add(out, forKey: "leave")
-    CATransaction.commit()
-
-    let arrive = CAAnimationGroup()
-    let from = CABasicAnimation(keyPath: "transform.translation.y")
-    from.fromValue = -lift
-    from.toValue = 0
-    let appear = CABasicAnimation(keyPath: "opacity")
-    appear.fromValue = 0
-    appear.toValue = 1
-    arrive.animations = [from, appear]
-    arrive.duration = Motion.standard
-    arrive.timingFunction = Motion.emphasizedCurve
-    incoming.add(arrive, forKey: "arrive")
-  }
-
-  private func sweep() {
-    layoutSubtreeIfNeeded()
-    let width = band.bounds.width
-    let pass = CABasicAnimation(keyPath: "position.x")
-    pass.fromValue = -width / 2
-    pass.toValue = glow.bounds.width + width / 2
-    pass.duration = Self.sweepDuration
-    pass.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-    pass.preferringHighFrameRate()
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    band.position.x = -width / 2
-    CATransaction.commit()
-    band.add(pass, forKey: "sweep")
-  }
-
-  @objc private func motionChanged() {
-    animates = !isHidden && window != nil && !MotionPreferences.refreshReduceMotion()
-    label.textColor = animates ? PaletteInk.secondary : PaletteInk.primary
-    dots.textColor = label.textColor
-    glow.isHidden = !animates
-    if !animates { band.removeAllAnimations() }
-  }
 }
 
 final class PaletteTurnHeaderView: NSView {

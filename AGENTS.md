@@ -101,7 +101,7 @@ no adapter; never offer a toggle for them.
 | Dock click | Brings Settings forward, never the panel |
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
-| Progress words | `Working`, `Thinking…` and siblings (`BolttyAIThinkingWords`), `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
+| Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
 | Auto-approve | Off by default; chosen per agent in Settings › Agents › Permissions and copied into each new chat; the composer's shield switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
@@ -467,7 +467,8 @@ The loop that must keep working:
   Edit config.ts"). Messages with no words of their own join the next
   (`PaletteTranscript.joined`), so every agent's turn draws alike.
 - A finished turn with work gets "Worked for …" and folds to its last prose. A
-  running turn shows a working line with the agent's face and its current step.
+  running turn, the first one included, shows the transcript and under it a
+  working line with the agent's face.
 - Streaming prose: finished paragraphs are rendered as markdown; the paragraph
   still growing is plain text with words fading in through the agent's light
   (`MascotPalette.arrivalLight`).

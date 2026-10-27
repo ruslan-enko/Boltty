@@ -32,7 +32,7 @@ final class ConversationEngineTests: XCTestCase {
     let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
     let conversation = coordinator.startConversationInBackground(prompt: "Keep this prompt")
     let panel: any BolttyAIConversations = coordinator
-    XCTAssertTrue(try XCTUnwrap(panel.preview(for: conversation.id)).isInitialThinking)
+    XCTAssertTrue(try XCTUnwrap(panel.preview(for: conversation.id)).isBusy)
     XCTAssertFalse(coordinator.sendFollowUp("duplicate", to: conversation.id))
     for _ in 0..<100 where coordinator.pendingPanelPrompts[conversation.id] != nil { await Task.yield() }
     let preview = try XCTUnwrap(panel.preview(for: conversation.id))

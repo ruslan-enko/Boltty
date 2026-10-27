@@ -90,7 +90,7 @@ enum AgentPaletteMetrics {
     //
     // `.greatestFiniteMagnitude` here used to mean "always a stadium", which is
     // right for the two heights a pill is normally drawn at — the resting
-    // prompt (74.5, so 37.25) and the thinking pill (52, so 26) — and wrong the
+    // prompt (74.5, so 37.25) — and wrong the
     // moment a draft wraps. At six lines the prompt is ~340 tall, so half of it
     // is ~170: the ends become arcs deep enough to crowd the mascot and the mic
     // that are pinned inside them, and the field reads as a lozenge with text
@@ -110,10 +110,8 @@ enum AgentPaletteMetrics {
   /// Gap between the transcript and the composer standing under it — mock 20.
   static let surfaceStackSpacing: CGFloat = fromMock(20)
 
-  /// The agent's face beside what it is doing — the card's thinking row and
-  /// its working line — and the gap between them.
+  /// The agent's face beside what it is doing, on the card's working line.
   static let workingFaceDiameter: CGFloat = fromMock(24)
-  static let workingFaceSpacing: CGFloat = fromMock(8)
 
   /// The composer's height at one line, the design frame's 64. The text and
   /// the control group are centred in it.
@@ -390,8 +388,7 @@ enum AgentPaletteMetrics {
   /// read as one size set slightly wrong rather than as two levels.
   /// Primary: the initial prompt, a row's title.
   static let typePrimary: CGFloat = 18
-  /// Secondary: a row's second line, a day's heading, the folder chip, the
-  /// thinking pill's word.
+  /// Secondary: a row's second line, a day's heading, the folder chip.
   static let typeSecondary: CGFloat = 15
   /// The chat: its transcript and the composer under it, on
   /// `typeSecondary`'s step.
@@ -1446,12 +1443,6 @@ enum AgentPaletteMetrics {
   /// the top and `min(this, distance remaining)` at the bottom, so the first
   /// and last lines of an answer are never dimmed for no reason — see
   /// `BolttyAIPreviewCard.refreshEdgeFades`.
-  /// Only the question is a bubble: the answer is prose on the glass
-  /// (`PaletteAnswerRun`), and the one other bubble is the "typing" pill of
-  /// a first turn (`PaletteThinkingView`), which keeps these two.
-  static let previewBubbleHorizontalPadding: CGFloat = 14
-  /// The typing pill's fill — barely off the ground it stands on.
-  static let previewAgentBubbleFill = PaletteInk.fill
   /// The widest the question's bubble gets, as a share of the column, so it
   /// always leaves the other side some air and reads as the other speaker.
   static let previewBubbleMaxWidthFraction: CGFloat = 0.78
