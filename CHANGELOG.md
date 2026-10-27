@@ -2,6 +2,16 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.1
+
+**Usage**
+- Plan limits come back after you sign in again in a terminal, without
+  restarting Boltty. The page checks every agent's sign-in when it opens, when
+  its window comes forward, and on Refresh.
+- An agent that is signed out shows its face and the command that signs it in
+  (`claude auth login`, `codex login`, `grok login`), with a button to copy it.
+- An expired Claude Code login is now recognised as signed out.
+
 ## 0.2.0 — first public release
 
 The first version anyone can download.
