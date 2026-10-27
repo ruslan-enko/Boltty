@@ -2,6 +2,21 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.2
+
+**Boltty AI**
+- A chat shows its transcript from the first turn, with the agent's face on a
+  working line under it, instead of a separate thinking screen.
+- Files in the chat are filled cards with a larger picture; their actions
+  appear on hover.
+- Prompt chips are glass pictures that name their kind — file, image, text,
+  link; what each holds shows under the pointer.
+
+**Ask Boltty**
+- What you say shows beside the face while you hold ⌃⌥⌘.
+- Answers are at most two sentences, shown one at a time: a new sentence
+  replaces the one before.
+
 ## 0.2.1
 
 **Usage**
