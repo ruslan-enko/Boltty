@@ -28,6 +28,11 @@ targets:
       - path: Resources/AgentIcons
         type: folder
         buildPhase: resources
+      # The prompt chips' pictures — the owner's glass, drawn in Figma, one
+      # per kind. See `PromptChipCell.picture(for:)`.
+      - path: Resources/ChipGlass
+        type: folder
+        buildPhase: resources
       # Files, not a folder reference: a banner's sound is looked up by name at
       # the top of the bundle's Resources (`UNNotificationSound(named:)`), and
       # a folder reference would put them one level down. Rendered by

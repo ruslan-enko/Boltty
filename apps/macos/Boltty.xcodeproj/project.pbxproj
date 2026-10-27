@@ -237,6 +237,7 @@
 		BC2EFAB5F33BA6352D859000 /* NotchMascotController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B5A46902FC1B2C9FEC926E /* NotchMascotController.swift */; };
 		BD42E1882B6FA9BAFD2F2407 /* BolttyAISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */; };
 		BD5D3A29EC272D56AAC43E3D /* AgentIcons in Resources */ = {isa = PBXBuildFile; fileRef = 24568FB2D3EA339880D65CBF /* AgentIcons */; };
+		A457BB588CE225D3B034A513 /* ChipGlass in Resources */ = {isa = PBXBuildFile; fileRef = 721223C7C17BB8CF63B684F2 /* ChipGlass */; };
 		BD7E16DB072A676A7B5C9350 /* JSONObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDDA6C284882C1CD41C2FB39 /* JSONObject.swift */; };
 		C011BDA2CC5F1B8A83EEBB33 /* tap-3.wav in Resources */ = {isa = PBXBuildFile; fileRef = 756B35EB9FFF10AD9724B60E /* tap-3.wav */; };
 		C090D72B3C08408FC9421520 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989EB63073A800F9F34F9506 /* AppUpdater.swift */; };
@@ -378,6 +379,7 @@
 		2182E6F034C7F8C5842C3D45 /* PaletteActivityRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteActivityRowView.swift; sourceTree = "<group>"; };
 		235BFE75A0C5C0F4FAF88BD4 /* ChipEntranceAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChipEntranceAnimator.swift; sourceTree = "<group>"; };
 		24568FB2D3EA339880D65CBF /* AgentIcons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AgentIcons; path = Resources/AgentIcons; sourceTree = SOURCE_ROOT; };
+		721223C7C17BB8CF63B684F2 /* ChipGlass */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ChipGlass; path = Resources/ChipGlass; sourceTree = SOURCE_ROOT; };
 		24861A2C50E4E42892F9C31C /* NotchMascotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMascotTests.swift; sourceTree = "<group>"; };
 		251F4713090134D888CDA0D9 /* AskBolttyDrawingLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskBolttyDrawingLayer.swift; sourceTree = "<group>"; };
 		26210F5B96F268C95E196988 /* WorkingDirectoryMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryMenu.swift; sourceTree = "<group>"; };
@@ -1099,6 +1101,7 @@
 			children = (
 				057CFE34A8C6159254C0271D /* Sounds */,
 				24568FB2D3EA339880D65CBF /* AgentIcons */,
+				721223C7C17BB8CF63B684F2 /* ChipGlass */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -1319,6 +1322,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BD5D3A29EC272D56AAC43E3D /* AgentIcons in Resources */,
+				A457BB588CE225D3B034A513 /* ChipGlass in Resources */,
 				B7EB967CA083892D3AFCA439 /* AppIcon.icon in Resources */,
 				3607A598B75CE3C90A91536F /* LICENSE in Resources */,
 				636F89C2A009AD76BD80399F /* THIRD_PARTY_NOTICES.md in Resources */,

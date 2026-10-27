@@ -148,8 +148,30 @@ final class PromptChipCell: NSTextAttachmentCell {
     return ceil(max(font.ascender, height - descent) + max(-font.descender, descent))
   }
 
+  /// The kind's glass picture, drawn in Figma with its word in it: the chip
+  /// itself, edge to edge. A kind with no picture falls back to the capsule.
+  @MainActor static func picture(for kind: PromptAttachmentKind) -> NSImage? {
+    if let cached = pictures[kind] { return cached }
+    let picture = Bundle.main
+      .url(forResource: kind.rawValue, withExtension: "png", subdirectory: "ChipGlass")
+      .flatMap(NSImage.init(contentsOf:))
+    pictures[kind] = .some(picture)
+    return picture
+  }
+
+  @MainActor private static var pictures: [PromptAttachmentKind: NSImage?] = [:]
+
+  private static func pictureSize(_ picture: NSImage, for font: NSFont) -> NSSize {
+    let height = Self.height(for: font)
+    let aspect = picture.size.width / max(picture.size.height, 1)
+    return NSSize(width: ceil(height * aspect * 2) / 2, height: height)
+  }
+
   override func cellSize() -> NSSize {
     MainActor.assumeIsolated {
+      if let picture = Self.picture(for: promptAttachment.kind) {
+        return Self.pictureSize(picture, for: displayFont)
+      }
       let size = displayFont.pointSize
       let glyph = symbol?.size.width ?? 0
       return NSSize(
@@ -194,6 +216,11 @@ final class PromptChipCell: NSTextAttachmentCell {
     }
 
     let alpha = appearProgress
+    if let picture = MainActor.assumeIsolated({ Self.picture(for: promptAttachment.kind) }) {
+      picture.draw(in: cellFrame, from: .zero, operation: .sourceOver, fraction: alpha,
+                   respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
+      return
+    }
     let radius = PromptChipCell.cornerRadius(forHeight: cellFrame.height)
     let capsule = NSBezierPath(roundedRect: cellFrame, xRadius: radius, yRadius: radius)
     let fill = promptAttachment.kind.chipFillColor

@@ -451,6 +451,13 @@ The loop that must keep working:
   "Stop ⌘.") appear after a 1 s rest, drop from the end when short of room, and
   stand on the typesetter's baseline, never a glyph's location (a chip's
   baseline is its capsule's foot).
+- **A chip is the owner's glass picture**: one PNG per kind in
+  `Resources/ChipGlass` (a folder reference), its word drawn in it — "file",
+  "image", "text". `PromptChipCell.picture(for:)` draws it at the capsule's
+  height, as wide as its aspect. So a chip names its kind, not its item; what
+  each holds is under the pointer (`PromptChipPreview`). The tinted capsule with
+  a symbol is only the fallback for a kind with no picture. Not a thumbnail of
+  the file: the glass is the point.
 - **The black ramp** is worn by the first screen only, and only once the state
   has settled (`applySurfaceStyle` defers changes *to* a wash to the end of the
   turn).
