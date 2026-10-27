@@ -2,6 +2,17 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.3
+
+**Updates**
+- Boltty installs its own updates. When a new version is out, *Install
+  Boltty X…* in the menu bar and in Settings asks first, then downloads it,
+  checks it, puts it in place and opens it again. It installs only a copy
+  signed the same way as yours, so permissions you granted stay granted;
+  anything else opens the release page instead.
+- Coming from 0.2.2 or earlier, install this one by hand; updates after it
+  arrive on their own.
+
 ## 0.2.2
 
 **Boltty AI**
