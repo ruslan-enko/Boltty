@@ -21,6 +21,10 @@ enum LaunchTrace {
 
 _ = LaunchTrace.start
 
+// A copy started by the updater waits for the one it replaced to quit, so
+// the conversation store has one writer.
+UpdateInstaller.waitForReplacedCopy()
+
 // Ignore SIGPIPE: a write to a CLI that has just exited must not kill Boltty.
 signal(SIGPIPE, SIG_IGN)
 

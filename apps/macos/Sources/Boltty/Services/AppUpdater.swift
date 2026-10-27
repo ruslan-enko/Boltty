@@ -6,11 +6,19 @@ final class AppUpdater: ObservableObject {
   struct Release: Equatable, Sendable {
     let version: String
     let pageURL: URL
+    /// The release's `Boltty.dmg` and its checksum. Without both the release
+    /// can only be opened, not installed.
+    var imageURL: URL? = nil
+    var checksumURL: URL? = nil
+
+    var isInstallable: Bool { imageURL != nil && checksumURL != nil }
   }
 
   enum Offer: Equatable {
     case check(enabled: Bool)
     case download(version: String)
+    case install(version: String)
+    case installing(version: String)
   }
 
   enum CheckResult: Equatable {
@@ -28,9 +36,12 @@ final class AppUpdater: ObservableObject {
   @Published private(set) var available: Release?
   @Published private(set) var isChecking = false
   @Published private(set) var lastUpdateCheckDate: Date?
+  @Published private(set) var isInstalling = false
 
   var offer: Offer {
-    available.map { .download(version: $0.version) } ?? .check(enabled: !isChecking)
+    guard let available else { return .check(enabled: !isChecking) }
+    if isInstalling { return .installing(version: available.version) }
+    return available.isInstallable ? .install(version: available.version) : .download(version: available.version)
   }
 
   let currentVersion: String
@@ -43,6 +54,19 @@ final class AppUpdater: ObservableObject {
   }
   var openURL: @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) }
   var presentResult: @MainActor (CheckResult, String) -> Bool = AppUpdater.alert
+  /// Puts the release in place of this copy; the running copy is untouched.
+  var installRelease: @MainActor (Release) async throws -> Void = { release in
+    guard let image = release.imageURL, let checksum = release.checksumURL else { return }
+    try await UpdateInstaller.install(
+      dmg: image, checksum: checksum, version: release.version, over: Bundle.main.bundleURL)
+  }
+  /// Starts the new copy and quits this one, through the usual quit, which
+  /// stops every turn and adapter.
+  var relaunch: @MainActor () async throws -> Void = {
+    try await UpdateInstaller.relaunch(Bundle.main.bundleURL)
+    NSApp.terminate(nil)
+  }
+  var presentFailure: @MainActor (Error) -> Bool = AppUpdater.failureAlert
 
   private let defaults: UserDefaults
   private var timer: Timer?
@@ -78,18 +102,34 @@ final class AppUpdater: ObservableObject {
     await check()
   }
 
+  /// The menu's and Settings' one button: checks, or offers what was found.
+  /// Nothing is installed without a yes.
   func checkForUpdates() {
-    if let available {
-      openURL(available.pageURL)
-      return
-    }
-    guard !isChecking else { return }
+    guard !isChecking, !isInstalling else { return }
     Task {
-      let result = await check()
+      let result: CheckResult = if let available { .available(available) } else { await check() }
       onPresent()
-      if presentResult(result, currentVersion), case let .available(release) = result {
+      let accepted = presentResult(result, currentVersion)
+      onDismiss()
+      guard accepted, case let .available(release) = result else { return }
+      if release.isInstallable {
+        await install(release)
+      } else {
         openURL(release.pageURL)
       }
+    }
+  }
+
+  func install(_ release: Release) async {
+    guard !isInstalling else { return }
+    isInstalling = true
+    do {
+      try await installRelease(release)
+      try await relaunch()
+    } catch {
+      isInstalling = false
+      onPresent()
+      if presentFailure(error) { openURL(release.pageURL) }
       onDismiss()
     }
   }
@@ -148,7 +188,19 @@ final class AppUpdater: ObservableObject {
     guard !version.isEmpty else { return nil }
     let pagePrefix = "https://github.com/\(repository)/releases/"
     let safePage = page.absoluteString.hasPrefix(pagePrefix) ? page : releasesURL
-    return Release(version: version, pageURL: safePage)
+    // Only this repository's own downloads; GitHub spells the owner's case.
+    let downloadPrefix = "https://github.com/\(repository)/releases/download/".lowercased()
+    let assets = (object["assets"] as? [[String: Any]] ?? []).reduce(into: [String: URL]()) { found, asset in
+      guard let name = asset["name"] as? String,
+            let link = asset["browser_download_url"] as? String,
+            link.lowercased().hasPrefix(downloadPrefix),
+            let url = URL(string: link)
+      else { return }
+      found[name] = url
+    }
+    return Release(
+      version: version, pageURL: safePage,
+      imageURL: assets["Boltty.dmg"], checksumURL: assets["Boltty.dmg.sha256"])
   }
 
   nonisolated static func isNewer(_ candidate: String, than current: String) -> Bool {
@@ -175,6 +227,12 @@ final class AppUpdater: ObservableObject {
   private static func alert(_ result: CheckResult, current: String) -> Bool {
     let alert = NSAlert()
     switch result {
+    case let .available(release) where release.isInstallable:
+      alert.messageText = "Boltty \(release.version) is available"
+      alert.informativeText = "You have \(current). Boltty downloads it, puts it in place of this copy and opens it again. Chats still working are stopped."
+      alert.addButton(withTitle: "Install and Relaunch")
+      alert.addButton(withTitle: "Later")
+      return alert.runModal() == .alertFirstButtonReturn
     case let .available(release):
       alert.messageText = "Boltty \(release.version) is available"
       alert.informativeText = "You have \(current). Download it from its release page, quit Boltty from the menu bar, and drag the new one into Applications."
@@ -191,5 +249,16 @@ final class AppUpdater: ObservableObject {
     }
     alert.runModal()
     return false
+  }
+
+  /// True when the person chose to get the release by hand instead.
+  private static func failureAlert(_ error: Error) -> Bool {
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = "Couldn't install the update"
+    alert.informativeText = "\(error.localizedDescription) This copy of Boltty is unchanged; you can download the new one from its release page."
+    alert.addButton(withTitle: "Open Release Page")
+    alert.addButton(withTitle: "Cancel")
+    return alert.runModal() == .alertFirstButtonReturn
   }
 }

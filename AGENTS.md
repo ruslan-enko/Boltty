@@ -105,7 +105,7 @@ no adapter; never offer a toggle for them.
 | Auto-approve | Off by default; chosen per agent in Settings › Agents › Permissions and copied into each new chat; the composer's shield switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
-| Updates | Notify only. No installer framework, no signing key to guard |
+| Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
 | Packages | None. A dependency is asked about first |
 
 ## Invariants (the linter fails on each)
@@ -784,9 +784,16 @@ final text. A long silence sends, but only after speech was heard.
   run to 20 MB).
 - **Updates** (`AppUpdater`): `GET api.github.com/repos/ruslan-enko/boltty/releases/latest`
   at launch and hourly when a day has passed, switchable in Settings. A newer
-  version turns *Check for Updates…* into *Download Boltty X…*, opening only this
-  repository's release pages. It never downloads or runs anything. Do not add an
-  installer without asking.
+  version turns *Check for Updates…* into *Install Boltty X…*; nothing is
+  installed until the person says *Install and Relaunch*. `UpdateInstaller`
+  takes only this repository's `Boltty.dmg` and `Boltty.dmg.sha256` assets,
+  checks the digest, mounts with `hdiutil`, copies with `ditto` beside the
+  running bundle, and swaps it in only if it satisfies the **running copy's
+  designated requirement** (same identity, so TCC grants carry over; an ad hoc
+  copy can never update itself). It relaunches with `-boltty.updatedFrom <pid>`
+  and the new copy waits in `main.swift` for the old one to quit (one writer).
+  A release without both assets, or any failure, falls back to the release
+  page; the running copy is left as it was. Copies before 0.2.3 only notify.
 - **Open at login** (`LoginItem`): `SMAppService.mainApp`; the system's list is
   the only store.
 

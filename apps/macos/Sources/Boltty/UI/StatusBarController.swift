@@ -161,6 +161,20 @@ final class StatusBarController {
         action: #selector(checkForUpdates),
         symbolName: "arrow.down.circle"
       )
+    case let .install(version):
+      addItem(
+        to: menu,
+        title: "Install Boltty \(version)…",
+        action: #selector(checkForUpdates),
+        symbolName: "arrow.down.circle"
+      )
+    case let .installing(version):
+      addItem(
+        to: menu,
+        title: "Installing Boltty \(version)…",
+        action: nil,
+        symbolName: "arrow.down.circle"
+      )
     case let .check(enabled):
       let check = addItem(
         to: menu,

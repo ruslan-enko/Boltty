@@ -50,6 +50,31 @@ final class AppUpdaterTests: XCTestCase {
     XCTAssertEqual(AppUpdater.release(from: foreign)?.pageURL, AppUpdater.releasesURL)
   }
 
+  func testOnlyThisRepositorysImageAndChecksumMakeAReleaseInstallable() {
+    let assets = Data("""
+    {"tag_name": "v0.2.3", "html_url": "https://github.com/ruslan-enko/boltty/releases/tag/v0.2.3",
+     "draft": false, "prerelease": false, "assets": [
+      {"name": "Boltty.dmg", "browser_download_url": "https://github.com/ruslan-enko/Boltty/releases/download/v0.2.3/Boltty.dmg"},
+      {"name": "Boltty.dmg.sha256", "browser_download_url": "https://github.com/ruslan-enko/Boltty/releases/download/v0.2.3/Boltty.dmg.sha256"}]}
+    """.utf8)
+    XCTAssertEqual(AppUpdater.release(from: assets)?.isInstallable, true)
+    let foreign = Data("""
+    {"tag_name": "v0.2.3", "html_url": "https://github.com/ruslan-enko/boltty/releases/tag/v0.2.3",
+     "draft": false, "prerelease": false, "assets": [
+      {"name": "Boltty.dmg", "browser_download_url": "https://example.com/Boltty.dmg"},
+      {"name": "Boltty.dmg.sha256", "browser_download_url": "https://github.com/ruslan-enko/Boltty/releases/download/v0.2.3/Boltty.dmg.sha256"}]}
+    """.utf8)
+    XCTAssertEqual(AppUpdater.release(from: foreign)?.isInstallable, false)
+    XCTAssertFalse(AppUpdater.release(from: releaseJSON(tag: "v0.2.3"))?.isInstallable ?? true)
+  }
+
+  func testAChecksumIsTheShasumLinesDigest() {
+    let hex = String(repeating: "ab", count: 32)
+    XCTAssertEqual(UpdateInstaller.checksum(in: "\(hex.uppercased())  Boltty.dmg\n"), hex)
+    XCTAssertNil(UpdateInstaller.checksum(in: "not a digest  Boltty.dmg"))
+    XCTAssertNil(UpdateInstaller.checksum(in: ""))
+  }
+
   func testVersionsCompareNumberByNumber() {
     XCTAssertTrue(AppUpdater.isNewer("0.2.0", than: "0.1.0"))
     XCTAssertTrue(AppUpdater.isNewer("0.10.0", than: "0.9.2"), "not as text")

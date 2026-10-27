@@ -185,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   @objc func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
     guard menuItem.action == #selector(checkForUpdates) else { return true }
-    return updater.available != nil || !updater.isChecking
+    return !updater.isInstalling && (updater.available != nil || !updater.isChecking)
   }
 
   @discardableResult

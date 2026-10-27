@@ -132,12 +132,12 @@ struct GeneralSettingsPage: View {
       .accessibilityIdentifier("boltty.settings.checkForUpdates")
       if let updater = model.updater {
         HStack(spacing: 8) {
-          Button(updater.available.map { "Download Boltty \($0.version)…" } ?? "Check Now") {
+          Button(updateButtonTitle(updater)) {
             updater.checkForUpdates()
           }
-          .disabled(updater.isChecking)
+          .disabled(updater.isChecking || updater.isInstalling)
           .accessibilityIdentifier("boltty.settings.checkNow")
-          if updater.isChecking {
+          if updater.isChecking || updater.isInstalling {
             ProgressView().controlSize(.small)
           }
         }
@@ -146,11 +146,20 @@ struct GeneralSettingsPage: View {
     }
   }
 
+  private func updateButtonTitle(_ updater: AppUpdater) -> String {
+    guard let release = updater.available else { return "Check Now" }
+    if updater.isInstalling { return "Installing Boltty \(release.version)…" }
+    return release.isInstallable ? "Install Boltty \(release.version)…" : "Download Boltty \(release.version)…"
+  }
+
   private func updatesNote(_ updater: AppUpdater) -> String {
+    if let release = updater.available, release.isInstallable {
+      return "Boltty \(release.version) is out; you have \(updater.currentVersion). Install puts it in place of this copy and opens it again."
+    }
     if let release = updater.available {
       return "Boltty \(release.version) is out; you have \(updater.currentVersion). Download it, quit Boltty from the menu bar, and drag the new one into Applications."
     }
-    let telling = "Boltty asks GitHub once a day and only tells you — it never installs anything by itself."
+    let telling = "Boltty asks GitHub once a day and tells you; it installs only when you say so."
     guard let checked = updater.lastUpdateCheckDate else { return telling }
     return "Last checked \(AppUpdater.checkedPhrase(checked)). \(telling)"
   }
