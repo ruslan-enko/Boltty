@@ -820,12 +820,12 @@ final class BolttyAIPreviewCardTests: XCTestCase {
     let user = ConversationMessage(id: "u", role: .user, createdAt: Date(), parts: [.text(TextPart(id: "ut", kind: .text, text: "Hello"))])
     var value = BolttyAISessionPreview(id: UUID(), title: "Chat", agent: .opencode, state: .running, body: "", messages: [user])
     card.apply(value)
-    XCTAssertTrue(value.isInitialThinking)
-    XCTAssertEqual(card.measuredHeight(), 174)
+    XCTAssertEqual(card.messageCountForTesting, 1, "the question stands while the first turn runs")
+    XCTAssertFalse(card.workingLineForTesting.isHidden)
     card.suspendAnimations()
-    XCTAssertFalse(card.thinkingMascotVisibleForTesting)
+    XCTAssertFalse(card.workingLineForTesting.showsFaceForTesting)
     card.apply(value)
-    XCTAssertTrue(card.thinkingMascotVisibleForTesting)
+    XCTAssertTrue(card.workingLineForTesting.showsFaceForTesting)
 
     var answer = ConversationMessage(id: "a", role: .agent, createdAt: Date(), parts: [.text(TextPart(id: "at", kind: .text, text: "Hello back"))])
     value.messages.append(answer)
@@ -1104,16 +1104,6 @@ final class BolttyAIPreviewCardTests: XCTestCase {
       allowsMultiple: multiple,
       allowsCustom: true
     )
-  }
-
-  func testTheThinkingWordNeverRepeatsTheOneOnScreen() {
-    for word in BolttyAIThinkingWords.all {
-      for _ in 0..<40 {
-        XCTAssertNotEqual(BolttyAIThinkingWords.next(after: word), word)
-      }
-    }
-    XCTAssertTrue(BolttyAIThinkingWords.all.contains(BolttyAIThinkingWords.next(after: nil)))
-    XCTAssertTrue(BolttyAIThinkingWords.all.contains(BolttyAIThinkingWords.next(after: "Nonsense")))
   }
 
   func testTheBodyIsSetTheWayTheMockSetsIt() {
@@ -2089,7 +2079,7 @@ final class PaletteThinkingVocabularyTests: XCTestCase {
     )
   }
 
-  func testTheThinkingRowLeadsWithItsFaceAndABubbleOverATranscript() {
+  func testTheWorkingLineStandsUnderARunningTurn() {
     let card = card(
       BolttyAISessionPreview(
         id: UUID(), title: "Chat", agent: .opencode, state: .running, body: "",
@@ -2106,35 +2096,9 @@ final class PaletteThinkingVocabularyTests: XCTestCase {
       )
     )
 
-    XCTAssertFalse(card.thinkingMascotVisibleForTesting, "no second face in a bubble")
     let line = card.workingLineForTesting
     XCTAssertFalse(line.isHidden, "the working line stands under the running turn")
     XCTAssertTrue(line.showsFaceForTesting, "the face belongs to the whole turn")
-  }
-
-  func testTheThinkingLightCrossesTheWordOnTheFacesTurn() throws {
-    try XCTSkipIf(
-      NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
-      "Reduce Motion stops the sweep on purpose"
-    )
-    let card = card(running([]))
-    let window = NSWindow(
-      contentRect: card.frame, styleMask: [.borderless], backing: .buffered, defer: false
-    )
-    window.isReleasedWhenClosed = false
-    window.contentView = card
-    addTeardownBlock { MainActor.assumeIsolated { window.close() } }
-    card.layoutSubtreeIfNeeded()
-
-    card.thinkingBeatForTesting(big: false)
-    XCTAssertFalse(card.thinkingShimmerIsSweepingForTesting, "an ordinary bop is not the turn")
-    let word = card.thinkingTextForTesting
-    card.thinkingBeatForTesting(big: true)
-    XCTAssertTrue(card.thinkingShimmerIsSweepingForTesting)
-    XCTAssertNotEqual(card.thinkingTextForTesting, word, "the word turns with the face")
-    let palette = MascotLook.face(for: .opencode).palette.glowColors.map(\.cgColor)
-    XCTAssertTrue(card.thinkingShimmerColorsForTesting.contains(palette[0]),
-                  "the light is the agent's own colour")
   }
 
   func testACardAskingAQuestionOpensOnItsOptions() {
@@ -2165,17 +2129,6 @@ final class PaletteThinkingVocabularyTests: XCTestCase {
                               state: .running, files: [])),
     ])
     XCTAssertEqual(preview.currentStep, "ffmpeg -i in.mov out.mp4")
-    XCTAssertEqual(card(preview).thinkingTextForTesting, preview.currentStep)
-  }
-
-  func testATurnWithNoStepFallsBackToAWord() {
-    let preview = running([.text(TextPart(id: "t", kind: .text, text: "Пишу"))])
-
-    XCTAssertNil(preview.currentStep)
-    XCTAssertTrue(
-      BolttyAIThinkingWords.all.contains(card(preview).thinkingTextForTesting),
-      "with no step to name, the word list is the honest answer"
-    )
   }
 }
 

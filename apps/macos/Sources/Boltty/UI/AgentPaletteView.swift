@@ -1391,7 +1391,6 @@ final class AgentPaletteView: NSView {
   /// that takes a typed answer waits, it says that typing is answering —
   /// OpenCode's terminal offers it as a row of its own.
   static func composerPlaceholder(for preview: BolttyAISessionPreview) -> String {
-    if preview.isInitialThinking { return "Boltty AI" }
     if preview.question?.kind == .plan {
       return "Or tell \(preview.agent.shortDisplayName) what to change"
     }
