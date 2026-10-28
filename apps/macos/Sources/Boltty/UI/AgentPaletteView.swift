@@ -2860,15 +2860,12 @@ final class AgentPaletteView: NSView {
   }
 
   /// The keys after the typed text, the way macOS 27's Siri field writes
-  /// "— Ask Siri", each in a capsule of its own: what Return will do and the
-  /// key that does it, and the key for the other
-  /// thing worth knowing at that moment.
+  /// "— Ask Siri": what Return will do, and only that — a second hint beside
+  /// it read as a second answer.
   ///
-  /// - First screen: "Ask Claude ↵" "Codex ⇧⇥" — the agent Enter starts on,
-  ///   and the one ⇧Tab would choose instead (with one agent, only the first).
-  /// - A chat whose turn is running: "Queue ↵" "Add now ⌘↵" "Stop ⌘." —
-  ///   Return does not send there, ⌘Return adds the words to the turn where
-  ///   the agent can take them (`canSteer`), and ⌘. is the way out of it.
+  /// - First screen: "Ask Claude ↵" — the agent Enter starts on.
+  /// - A chat whose turn is running: "Queue ↵" — Return does not send there.
+  ///   ⌘Return and ⌘. are not hinted; the Send slot turns into Stop.
   /// - A permission waiting: "Deny and send ↵" — words typed there refuse it
   ///   and go to the agent with the refusal.
   /// - A plan waiting: "Request changes ↵" — the words go back with it as
@@ -2888,21 +2885,13 @@ final class AgentPaletteView: NSView {
         return [PromptKeyHint(words: question.refusalWords, key: "↵")]
       }
       guard preview.isBusy, previewCard.pendingQuestion == nil else { return [] }
-      // Return queues; ⌘Return adds to the turn where the agent can take
-      // words mid-turn; ⌘. stops it.
-      let queue = PromptKeyHint(words: "Queue", key: "↵")
-      let addNow = preview.canSteer ? [PromptKeyHint(words: "Add now", key: "⌘↵")] : []
-      let stop = stopIsAvailable ? [PromptKeyHint(words: "Stop", key: "⌘.")] : []
-      return [queue] + addNow + stop
+      return [PromptKeyHint(words: "Queue", key: "↵")]
     }
     guard let agent = agentForNewPrompt else { return [] }
     return [PromptKeyHint(words: "Ask \(agent.shortDisplayName)", key: "↵")]
-      + (agentChoice(movingFrom: agent, by: 1).map {
-        [PromptKeyHint(words: $0.shortDisplayName, key: "⇧⇥")]
-      } ?? [])
   }
 
-  /// "Ask Claude ↵" for each key — what the capsules say.
+  /// "Ask Claude ↵" for each hint — its words and its key, whether drawn or not.
   var trailingHintForTesting: [String] { field.trailingHint.map { "\($0.words) \($0.key)" } }
 
   /// Clicking the mark pokes the face, and nothing else.

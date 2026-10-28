@@ -447,8 +447,11 @@ The loop that must keep working:
 - **Return while a turn runs queues** (one slot, shown, cancellable).
   **⌘Return** steers where the agent declares `.steering`. **⌘.** stops where it
   declares `.interrupt` or `.terminableTurn`; the Send slot turns into Stop.
-- **Key hints after the typed text** ("Ask Claude ↵", "Codex ⇧⇥", "Queue ↵",
-  "Stop ⌘.") appear after a 1 s rest, drop from the end when short of room, and
+- **Key hints after the typed text** read like Siri's "ds — Ask Siri": an em
+  dash, then the first hint in secondary ink at the typed size, with no capsule
+  and no key ("— Ask Claude", "— Queue"). Only ever that one: a second hint
+  read as a second answer, so neither ⇧Tab's next agent nor ⌘Return or ⌘. is
+  suggested (the Send slot turning into Stop says the last). They appear after a 1 s rest, drop from the end when short of room, and
   stand on the typesetter's baseline, never a glyph's location (a chip's
   baseline is its capsule's foot).
 - **A chip is the owner's glass picture**: one PNG per kind in
@@ -718,8 +721,8 @@ final text. A long silence sends, but only after speech was heard.
   history a private `variableBlur` filter); the scroll indicator bends round the
   shell's corners (`PaletteCornerScrollIndicator`).
 - **Type**: five sizes in `AgentPaletteMetrics` — 18, 15 (`typeSecondary` and
-  `typeChat`), 13, 11; the first screen's 20 and key hints are the exceptions.
-  Whole points only, SF Pro Rounded everywhere, no `.kern`.
+  `typeChat`), 13, 11; the first screen's 20 is the exception (key hints
+  take the typed size). Whole points only, SF Pro Rounded everywhere, no `.kern`.
 - **Colour**: `PaletteInk` — system label colours (dynamic) and fills written as
   values (they end up as `CGColor`). Pure white only for primary-action fills.
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,

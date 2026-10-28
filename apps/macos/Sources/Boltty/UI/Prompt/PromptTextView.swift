@@ -916,6 +916,12 @@ struct PromptKeyHint: Equatable {
   let key: String
 }
 
+/// What the keys say after the typed text, as Siri says "ds — Ask Siri":
+/// an em dash, then the first hint in secondary ink at the typed size, on
+/// the line's baseline, with no capsule and no key — Return is what the
+/// sentence already asks for. Any further hints follow a middle dot in
+/// tertiary ink with their keys written plainly ("· Grok ⇧⇥"), because
+/// those keys are not the obvious one.
 final class PromptKeyHintView: NSView {
   var keys: [PromptKeyHint] = [] {
     didSet { if keys != oldValue { invalidateIntrinsicContentSize(); needsDisplay = true } }
@@ -928,83 +934,39 @@ final class PromptKeyHintView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
   override var intrinsicContentSize: NSSize { Self.size(of: keys, font: font) }
 
-  static func font(following typed: NSFont) -> NSFont {
-    roundedAppFont(size: ((typed.pointSize - AgentPaletteMetrics.keyHintFontReduction)
-      * AgentPaletteMetrics.keyHintScale).rounded())
-  }
+  /// The typed text's own font: Siri's suggestion is the same size as the words before it.
+  static func font(following typed: NSFont) -> NSFont { typed }
 
-  private static func grid(_ font: NSFont, _ perPoint: CGFloat) -> CGFloat {
-    AgentPaletteMetrics.onPixelGrid(font.pointSize * perPoint)
+  /// A space's width between the last glyph and the dash.
+  static func spacing(_ font: NSFont) -> CGFloat {
+    AgentPaletteMetrics.onPixelGrid(NSAttributedString(string: " ", attributes: [.font: font]).size().width)
   }
-  static func height(_ font: NSFont) -> CGFloat { grid(font, AgentPaletteMetrics.keyHintHeightPerPoint) }
-  static func padding(_ font: NSFont) -> CGFloat { grid(font, AgentPaletteMetrics.keyHintPaddingPerPoint) }
-  static func spacing(_ font: NSFont) -> CGFloat { grid(font, AgentPaletteMetrics.keyHintSpacingPerPoint) }
-  static func keycapSide(_ font: NSFont) -> CGFloat { grid(font, AgentPaletteMetrics.keyHintKeycapPerPoint) }
-  static func keycapGap(_ font: NSFont) -> CGFloat { grid(font, AgentPaletteMetrics.keyHintKeycapGapPerPoint) }
-  static func trailingPadding(_ font: NSFont) -> CGFloat {
-    AgentPaletteMetrics.onPixelGrid((height(font) - keycapSide(font)) / 2)
-  }
-  static func baselineFromTop(_ font: NSFont) -> CGFloat {
-    AgentPaletteMetrics.onPixelGrid((height(font) + font.capHeight) / 2)
+  static func height(_ font: NSFont) -> CGFloat { ceil(font.ascender - font.descender) }
+  static func baselineFromTop(_ font: NSFont) -> CGFloat { AgentPaletteMetrics.onPixelGrid(font.ascender) }
+
+  static func text(of keys: [PromptKeyHint], font: NSFont) -> NSAttributedString {
+    let text = NSMutableAttributedString()
+    let first: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: PaletteInk.secondary]
+    let rest: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: PaletteInk.tertiary]
+    for (index, hint) in keys.enumerated() {
+      if index == 0 {
+        text.append(NSAttributedString(string: "\u{2014} \(hint.words)", attributes: first))
+      } else {
+        text.append(NSAttributedString(string: " \u{00B7} \(hint.words) \(hint.key)", attributes: rest))
+      }
+    }
+    return text
   }
 
   static func size(of keys: [PromptKeyHint], font: NSFont) -> NSSize {
     guard !keys.isEmpty else { return .zero }
-    let widths = keys.map { layout(of: $0, font: font).width }
-    return NSSize(
-      width: widths.reduce(0, +) + spacing(font) * CGFloat(keys.count - 1),
-      height: height(font))
+    return NSSize(width: ceil(text(of: keys, font: font).size().width), height: height(font))
   }
 
-  private static func layout(of hint: PromptKeyHint, font: NSFont)
-    -> (width: CGFloat, keycap: CGRect)
-  {
-    let words = ceil(NSAttributedString(string: hint.words, attributes: [.font: font]).size().width)
-    let glyph = ceil(NSAttributedString(string: hint.key, attributes: [.font: font]).size().width)
-    let side = keycapSide(font)
-    let keycapWidth = max(side, glyph + (side - font.pointSize * 0.6).rounded())
-    let keycap = CGRect(
-      x: padding(font) + words + keycapGap(font), y: (height(font) - side) / 2,
-      width: keycapWidth, height: side)
-    return (keycap.maxX + trailingPadding(font), keycap)
-  }
-
-  var capsuleFrames: [NSRect] {
-    var x: CGFloat = 0
-    return keys.map { hint in
-      let width = Self.layout(of: hint, font: font).width
-      defer { x += width + Self.spacing(font) }
-      return NSRect(x: x, y: 0, width: width, height: Self.height(font))
-    }
-  }
-
-  var keycapFrames: [NSRect] {
-    zip(keys, capsuleFrames).map { hint, capsule in
-      Self.layout(of: hint, font: font).keycap.offsetBy(dx: capsule.minX, dy: 0)
-    }
-  }
+  var drawnText: String { Self.text(of: keys, font: font).string }
 
   override func draw(_ dirtyRect: NSRect) {
-    let baseline = Self.baselineFromTop(font)
-    let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: PaletteInk.secondary]
-    let key: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: PaletteInk.tertiary]
-    let border = AgentPaletteMetrics.keyHintKeycapBorder
-    for ((hint, capsule), keycap) in zip(zip(keys, capsuleFrames), keycapFrames) {
-      PaletteInk.tertiaryFill.setFill()
-      NSBezierPath(roundedRect: capsule, xRadius: capsule.height / 2, yRadius: capsule.height / 2).fill()
-      NSAttributedString(string: hint.words, attributes: words).draw(
-        at: NSPoint(x: capsule.minX + Self.padding(font), y: baseline - font.ascender))
-
-      let corner = keycap.height * AgentPaletteMetrics.keyHintKeycapCornerFraction
-      let outline = NSBezierPath(
-        roundedRect: keycap.insetBy(dx: border / 2, dy: border / 2),
-        xRadius: corner, yRadius: corner)
-      outline.lineWidth = border
-      PaletteInk.tertiary.setStroke()
-      outline.stroke()
-      let glyph = NSAttributedString(string: hint.key, attributes: key)
-      glyph.draw(at: NSPoint(
-        x: keycap.midX - glyph.size().width / 2, y: baseline - font.ascender))
-    }
+    Self.text(of: keys, font: font).draw(
+      at: NSPoint(x: 0, y: Self.baselineFromTop(font) - font.ascender))
   }
 }

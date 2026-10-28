@@ -546,25 +546,6 @@ enum AgentPaletteMetrics {
   static let chipPreviewTextMaxLines = 12
   static let chipPreviewFileIconSize: CGFloat = 48
 
-  /// The keys said after the typed text (`PromptKeyHintView`): each a
-  /// capsule of white at 10% (`PaletteInk.fill`), its words in primary ink,
-  /// and the key itself in a keycap — a rounded square drawn as a border, as
-  /// Raycast writes "Quick AI ⇥". Its words are two points under the typed
-  /// text, less a fifth, in whole points — the one size off the type ramp's
-  /// roles, because it is measured against the line it stands on.
-  /// Everything else is in proportion to the words: the capsule's height,
-  /// padding and spacing (176, 57 and 54 against a 96-pixel word in the
-  /// design), and the keycap after Raycast's (a square 1.15 words tall, a
-  /// quarter round, 0.4 of a word after them).
-  static let keyHintFontReduction: CGFloat = 2
-  static let keyHintScale: CGFloat = 0.8
-  static let keyHintHeightPerPoint: CGFloat = 176.0 / 96
-  static let keyHintPaddingPerPoint: CGFloat = 57.0 / 96
-  static let keyHintSpacingPerPoint: CGFloat = 54.0 / 96
-  static let keyHintKeycapPerPoint: CGFloat = 1.15
-  static let keyHintKeycapGapPerPoint: CGFloat = 0.4
-  static let keyHintKeycapCornerFraction: CGFloat = 0.27
-  static let keyHintKeycapBorder: CGFloat = 1
   /// How long the typing has to rest before the keys are said: words
   /// arriving while a sentence is still being written are
   /// a second thing moving at the end of the line. A keystroke puts them away

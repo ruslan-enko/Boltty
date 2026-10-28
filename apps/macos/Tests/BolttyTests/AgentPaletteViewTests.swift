@@ -1044,13 +1044,13 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(view.trailingHintForTesting, [], "an empty field keeps its placeholder")
 
     view.field.insertPlainText("fix the tests")
-    XCTAssertEqual(view.trailingHintForTesting, ["Ask OpenCode ↵", "Claude ⇧⇥"])
+    XCTAssertEqual(view.trailingHintForTesting, ["Ask OpenCode ↵"])
     XCTAssertNotNil(view.field.trailingHintFrame, "a short prompt leaves it room")
 
     XCTAssertTrue(
       view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:)))
     )
-    XCTAssertEqual(view.trailingHintForTesting, ["Ask Claude ↵", "OpenCode ⇧⇥"])
+    XCTAssertEqual(view.trailingHintForTesting, ["Ask Claude ↵"])
 
     var leftOut = false
     for _ in 0..<200 where !leftOut {
@@ -1078,7 +1078,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(view.field.isTrailingHintPendingForTesting, "and the rest starts over")
   }
 
-  func testTheKeysAreCapsulesBesideTheLineTwoPointsUnderTheText() throws {
+  func testTheKeysFollowTheTextAfterADashAtItsSize() throws {
     let view = hostOffscreen(makeScreenSizedView())
     view.setAgentChoices([.claude, .codex], planned: .claude)
     view.field.insertPlainText("fix")
@@ -1087,12 +1087,8 @@ final class AgentPaletteViewTests: XCTestCase {
     view.layoutSubtreeIfNeeded()
 
     let hint = view.field.trailingHintViewForTesting
-    XCTAssertEqual(hint.font.pointSize, ((AgentPaletteMetrics.promptFontSize - 2) * 0.8).rounded())
-    XCTAssertEqual(hint.capsuleFrames.count, 2)
-    for (capsule, keycap) in zip(hint.capsuleFrames, hint.keycapFrames) {
-      XCTAssertTrue(capsule.contains(keycap), "the key's keycap stands in its capsule")
-      XCTAssertEqual(capsule.maxX - keycap.maxX, keycap.minY - capsule.minY, accuracy: 0.5)
-    }
+    XCTAssertEqual(hint.font.pointSize, AgentPaletteMetrics.promptFontSize)
+    XCTAssertEqual(hint.drawnText, "\u{2014} Ask Claude")
     let scroll = try XCTUnwrap(view.field.enclosingScrollView)
     XCTAssertTrue(hint.superview === scroll.superview, "beside the scroll view, never cut to it")
 
@@ -1121,7 +1117,7 @@ final class AgentPaletteViewTests: XCTestCase {
     running.canStop = true
     view.enterAddressing(running)
     view.field.insertPlainText("and the docs")
-    XCTAssertEqual(view.trailingHintForTesting, ["Queue ↵", "Stop ⌘."])
+    XCTAssertEqual(view.trailingHintForTesting, ["Queue ↵"], "one hint: Return's")
 
     view.updateAddressing(.init(
       id: running.id, title: "Chat", agent: .codex, state: .finished, body: "Done", messages: messages))
@@ -1146,13 +1142,10 @@ final class AgentPaletteViewTests: XCTestCase {
     running.canSteer = true
     view.enterAddressing(running)
     if view.field.draft.typedText.isEmpty { view.field.insertPlainText("and the docs") }
-    XCTAssertEqual(view.trailingHintForTesting, ["Queue ↵", "Add now ⌘↵", "Stop ⌘."])
+    XCTAssertEqual(view.trailingHintForTesting, ["Queue ↵"], "⌘↵ works unhinted")
     XCTAssertTrue(view.field.performKeyEquivalent(with: commandReturn))
     XCTAssertEqual(steered, ["and the docs"])
 
-    running.canSteer = false
-    view.updateAddressing(running)
-    XCTAssertEqual(view.trailingHintForTesting, ["Queue ↵", "Stop ⌘."], "Grok: no ⌘↵ to offer")
   }
 
   func testTheChatsGapsToItsShellAreOneNumber() throws {
