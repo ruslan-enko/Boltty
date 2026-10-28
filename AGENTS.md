@@ -555,7 +555,15 @@ actions remain.
 
 Pressing the microphone on the first screen collapses the shell into an orb of
 the face's colours, drawn **on top of** the glass (the glass frosts what is
-under it); it grows into a capsule round this take's words. In an open chat a
+under it); it grows into a capsule round this take's words. At rest the orb is
+near black with a faint lit rim. **The light lives at the edge, not the
+middle**: the voice (on a square root, so an ordinary word is already bright)
+fills the rim unevenly — how far in it reaches swells in waves running round
+the edge — and sends ripples in from it that die before the middle. Its colour
+walks the face's own gradient (`orbWalk`), so two colours meet through the
+stops between them. Anything that follows the angle round the edge fades out
+toward the middle, where every angle meets (`rimward`), or it draws a
+pinwheel (`orbGradient`). In an open chat a
 non-empty draft keeps the composer. Enter is ✓, which waits for the engine's
 final text. A long silence sends, but only after speech was heard.
 

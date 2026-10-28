@@ -188,17 +188,15 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
 
 // MARK: - The orb
 //
-// One soft, saturated gradient of the face's colours, in the shape of the
-// shell, like a tile of mesh gradient: one colour filling
-// the shape, a second pooling in it, a near-black hollow, the edge lit
-// brighter than the middle. Nothing in it has an edge or a line but the
-// shell's own; it is three soft pools and a glow at the rim, moving. No
+// Dark, with the face's colours running through it in waves, in the shape of
+// the shell. Nothing in it has an edge or a line but the shell's own. No
 // grain: a visible one was tried, and the gradient reads cleaner without it.
 //
-// **The voice intensifies it**: the bright pool swells and lights, the dark
-// hollow draws in, the colours saturate and the pools travel faster (`voice`,
-// a quick envelope, and `flow`). Silence is the same gradient, calm and a
-// little dim.
+// **Silence is near black; the voice lights the edge.** At rest a faint rim and
+// the dim crests of slow waves. A word fills the rim unevenly, in waves that
+// run round it, quickens everything (`flow`), and sends ripples in from the
+// edge that die before the middle (`voice`, a quick envelope). The middle
+// stays calm.
 //
 // **It is drawn on top of the panel's glass** (`layer` 1), opaque to a crisp
 // edge, and the system glass under it does not show: under the glass it
@@ -206,16 +204,18 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
 // under the glass draws the same picture, for the moment the shell is still
 // turning into the orb.
 
-/// A soft pool: 1 at its centre, falling as a Gaussian — no edge anywhere.
-static inline float pool(float2 q, float2 centre, float radius) {
-  const float2 d = (q - centre) / max(radius, 0.01);
-  return exp(-dot(d, d));
-}
-
 /// Pushed away from grey by `amount` (1 leaves it).
 static inline float3 vivid(float3 c, float amount) {
   const float luma = dot(c, float3(0.2126, 0.7152, 0.0722));
   return saturate(mix(float3(luma), c, amount));
+}
+
+/// A walk along the face's stops, 0…1 top of its body to the foot, straight
+/// between neighbours: the field it is handed is smooth, so the colour is.
+static inline float3 orbWalk(constant VoiceGlowUniforms &u, float v) {
+  const float pos = saturate(v) * float(VOICE_GLOW_COLOR_COUNT - 1);
+  const int i = min(int(floor(pos)), VOICE_GLOW_COLOR_COUNT - 2);
+  return mix(u.colors[i].rgb, u.colors[i + 1].rgb, pos - float(i));
 }
 
 /// The two colours the orb is made of: the face's most saturated stop, and
@@ -273,7 +273,7 @@ static inline OrbShape orbShape(float2 p, float2 halfSize) {
 static inline float3 orbGradient(constant VoiceGlowUniforms &u, OrbShape o, float level) {
   const float f = u.flow;
   const float voice = saturate(u.voice);
-  const float lift = saturate(0.55 * level + 0.75 * voice);
+  const float lift = saturate(0.45 * level + 1.10 * voice);
   const float2 g = o.g;
 
   float3 ground;
@@ -282,32 +282,50 @@ static inline float3 orbGradient(constant VoiceGlowUniforms &u, OrbShape o, floa
   ground = vivid(ground, 1.35);
   second = vivid(second, 1.35);
 
-  // The second colour pools low and drifts; the voice swells it. Along a long
-  // shell each pool travels all of it.
-  const float2 secondAt = float2(0.42 * sin(f * 0.31 + 1.0), -0.32 + 0.20 * sin(f * 0.23 + 2.0)) * o.span;
-  const float secondPool = pool(g, secondAt, 0.42 + 0.38 * lift);
-
-  // A near-black hollow, drawing in and paling as the voice rises: in
-  // silence it is most of the ball's upper half, a dim ball; a word lights it.
-  const float2 hollowAt = float2(0.30 + 0.25 * sin(f * 0.27 + 4.0), 0.30 + 0.18 * cos(f * 0.19)) * o.span;
-  const float hollow = pool(g, hollowAt, 0.72 - 0.34 * lift) * (0.97 - 0.50 * lift);
-
-  // A bright heart that only the voice lights.
-  const float2 heartAt = float2(0.30 * sin(f * 0.53 + 0.4), -0.10 + 0.18 * sin(f * 0.41 + 3.1)) * o.span;
-  const float heart = pool(g, heartAt, 0.18 + 0.20 * lift) * lift * lift;
-
-  float3 colour = mix(ground, second, secondPool * 0.85);
-  colour = mix(colour, ground * 0.05, hollow);
-  colour += mix(second, float3(1.0), 0.15) * heart * 0.55;
-
-  // The edge lit brighter than the middle, in the ground's own colour.
+  // Where a point is: how far round the shape's edge, in turns, and how far
+  // in from it — 0 on the edge, 1 on the middle (the capsule's spine).
+  const float2 across = g / max(o.span, float2(0.001));
+  const float around = atan2(across.y, across.x) * (1.0 / 6.2831853);
   const float r = min(length(o.q), 1.0);
-  const float rim = smoothstep(0.55, 1.0, r);
-  colour = mix(colour, ground * 1.25, rim * (0.45 + 0.20 * lift));
+  const float inward = 1.0 - r;
+  // How much "round the edge" still means anything: every angle meets in the
+  // middle, and a pattern that follows the angle there is a pinwheel.
+  const float rimward = 1.0 - smoothstep(0.25, 0.85, inward);
 
-  // Saturated and brighter the more is said.
+  // The field the colour runs through, swirled twice so a band bends and folds
+  // as it travels instead of sliding past as a stripe.
+  float2 w = g;
+  w += 0.40 * float2(sin(1.9 * g.y + 0.80 * f), cos(1.7 * g.x - 0.65 * f));
+  w += 0.20 * float2(sin(3.1 * w.y - 1.20 * f + 1.7), cos(2.7 * w.x + 1.05 * f + 0.4));
+
+  // The colour walks the face's own gradient, so blue meets amber through the
+  // stops between them, as on the face, not as two patches side by side; and
+  // round the edge the walk turns slowly, so the rim wears the whole gradient.
+  const float shade = 0.5 + 0.30 * sin(1.6 * w.x + 1.1 * w.y - 0.90 * f)
+    + 0.18 * sin(6.2831853 * around + 0.40 * f) * rimward;
+  float3 colour = vivid(orbWalk(u, shade), 1.30);
+
+  // The middle is calm: only the crests of slow waves, dim, and dimmer toward
+  // the middle. The light lives at the edge.
+  const float lit = sqrt(lift);
+  const float run = 0.5 + 0.5 * sin(2.2 * w.x + 1.3 * w.y - 1.50 * f);
+  const float body = pow(run, mix(3.2, 1.6, lit)) * (0.06 + 0.32 * lit) * (0.35 + 0.65 * r);
+
+  // The edge fills with the voice, unevenly: how far in its light reaches
+  // swells and falls in waves that run round the rim, two and three to a turn.
+  const float swell = 0.5 + (0.25 * sin(6.2831853 * 2.0 * around - 1.30 * f)
+    + 0.25 * sin(6.2831853 * 3.0 * around + 0.90 * f + 1.3)) * rimward;
+  const float depth = 0.05 + lit * (0.08 + 0.34 * swell);
+  const float edge = exp(-inward / depth);
+
+  // And the voice's echo runs in from the edge, gone before the middle.
+  const float echo = pow(0.5 + 0.5 * sin(14.0 * inward + 3.0 * f + 2.0 * rimward * sin(6.2831853 * around + 0.5 * f)), 2.0)
+    * exp(-4.0 * inward) * voice;
+
+  colour *= body + edge * (0.22 + 0.95 * lit) + echo * 0.35;
+
+  // Saturated the more is said.
   colour = vivid(colour, 1.20 + 0.35 * lift);
-  colour *= 0.72 + 0.30 * lift;
 
   // Grown round the words, the middle goes deep — leaning to the second
   // colour, since a yellow only darkened is olive — for white words to stand
