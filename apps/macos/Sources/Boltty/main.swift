@@ -21,6 +21,11 @@ enum LaunchTrace {
 
 _ = LaunchTrace.start
 
+// Not NSApplicationMain: it can ignore a programmatically assigned delegate.
+// Made first: it checks in with LaunchServices, which a copy of 0.2.5 or older
+// waits for before it quits to make way for this one.
+let app = NSApplication.shared
+
 // A copy started by the updater waits for the one it replaced to quit, so
 // the conversation store has one writer.
 UpdateInstaller.waitForReplacedCopy()
@@ -28,8 +33,6 @@ UpdateInstaller.waitForReplacedCopy()
 // Ignore SIGPIPE: a write to a CLI that has just exited must not kill Boltty.
 signal(SIGPIPE, SIG_IGN)
 
-// Not NSApplicationMain: it can ignore a programmatically assigned delegate.
-let app = NSApplication.shared
 let delegate = AppDelegate()
 app.setActivationPolicy(AppDelegate.isHostingUnitTests ? .accessory : .regular)
 app.delegate = delegate

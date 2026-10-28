@@ -1,6 +1,7 @@
 import CryptoKit
 import AppKit
 import Security
+import os
 
 /// Puts a release's `Boltty.dmg` in place of the running copy. Nothing is
 /// trusted for being on GitHub: the new copy must carry the same designated
@@ -99,13 +100,31 @@ enum UpdateInstaller {
 
   /// Starts the new copy, which waits for this process to be gone before it
   /// does anything — two Boltty at once would leave the second read-only.
+  ///
+  /// `openApplication` answers only once the new copy has checked in with
+  /// LaunchServices, and a copy that waits for this one may not have yet:
+  /// awaiting it deadlocked the hand-over. So a refusal is heard for
+  /// `launchGrace`, and after that this copy goes regardless.
   static func relaunch(_ bundle: URL) async throws {
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.createsNewApplicationInstance = true
     configuration.activates = false
     configuration.arguments = [waitArgument, String(ProcessInfo.processInfo.processIdentifier)]
-    _ = try await NSWorkspace.shared.openApplication(at: bundle, configuration: configuration)
+    let answered = OSAllocatedUnfairLock(initialState: false)
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      let finish: @Sendable (Error?) -> Void = { error in
+        guard answered.withLock({ was in defer { was = true }; return !was }) else { return }
+        if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+      }
+      NSWorkspace.shared.openApplication(at: bundle, configuration: configuration) { _, error in
+        finish(error)
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + launchGrace) { finish(nil) }
+    }
   }
+
+  /// How long a refusal to start the new copy is waited for.
+  static let launchGrace: TimeInterval = 2
 
   /// Called first thing at launch: a copy started by `relaunch` waits here
   /// for the one it replaced to quit.
