@@ -2,6 +2,16 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.4
+
+**Voice**
+- The listening orb is dark at rest and lights at its edges as you speak,
+  in waves that run round the rim; its colours follow the agent's face.
+- Read aloud uses a voice that actually speaks for Boltty. Siri's voices,
+  which macOS only plays for Apple's own apps, are no longer offered;
+  Settings › Voice has a Reading voice picker with a preview, Automatic
+  picking the best voice you have installed.
+
 ## 0.2.3
 
 **Updates**
