@@ -2,6 +2,13 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.5
+
+**Boltty AI**
+- The chat list has two buttons at its foot: **New Chat** (+, or ⌘N) on the
+  right starts a chat with the agent of the tab you're on, and **Settings** on
+  the left opens Settings.
+
 ## 0.2.4
 
 **Voice**
