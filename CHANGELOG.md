@@ -2,6 +2,14 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.6
+
+**Updates**
+- Installing an update no longer hangs on *Installing Boltty…* with a second
+  Boltty opening beside it: the old copy quits and the new one takes its
+  place. The update *to* 0.2.6 still runs the old code, so if it hangs, quit
+  Boltty from the menu bar once; updates after it are fixed.
+
 ## 0.2.5
 
 **Boltty AI**
