@@ -26,6 +26,14 @@ struct SpeechVoice: Identifiable, Equatable, Sendable {
     }
   }
 
+  /// Among voices of one quality, the Mac's own reading voices before
+  /// Eloquence's and the novelty voices (Albert, Bad News…), and the compact
+  /// download before the super-compact one built in.
+  var standing: Int {
+    guard id.hasPrefix("com.apple.voice.") else { return 0 }
+    return id.contains(".super-compact.") ? 1 : 2
+  }
+
   static func code(of language: String) -> String {
     String(language.split(whereSeparator: { $0 == "-" || $0 == "_" }).first ?? "").lowercased()
   }
@@ -39,6 +47,7 @@ struct SpeechVoice: Identifiable, Equatable, Sendable {
     if let chosen, let voice = candidates.first(where: { $0.id == chosen }) { return voice }
     return candidates.max { a, b in
       if a.quality != b.quality { return a.quality < b.quality }
+      if a.standing != b.standing { return a.standing < b.standing }
       let aHome = region.map { a.language.hasSuffix($0) } ?? false
       let bHome = region.map { b.language.hasSuffix($0) } ?? false
       if aHome != bHome { return !aHome }
@@ -150,8 +159,16 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
     }
   }
 
+  /// Siri's voices are listed to every app but spoken only for Apple's: in
+  /// Boltty they come out as compact Samantha, muffled, with no error
+  /// (macOS 27.2, same code in an Apple-signed process gives Siri at 48 kHz).
+  /// `gryphon-neural` is the bundle behind one of them and does the same.
+  nonisolated static func isAppleOnly(_ identifier: String) -> Bool {
+    identifier.hasPrefix("com.apple.siri.") || identifier.contains("gryphon-neural")
+  }
+
   nonisolated private static func readVoices() -> [SpeechVoice] {
-    AVSpeechSynthesisVoice.speechVoices().map { voice in
+    AVSpeechSynthesisVoice.speechVoices().filter { !isAppleOnly($0.identifier) }.map { voice in
       let quality: SpeechVoice.Quality = switch voice.quality {
       case .premium: .premium
       case .enhanced: .enhanced
@@ -214,6 +231,13 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
     if let onStart { starts[ObjectIdentifier(utterance)] = onStart }
   }
 
+  /// The voice an answer in `code` is read in.
+  func voice(for code: String) -> SpeechVoice? {
+    SpeechVoice.choose(
+      language: code, among: Self.installedVoices(),
+      chosen: preferences().voiceByLanguage[code], region: Locale.current.region?.identifier)
+  }
+
   /// Whether anything said for `id` is still to be heard.
   func isSaying(_ id: String) -> Bool { speakingID == id }
 
@@ -228,10 +252,7 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
   private func enqueue(_ piece: String, language code: String) -> AVSpeechUtterance {
     let utterance = AVSpeechUtterance(string: piece)
     let prefs = preferences()
-    let chosen = SpeechVoice.choose(
-      language: code, among: Self.installedVoices(),
-      chosen: prefs.voiceByLanguage[code], region: Locale.current.region?.identifier)
-    utterance.voice = chosen.flatMap { AVSpeechSynthesisVoice(identifier: $0.id) }
+    utterance.voice = voice(for: code).flatMap { AVSpeechSynthesisVoice(identifier: $0.id) }
       ?? AVSpeechSynthesisVoice(language: code)
     let rate = Double(AVSpeechUtteranceDefaultSpeechRate)
       * min(max(prefs.rate, Self.rateRange.lowerBound), Self.rateRange.upperBound)

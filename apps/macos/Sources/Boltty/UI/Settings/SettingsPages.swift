@@ -591,7 +591,49 @@ struct VoiceSettingsPage: View {
       } label: {
         EmptyView()
       }
+
+      if let speech = model.speech {
+        HStack(spacing: 8) {
+          Picker("Reading voice:", selection: $model.readingVoiceID) {
+            Text(automaticVoiceTitle).tag("")
+            Divider()
+            ForEach(model.readingVoices) { voice in
+              Text(voiceTitle(voice)).tag(voice.id)
+            }
+          }
+          .pickerStyle(.menu)
+          .fixedSize()
+          .accessibilityIdentifier("boltty.settings.readingVoice")
+          Button("Play", systemImage: "play.fill") { model.previewReadingVoice() }
+            .labelStyle(.iconOnly)
+            .help("Hear this voice")
+        }
+        .id(speech.voicesChanged)
+
+        LabeledContent {
+          SettingsNote("Siri’s voices are only for Apple’s apps, so they are not listed.")
+            .frame(maxWidth: 320, alignment: .leading)
+        } label: {
+          EmptyView()
+        }
+      }
     }
+  }
+
+  private var automaticVoiceTitle: String {
+    let best = SpeechVoice.choose(
+      language: model.readingLanguage, among: model.readingVoices, chosen: nil,
+      region: Locale.current.region?.identifier)
+    return best.map { "Automatic (\($0.name))" } ?? "Automatic"
+  }
+
+  /// Two voices of one name differ by region or size; the title says which.
+  private func voiceTitle(_ voice: SpeechVoice) -> String {
+    let twins = model.readingVoices.filter { $0.name == voice.name }
+    guard twins.count > 1 else { return voice.displayName }
+    let region = voice.language.split(separator: "-").last.map(String.init) ?? voice.language
+    let size = voice.id.contains(".super-compact.") ? ", compact" : ""
+    return "\(voice.displayName) (\(region)\(size))"
   }
 
   @ViewBuilder

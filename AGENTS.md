@@ -634,6 +634,12 @@ final text. A long silence sends, but only after speech was heard.
   signed-out agent's row is its face, name and `AgentId.signInCommand`
   (`claude auth login`, `codex login`, `grok login`); its old limits are
   dropped.
+- **Reading aloud** (`SpeechOutput`): Siri's voices are listed to every app
+  but spoken only for Apple's; Boltty's process gets compact Samantha in their
+  place, silently. They are left out of the list. Settings › Voice picks the
+  reading voice for the Mac's language (stored in `boltty.speech.voiceByLanguage`),
+  Automatic being the best installed: quality, then the Mac's reading voices
+  before Eloquence and novelty ones (`SpeechVoice.standing`).
 - **Dictation**: Apple's engine only, optional second language as a second
   recognizer on the same audio (`BilingualDictationEngine`), decided per phrase
   by confidence (`BilingualTranscript`). `fastResults` lowers confidence, so with

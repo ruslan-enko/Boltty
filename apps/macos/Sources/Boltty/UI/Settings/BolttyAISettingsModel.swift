@@ -387,6 +387,46 @@ final class BolttyAISettingsModel: ObservableObject {
     return dictationLanguages.filter { $0.languageCode != taken }
   }
 
+  /// The language answers are most likely read in: the Mac's own when Boltty
+  /// speaks it, otherwise English.
+  var readingLanguage: String {
+    let code = SpeechVoice.code(of: Locale.current.identifier)
+    return SpeechLanguages.speaks(code) ? SpeechLanguages.normalised(code) : "en"
+  }
+
+  /// The voice answers in `readingLanguage` are read in.
+  var readingVoice: SpeechVoice? { speech?.voice(for: readingLanguage) }
+
+  /// The voices that can read `readingLanguage`, best first.
+  var readingVoices: [SpeechVoice] {
+    guard speech != nil else { return [] }
+    let code = readingLanguage
+    return SpeechOutput.installedVoices()
+      .filter { SpeechLanguages.normalised($0.language) == code }
+      .sorted { a, b in
+        if a.quality != b.quality { return a.quality > b.quality }
+        if a.standing != b.standing { return a.standing > b.standing }
+        if a.name != b.name { return a.name < b.name }
+        return a.language < b.language
+      }
+  }
+
+  /// The chosen voice's id; empty is automatic (the best installed).
+  var readingVoiceID: String {
+    get { appModel.settings.speechVoiceByLanguage[readingLanguage] ?? "" }
+    set {
+      let code = readingLanguage
+      appModel.updateSettings { $0.speechVoiceByLanguage[code] = newValue.isEmpty ? nil : newValue }
+      previewReadingVoice()
+    }
+  }
+
+  func previewReadingVoice() {
+    speech?.speak(
+      markdown: "This is how Boltty reads its answers.", id: "settings-voice",
+      language: readingLanguage)
+  }
+
   func loadDictationLanguages() async {
     dictationLanguages = await DictationCatalog.languages()
   }
