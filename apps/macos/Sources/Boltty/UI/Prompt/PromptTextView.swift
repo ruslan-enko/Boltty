@@ -4,6 +4,7 @@ final class PromptTextView: NSTextView {
   var onPaste: ((Bool) -> Void)?
   var onCommandPeriod: (() -> Bool)?
   var onCommandReturn: (() -> Bool)?
+  var onCommandN: (() -> Bool)?
   var onMouseDown: (() -> Void)?
 
   var trailingHint: [PromptKeyHint] = [] {
@@ -821,6 +822,9 @@ final class PromptTextView: NSTextView {
       .intersection([.command, .shift, .option, .control])
     let key = event.latinCharactersIgnoringModifiers
     if key == ".", modifiers == [.command], onCommandPeriod?() == true {
+      return true
+    }
+    if key == "n", modifiers == [.command], onCommandN?() == true {
       return true
     }
     if event.keyCode == 36 || event.keyCode == 76, modifiers == [.command],

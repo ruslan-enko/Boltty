@@ -62,6 +62,10 @@ enum BuiltInKeyCatalog {
           detail: "While the search field is empty"
         ),
         BuiltInKey(id: "listOpen", title: "Open the chat", keys: "↩", detail: nil),
+        BuiltInKey(
+          id: "listNew", title: "New chat", keys: "⌘N",
+          detail: "With the chosen tab's agent; All picks one for you"
+        ),
         BuiltInKey(id: "listBack", title: "Back", keys: "Esc", detail: nil),
       ]),
       BuiltInKeySection(title: "In a chat", keys: [

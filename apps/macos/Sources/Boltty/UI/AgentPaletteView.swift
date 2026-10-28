@@ -189,6 +189,26 @@ final class AgentPaletteView: NSView {
     return disc
   }()
   private var offersLatest = false
+  /// The chat list's foot: New Chat in the lower right, Settings apart in
+  /// the lower left. **Two discs, not one capsule**: a capsule says its
+  /// halves act on one thing, and these do not — New Chat belongs to the
+  /// chosen tab, Settings to the whole of Boltty. Inside the corner grips,
+  /// which give way on them (`resizeEdges`); the rows dissolve under them.
+  private let historyNewChatButton = GlassCircleButton(
+    symbol: "plus",
+    accessibilityDescription: "New Chat",
+    diameter: AgentPaletteMetrics.previewCloseDiameter,
+    pointSize: AgentPaletteMetrics.previewCloseGlyphPointSize,
+    weight: AgentPaletteMetrics.previewCloseGlyphWeight
+  )
+  private let historySettingsButton = GlassCircleButton(
+    symbol: "gearshape",
+    accessibilityDescription: "Settings",
+    diameter: AgentPaletteMetrics.previewCloseDiameter,
+    pointSize: AgentPaletteMetrics.previewCloseGlyphPointSize,
+    weight: AgentPaletteMetrics.previewCloseGlyphWeight
+  )
+  private var showsHistoryFoot: Bool { !historyNewChatButton.isHidden }
   /// Whether this agent reads files at all — see `setAcceptsAttachments`.
   private var acceptsAttachments = false
   /// What the Send slot says while it stops the turn (`sendSlotStops`).
@@ -2011,6 +2031,9 @@ final class AgentPaletteView: NSView {
     resultSections = newSections
     historyTabs.setVisible(showsHistoryChrome)
     setResultsOverlap(showsHistoryChrome ? AgentPaletteMetrics.historyTabOverlap : 0)
+    // The history only: a search has its field, and the install hints open
+    // on the first screen's mode with nothing to start a chat on.
+    setHistoryFootVisible(mode == .picking)
     if showsHistoryChrome {
       // Counted over every row, not over what the filter left — see
       // `AgentHistory.Tab`.
@@ -2279,7 +2302,7 @@ final class AgentPaletteView: NSView {
     // Laid out first, or a restack is judged by the frames it is leaving.
     resultsScroll.layoutSubtreeIfNeeded()
     let point = window.convertPoint(fromScreen: pointerLocation)
-    let uncovered: NSPoint? = isUnderHistoryTabs(point) ? nil : point
+    let uncovered: NSPoint? = isUnderHistoryTabs(point) || isOnHistoryFoot(point) ? nil : point
     for row in rowsByConversation.values {
       row.syncHover(pointerInWindow: uncovered)
     }
@@ -2291,6 +2314,67 @@ final class AgentPaletteView: NSView {
     guard resultsOverlap > 0, !historyTabs.isHidden else { return false }
     return historyTabs.bounds.contains(historyTabs.convert(pointInWindow, from: nil))
   }
+
+  /// Whether a point in the window is on one of the foot's discs — theirs,
+  /// not the row passing under them.
+  private func isOnHistoryFoot(_ pointInWindow: NSPoint) -> Bool {
+    guard showsHistoryFoot else { return false }
+    return [historyNewChatButton, historySettingsButton].contains {
+      $0.bounds.contains($0.convert(pointInWindow, from: nil))
+    }
+  }
+
+  /// Shows or hides the foot's discs, and gives the rows room to scroll
+  /// clear of them: the last row can rise above the discs as the first
+  /// sinks below the strip.
+  private func setHistoryFootVisible(_ visible: Bool) {
+    syncHistoryNewChat()
+    guard visible != showsHistoryFoot else { return }
+    historyNewChatButton.isHidden = !visible
+    historySettingsButton.isHidden = !visible
+    var insets = resultsStack.edgeInsets
+    insets.bottom = AgentPaletteMetrics.resultsVerticalInset
+      + (visible ? AgentPaletteMetrics.historyFootHeight : 0)
+    resultsStack.edgeInsets = insets
+    updateResultsTopEdge()
+  }
+
+  /// New Chat is the chosen tab's: All starts on automatic routing, an
+  /// agent's tab on that agent. A tab whose agent cannot take a prompt
+  /// (not ready, switched off) keeps the disc, disabled, saying why.
+  private func syncHistoryNewChat() {
+    let button = historyNewChatButton.button
+    if let agent = activeHistoryAgent {
+      button.isEnabled = agentChoices.contains(agent)
+      button.toolTip = button.isEnabled
+        ? "New Chat with \(agent.displayName)" : "\(agent.displayName) isn't ready"
+    } else {
+      button.isEnabled = !agentChoices.isEmpty
+      button.toolTip = "New Chat"
+    }
+    button.helpShortcut = button.isEnabled ? "⌘N" : nil
+  }
+
+  /// The + under the list, and ⌘N while it is open: the first screen, on
+  /// the chosen tab's agent, with the list's own way back (Escape) gone.
+  @objc private func startNewChatFromHistory() {
+    _ = startNewChatFromKeyboard()
+  }
+
+  private func startNewChatFromKeyboard() -> Bool {
+    guard mode == .picking, addressedPreview == nil, historyNewChatButton.button.isEnabled
+    else { return false }
+    let agent = activeHistoryAgent
+    chosenAgent = agent == plannedAgent ? nil : agent
+    closeSwitcher()
+    selectedAgentImage.pokeMascot()
+    if let agent { announce(agent.displayName) }
+    onAgentChoiceChange?()
+    _ = focusField()
+    return true
+  }
+
+  @objc private func openSettingsFromHistory() { onOpenSettings?() }
 
   /// Moves the list's top up under the strip by `overlap`, and its first
   /// line down by the same, so at rest nothing moves.
@@ -2319,7 +2403,18 @@ final class AgentPaletteView: NSView {
       ? ScrollEdgeBlur.smoothstep.map { (gone + (overlap - gone) * $0.t, $0.s) }
       : [(0, 1)]
     if overlap > 0 { stops.insert((0, 0), at: 0) }
-    stops.append((height, 1))
+    if showsHistoryFoot {
+      // Whole a softness above the discs, gone at the foot — the chat's
+      // edge under its back disc, upside down.
+      let whole = max(
+        stops.last?.y ?? 0,
+        height - AgentPaletteMetrics.historyFootDiscInset - AgentPaletteMetrics.previewCloseDiameter
+          - AgentPaletteMetrics.previewScrollEdgeSoftness
+      )
+      stops += ScrollEdgeBlur.smoothstep.map { (whole + (height - whole) * $0.t, 1 - $0.s) }
+    } else {
+      stops.append((height, 1))
+    }
 
     CATransaction.begin()
     CATransaction.setDisableActions(true)
@@ -2353,7 +2448,10 @@ final class AgentPaletteView: NSView {
       self.onSessionContextMenu?(id, event, row)
     }
     row.hoverIsQuiet = keyboardSelectionPointerAnchor != nil
-    row.isCoveredAt = { [weak self] point in self?.isUnderHistoryTabs(point) ?? false }
+    row.isCoveredAt = { [weak self] point in
+      guard let self else { return false }
+      return self.isUnderHistoryTabs(point) || self.isOnHistoryFoot(point)
+    }
   }
 
   /// The pointer moved onto a row, so that row becomes the one Enter means.
@@ -2645,6 +2743,7 @@ final class AgentPaletteView: NSView {
     agentChoices = agents
     plannedAgent = planned
     if let chosen = chosenAgent, !agents.contains(chosen) { chosenAgent = nil }
+    syncHistoryNewChat()
     // All wears every agent that can take a prompt, so switching one on or
     // off re-composes it under an open list.
     if changed, isResultsExpanded { refreshResults(keepingSelection: true) }
@@ -2971,6 +3070,7 @@ final class AgentPaletteView: NSView {
     }
     field.onCommandPeriod = { [weak self] in self?.stopFromKeyboard() ?? false }
     field.onCommandReturn = { [weak self] in self?.submitSteeringFromKeyboard() ?? false }
+    field.onCommandN = { [weak self] in self?.startNewChatFromKeyboard() ?? false }
     field.onMouseDown = { [weak self] in self?.setComposerKeyTarget(.text) }
     registerForDraggedTypes([.fileURL, .png, .tiff, .string])
     let agentClick = NSClickGestureRecognizer(
@@ -3249,6 +3349,28 @@ final class AgentPaletteView: NSView {
     historyTabs.onSelect = { [weak self] agent in
       self?.selectHistoryAgent(agent)
     }
+    let footInset = AgentPaletteMetrics.historyFootDiscInset
+    for (disc, action, id) in [
+      (historyNewChatButton, #selector(startNewChatFromHistory), "boltty.ask.history.newChat"),
+      (historySettingsButton, #selector(openSettingsFromHistory), "boltty.ask.history.settings"),
+    ] {
+      disc.button.target = self
+      disc.button.action = action
+      disc.setAccessibilityIdentifier(id)
+      disc.isHidden = true
+      resultsForeground.addSubview(disc)
+    }
+    historySettingsButton.button.toolTip = "Settings"
+    NSLayoutConstraint.activate([
+      historyNewChatButton.trailingAnchor.constraint(
+        equalTo: resultsForeground.trailingAnchor, constant: -footInset),
+      historyNewChatButton.bottomAnchor.constraint(
+        equalTo: resultsForeground.bottomAnchor, constant: -footInset),
+      historySettingsButton.leadingAnchor.constraint(
+        equalTo: resultsForeground.leadingAnchor, constant: footInset),
+      historySettingsButton.bottomAnchor.constraint(
+        equalTo: resultsForeground.bottomAnchor, constant: -footInset),
+    ])
     NSLayoutConstraint.activate([
       historyTabs.leadingAnchor.constraint(equalTo: resultsForeground.leadingAnchor),
       historyTabs.trailingAnchor.constraint(equalTo: resultsForeground.trailingAnchor),
@@ -3867,6 +3989,9 @@ final class AgentPaletteView: NSView {
 
   private func resizeEdges(at point: NSPoint) -> SurfaceResizeEdges? {
     guard resizableShell != nil, !resizeTarget.isEmpty else { return nil }
+    // The foot's discs stand inside the lower corners' grips; on a disc the
+    // press is the disc's.
+    if isOnHistoryFoot(convert(point, to: nil)) { return nil }
     return SurfaceResizeEdges.at(point, of: resizeTarget)
   }
 

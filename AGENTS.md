@@ -526,6 +526,13 @@ The loop that must keep working:
   (`ChatTitle`). Unread rows have a blue dot and a semibold title; working rows
   have a hairline in the agent's gradient orbiting the pill.
 - The order holds while the list is open.
+- The foot holds two glass discs, apart on purpose (a shared capsule would
+  say they act on one thing): **New Chat** (+, ⌘N) lower right opens the first
+  screen on the chosen tab's agent — All on automatic routing; a tab whose
+  agent cannot take a prompt keeps it disabled — and **Settings** (gear) lower
+  left, 18 from the foot and side (`historyFootDiscInset`). They stand inside
+  the corner resize grips, which give way on a disc; the rows dissolve under
+  them.
 - Right click: Open Chat, Show in Finder, Delete Chat… (Boltty's own; to the
   Trash, after asking, no Return on the destructive button). No pin.
 - Typing after ↓ searches. `/` is plain text; there is no command menu.

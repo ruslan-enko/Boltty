@@ -756,6 +756,19 @@ enum AgentPaletteMetrics {
     let fromArcCentre = cardCornerRadius - shellContentInset - radius
     return onPixelGrid(cardCornerRadius - fromArcCentre / 2.squareRoot() - radius)
   }()
+  /// The chat list's foot discs — Settings in the lower left, New Chat in
+  /// the lower right — inset this far from the foot and from their side.
+  ///
+  /// Chosen by eye. It stands inside the lower corners' resize grips
+  /// (`surfaceResizeCornerReach`), so the grips give way on a disc
+  /// (`AgentPaletteView.resizeEdges`); clearing them took 25, which sat the
+  /// discs too far from the corner.
+  static let historyFootDiscInset: CGFloat = 18
+  /// The band across the list's foot the discs own; the rows dissolve
+  /// across it as the chat's transcript does under its back disc.
+  static let historyFootHeight: CGFloat =
+    historyFootDiscInset + previewCloseDiameter + previewContentVerticalPadding
+
   /// The band across the top of the card the close disc owns.
   ///
   /// **A scroll content inset, not a frame offset, and the difference is what
