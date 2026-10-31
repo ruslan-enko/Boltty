@@ -3103,7 +3103,7 @@ final class AgentPaletteViewTests: XCTestCase {
     let pill = view.planRingForTesting
     XCTAssertFalse(pill.isHidden)
     XCTAssertEqual(pill.titleForTesting, "Weekly 45%")
-    XCTAssertEqual(pill.tintForTesting, AgentPaletteMetrics.planRingColors[1])
+    XCTAssertEqual(pill.tintForTesting, AgentPaletteMetrics.planRingInk)
     XCTAssertLessThanOrEqual(
       view.convert(pill.bounds, from: pill).maxX,
       view.convert(view.workingDirectoryChipForTesting.bounds,
@@ -3112,7 +3112,7 @@ final class AgentPaletteViewTests: XCTestCase {
     view.setUsage(
       AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 91, resetsAt: nil)]),
       agent: .codex)
-    XCTAssertEqual(pill.tintForTesting, AgentPaletteMetrics.planRingColors[3])
+    XCTAssertEqual(pill.tintForTesting, AgentPaletteMetrics.planRingInk, "one ink at any fullness")
 
     view.setUsage(nil, agent: .opencode)
     view.layoutSubtreeIfNeeded()

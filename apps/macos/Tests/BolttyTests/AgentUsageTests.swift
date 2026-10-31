@@ -337,11 +337,7 @@ final class AgentActivityHistoryTests: XCTestCase {
 
 @MainActor
 final class PlanUsageRingTests: XCTestCase {
-  func testQuarterBoundariesAndUnavailableReading() {
-    let expected = [(0, 0), (24, 0), (25, 1), (49, 1), (50, 2), (74, 2), (75, 3), (100, 3)]
-    for (percent, index) in expected {
-      XCTAssertEqual(PlanUsageRingReading.colorIndex(for: percent), index)
-    }
+  func testUnavailableAndOverfullReadings() {
     XCTAssertEqual(PlanUsageRingReading.percent(nil), 0)
     XCTAssertEqual(PlanUsageRingReading.percent(AgentUsage(windows: [])), 0)
     XCTAssertEqual(PlanUsageRingReading.percent(AgentUsage(windows: [

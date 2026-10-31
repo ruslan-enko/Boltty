@@ -1829,9 +1829,9 @@ enum AgentPaletteMetrics {
   static let helpActionHeight: CGFloat = 26
   /// The plan ring: a track of white at 10% — a fill on the glass, not an
   /// opaque grey, which draws a heavy disc beside the 50% glyphs — and an
-  /// arc in one of four colours.
+  /// arc in the glyphs' own ink, so the ring reads as one of the group.
   static let planRingTrack = PaletteInk.fill
-  static let planRingColors = ["#55FF00", "#00A2FF", "#FFC800", "#FF3C00"].map(HexColor.nsColor)
+  static let planRingInk = ComposerControlGroup.restingInk
   static let planRingDiameter: CGFloat = 20
   static let planRingStroke: CGFloat = 4
   /// The frames' stroke against the ring's outer edge: 3.75 of 18.75.

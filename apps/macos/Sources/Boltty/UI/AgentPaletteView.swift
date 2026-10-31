@@ -148,12 +148,13 @@ final class AgentPaletteView: NSView {
   private let attachRestSlot = NSView()
   private lazy var attachRestWidth = attachRestSlot.widthAnchor.constraint(equalToConstant: 0)
   /// The open chat's Auto Mode — the indicator and the switch in one glyph.
-  /// A shield, lit (filled, full ink) while Auto Mode is on, at the group's
-  /// resting ink while every permission asks. Only in a chat whose agent
-  /// declares `.autoApproval` (`BolttyAISessionPreview.autoMode`), so a
-  /// switch is never drawn for a CLI that would not honour it.
+  /// An A in a circle, as a camera's auto mode: lit (filled, full ink) while
+  /// Auto Mode is on, at the group's resting ink while every permission
+  /// asks. Only in a chat whose agent declares `.autoApproval`
+  /// (`BolttyAISessionPreview.autoMode`), so a switch is never drawn for a
+  /// CLI that would not honour it.
   private let autoModeButton = GlassCircleButton(
-    symbol: "checkmark.shield",
+    symbol: "a.circle",
     accessibilityDescription: "Auto Mode",
     diameter: AgentPaletteMetrics.voiceOrbDiameter,
     pointSize: ComposerControlGroup.pointSize(chat: true),
@@ -1317,7 +1318,7 @@ final class AgentPaletteView: NSView {
       layer.add(fade, forKey: "autoMode")
     }
     button.image = ComposerControlGroup.symbol(
-      on ? "checkmark.shield.fill" : "checkmark.shield", description: "Auto Mode", chat: true)
+      on ? "a.circle.fill" : "a.circle", description: "Auto Mode", chat: true)
     button.restingTint = on ? ComposerControlGroup.hoverInk : ComposerControlGroup.restingInk
     button.toolTip = Self.autoModeHelp(on: on, agent: agent)
     button.setAccessibilityLabel("Auto Mode")

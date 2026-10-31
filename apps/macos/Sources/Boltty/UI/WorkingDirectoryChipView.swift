@@ -239,12 +239,6 @@ enum PlanUsageRingReading {
   static func percent(_ usage: AgentUsage?) -> Int {
     min(100, max(0, usage?.pressing?.usedPercent ?? 0))
   }
-  static func colorIndex(for percent: Int) -> Int {
-    min(3, max(0, percent) / 25)
-  }
-  static func color(for percent: Int) -> NSColor {
-    AgentPaletteMetrics.planRingColors[colorIndex(for: percent)]
-  }
   static func detail(
     usage: AgentUsage?, agent: AgentId?, context: AgentContextUsage?, chatIsOpen: Bool
   ) -> String {
@@ -289,7 +283,7 @@ final class PlanUsageRingView: PaletteIconButton {
   }
   var onCompact: (() -> Void)?
   var percentForTesting: Int { PlanUsageRingReading.percent(usage) }
-  var tintForTesting: NSColor { PlanUsageRingReading.color(for: percentForTesting) }
+  var tintForTesting: NSColor { AgentPaletteMetrics.planRingInk }
   var titleForTesting: String { usage.flatMap { UsagePillText.title(for: $0) } ?? "Plan usage unavailable" }
   var detailForTesting: String { toolTip ?? "" }
   private var cacheIsCold = false
