@@ -154,6 +154,15 @@ extension AgentUsage {
 
 extension AgentUsageWindow {
   /// DateFormatter, not Date.FormatStyle: the latter returns "" on regional-override locales.
+  /// "18d 7h", "3h 12m", "42m": how long until a window comes back.
+  static func countdown(to date: Date, now: Date = Date()) -> String {
+    let minutes = max(1, Int((date.timeIntervalSince(now) / 60).rounded(.up)))
+    let days = minutes / 1_440, hours = minutes % 1_440 / 60, rest = minutes % 60
+    if days > 0 { return hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
+    if hours > 0 { return rest > 0 ? "\(hours)h \(rest)m" : "\(hours)h" }
+    return "\(rest)m"
+  }
+
   static func resetPhrase(_ date: Date, now: Date = Date()) -> String {
     let formatter = DateFormatter()
     if Calendar.current.isDate(date, inSameDayAs: now) {

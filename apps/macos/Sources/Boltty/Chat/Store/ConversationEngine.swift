@@ -227,19 +227,33 @@ final class ConversationEngine: ObservableObject {
       $0.lastKnownState.blocksSending && $0.remoteSessionID != nil
     }
     guard !running.isEmpty else { return }
-    await withTaskGroup(of: Void.self) { group in
-      for conversation in running {
-        guard let remote = conversation.remoteSessionID,
-              let client = registry.client(forProviderID: conversation.providerID)
-        else { continue }
-        group.addTask { try? await client.stop(sessionID: remote) }
-      }
-      group.addTask {
-        try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-      }
-      await group.next()
-      group.cancelAll()
+    let stops = running.compactMap { conversation -> (AgentClient, String)? in
+      guard let remote = conversation.remoteSessionID,
+            let client = registry.client(forProviderID: conversation.providerID)
+      else { return nil }
+      return (client, remote)
     }
+    // Every stop, not the first to answer: a turn on the person's own OpenCode
+    // service outlives Boltty if its stop is cut short. The deadline is a timer
+    // racing the stops, so a stop that never answers cannot hold the quit.
+    let (finished, finish) = AsyncStream.makeStream(of: Void.self)
+    let all = Task {
+      await withTaskGroup(of: Void.self) { group in
+        for (client, remote) in stops {
+          group.addTask { try? await client.stop(sessionID: remote) }
+        }
+      }
+      finish.yield()
+    }
+    let timer = Task {
+      try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+      finish.yield()
+    }
+    var first = finished.makeAsyncIterator()
+    _ = await first.next()
+    finish.finish()
+    all.cancel()
+    timer.cancel()
   }
 
   // MARK: - Events
@@ -315,6 +329,7 @@ final class ConversationEngine: ObservableObject {
   func steer(text: String, in conversationID: UUID) async -> Bool {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty,
+          !store.isReadOnly,
           canSteer(conversationID),
           let conversation = store.conversation(id: conversationID),
           let remote = conversation.remoteSessionID,
@@ -368,11 +383,13 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  func refresh(conversationID: UUID) async {
+  /// Whether the agent's record was read; a gone session counts as read.
+  @discardableResult
+  func refresh(conversationID: UUID) async -> Bool {
     guard let conversation = store.conversation(id: conversationID),
           let remote = conversation.remoteSessionID,
           let client = registry.client(forProviderID: conversation.providerID)
-    else { return }
+    else { return false }
     do {
       let snapshot = try await client.loadSession(id: remote)
       attached.insert(remote)
@@ -396,8 +413,10 @@ final class ConversationEngine: ObservableObject {
         store.setModel(model, for: conversationID)
       }
       notices[conversationID] = nil
+      return true
     } catch AgentClientError.sessionNotFound where !attached.contains(remote) {
       log.debug("session \(remote, privacy: .public) is not one this adapter can re-read")
+      return false
     } catch AgentClientError.sessionNotFound {
       attached.remove(remote)
       store.apply(
@@ -411,8 +430,10 @@ final class ConversationEngine: ObservableObject {
           + "is kept, but sending will start a new session.",
         isBlocking: false
       )
+      return true
     } catch {
       log.debug("refresh failed: \(String(describing: error), privacy: .public)")
+      return false
     }
   }
 
@@ -427,6 +448,10 @@ final class ConversationEngine: ObservableObject {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty || !attachments.isEmpty else { return false }
     guard let conversation = store.conversation(id: conversationID) else { return false }
+    guard !store.isReadOnly else {
+      notices[conversationID] = EngineNotice(text: Self.secondCopyRefusal, isBlocking: true)
+      return false
+    }
     guard !conversation.lastKnownState.blocksSending else { return false }
     guard !sending.contains(conversationID) else { return false }
     sending.insert(conversationID)
@@ -590,7 +615,12 @@ final class ConversationEngine: ObservableObject {
       )
       return false
     } catch {
-      store.setExecutionState(.idle, for: conversationID)
+      // It may have landed and be running: idle would invite a second send
+      // into a live turn. Ask the agent's record; only with no answer at all
+      // is the chat let go.
+      if await !refresh(conversationID: conversationID) {
+        store.setExecutionState(.idle, for: conversationID)
+      }
       notices[conversationID] = EngineNotice(
         text: "Boltty could not confirm whether that message was sent. Check the conversation "
           + "before sending it again.",
@@ -608,6 +638,8 @@ final class ConversationEngine: ObservableObject {
       throw AgentClientError.sessionNotFound
     }
     if let remote = conversation.remoteSessionID { return remote }
+    // A copy that cannot save the chat must not start work it would lose.
+    guard !store.isReadOnly else { throw AgentClientError.serverStartFailed(Self.secondCopyRefusal) }
     if let pending = creatingSessions[conversationID] { return try await pending.value }
     let task = Task { try await self.createRemoteSession(for: conversationID) }
     creatingSessions[conversationID] = task
@@ -830,6 +862,11 @@ final class ConversationEngine: ObservableObject {
   // MARK: - Helpers
 
   nonisolated static let untitled = "New conversation"
+  /// What a second Boltty says when asked to start work: the first one owns
+  /// the conversations, and this one would lose whatever it started.
+  static let secondCopyRefusal =
+    "Another Boltty is already running and owns your conversations. Use that one to send."
+
   /// What a read-only chat's agent hears when it asks to change something.
   static let readOnlyRefusal =
     "This chat is read-only: answer from what you can see, without changing files or running commands."

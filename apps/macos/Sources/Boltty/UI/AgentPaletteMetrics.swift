@@ -1057,22 +1057,24 @@ enum AgentPaletteMetrics {
   static let resultsSubtitleFontSize: CGFloat = typeMeta
   /// Rows stack flush; the 7.5 inner padding is the air between faces.
   static let resultsRowInset: CGFloat = 0
-  /// The mock's selected row is a flat 8% fill, no edge.
+  /// The selected row is a flat fill and no edge, as the mock draws it. An
+  /// edge was tried when the fill read as nothing, but what hid it was the
+  /// fill drawn in Light's colours (see the row's
+  /// `viewDidChangeEffectiveAppearance`); in the panel's own it reads alone.
   static let resultsRowSelectedBorderWidth: CGFloat = 0
-  /// A working chat's row: the hairline round its pill, one lap of the lit
-  /// window round the outline, the window's share of it, how far each row's
-  /// pace may drift from the lap, the brief hurry a fresh reply brings and
-  /// how long it lasts — and the subtitle's breath, down to `BreathFloor`
-  /// and back over twice `BreathDuration`.
-  static let resultsWorkingEdgeWidth: CGFloat = 1
-  static let resultsWorkingOrbitDuration: CFTimeInterval = 3.2
-  static let resultsWorkingOrbitShare: CGFloat = 0.32
-  static let resultsWorkingOrbitVariance: Double = 0.15
-  static let resultsWorkingBoostSpeed: Float = 3
-  static let resultsWorkingBoostDuration: TimeInterval = 1
+  /// A working chat's row: the shimmer over the words under its title
+  /// (`BolttyAISessionRowView.layoutShimmer`). One sweep across the words,
+  /// then a rest — about the two-second beat the CLIs' own shimmers keep;
+  /// the band's share of the words' width and the least it may be, so a
+  /// short "Thinking…" still sees a band and not a flash; how far in from
+  /// each end of the band its light is whole; and how strongly the words
+  /// wear the light, still, under Reduce Motion.
+  static let resultsShimmerSweepDuration: CFTimeInterval = 1.4
+  static let resultsShimmerRest: CFTimeInterval = 0.6
+  static let resultsShimmerBandShare: CGFloat = 0.45
+  static let resultsShimmerMinimumBand: CGFloat = 48
+  static let resultsShimmerFade: CGFloat = 0.3
   static let resultsWorkingStillOpacity: CGFloat = 0.5
-  static let resultsWorkingBreathFloor: Float = 0.35
-  static let resultsWorkingBreathDuration: CFTimeInterval = 1.1
 
   /// Inset of the highlight pill from the card's side walls.
   ///
@@ -1216,6 +1218,11 @@ enum AgentPaletteMetrics {
   /// ←/→ held down has to read as steps.
   static let historyTabSlideResponse = CGFloat(Motion.standard)
   static let historyTabHoverFill = PaletteInk.tertiaryFill
+  /// A chat row's selection and hover. The shell's black ramp swallows the
+  /// system's quiet fills (8% and 5% read as nothing over it), so the rows
+  /// step up: hover takes the selection's old 8%, and selection 14%.
+  static let historyRowSelectedFill = NSColor.white.withAlphaComponent(0.14)
+  static let historyRowHoverFill = PaletteInk.secondaryFill
   /// The chosen tab's name, and any tab's under the pointer.
   static let historyTabActiveTextColor = PaletteInk.primary
   /// Every other tab's name, empty or not: grey at rest, bright under the

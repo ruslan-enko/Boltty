@@ -536,7 +536,8 @@ final class MascotPickerContactSheet: XCTestCase {
     let popover = MascotPickerView(model: model, agent: .codex)
       .background(Color(nsColor: .windowBackgroundColor))
       .environment(\.colorScheme, .dark)
-    let row = MascotPickerButton(model: model, agent: .codex)
+    // A Form renders blank through ImageRenderer; the rows alone do not.
+    let row = VStack(alignment: .leading, spacing: 12) { MascotChoiceRows(model: model, agent: .codex) }
       .padding(16)
       .frame(width: 560)
       .background(Color(nsColor: .windowBackgroundColor))
@@ -544,7 +545,7 @@ final class MascotPickerContactSheet: XCTestCase {
 
     let directory = URL(fileURLWithPath: dir)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    for (name, content) in [("mascot-picker.png", AnyView(popover)), ("mascot-row.png", AnyView(row))] {
+    for (name, content) in [("mascot-picker.png", AnyView(popover)), ("mascot-rows.png", AnyView(row))] {
       let renderer = ImageRenderer(content: content)
       renderer.scale = 2
       let image = try XCTUnwrap(renderer.cgImage)

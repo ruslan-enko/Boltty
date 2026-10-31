@@ -78,6 +78,23 @@ enum AgentActivityGroup {
     return headline.contains(where: { $0 == " " || $0 == "/" }) ? "Ran " + headline : headline
   }
 
+  /// A step still running, as the chat list says it: the kind's verb and
+  /// what it is on — "Reading upscale.py", "Running curl -I host" — or a
+  /// command's own description, which is already a sentence. A summary like
+  /// "Read upscale.py" reads as done, so it is never used as it stands.
+  static func progress(for activity: AgentActivity) -> String {
+    let kind = kind(of: activity)
+    if kind == .command {
+      let line = activity.headline.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+      if let first = line.first, first.isUppercase { return line }
+      if line.contains(where: { $0 == " " || $0 == "/" }) { return "Running " + line }
+    }
+    if let file = activity.files.first {
+      return "\(kind.progressive) \((file as NSString).lastPathComponent)"
+    }
+    return kind.progressive + "…"
+  }
+
   static func id(of activities: [AgentActivity]) -> String {
     "group:" + ((activities.first { !$0.isThought } ?? activities.first)?.id ?? "")
   }

@@ -32,8 +32,17 @@ final class ConversationStore: ObservableObject {
     transcripts = loaded.transcripts
     selectedConversationID = loaded.selectedConversationID
     damagedConversationIDs = Set(loaded.damaged)
-    for index in conversations.indices where conversations[index].lastKnownState == .working {
+    // Waiting is mid-turn too: the process that asked is gone, so its card
+    // can no longer be answered and must not hold the chat.
+    for index in conversations.indices where conversations[index].lastKnownState.blocksSending {
       conversations[index].lastKnownState = .interrupted
+      let id = conversations[index].id
+      guard var transcript = transcripts[id] else { continue }
+      for asked in transcript.interactions.indices where transcript.interactions[asked].isOpen {
+        transcript.interactions[asked].resolution = .expired
+        transcript.interactions[asked].isSubmitting = false
+      }
+      transcripts[id] = transcript
     }
   }
 

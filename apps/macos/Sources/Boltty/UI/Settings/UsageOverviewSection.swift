@@ -96,7 +96,7 @@ struct UsageOverviewSection: View {
   }
 
   private var tint: Color {
-    agent.map { Color(nsColor: model.usageTint(for: $0)) } ?? Color(nsColor: .systemBlue)
+    agent.map { model.usageTint(for: $0) } ?? Color(nsColor: .systemBlue)
   }
 
   // MARK: Overview
@@ -140,7 +140,7 @@ struct UsageOverviewSection: View {
     let total = max(summary.tokens, 1)
     return VStack(alignment: .leading, spacing: 12) {
       ForEach(summary.models) { row in
-        let tint = row.agent.map { Color(nsColor: model.usageTint(for: $0)) } ?? .accentColor
+        let ink = row.agent.map { model.usageInk(for: $0) } ?? [.accentColor]
         VStack(alignment: .leading, spacing: 5) {
           HStack(spacing: 10) {
             if let agent = row.agent {
@@ -158,8 +158,7 @@ struct UsageOverviewSection: View {
               .foregroundStyle(.secondary)
           }
           if summary.tokens > 0 {
-            ProgressView(value: Double(row.tokens), total: Double(total))
-              .tint(tint)
+            UsageMeter(fraction: Double(row.tokens) / Double(total), ink: ink, height: 6)
               .accessibilityLabel("\(row.id) share of tokens")
           }
         }

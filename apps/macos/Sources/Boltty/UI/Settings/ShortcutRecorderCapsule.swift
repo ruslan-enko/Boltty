@@ -68,23 +68,25 @@ struct ShortcutRecorderCapsule: View {
     }
   }
 
-  @ViewBuilder
+  // The slot is always laid out and only fades: inserting the button on hover
+  // shoved the capsule sideways under the pointer.
   private var restoreButton: some View {
-    if let onRestoreDefault, isRowHovered || isRecording {
-      Button {
-        isRecording = false
-        onRestoreDefault()
-      } label: {
-        RestoreGlyph()
-      }
-      .buttonStyle(SettingsPressStyle())
-      .foregroundStyle(isRestoreHovered ? .primary : .secondary)
-      .onHover { isRestoreHovered = $0 }
-      .disabled(!isEnabled)
-      .help("Restore the default shortcut")
-      .accessibilityLabel("Restore default shortcut for \(accessibilityName)")
-      .transition(.opacity)
+    let isShown = onRestoreDefault != nil && (isRowHovered || isRecording)
+    return Button {
+      isRecording = false
+      onRestoreDefault?()
+    } label: {
+      RestoreGlyph()
     }
+    .buttonStyle(SettingsPressStyle())
+    .foregroundStyle(isRestoreHovered ? .primary : .secondary)
+    .onHover { isRestoreHovered = $0 && isShown }
+    .disabled(!isEnabled || !isShown)
+    .opacity(isShown ? 1 : 0)
+    .allowsHitTesting(isShown)
+    .accessibilityHidden(!isShown)
+    .help("Restore the default shortcut")
+    .accessibilityLabel("Restore default shortcut for \(accessibilityName)")
   }
 
   private func handle(event: NSEvent) {

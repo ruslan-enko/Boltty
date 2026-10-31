@@ -78,6 +78,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     self.model = model
   }
 
+  static var anotherCopyIsRunning: Bool {
+    guard let bundleID = Bundle.main.bundleIdentifier else { return false }
+    let me = ProcessInfo.processInfo.processIdentifier
+    return NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+      .contains { $0.processIdentifier != me && !$0.isTerminated }
+  }
+
   static var isHostingUnitTests: Bool {
     ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
   }
@@ -496,7 +503,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       appliedHotkey = fallback
       model.hotkeyRegistrationFailed = false
       lastHotkeyAttempt = (fallback, enabled)
-      model.updateSettings { $0.bolttyAIHotkey = fallback }
+      // Beside another Boltty, ⌥Space is held by that copy, not by someone
+      // the person would want to give way to: borrow the fallback for this
+      // run, but keep the stored chord theirs.
+      if !Self.anotherCopyIsRunning {
+        model.updateSettings { $0.bolttyAIHotkey = fallback }
+      }
       refreshHotkeyHint()
       return
     }

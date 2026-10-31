@@ -73,6 +73,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal`; `Models/MascotShape.swift`, `MascotPalette.swift`, `MascotLook.swift` |
 | Screen selection | `Services/ScreenRegionCapture.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
 | Shader effects | `UI/Effects/` |
+| Chat backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
 | Settings | `UI/Settings/` |
@@ -95,14 +96,14 @@ no adapter; never offer a toggle for them.
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing (the preferred agent). Fixed once the conversation has a session. A chosen agent that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon |
 | Working folder | New chats start in `$HOME`. Chosen with the folder chip until the session exists, then fixed |
-| Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn comes back `interrupted`, not `idle` |
-| One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so |
-| Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline |
+| Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open cards expired |
+| One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so. It starts no session or turn (`ConversationEngine.secondCopyRefusal`) and never stores a fallback chord |
+| Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline, waiting for each turn's stop (3 s timer), not the first to answer |
 | Dock click | Brings Settings forward, never the panel |
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen per agent in Settings › Agents › Permissions and copied into each new chat; the composer's Ⓐ (`a.circle`) switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the composer's Ⓐ (`a.circle`) switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -360,6 +361,14 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   `OpenCodeServer` re-read the file (upgrades replace the process). With no
   service, Boltty starts and owns its own server, reaped after a crash from a
   ledger in Application Support (tests use their own ledger).
+- **The service cannot open Desktop, Documents, Downloads, iCloud or
+  `/Volumes`** (launchd starts it, so no app answers for it to TCC; 2.2.0
+  answers the first prompt with an empty HTTP 500 and logs
+  `DirectoryAccessDeniedError`). A session in such a folder runs on Boltty's own
+  server beside the service (`OpenCodeClient.isPrivacyProtected`), which
+  reaches what Boltty was allowed. Both share one database; every
+  `/api/session/<id>/…` request goes to the session's server, placed by the
+  folder on its record, and the second server's events come on a second stream.
 - The model catalogue is `/api/model` on 2.0 (`/provider` on 1.18); free models
   have `settings.apiKey == "public"`.
 - **The free tier refuses a session whose id is not in OpenCode's own
@@ -461,9 +470,10 @@ The loop that must keep working:
   each holds is under the pointer (`PromptChipPreview`). The tinted capsule with
   a symbol is only the fallback for a kind with no picture. Not a thumbnail of
   the file: the glass is the point.
-- **The black ramp** is worn by the first screen only, and only once the state
-  has settled (`applySurfaceStyle` defers changes *to* a wash to the end of the
-  turn).
+- **The black ramp** (`bolttyAIPrompt`) is worn by the shell in every state
+  but listening — first screen, list and chat — never by the composer, and only
+  once the state has settled (`applySurfaceStyle` defers changes *to* a wash to
+  the end of the turn).
 - Refreshing rows never orders the window forward or steals first responder.
 - **Clicking outside** (a click, not a drag) hides; the panel takes every press
   on the screen, so a click outside does not reach the window below.
@@ -526,9 +536,20 @@ The loop that must keep working:
 - Rows are built lazily near the viewport (`ResultsListView`); a filtered row is
   hidden in place. A row's preview stops at 400 characters.
 - A row's title is the first request, cleaned of brackets and Boltty's paths
-  (`ChatTitle`). Unread rows have a blue dot and a semibold title; working rows
-  have a hairline in the agent's gradient orbiting the pill.
+  (`ChatTitle`). Unread rows have a blue dot and a semibold title. A working
+  row's second line is the step it is on ("Reading upscale.py", "Thinking…",
+  `BolttyAISessionList.liveStep`; "Working…" between steps), with a band of the
+  agent's light sweeping across those words, as the CLIs' shimmer does. Nothing
+  runs round the pill: an orbiting outline read as a border and a second
+  selection.
 - The order holds while the list is open.
+- **The chosen row is a flat fill, no edge.** A row works out its colours
+  again once it stands in the panel: lit before, it took Light's black on a
+  light Mac. ↑/↓ scroll the least they must, a day's
+  first row brings its heading, and a chosen row never stands under the strip
+  or the foot's discs. ⌘↑/⌘↓ (Home/End) take the ends, Page Up/Down a page;
+  Tab and ⇧Tab do nothing here (Tab used to type into the field and turn the
+  list into a search). A new tab starts at its top.
 - The foot holds two glass discs, apart on purpose (a shared capsule would
   say they act on one thing): **New Chat** (+, ⌘N) lower right opens the first
   screen on the chosen tab's agent — All on automatic routing; a tab whose
@@ -643,7 +664,17 @@ final text. A long silence sends, but only after speech was heard.
   `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The
   sidebar highlight is its own `@State`; the window is sized after its view
   controller is set; the sidebar width modifier is last on its column.
-- **Usage**: plan windows per agent, 14 days of activity, and an overview counted
+- **Settings › Agents** is a list, one row per agent: face, name, a "Preferred"
+  tag, one line of what a new chat would use (or why it can't), its switch.
+  A row opens the agent's own page (`SettingsLocation`, in the back/forward
+  history; only the page is stored): the agent and its switch, Make
+  Preferred, model, reasoning, permissions with the Auto Mode note once, and
+  the face's shape, gradient and finish as rows. Never expand every agent on
+  the list again. `-boltty.settings.agent claude` opens an agent's page.
+- **Usage**: plan windows per agent (each: what remains and when it
+  comes back, the bar and the activity chart in the agent's own gradient,
+  `MascotPalette.meterInk` — near-grey stops dropped, lightness kept readable
+  in Light and Dark), 14 days of activity, and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`). Never summed across
   agents' different units. Signing in happens in a terminal, so the page asks
@@ -679,7 +710,7 @@ final text. A long silence sends, but only after speech was heard.
   studio of four softboxes; finishes velvet and fur.
 - Six gradients (`MascotPalette`), mixed in Oklab; `lagoon` and `slate` are the
   stored ids of Mist and Lilac. Retired ids still load.
-- **Every agent wears its own face**, chosen in Settings › Agents; no two alike
+- **Every agent wears its own face**, chosen on its page in Settings › Agents; no two alike
   (`MascotRoster`). Stored as names in `boltty.mascotByProvider`. Where no agent
   speaks, the preferred agent's face is used; Boltty has no face of its own.
 - One `MTKView` per face, one shared pipeline, drawn on demand from the shared
@@ -702,6 +733,21 @@ final text. A long silence sends, but only after speech was heard.
   Transparency puts it over the shell. Never `presentsWithTransaction` (it
   starved the run loop).
 - The listening orb is drawn by a second view on top of the glass.
+- **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
+  its transcript, chosen per agent in Settings › Agents › Chat
+  (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space, Matrix,
+  each in the agent's face colours; the Settings picker previews the choice
+  live over a mock chat. Over the glass, under the transcript,
+  dark at the top for the white prose. The sky is after Messages' (read off
+  `DynamicBackgroundPosterExtension`'s `clouds.vfx`: sprites warped by two
+  scrolling noises, edges choked, ramp-tinted, three depths), with noise in
+  place of their textures. **The corner is the layer's**, from the glass's
+  rendered corner and curve; a squircle formula in the shader did not match.
+  Soft scenes draw a pixel a point, sharp ones at full scale; 20 fps, and
+  the clock stops while the window is occluded (a hidden panel keeps the
+  view). Matrix rains the six mascot outlines, plain silhouettes, not
+  letters. Each scene ≈ 1 ms a frame on an M1 Pro; Space asks its noise
+  only inside the nebula's lane.
 - `UI/Effects/`: a thumbnail's reveal out of a blur, a sent chip's whip toward
   its card, the selection border's light. Each always ends by a timer, is made
   through `make` (a failable `NSView` init crashes), and uploads textures as
@@ -710,7 +756,7 @@ final text. A long silence sends, but only after speech was heard.
 ## Design contract (AppKit)
 
 - **Glass is the system's**, in four kinds: the shell (`PaletteGlassHost`, bare
-  regular glass; only the first screen adds a black ramp), controls (the same
+  regular glass under a black ramp, bare while listening), controls (the same
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,
   `GlassPillLabelButton`), and the selected history tab. Density goes *over* the
   glass, never into its tint. The system's Tinted/Clear setting is respected.
@@ -758,7 +804,9 @@ final text. A long silence sends, but only after speech was heard.
 - `HotkeyValidation`: no bare key except F-keys and Escape (F-key codes are not
   contiguous); no ⌘ plus one bare key. `reservedBySystem` stays small.
 - A default nobody chose gives way: if ⌥Space is taken and the person never
-  chose a chord, the first free `HotkeySuggestions.fallbacks` entry is stored.
+  chose a chord, the first free `HotkeySuggestions.fallbacks` entry is stored —
+  unless another Boltty is running (it holds ⌥Space); then it is used for this
+  run only.
 - ⌥⌘ alone is an opt-in chord through the event tap (Input Monitoring), fired on
   release, spoiled by any key, click, third modifier or a hold over 1 s; while
   access is pending the previous chord stands in.

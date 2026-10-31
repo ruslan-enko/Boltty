@@ -39,6 +39,26 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
 
   static let arrivalLightness = 0.8
 
+  /// The gradient as ink for a meter or a chart: near-grey stops dropped (a
+  /// face's pale middle vanishes on a white track), the rest kept within a
+  /// lightness band that reads on the window — darker in Light, lighter in Dark.
+  var meterInk: [NSColor] {
+    let vivid = colors.filter { Oklab($0).chroma >= Self.meterMinimumChroma }
+    let stops = vivid.count >= 2 ? vivid : colors
+    return stops.map { stop in
+      NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        var lab = Oklab(stop)
+        lab.l = isDark ? max(lab.l, Self.meterDarkFloor) : min(lab.l, Self.meterLightCeiling)
+        return lab.color(fitting: true)
+      }
+    }
+  }
+
+  private static let meterMinimumChroma = 0.05
+  private static let meterLightCeiling = 0.72
+  private static let meterDarkFloor = 0.62
+
   static func mix(_ from: NSColor, _ to: NSColor, _ t: CGFloat) -> NSColor {
     let a = Oklab(from), b = Oklab(to), t = Double(min(1, max(0, t)))
     return Oklab(l: a.l + (b.l - a.l) * t, a: a.a + (b.a - a.a) * t, b: a.b + (b.b - a.b) * t)
@@ -56,6 +76,8 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
     var l, a, b: Double
 
     init(l: Double, a: Double, b: Double) { self.l = l; self.a = a; self.b = b }
+
+    var chroma: Double { (a * a + b * b).squareRoot() }
 
     init(_ color: NSColor) {
       let srgb = color.usingColorSpace(.sRGB) ?? color

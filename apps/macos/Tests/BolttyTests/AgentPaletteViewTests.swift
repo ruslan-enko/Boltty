@@ -1296,28 +1296,26 @@ final class AgentPaletteViewTests: XCTestCase {
     )
   }
 
-  func testTheFirstScreenWearsItsRampOnFirstOpenAndAfterReturningFromChat() {
+  func testTheShellWearsTheRampOnTheFirstScreenAndInAnOpenChat() {
     let view = makeView()
 
     XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting,
-                  "the first screen's shell wears the prompt's ramp")
+                  "the first screen's shell wears the ramp")
     XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting,
                    "the composer is the bare glass")
 
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
       state: .finished, body: "Done."))
     view.layoutSubtreeIfNeeded()
-    XCTAssertFalse(view.surfaceUsesDirectionalGlassOverlayForTesting,
-                   "an open chat's shell is the bare glass")
+    XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting,
+                  "an open chat's shell wears it too")
     XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting,
-                   "and so is the chat's composer")
+                   "and the chat's composer still does not")
 
     view.leaveAddressing(animated: false)
     view.layoutSubtreeIfNeeded()
     XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting,
-                  "back on the first screen, the ramp is back on the shell")
-    XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting,
-                   "and still not on the composer")
+                  "back on the first screen, the ramp is still on the shell")
   }
 
   @available(macOS 26.0, *)
@@ -1350,25 +1348,22 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertNil(view.addressedPreviewForTesting)
   }
 
-  func testBolttyAISurfacesShareOneBackground() {
+  func testBolttyAISurfacesWearTheRampExceptWhileListening() {
     let view = makeScreenSizedView()
-    XCTAssertFalse(view.usesSharedSurfaceStyleForTesting,
-                   "the first screen is the one exception")
-    XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting,
-                  "it is the shell that differs: it wears the ramp")
-    XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting,
-                   "and the composer does not")
+    XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting, "the first screen")
+    XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting, "not the composer")
 
     view.setSessions([.row("one")], activeSessionID: nil)
     view.expandResultsForTesting()
     view.layoutSubtreeIfNeeded()
     XCTAssertTrue(view.isResultsExpandedForTesting, "precondition: the history is open")
-    XCTAssertTrue(view.usesSharedSurfaceStyleForTesting, "the history")
+    XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting, "the history")
 
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
                                state: .finished, body: "Done."))
     view.layoutSubtreeIfNeeded()
-    XCTAssertTrue(view.usesSharedSurfaceStyleForTesting, "an open chat and its composer")
+    XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting, "an open chat")
+    XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting, "not the chat's composer")
 
     let listening = hostOffscreen(makeView(targets: [.claude]))
     listening.prepareForPresentation()
@@ -1376,7 +1371,8 @@ final class AgentPaletteViewTests: XCTestCase {
     listening.setVoiceListening(true)
     listening.layoutSubtreeIfNeeded()
     XCTAssertTrue(listening.isCompactListeningForTesting, "precondition: the listening orb")
-    XCTAssertTrue(listening.usesSharedSurfaceStyleForTesting, "the listening orb")
+    XCTAssertTrue(listening.usesSharedSurfaceStyleForTesting,
+                  "the listening orb is the bare shared glass")
     listening.setVoiceListening(false)
   }
 

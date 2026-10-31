@@ -58,6 +58,14 @@ enum BuiltInKeyCatalog {
       BuiltInKeySection(title: "Chat list", keys: [
         BuiltInKey(id: "listMove", title: "Move between chats", keys: "↑ ↓", detail: nil),
         BuiltInKey(
+          id: "listEnds", title: "First or last chat", keys: "⌘↑ ⌘↓",
+          detail: "Home and End too"
+        ),
+        BuiltInKey(
+          id: "listPage", title: "A page of chats", keys: "⇞ ⇟",
+          detail: "Page Up and Page Down — fn↑ and fn↓ on a laptop"
+        ),
+        BuiltInKey(
           id: "listAgent", title: "Switch agent", keys: "← →",
           detail: "While the search field is empty"
         ),

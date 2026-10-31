@@ -1125,4 +1125,33 @@ final class OpenCodeAllowancesTests: XCTestCase {
     XCTAssertFalse(allowances.ask("p5", saving: [], in: "ses_a"), "an ask that saves nothing always asks")
     XCTAssertEqual(allowances.decide(.reject, requestID: "p4", sessionID: "ses_a"), .reject)
   }
+
+  // MARK: - Folders the background service cannot open
+
+  func testFoldersMacOSKeepsFromALaunchdServiceRunOnBolttysOwnServer() {
+    let home = "/Users/someone"
+    for folder in [
+      "/Users/someone/Downloads/86 Eighty-Six (part 2)",
+      "/Users/someone/Desktop",
+      "/Users/someone/Documents/notes",
+      "/Users/someone/Library/Mobile Documents/com~apple~CloudDocs/x",
+      "/Users/someone/Library/CloudStorage/Dropbox",
+      "/Volumes/Backup/films"
+    ] {
+      XCTAssertTrue(OpenCodeClient.isPrivacyProtected(folder, home: home), folder)
+    }
+    for folder in [
+      "/Users/someone", "/Users/someone/Projects/app", "/Users/someone/DownloadsArchive", "/tmp"
+    ] {
+      XCTAssertFalse(OpenCodeClient.isPrivacyProtected(folder, home: home), folder)
+    }
+  }
+
+  func testASessionRouteIsPlacedByItsSessionID() {
+    XCTAssertEqual(OpenCodeClient.sessionID(inPath: "/api/session/ses_a/prompt"), "ses_a")
+    XCTAssertEqual(OpenCodeClient.sessionID(inPath: OpenCodeClient.messagesPath(sessionID: "ses_b")), "ses_b")
+    XCTAssertEqual(OpenCodeClient.sessionID(inPath: "/api/session/ses_c"), "ses_c")
+    XCTAssertNil(OpenCodeClient.sessionID(inPath: "/api/session"))
+    XCTAssertNil(OpenCodeClient.sessionID(inPath: "/api/model"))
+  }
 }

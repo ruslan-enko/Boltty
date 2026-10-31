@@ -140,7 +140,7 @@ final class BolttyAISessionRowView: NSView {
     background.gradientLayer?.applyPaletteCorner(
       radius: AgentPaletteMetrics.resultsRowCornerRadius
     )
-    layoutWorkingEdge()
+    layoutShimmer()
   }
 
   /// The pill inset from the row's walls, and the title and subtitle centred
@@ -216,7 +216,6 @@ final class BolttyAISessionRowView: NSView {
   func apply(item newItem: BolttyAISessionItem) {
     precondition(newItem.id == item.id, "a row is bound to one conversation")
     let agentChanged = newItem.agent != item.agent
-    let textChanged = newItem.title != item.title || newItem.subtitle != item.subtitle
     let unreadChanged = newItem.hasUnread != item.hasUnread
     item = newItem
     if showsFace, agentChanged { face.image = Self.faceImage(for: newItem.agent) }
@@ -229,11 +228,7 @@ final class BolttyAISessionRowView: NSView {
     }
     setAccessibilityLabel(accessibilityText(for: newItem))
     if unreadChanged { syncUnread() }
-    syncWorking(agentChanged: agentChanged)
-    // A fresh reply hurries the orbiting window briefly. Title/subtitle are
-    // the row's only live text, so their change is the news — `updatedAt`
-    // moves on every touch and would hurry it constantly.
-    if textChanged, newItem.state == .running { pulseWorkingOrbit() }
+    syncWorking()
   }
 
   /// What the row announces: the title, the reply, and whether it is unread.
@@ -256,175 +251,156 @@ final class BolttyAISessionRowView: NSView {
   // MARK: Working
 
   /// **A chat whose agent is working says so with light, not only a word**:
-  /// a hairline round the row's pill in the agent's mascot gradient, lit in
-  /// a window that orbits the outline — round and round, never back and
-  /// forth — and "Working…" under the title breathing in opacity. A word
-  /// alone makes a running chat read like any other.
+  /// the line under the title says what it is doing ("Reading upscale.py",
+  /// `BolttyAISessionList.liveStep`), and a band of the agent's own light
+  /// sweeps across those words, again and again — the shimmer the CLIs and
+  /// the AI chats give a turn in progress. On the words, not round the pill:
+  /// light orbiting the outline read as a border, and as a second selection.
   ///
-  /// The outline is a dashed stroke masking a full-pill gradient, and the
-  /// dashes' phase runs linearly: the window travels the whole perimeter
-  /// while the outline stays. No two rows share a phase or quite a pace —
-  /// both are seeded from the conversation id — so two working chats never
-  /// march together. A new reply hurries the window briefly
-  /// (`pulseWorkingOrbit`); the speed change re-anchors the layer's time,
-  /// so it hurries from where it stands rather than jumping. Under Reduce
-  /// Motion the whole edge is lit, faintly, and nothing moves.
-  private let workingEdge = CALayer()
-  private let workingEdgeShape = CAShapeLayer()
-  private let workingBand = CAGradientLayer()
+  /// The band is a gradient masked by the words' silhouette, as the chat's
+  /// working line is (`PaletteWorkingLineView`), and it crosses the words'
+  /// own width, not the label's. No two rows sweep together: each starts at
+  /// a place seeded from its conversation id. Under Reduce Motion the words
+  /// wear the light, faintly, and nothing moves.
+  private let shimmer = CALayer()
+  private let shimmerWords = CALayer()
+  private let shimmerBand = CAGradientLayer()
+  /// What the silhouette was cut from: it is cut again only when the words
+  /// or their room change, not on every scroll's layout.
+  private var shimmerCut: (text: String, size: NSSize)?
+  /// Whose light the band wears, and whether it is the still one.
+  private var shimmerPaint: (agent: AgentId, still: Bool)?
+  /// The width the running sweep crosses; another width restarts it.
+  private var sweptWidth: CGFloat = 0
   private(set) var isShowingWorking = false
-  /// The dash cycle (lit window plus gap) the orbit animation runs over —
-  /// the outline's own perimeter, recomputed with it.
-  private var orbitCycle: CGFloat = 0
-  /// Guards the delayed end of a speed pulse against a newer one.
-  private var orbitBoostGeneration = 0
 
-  private func syncWorking(agentChanged: Bool) {
+  private func syncWorking() {
     let working = item.state == .running
-    if working, agentChanged || workingBand.colors == nil { paintWorkingGlow() }
-    guard working != isShowingWorking else { return }
+    guard working != isShowingWorking else {
+      // The words may have changed: the silhouette is cut again on layout.
+      if working { needsLayout = true }
+      return
+    }
     isShowingWorking = working
     if working {
-      if workingEdge.superlayer == nil, let host = background.layer {
-        workingEdge.mask = workingEdgeShape
-        workingEdgeShape.fillColor = NSColor.clear.cgColor
-        workingEdgeShape.strokeColor = NSColor.white.cgColor
-        workingEdgeShape.lineWidth = AgentPaletteMetrics.resultsWorkingEdgeWidth
-        workingEdgeShape.lineCap = .round
-        workingBand.startPoint = CGPoint(x: 0, y: 0.5)
-        workingBand.endPoint = CGPoint(x: 1, y: 0.5)
-        workingEdge.addSublayer(workingBand)
-        host.addSublayer(workingEdge)
+      if shimmer.superlayer == nil, let host = background.layer {
+        shimmer.mask = shimmerWords
+        shimmerBand.startPoint = CGPoint(x: 0, y: 0.5)
+        shimmerBand.endPoint = CGPoint(x: 1, y: 0.5)
+        shimmer.addSublayer(shimmerBand)
+        host.addSublayer(shimmer)
       }
-      if workingBand.colors == nil { paintWorkingGlow() }
-      workingEdge.isHidden = false
-      layoutWorkingEdge()
+      shimmer.isHidden = false
+      needsLayout = true
     } else {
-      workingEdge.isHidden = true
-      workingEdgeShape.removeAnimation(forKey: "orbit")
-      workingEdgeShape.speed = 1
-      workingEdgeShape.timeOffset = 0
-      orbitBoostGeneration += 1
-      subtitleLabel.layer?.removeAnimation(forKey: "breathing")
+      shimmer.isHidden = true
+      shimmerBand.removeAnimation(forKey: "sweep")
+      sweptWidth = 0
+    }
+  }
+
+  private func layoutShimmer() {
+    guard isShowingWorking else { return }
+    let frame = subtitleLabel.frame
+    // The label runs to the pill's end; a sweep across that empty room left
+    // the words dark most of the time.
+    let words = min(frame.width, ceil(subtitleLabel.attributedStringValue.size().width) + 4)
+    let still = MotionPreferences.reduceMotion
+    let band = still
+      ? words
+      : max(AgentPaletteMetrics.resultsShimmerMinimumBand, words * AgentPaletteMetrics.resultsShimmerBandShare)
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    shimmer.frame = frame
+    shimmerWords.frame = shimmer.bounds
+    // At rest the band waits off the words' leading end, where the mask
+    // shows nothing, so the pause between sweeps is dark.
+    shimmerBand.frame = CGRect(x: still ? 0 : -band, y: 0, width: band, height: frame.height)
+    shimmerBand.opacity = still ? Float(AgentPaletteMetrics.resultsWorkingStillOpacity) : 1
+    paintShimmer(still: still)
+    CATransaction.commit()
+    cutShimmerWords()
+    if still {
+      shimmerBand.removeAnimation(forKey: "sweep")
+      sweptWidth = 0
+    } else {
+      startSweepIfNeeded(across: words + band)
     }
   }
 
   /// The agent's gradient lifted to read on dark glass — the words' own
-  /// arrival light — spanning the whole pill, so the orbiting window shows
-  /// a different hue as it travels.
-  private func paintWorkingGlow() {
+  /// arrival light — fading out at both ends of the band, so the sweep has
+  /// no edge. Still, the whole gradient lies across the words.
+  private func paintShimmer(still: Bool) {
+    guard shimmerPaint?.agent != item.agent || shimmerPaint?.still != still else { return }
+    shimmerPaint = (item.agent, still)
     let light = MascotPalette.face(for: item.agent).arrivalLight
-    workingBand.colors = light.map(\.cgColor)
+    guard let first = light.first, let last = light.last else { return }
+    if still {
+      shimmerBand.colors = light.map(\.cgColor)
+      shimmerBand.locations = nil
+      return
+    }
+    shimmerBand.colors = ([first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)])
+      .map(\.cgColor)
+    let inner = AgentPaletteMetrics.resultsShimmerFade
+    let steps = max(1, light.count - 1)
+    shimmerBand.locations = ([0] + light.indices.map {
+      inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
+    } + [1]).map { NSNumber(value: Double($0)) }
   }
 
-  private func layoutWorkingEdge() {
-    guard isShowingWorking else { return }
-    let pill = background.bounds
+  /// The words in white, as the mask the band shows through — drawn by the
+  /// label itself, so every glyph and the truncation land where it draws them.
+  private func cutShimmerWords() {
+    let size = subtitleLabel.bounds.size
+    let text = subtitleLabel.stringValue
+    guard size.width > 0, size.height > 0,
+          shimmerCut?.text != text || shimmerCut?.size != size,
+          let rep = subtitleLabel.bitmapImageRepForCachingDisplay(in: subtitleLabel.bounds)
+    else { return }
+    let ink = subtitleLabel.textColor
+    subtitleLabel.textColor = .white
+    subtitleLabel.cacheDisplay(in: subtitleLabel.bounds, to: rep)
+    subtitleLabel.textColor = ink
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    workingEdge.frame = pill
-    workingEdgeShape.frame = pill
-    workingBand.frame = pill
-    let inset = AgentPaletteMetrics.resultsWorkingEdgeWidth / 2
-    let outline = pill.insetBy(dx: inset, dy: inset)
-    let radius = min(AgentPaletteMetrics.resultsRowCornerRadius, outline.height / 2) - inset
-    workingEdgeShape.path = outline.width > 0 && outline.height > 0
-      ? CGPath(roundedRect: outline, cornerWidth: max(0, radius), cornerHeight: max(0, radius), transform: nil)
-      : nil
-    let still = MotionPreferences.reduceMotion
-    if still {
-      // The whole edge lit, faintly, and nothing moves.
-      workingEdgeShape.lineDashPattern = nil
-      workingEdgeShape.removeAnimation(forKey: "orbit")
-      subtitleLabel.layer?.removeAnimation(forKey: "breathing")
-    } else {
-      let straightW = max(0, outline.width - 2 * radius)
-      let straightH = max(0, outline.height - 2 * radius)
-      let perimeter = 2 * straightW + 2 * straightH + 2 * .pi * max(0, radius)
-      let cycle = max(1, perimeter)
-      // A new period with the old animation's `toValue` jumps at every lap's
-      // seam, so a resized row restarts the lap (keeping its phase offset).
-      if abs(cycle - orbitCycle) > 0.5 { workingEdgeShape.removeAnimation(forKey: "orbit") }
-      orbitCycle = cycle
-      let lit = cycle * AgentPaletteMetrics.resultsWorkingOrbitShare
-      workingEdgeShape.lineDashPattern = [lit as NSNumber, (cycle - lit) as NSNumber]
-    }
-    workingBand.opacity = still ? Float(AgentPaletteMetrics.resultsWorkingStillOpacity) : 1
+    shimmerWords.contents = rep.cgImage
+    shimmerWords.contentsScale = window?.backingScaleFactor ?? 2
     CATransaction.commit()
-    if !still { startOrbitIfNeeded() }
-    startWorkingBreathIfNeeded(still: still)
+    shimmerCut = (text, size)
   }
 
-  /// The window orbits; it is (re)added only when missing, never on every
-  /// layout — re-adding restarts the phase, and layout runs on every scroll,
-  /// which used to pin the light in place while the list moved under it.
-  /// Lost across a window change (which AppKit does not promise to keep),
-  /// it is added back with this row's own phase.
-  private func startOrbitIfNeeded() {
-    guard window != nil, orbitCycle > 0 else { return }
-    guard workingEdgeShape.animation(forKey: "orbit") == nil else { return }
-    let duration = orbitDuration()
-    let orbit = CABasicAnimation(keyPath: "lineDashPhase")
-    orbit.fromValue = 0
-    orbit.toValue = -orbitCycle
-    orbit.duration = duration
-    orbit.repeatCount = .infinity
-    orbit.timingFunction = CAMediaTimingFunction(name: .linear)
-    orbit.timeOffset = orbitPhase() * duration
-    workingEdgeShape.add(orbit, forKey: "orbit")
+  /// The sweep, then a rest, over and over. Added only when missing or when
+  /// the words' width changed — re-adding restarts it, and layout runs on
+  /// every scroll. Lost across a window change (which AppKit does not
+  /// promise to keep), it is added back at this row's own place.
+  private func startSweepIfNeeded(across travel: CGFloat) {
+    guard window != nil else { return }
+    if abs(travel - sweptWidth) > 0.5 { shimmerBand.removeAnimation(forKey: "sweep") }
+    guard shimmerBand.animation(forKey: "sweep") == nil else { return }
+    sweptWidth = travel
+    let sweep = CABasicAnimation(keyPath: "transform.translation.x")
+    sweep.fromValue = 0
+    sweep.toValue = travel
+    sweep.duration = AgentPaletteMetrics.resultsShimmerSweepDuration
+    sweep.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+    sweep.fillMode = .both
+    let cycle = CAAnimationGroup()
+    cycle.animations = [sweep]
+    cycle.duration = sweep.duration + AgentPaletteMetrics.resultsShimmerRest
+    cycle.repeatCount = .infinity
+    cycle.timeOffset = shimmerPhase() * cycle.duration
+    shimmerBand.add(cycle, forKey: "sweep")
   }
 
-  /// This row's place in the lap, and its lap's length — both seeded from
-  /// the conversation id, so rows never start together and drift apart
-  /// rather than back together.
-  private func orbitPhase() -> Double {
+  /// This row's place in the cycle, seeded from the conversation id, so two
+  /// working chats never sweep together.
+  private func shimmerPhase() -> Double {
     Double(UInt(bitPattern: item.id.hashValue) % 1000) / 1000
   }
 
-  private func orbitDuration() -> CFTimeInterval {
-    let drift = Double(UInt(bitPattern: item.id.hashValue >> 7) % 1000) / 1000 - 0.5
-    return AgentPaletteMetrics.resultsWorkingOrbitDuration
-      * (1 + drift * 2 * AgentPaletteMetrics.resultsWorkingOrbitVariance)
-  }
-
-  /// A new reply hurries the window, then lets it back to its pace. The
-  /// speed change re-anchors the layer's time at the switch, so the dash
-  /// keeps its place on the outline and only moves faster — without that
-  /// the window jumps to wherever the new speed reads that instant as.
-  private func pulseWorkingOrbit() {
-    guard isShowingWorking, !MotionPreferences.reduceMotion else { return }
-    guard workingEdgeShape.animation(forKey: "orbit") != nil else { return }
-    orbitBoostGeneration += 1
-    let generation = orbitBoostGeneration
-    setOrbitSpeed(AgentPaletteMetrics.resultsWorkingBoostSpeed)
-    DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.resultsWorkingBoostDuration) { [weak self] in
-      guard let self, self.orbitBoostGeneration == generation, self.isShowingWorking else { return }
-      self.setOrbitSpeed(1)
-    }
-  }
-
-  private func setOrbitSpeed(_ speed: Float) {
-    let now = CACurrentMediaTime()
-    let local = workingEdgeShape.convertTime(now, from: nil)
-    workingEdgeShape.speed = speed
-    workingEdgeShape.timeOffset = local - now * Double(speed)
-  }
-
-  private func startWorkingBreathIfNeeded(still: Bool) {
-    subtitleLabel.wantsLayer = true
-    guard let words = subtitleLabel.layer else { return }
-    guard !still, words.animation(forKey: "breathing") == nil else { return }
-    let breath = CABasicAnimation(keyPath: "opacity")
-    breath.fromValue = 1
-    breath.toValue = AgentPaletteMetrics.resultsWorkingBreathFloor
-    breath.duration = AgentPaletteMetrics.resultsWorkingBreathDuration
-    breath.autoreverses = true
-    breath.repeatCount = .infinity
-    breath.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-    words.add(breath, forKey: "breathing")
-  }
-
-  var workingOrbitIsRunningForTesting: Bool { workingEdgeShape.animation(forKey: "orbit") != nil }
+  var shimmerIsSweepingForTesting: Bool { shimmerBand.animation(forKey: "sweep") != nil }
 
   /// Whether the row leads with its agent's face: in Latest, and nowhere else.
   ///
@@ -476,11 +452,22 @@ final class BolttyAISessionRowView: NSView {
     trackingArea = area
   }
 
+  /// The list asks for a row, and so lights it, before adding it to the
+  /// panel: its colours were worked out against the app's appearance, Light
+  /// on a light Mac, and drew the selection black on the dark shell. They are
+  /// worked out again once the row stands in the panel, whose appearance is
+  /// its own.
+  override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    renderHighlight(animated: false)
+  }
+
   /// A row is kept while a history tab hides it, and a row taken out from
   /// under the pointer never hears `mouseExited` — so it would come back lit.
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
-    if window != nil, isShowingWorking { layoutWorkingEdge() }
+    if window != nil { renderHighlight(animated: false) }
+    if window != nil, isShowingWorking { layoutShimmer() }
     guard window == nil, isHovered || isPressed else { return }
     isHovered = false
     setPressed(false)
@@ -619,7 +606,8 @@ final class BolttyAISessionRowView: NSView {
   /// The selected row's fill, and the fainter one hover gets.
   ///
   /// **Flat, not a gradient.** The mock fills the pill with a single
-  /// `rgba(255,255,255,0.08)` and nothing else. The ramp that used to be here
+  /// `rgba(255,255,255,0.08)`; over the shell's black ramp that read as
+  /// nothing, so it is stronger now (`historyRowSelectedFill`). The ramp that used to be here
   /// (0.18 → 0.09) was a second light source on a surface that already has one:
   /// the card's own wash runs top-to-bottom, so a row near the foot sat on a
   /// lighter backdrop *and* carried a lighter fill, and the list appeared to be
@@ -642,10 +630,10 @@ final class BolttyAISessionRowView: NSView {
       return [color.cgColor, color.cgColor]
     }
     if isHighlightedRow {
-      return flat(PaletteInk.secondaryFill)
+      return flat(AgentPaletteMetrics.historyRowSelectedFill)
     }
     if isHovered, !hoverIsQuiet {
-      return flat(PaletteInk.tertiaryFill)
+      return flat(AgentPaletteMetrics.historyRowHoverFill)
     }
     return [NSColor.clear.cgColor, NSColor.clear.cgColor]
   }

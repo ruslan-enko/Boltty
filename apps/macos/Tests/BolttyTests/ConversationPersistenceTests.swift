@@ -136,6 +136,52 @@ final class ConversationPersistenceTests: XCTestCase {
     XCTAssertEqual(second.transcript(id: conversation.id).messages.count, 1)
   }
 
+  /// Every state a chat can be stored in, walked through a relaunch: nothing
+  /// comes back blocking the composer, because no process survives to finish it.
+  func testEveryStoredStateComesBackSendable() {
+    let expected: [(ConversationExecutionState, ConversationExecutionState)] = [
+      (.idle, .idle), (.working, .interrupted), (.waiting, .interrupted),
+      (.failed, .failed), (.interrupted, .interrupted), (.rateLimited, .rateLimited),
+    ]
+    let first = newStore()
+    let ids = expected.map { stored, _ in
+      let chat = first.createConversation(title: "\(stored)", workingDirectory: "/tmp/w")
+      first.attachRemoteSession("ses_\(stored)", to: chat.id, model: nil)
+      first.setExecutionState(stored, for: chat.id)
+      return chat.id
+    }
+    first.close()
+
+    let second = newStore()
+    for (id, (stored, back)) in zip(ids, expected) {
+      let state = second.conversation(id: id)?.lastKnownState
+      XCTAssertEqual(state, back, "stored \(stored)")
+      XCTAssertFalse(state?.blocksSending ?? true, "stored \(stored) must not hold the composer")
+    }
+  }
+
+  func testAChatStoredWaitingComesBackWithItsCardPutAway() {
+    let first = newStore()
+    let chat = first.createConversation(title: "Asks", workingDirectory: "/tmp/w")
+    first.attachRemoteSession("ses_1", to: chat.id, model: nil)
+    first.appendUserMessage(id: "msg_1", text: "edit it", attachments: [], to: chat.id)
+    first.apply(AgentEventEnvelope(id: "ask", sequence: 1, event: .interactionAsked(
+      PendingInteraction(
+        id: "per_1", conversationID: chat.id, remoteSessionID: "ses_1",
+        kind: .permission(PermissionPrompt(
+          action: "edit", resources: ["App.swift"], savePatterns: [], toolCallID: nil))))))
+    XCTAssertEqual(first.conversation(id: chat.id)?.lastKnownState, .waiting)
+    first.close()
+
+    let second = newStore()
+    XCTAssertEqual(second.conversation(id: chat.id)?.lastKnownState, .interrupted)
+    XCTAssertNil(
+      second.transcript(id: chat.id).openInteraction,
+      "the process that asked is gone; a card nobody can hear must not ask"
+    )
+    XCTAssertEqual(second.transcript(id: chat.id).interactions.first?.resolution, .expired)
+  }
+
   func testACorruptTranscriptCostsOneConversationNotTheApp() {
     let first = newStore()
     let good = first.createConversation(title: "Fine", workingDirectory: "/tmp")

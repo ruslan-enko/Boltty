@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import SwiftUI
 
 @MainActor
 final class BolttyAISettingsModel: ObservableObject {
@@ -95,8 +96,14 @@ final class BolttyAISettingsModel: ObservableObject {
     }
   }
 
-  func usageTint(for agent: AgentId) -> NSColor {
-    mascotLook(for: agent).palette.colors.first ?? .controlAccentColor
+  /// The agent's face gradient, toned to read on the window (`meterInk`).
+  func usageInk(for agent: AgentId) -> [Color] {
+    mascotLook(for: agent).palette.meterInk.map(Color.init(nsColor:))
+  }
+
+  func usageTint(for agent: AgentId) -> Color {
+    let ink = usageInk(for: agent)
+    return ink[ink.count / 2]
   }
 
   // MARK: - Mascots

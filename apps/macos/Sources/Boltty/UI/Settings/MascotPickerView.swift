@@ -66,39 +66,6 @@ struct MascotStill: View {
   }
 }
 
-struct MascotPickerButton: View {
-  @ObservedObject var model: BolttyAISettingsModel
-  let agent: AgentId
-  @State private var isOpen = false
-  @State private var isHovered = false
-
-  var body: some View {
-    let look = model.mascotLook(for: agent)
-    LabeledContent("Mascot") {
-      Button {
-        isOpen.toggle()
-      } label: {
-        HStack(spacing: 8) {
-          MascotStill(look: look, size: 28)
-          Text(look.displayName)
-            .foregroundStyle(.primary)
-          SettingsPopUpIndicator(isHovered: isHovered || isOpen)
-            .padding(.trailing, 3.5)
-        }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(SettingsPressStyle())
-      .onHover { isHovered = $0 }
-      .popover(isPresented: $isOpen, arrowEdge: .trailing) {
-        MascotPickerView(model: model, agent: agent)
-      }
-      .accessibilityLabel("Mascot for \(agent.displayName)")
-      .accessibilityValue(look.displayName)
-      .accessibilityIdentifier("boltty.settings.mascot.\(agent.rawValue)")
-    }
-  }
-}
-
 struct MascotPickerView: View {
   @ObservedObject var model: BolttyAISettingsModel
   let agent: AgentId
@@ -130,7 +97,7 @@ struct MascotPickerView: View {
             cell(
               MascotLook(shape: shape, palette: current.palette, finish: current.finish),
               name: shape.displayName,
-              size: 46, identifier: "shape.\(shape.rawValue)", current: current
+              size: 46, identifier: "shape.\(shape.rawValue)"
             )
           }
         }
@@ -145,7 +112,7 @@ struct MascotPickerView: View {
             cell(
               MascotLook(shape: current.shape, palette: palette, finish: current.finish),
               name: palette.displayName,
-              size: 32, identifier: "gradient.\(palette.id)", current: current
+              size: 32, identifier: "gradient.\(palette.id)"
             )
           }
         }
@@ -160,7 +127,7 @@ struct MascotPickerView: View {
             cell(
               MascotLook(shape: current.shape, palette: current.palette, finish: finish),
               name: finish.displayName,
-              size: 46, identifier: "finish.\(finish.rawValue)", current: current
+              size: 46, identifier: "finish.\(finish.rawValue)"
             )
           }
         }
@@ -169,39 +136,108 @@ struct MascotPickerView: View {
 
       HStack {
         Spacer()
-        Button("Restore Default") {
-          if let standard = MascotRoster.defaultLook(for: agent) {
-            model.chooseMascot(standard, for: agent)
-          }
-        }
-        .disabled(!canReset(current))
-        .accessibilityIdentifier("boltty.settings.mascot.\(agent.rawValue).reset")
+        Button("Restore Default") { model.restoreDefaultMascot(for: agent) }
+          .disabled(!model.canRestoreDefaultMascot(for: agent))
+          .accessibilityIdentifier("boltty.settings.mascot.\(agent.rawValue).reset")
       }
     }
     .padding(20)
     .frame(width: 340)
   }
 
-  private func canReset(_ current: MascotLook) -> Bool {
-    guard let standard = MascotRoster.defaultLook(for: agent), standard != current else {
-      return false
+  private func cell(
+    _ look: MascotLook, name: String, size: CGFloat, identifier: String
+  ) -> some View {
+    MascotChoice(model: model, agent: agent, look: look, name: name, size: size, identifier: identifier)
+  }
+}
+
+/// The face's three choices as rows of a settings form, for the agent's own
+/// page. One cell size throughout, so the three rows line up.
+struct MascotChoiceRows: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  let agent: AgentId
+
+  private static let cellSize: CGFloat = 34
+
+  var body: some View {
+    let current = model.mascotLook(for: agent)
+    row("Shape") {
+      ForEach(MascotShape.allCases) { shape in
+        MascotChoice(
+          model: model, agent: agent,
+          look: MascotLook(shape: shape, palette: current.palette, finish: current.finish),
+          name: shape.displayName, size: Self.cellSize, identifier: "shape.\(shape.rawValue)"
+        )
+      }
     }
-    return model.mascotOwner(of: standard, besides: agent) == nil
+    row("Gradient") {
+      ForEach(MascotPalette.catalog) { palette in
+        MascotChoice(
+          model: model, agent: agent,
+          look: MascotLook(shape: current.shape, palette: palette, finish: current.finish),
+          name: palette.displayName, size: Self.cellSize, identifier: "gradient.\(palette.id)"
+        )
+      }
+    }
+    row("Finish") {
+      ForEach(MascotFinish.allCases) { finish in
+        MascotChoice(
+          model: model, agent: agent,
+          look: MascotLook(shape: current.shape, palette: current.palette, finish: finish),
+          name: finish.displayName, size: Self.cellSize, identifier: "finish.\(finish.rawValue)"
+        )
+      }
+    }
   }
 
-  @ViewBuilder
-  private func cell(
-    _ look: MascotLook, name: String, size: CGFloat, identifier: String, current: MascotLook
-  ) -> some View {
+  /// The name centred on its cells; a LabeledContent sets it at their top.
+  private func row<Cells: View>(_ title: String, @ViewBuilder cells: () -> Cells) -> some View {
+    HStack(spacing: 12) {
+      Text(title)
+      Spacer(minLength: 0)
+      HStack(spacing: 2) { cells() }
+    }
+  }
+}
+
+/// One look to choose: ringed when it is the agent's, faded when another
+/// agent wears it.
+struct MascotChoice: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  let agent: AgentId
+  let look: MascotLook
+  let name: String
+  let size: CGFloat
+  let identifier: String
+
+  var body: some View {
     let owner = model.mascotOwner(of: look, besides: agent)
     MascotCell(
       look: look, name: name, size: size,
-      isChosen: look == current,
+      isChosen: look == model.mascotLook(for: agent),
       takenBy: owner.map(model.name(of:))
     ) {
       model.chooseMascot(look, for: agent)
     }
     .accessibilityIdentifier("boltty.settings.mascot.\(agent.rawValue).\(identifier)")
+  }
+}
+
+extension BolttyAISettingsModel {
+  /// Only when the default differs and no other agent wears it.
+  func canRestoreDefaultMascot(for agent: AgentId) -> Bool {
+    guard let standard = MascotRoster.defaultLook(for: agent), standard != mascotLook(for: agent) else {
+      return false
+    }
+    return mascotOwner(of: standard, besides: agent) == nil
+  }
+
+  func restoreDefaultMascot(for agent: AgentId) {
+    guard canRestoreDefaultMascot(for: agent), let standard = MascotRoster.defaultLook(for: agent) else {
+      return
+    }
+    chooseMascot(standard, for: agent)
   }
 }
 

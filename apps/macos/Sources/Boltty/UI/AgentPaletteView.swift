@@ -357,6 +357,9 @@ final class AgentPaletteView: NSView {
   /// *below* the glass, not a filter on it — the glass bends and frosts it as
   /// it moves; see `VoiceEdgeGlowView`.
   private let voiceGlow = VoiceEdgeGlowView(frame: .zero)
+  /// An open chat's sky, in its agent's colours, over the glass and under
+  /// the transcript; see `AgentBackdropView`.
+  private let backdrop = AgentBackdropView(frame: .zero)
   /// The words being said, inside the listening orb as it grows into a
   /// capsule round them. Over the glass and the orb's
   /// surface, so neither greys them; clipped to the shell by `listeningWordsHost`
@@ -747,8 +750,7 @@ final class AgentPaletteView: NSView {
     promptHost.hasVerticalOverlayForTesting
   }
   /// The shell's wash, which is a different question from the composer's: the
-  /// first screen's prompt ramp, and none in any other state. The
-  /// composer never wears one.
+  /// black ramp in every state but listening. The composer never wears one.
   var surfaceUsesDirectionalGlassOverlayForTesting: Bool {
     surface.hasVerticalOverlayForTesting
   }
@@ -759,8 +761,8 @@ final class AgentPaletteView: NSView {
   var previewCardForTesting: BolttyAIPreviewCard { previewCard }
   var addressedPreviewForTesting: BolttyAISessionPreview? { addressedPreview }
   /// The shell and the composer draw the one shared glass, whatever it
-  /// currently is — in every state but the first screen, whose shell alone
-  /// wears the prompt ramp (`bolttyAIPrompt`).
+  /// currently is — only while listening; in every other state the shell
+  /// wears the black ramp (`bolttyAIPrompt`) over it.
   ///
   /// Deliberately not "they all use material X": the point the palette has to
   /// keep is that the three agree, and pinning the material by name here meant
@@ -2059,7 +2061,13 @@ final class AgentPaletteView: NSView {
         renderAddressee()
       }
     } else {
+      // The same chats under another tab — All, when one agent has them
+      // all — keep their rows, but only All's wear faces, and the list asks
+      // for a row only when it moves.
+      let faces = showsHistoryChrome && activeHistoryAgent == nil
+      for row in rowsByConversation.values { row.setShowsFace(faces) }
       applySelectionHighlight(animated: false)
+      scrollSelectedResultVisible()
     }
 
     // Fade in only when the card is actually appearing. `alphaValue < 1` also
@@ -2079,6 +2087,9 @@ final class AgentPaletteView: NSView {
     guard isAppearing else { return }
     needsLayout = true
     layoutSubtreeIfNeeded()
+    // The rows were placed while the card had no height, when there was no
+    // viewport to keep the chosen one in.
+    scrollSelectedResultVisible()
     revealSurfaceContent()
   }
 
@@ -2141,12 +2152,23 @@ final class AgentPaletteView: NSView {
   private func selectHistoryAgent(_ agent: AgentId?) {
     guard agent != activeHistoryAgent else { return }
     activeHistoryAgent = agent
+    // Another tab is another list, and it starts at its top: the last tab's
+    // scroll kept the new one's first heading under the strip.
+    resultsScroll.contentView.setBoundsOrigin(.zero)
+    resultsScroll.reflectScrolledClipView(resultsScroll.contentView)
     refreshResults(keepingSelection: false)
   }
 
-  /// ←/→: the neighbouring tab, the same way a click on it would choose it.
+  /// ←/→: the neighbouring tab, the same way a click on it would choose it —
+  /// but a keystroke, so a row the new list slides under a resting pointer
+  /// does not take the selection from its top row (`hoverMoved`).
   private func stepHistoryTab(by delta: Int) {
-    selectHistoryAgent(AgentHistory.adjacentTab(to: activeHistoryAgent, by: delta))
+    let agent = AgentHistory.adjacentTab(to: activeHistoryAgent, by: delta)
+    guard agent != activeHistoryAgent else { return }
+    keyboardSelectionPointerAnchor = pointerLocation
+    setResultHoverQuiet(true)
+    selectHistoryAgent(agent)
+    announce(agent?.shortDisplayName ?? "All")
   }
 
   /// First run with no CLI on PATH. Submitting would only produce an error, so
@@ -2528,8 +2550,18 @@ final class AgentPaletteView: NSView {
     highlightResult(at: min(max(selectedResultIndex + delta, 0), resultItems.count - 1))
   }
 
+  /// How many rows Page Up and Page Down step: what the viewport shows clear
+  /// of the strip and the foot, and never less than one.
+  private var resultRowsPerPage: Int {
+    let foot = showsHistoryFoot ? AgentPaletteMetrics.historyFootHeight : 0
+    let clear = resultsScroll.contentView.bounds.height - resultsOverlap - foot
+      - 2 * AgentPaletteMetrics.resultsVerticalInset
+    return max(1, Int(clear / AgentPaletteMetrics.resultsRowHeight))
+  }
+
   /// Moves the keyboard selection to an exact row. Shared by ↑/↓ and by the
-  /// ⌘-digit chords, which land on a row rather than stepping towards one.
+  /// keys that land on a row rather than stepping towards one: the list's
+  /// ends and its pages.
   private func highlightResult(at index: Int) {
     guard resultItems.indices.contains(index), index != selectedResultIndex else { return }
     selectedResultIndex = index
@@ -2540,6 +2572,8 @@ final class AgentPaletteView: NSView {
     setResultHoverQuiet(true)
     applySelectionHighlight(animated: false)
     scrollSelectedResultVisible()
+    // The field keeps focus, so VoiceOver hears of the row only if told.
+    announce(resultItems[index].title)
   }
 
   /// The keyboard has the list: the pointer's wash waits until it moves.
@@ -2550,6 +2584,12 @@ final class AgentPaletteView: NSView {
   /// Keeps the keyboard selection inside the scroll viewport.
   /// Scrolls by the minimum amount, the way Finder and Spotlight do, instead of
   /// recentring the row — and at once, as they do: it answers a keystroke.
+  ///
+  /// **A day's first row brings its heading.** Walked up to, it stood flush
+  /// under the strip with "Today" scrolled away above it, so nothing said
+  /// which day it was. And neither the band under the strip nor the one the
+  /// foot's discs own is where a chosen row may stand: stopped a wall above
+  /// the foot, it sat half dissolved under New Chat.
   private func scrollSelectedResultVisible() {
     guard resultLineIndexByRow.indices.contains(selectedResultIndex) else { return }
     let clipView = resultsScroll.contentView
@@ -2561,17 +2601,28 @@ final class AgentPaletteView: NSView {
 
     // Where the row stands, built or not: one far down the list has no view
     // until this scroll brings it within reach.
-    let rowFrame = resultsStack.frameOfLine(at: resultLineIndexByRow[selectedResultIndex])
+    let line = resultLineIndexByRow[selectedResultIndex]
+    let rowFrame = resultsStack.frameOfLine(at: line)
+    var head = rowFrame
+    if line > 0, case .heading = resultLines[line - 1] {
+      head = resultsStack.frameOfLine(at: line - 1)
+    }
     let visible = clipView.bounds
     guard visible.height > 0 else { return }
 
-    var origin = visible.origin
     let inset = AgentPaletteMetrics.resultsVerticalInset
-    // The band under the strip is not where a chosen row may stand.
-    if rowFrame.minY - inset - resultsOverlap < visible.minY {
-      origin.y = max(0, rowFrame.minY - inset - resultsOverlap)
-    } else if rowFrame.maxY + inset > visible.maxY {
-      origin.y = rowFrame.maxY + inset - visible.height
+    let foot = showsHistoryFoot ? AgentPaletteMetrics.historyFootHeight : 0
+    // The highest the list may stand and still show the row's head, and the
+    // lowest that still shows its foot clear of the discs.
+    let top = max(0, head.minY - inset - resultsOverlap)
+    let bottom = rowFrame.maxY + inset + foot - visible.height
+    var origin = visible.origin
+    if visible.minY > top {
+      origin.y = top
+    } else if visible.minY < bottom {
+      // Never past the head: a viewport too short for the row and its bands
+      // (the shell still growing in) shows its top, not its foot.
+      origin.y = min(top, bottom)
     } else {
       return
     }
@@ -3467,6 +3518,8 @@ final class AgentPaletteView: NSView {
     voiceGlow.translatesAutoresizingMaskIntoConstraints = true
     addSubview(voiceGlow)
     addSubview(surfaceContainer)
+    // Over the glass, not under it: the glass would frost the sky into a wash.
+    addSubview(backdrop)
     // **And the orb on it**: the glass frosts
     // what is under it into a wash, so the listening orb — the gradient and
     // its lit rim — stands over the glass, crisp to its edge, drawn from the
@@ -3612,8 +3665,9 @@ final class AgentPaletteView: NSView {
     let chat = addressedPreview != nil
     applyComposerGlyphSize(chat: chat)
     promptHost.apply(surfaceStyle: chat ? .bolttyAIComposer : .bolttyAI)
-    // The first screen alone wears the black ramp over its glass.
-    applySurfaceStyle(showsInitialPrompt ? .bolttyAIPrompt : .bolttyAI)
+    // The shell wears the black ramp over its glass in every state but
+    // listening, whose orb draws its own dark on top of the glass.
+    applySurfaceStyle(showsCompactListening ? .bolttyAI : .bolttyAIPrompt)
     errorTopToPromptConstraint.constant = AgentPaletteMetrics.errorTopSpacing
     // **A capsule while it is a bar, a rounded rectangle once it is a box.**
     // The mock states both as arbitrary values on one component — 100 at h=36,
@@ -3734,11 +3788,10 @@ final class AgentPaletteView: NSView {
   private var wantedSurfaceStyle = PaletteSurfaceStyle.bolttyAI
   private var surfaceStyleIsScheduled = false
 
-  /// **The black ramp is worn only once the state has settled.** Leaving a
-  /// state for another lays the panel out in between — `collapseResults` and
-  /// `hidePreview` both do — when there is no list and no chat yet, which
-  /// reads as the first screen; applied at once, the ramp would show for
-  /// that one layout and fade out over the chat's glass. Going *to*
+  /// **The black ramp is worn only once the state has settled.** Leaving
+  /// listening lays the panel out in between, and a transient state applied
+  /// at once would show the ramp for that one layout and fade it out over
+  /// the orb. Going *to*
   /// the ramp waits for the end of the turn, by which time a transient has
   /// been corrected and the want is the current style again; going *away*
   /// from it is at once, as the fade is timed to the shell's spring.
@@ -3861,6 +3914,12 @@ final class AgentPaletteView: NSView {
     let curve = surface.renderedCornerCurve
     voiceGlow.surfaceCornerRadius = corner
     voiceGlow.surfaceCornerCurve = curve
+    let agent = addressedPreview?.agent
+    // Read off Settings on every layout, so a choice made there shows the next
+    // time the chat moves; the face only when there is a scene to colour.
+    let chosen = isChat ? ChatBackdrop.chosen(for: agent) : .standard
+    backdrop.show(chosen, palette: chosen == .standard ? .standard : MascotPalette.face(for: agent))
+    backdrop.layOut(in: rect, corner: corner, curve: curve)
     layoutListeningWords(in: rect, corner: corner, curve: curve)
     layoutResizeGrabber(in: rect, corner: corner)
     scrollIndicatorShell = (rect, corner)
@@ -5200,6 +5259,27 @@ extension AgentPaletteView: NSTextViewDelegate {
       stepHistoryTab(by: commandSelector == #selector(moveLeft(_:)) ? -1 : 1)
       return true
     }
+    // The list's ends and its pages: ⌘↑ and Home the first chat, ⌘↓ and End
+    // the last, Page Up and Page Down a viewport's worth. Handed on, they
+    // moved a caret in the field and left a long list to ↑/↓ alone.
+    if addressedPreview == nil, isResultsExpanded, !isShowingInstallHints {
+      switch commandSelector {
+      case #selector(moveToBeginningOfDocument(_:)), #selector(scrollToBeginningOfDocument(_:)):
+        highlightResult(at: 0)
+        return true
+      case #selector(moveToEndOfDocument(_:)), #selector(scrollToEndOfDocument(_:)):
+        highlightResult(at: resultItems.count - 1)
+        return true
+      case #selector(scrollPageUp(_:)), #selector(pageUp(_:)):
+        moveResultSelection(by: -resultRowsPerPage)
+        return true
+      case #selector(scrollPageDown(_:)), #selector(pageDown(_:)):
+        moveResultSelection(by: resultRowsPerPage)
+        return true
+      default:
+        break
+      }
+    }
     if commandSelector == #selector(moveDown(_:)) {
       // Rows first: while the agent is waiting for an answer, ↓ is how you get
       // to it. Only then the old rule.
@@ -5261,9 +5341,12 @@ extension AgentPaletteView: NSTextViewDelegate {
     // field, where the microphone at the end is a selection and not a tab
     // stop. Handing the key back inserted a tab, which reads as several
     // spaces. ⇧Tab is the agent, forward, and one agent still consumes it
-    // so the field gains nothing. A chat and the switcher hand both keys
-    // on. While the composer is away (listening) the key is eaten and moves
+    // so the field gains nothing. A chat hands both keys on. The list eats
+    // them: handed on, Tab typed a tab into the empty field, which turned
+    // the history into a search for it and took the tabs and days away.
+    // While the composer is away (listening) the key is eaten and moves
     // nothing.
+    if isTab || isBacktab, addressedPreview == nil, isResultsExpanded { return true }
     if isTab {
       guard isFirstScreen else { return false }
       if composerIsUp, !isVoiceListening { cycleComposerKey() }

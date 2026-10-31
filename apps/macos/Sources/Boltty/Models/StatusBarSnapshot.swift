@@ -83,7 +83,7 @@ enum BolttyAISessionList {
       return "History could not be read"
     }
     switch conversation.lastKnownState {
-    case .working: return "Working…"
+    case .working: return liveStep(in: transcript) ?? "Working…"
     case .waiting: return "Waiting for you"
     case .failed: return "Stopped with an error"
     case .interrupted: return "Interrupted when Boltty quit"
@@ -94,6 +94,24 @@ enum BolttyAISessionList {
       return conversation.draft.isEmpty ? "No messages yet" : conversation.draft
     }
     return plainPreview(message.plainText, limit: previewLimit)
+  }
+
+  /// What a working chat is doing now, for its row: the step running
+  /// (`AgentActivityGroup.progress`), "Thinking…" while it reasons, or `nil`
+  /// between steps, when the row says "Working…". Read off the turn's own
+  /// reply only: a step the last turn finished is not what it is doing.
+  static func liveStep(in transcript: ConversationTranscript) -> String? {
+    guard let reply = transcript.messages.last, reply.role == .agent,
+          reply.completedAt == nil, let part = reply.parts.last
+    else { return nil }
+    switch part {
+    case .reasoning:
+      return "Thinking…"
+    case let .activity(activity) where activity.state == .running || activity.state == .pending:
+      return AgentActivityGroup.progress(for: activity)
+    default:
+      return nil
+    }
   }
 
   static let rowPreviewLimit = 400

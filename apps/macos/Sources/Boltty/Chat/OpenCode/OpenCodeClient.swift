@@ -11,6 +11,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   ]
 
   private let server: OpenCodeServer
+  /// Boltty's own server for sessions in folders macOS keeps from the background service.
+  private let ownServer: OpenCodeServer
   /// The server's cap: limit=201 answers 400.
   static let messagePageLimit = 200
 
@@ -33,6 +35,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   private var freeModels: Set<String> = []
 
   private var formFields: [String: [OpenCodeDTO.FormRequest.Field]] = [:]
+  /// true: the session runs on `ownServer`. Absent: not yet asked.
+  private var runsOnOwnServer: [String: Bool] = [:]
 
   private let urlSession: URLSession
   private let log = Logger(subsystem: "com.boltty", category: "opencode-client")
@@ -46,9 +50,15 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   private let lock = NSLock()
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var streamTask: Task<Void, Never>?
+  private var ownStreamTask: Task<Void, Never>?
 
-  init(server: OpenCodeServer = OpenCodeServer(), urlSession: URLSession? = nil) {
+  init(
+    server: OpenCodeServer = OpenCodeServer(),
+    ownServer: OpenCodeServer = OpenCodeServer(serviceState: nil),
+    urlSession: URLSession? = nil
+  ) {
     self.server = server
+    self.ownServer = ownServer
     if let urlSession {
       self.urlSession = urlSession
     } else {
@@ -172,15 +182,59 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: nil)
       }
     )
+    let own = await needsOwnServer(directory: directory)
     do {
-      let response: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> =
-        try await post("/api/session", body: body)
+      let response: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await perform(
+        path: "/api/session", method: "POST", body: body, on: own ? ownServer : server
+      )
+      lock.withLock { runsOnOwnServer[response.data.id] = own }
+      if own { startOwnStreamIfNeeded() }
       return info(from: response.data, fallbackDirectory: directory)
     } catch AgentClientError.indeterminate {
       guard !free else { throw AgentClientError.indeterminate("session creation") }
       if let existing = try? await loadSession(id: id) { return existing.info }
       throw AgentClientError.indeterminate("session creation")
     }
+  }
+
+  // MARK: - Which server runs a session
+
+  /// launchd starts the background service, so no app answers for it to macOS's privacy
+  /// checks: it is refused these folders (an empty HTTP 500 on the first prompt). Boltty's own
+  /// server is Boltty's child and reaches whatever Boltty was allowed.
+  static func isPrivacyProtected(_ directory: String, home: String = NSHomeDirectory()) -> Bool {
+    let path = (directory as NSString).standardizingPath
+    if path.hasPrefix("/Volumes/") { return true }
+    let guarded = ["Desktop", "Documents", "Downloads", "Library/Mobile Documents", "Library/CloudStorage"]
+    return guarded.contains { folder in
+      let root = (home as NSString).appendingPathComponent(folder)
+      return path == root || path.hasPrefix(root + "/")
+    }
+  }
+
+  private func needsOwnServer(directory: String) async -> Bool {
+    guard Self.isPrivacyProtected(directory) else { return false }
+    return (try? await server.start())?.isService == true
+  }
+
+  /// A session made in an earlier launch is placed by its folder, read off the record; reading
+  /// it needs no access to the folder.
+  private func server(forSession sessionID: String) async -> OpenCodeServer {
+    if let own = lock.withLock({ runsOnOwnServer[sessionID] }) { return own ? ownServer : server }
+    guard let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try? await perform(
+      path: "/api/session/\(sessionID)", method: "GET", body: Optional<EmptyBody>.none, on: server
+    ) else { return server }
+    let own = await needsOwnServer(directory: session.data.location?.directory ?? NSHomeDirectory())
+    lock.withLock { runsOnOwnServer[sessionID] = own }
+    if own { startOwnStreamIfNeeded() }
+    return own ? ownServer : server
+  }
+
+  static func sessionID(inPath path: String) -> String? {
+    let prefix = "/api/session/"
+    guard path.hasPrefix(prefix) else { return nil }
+    let id = path.dropFirst(prefix.count).prefix { $0 != "/" && $0 != "?" }
+    return id.isEmpty ? nil : String(id)
   }
 
   private func allMessages(sessionID: String) async throws -> [OpenCodeDTO.Message] {
@@ -461,18 +515,38 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   func events() -> AsyncStream<AgentEventEnvelope> {
     AsyncStream { continuation in
+      let server = self.server
       lock.withLock {
         eventContinuation = continuation
         streamTask?.cancel()
-        streamTask = Task { [weak self] in await self?.runEventLoop() }
+        streamTask = Task { [weak self] in await self?.runEventLoop(on: server, reportsConnection: true) }
+        ownStreamTask?.cancel()
+        ownStreamTask = nil
       }
+      if lock.withLock({ runsOnOwnServer.values.contains(true) }) { startOwnStreamIfNeeded() }
       continuation.onTermination = { [weak self] _ in
-        self?.lock.withLock { self?.streamTask?.cancel() }
+        self?.lock.withLock {
+          self?.streamTask?.cancel()
+          self?.ownStreamTask?.cancel()
+          self?.ownStreamTask = nil
+        }
       }
     }
   }
 
-  private func runEventLoop() async {
+  private func startOwnStreamIfNeeded() {
+    let ownServer = self.ownServer
+    lock.withLock {
+      guard eventContinuation != nil, ownStreamTask == nil else { return }
+      ownStreamTask = Task { [weak self] in
+        await self?.runEventLoop(on: ownServer, reportsConnection: false)
+      }
+    }
+  }
+
+  /// The second stream says only "connected", which re-reads every chat; its drops are not the
+  /// provider's connection state.
+  private func runEventLoop(on server: OpenCodeServer, reportsConnection: Bool) async {
     var backoff: UInt64 = 250_000_000
     while !Task.isCancelled {
       do {
@@ -512,13 +586,13 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
           }
           line.removeAll(keepingCapacity: true)
         }
-        emit(AgentEventEnvelope(event: .connection(.reconnecting)))
+        if reportsConnection { emit(AgentEventEnvelope(event: .connection(.reconnecting))) }
       } catch is CancellationError {
         return
       } catch {
         if Task.isCancelled { return }
         log.debug("event stream dropped: \(OpenCodeServer.redact(error.localizedDescription), privacy: .public)")
-        emit(AgentEventEnvelope(event: .connection(.reconnecting)))
+        if reportsConnection { emit(AgentEventEnvelope(event: .connection(.reconnecting))) }
       }
       if Task.isCancelled { return }
       try? await Task.sleep(nanoseconds: backoff)
@@ -933,10 +1007,13 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     lock.withLock {
       streamTask?.cancel()
       streamTask = nil
+      ownStreamTask?.cancel()
+      ownStreamTask = nil
       eventContinuation?.finish()
       eventContinuation = nil
     }
     await server.stop()
+    await ownServer.stop()
   }
 
   // MARK: - HTTP
@@ -964,8 +1041,17 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   private func perform<T: Decodable>(
     path: String,
     method: String,
-    body: (some Encodable)?
+    body: (some Encodable)?,
+    on chosen: OpenCodeServer? = nil
   ) async throws -> T {
+    let server: OpenCodeServer
+    if let chosen {
+      server = chosen
+    } else if let sessionID = Self.sessionID(inPath: path) {
+      server = await self.server(forSession: sessionID)
+    } else {
+      server = self.server
+    }
     let endpoint = try await server.start()
     guard let url = URL(string: endpoint.baseURL.absoluteString + path) else {
       throw AgentClientError.transport("bad path \(path)")

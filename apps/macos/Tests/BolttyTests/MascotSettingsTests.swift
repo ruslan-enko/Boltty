@@ -78,12 +78,13 @@ final class MascotSettingsTests: XCTestCase {
     XCTAssertEqual(model.mascotLook(for: .codex), claudes)
   }
 
-  func testTheUsageBarWearsTheColourOfTheFace() {
+  func testTheUsageBarWearsTheColourOfTheFace() throws {
     let (model, _) = makeModel()
     model.chooseMascot(look(.orb, "solar"), for: .grok)
+    let ink = try XCTUnwrap(MascotPalette.palette(withID: "solar")).meterInk
     XCTAssertEqual(
-      model.usageTint(for: .grok).usingColorSpace(.sRGB),
-      MascotPalette.palette(withID: "solar")?.colors.first?.usingColorSpace(.sRGB)
+      NSColor(model.usageTint(for: .grok)).usingColorSpace(.sRGB),
+      ink[ink.count / 2].usingColorSpace(.sRGB)
     )
   }
 

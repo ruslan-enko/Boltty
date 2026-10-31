@@ -89,6 +89,7 @@
 		409342C93BB1824A43A3EF4E /* run-2.wav in Resources */ = {isa = PBXBuildFile; fileRef = C4D142DE3586A12D05719764 /* run-2.wav */; };
 		41FF2400022B1CD1B7845EDB /* SpeechOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B6B43374861CE309AECEB4A /* SpeechOutput.swift */; };
 		42B0B922FA91D11C6F05123A /* AntigravityPermissionGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A299DF79ADD19AAC14F19AB /* AntigravityPermissionGateTests.swift */; };
+		43485201004FB7EE50F08A63 /* ChatBackdropPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5634ED61530B110CEDA470D /* ChatBackdropPicker.swift */; };
 		443426B97717344E279F35B5 /* AskBolttyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C2C8319900BA8E79740663C /* AskBolttyController.swift */; };
 		44519CBA6F6B458A440FA7FC /* ChipInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856042606A5FADC1A66430D3 /* ChipInteractionTests.swift */; };
 		45D2B597E0E6F9AC5865137A /* SettingsFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C5FF8F1D96DF8A275D81A4 /* SettingsFormView.swift */; };
@@ -126,6 +127,7 @@
 		5CB6CD1183321DB21E54E8E1 /* SettingsPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74892E151D851D467D5FFC4D /* SettingsPages.swift */; };
 		5D769BD2E860E821CCBAA4D0 /* NotchRowContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51652F32D2261C47F0A5E07 /* NotchRowContactSheet.swift */; };
 		5E2869331609806FF60E6EA1 /* AskBolttyTrailLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AEAD3F4A3B784F67FA6391 /* AskBolttyTrailLayer.swift */; };
+		5EA7F129F0A5C8D1B86FF496 /* ChatBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015093B9A9DA564E415717BD /* ChatBackdrop.swift */; };
 		5EE3E22D9C4712510E57EA58 /* WorkingDirectoryChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5738DE8A849C0A21AE992D98 /* WorkingDirectoryChipView.swift */; };
 		5F47B4ED75367E35A211729C /* GlobalHotkeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CAF40AE412ED92E35DB5EAF /* GlobalHotkeyServiceTests.swift */; };
 		6080D87D1E8BDC54AC4780BA /* PaletteCapsuleButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D1E4589B3E547086AF5501 /* PaletteCapsuleButton.swift */; };
@@ -213,6 +215,7 @@
 		A552B47AC21809235379BC7E /* hum-1.wav in Resources */ = {isa = PBXBuildFile; fileRef = B73F61F021D50126A770FE26 /* hum-1.wav */; };
 		A59520A77EA557293E783D91 /* PasteboardIngest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B157BBF9D937DF9C158156C /* PasteboardIngest.swift */; };
 		A5FADEAF3A918BFBAA7697AB /* VoiceGlowPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEB83C551DACCB7DC0CB8CA /* VoiceGlowPipelineTests.swift */; };
+		A611F0B60F3449179C92E78A /* AgentBackdropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 518C0C9E2914964246021A32 /* AgentBackdropView.swift */; };
 		A7E7B892C781F19376980B74 /* AgentPaletteMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A350C105B7036568E82232E /* AgentPaletteMetrics.swift */; };
 		A7EEF083306E96D90CC93CCF /* PasteboardIngestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31424135CAA4868325FC966 /* PasteboardIngestTests.swift */; };
 		A81C64CB7C87D5453A531E91 /* MascotMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10820804F29614BD56F8817A /* MascotMotion.swift */; };
@@ -272,6 +275,7 @@
 		D7AE32A05B6BE13374566949 /* OneShotCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD07F0B7F23C3598F6D2273 /* OneShotCommandTests.swift */; };
 		D832CE3FB8EB1648F0838074 /* MascotPaletteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB36D576C2E5BF8F96D68A1 /* MascotPaletteTests.swift */; };
 		D87DD9479C11AE4C0DEAA055 /* AgentPaletteGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF7563E3D54F24804BE22E5 /* AgentPaletteGeometryTests.swift */; };
+		DA7F23D9A6E253BBA200B142 /* AgentBackdropShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 0655C4E4BC491597015720AC /* AgentBackdropShaders.metal */; };
 		DA8D224E1F403854D40B37F6 /* PermissionSentenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393228B9A8992F4F855B71C3 /* PermissionSentenceTests.swift */; };
 		DA92EDBEDB3F59573992366E /* PaletteIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 548FFEAEEA2DED98A9BF86C2 /* PaletteIconButton.swift */; };
 		DC43D70B4D0912C2F64E8C30 /* FakeAgentClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C61F01566EE6EA57450C51 /* FakeAgentClient.swift */; };
@@ -332,10 +336,12 @@
 		00894897FE655EBA2F6100AE /* CodexRolloutTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexRolloutTranscript.swift; sourceTree = "<group>"; };
 		00B3BEEE3EF8B26671FBD929 /* show-music.m4a */ = {isa = PBXFileReference; path = "show-music.m4a"; sourceTree = "<group>"; };
 		00FE8E7345E352E0598531BE /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		015093B9A9DA564E415717BD /* ChatBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBackdrop.swift; sourceTree = "<group>"; };
 		02C0F92311D62750D24F18B5 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		0428A2C9958A073A1D04E949 /* GrokHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokHistoryTests.swift; sourceTree = "<group>"; };
 		04F8311C32B93655D0F83F14 /* PaletteGlassCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteGlassCircle.swift; sourceTree = "<group>"; };
 		05E5E427F639DAE032007247 /* AgentHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentHistoryTests.swift; sourceTree = "<group>"; };
+		0655C4E4BC491597015720AC /* AgentBackdropShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = AgentBackdropShaders.metal; sourceTree = "<group>"; };
 		068165A64D1E6AF72F7426A7 /* send-1.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "send-1.wav"; sourceTree = "<group>"; };
 		0759A99CAA6A433378692370 /* AgentPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteView.swift; sourceTree = "<group>"; };
 		07D4A5FF18FADB3E87D71590 /* InterfaceSoundsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceSoundsTests.swift; sourceTree = "<group>"; };
@@ -441,6 +447,7 @@
 		4D8AEA719AFE93CF8E30415A /* AntigravityClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityClientTests.swift; sourceTree = "<group>"; };
 		4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAISettingsView.swift; sourceTree = "<group>"; };
 		5115B25E92F854FAF9E90026 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		518C0C9E2914964246021A32 /* AgentBackdropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentBackdropView.swift; sourceTree = "<group>"; };
 		5329A54E7D125C2DCCC9416E /* MascotSnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotSnapshotCache.swift; sourceTree = "<group>"; };
 		54017E79AFF01185941AF159 /* BolttyTypeface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyTypeface.swift; sourceTree = "<group>"; };
 		548FFEAEEA2DED98A9BF86C2 /* PaletteIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteIconButton.swift; sourceTree = "<group>"; };
@@ -502,6 +509,7 @@
 		8342FE0B6C10909A74ADF6FB /* BilingualTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BilingualTranscript.swift; sourceTree = "<group>"; };
 		856042606A5FADC1A66430D3 /* ChipInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChipInteractionTests.swift; sourceTree = "<group>"; };
 		8578BB6E4B097B0EB624895A /* WorkingDirectoryChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryChip.swift; sourceTree = "<group>"; };
+		85DEA5DA5BEF40F8F036330D /* AgentBackdropUniforms.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AgentBackdropUniforms.h; sourceTree = "<group>"; };
 		85E0E7350469D9D6334B0BFC /* PasteboardImageIngestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardImageIngestTests.swift; sourceTree = "<group>"; };
 		8684AE496DE5161D82AF11C8 /* replay-cli.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "replay-cli.py"; sourceTree = "<group>"; };
 		86DEAF2B60E552AFC92614FC /* VoiceDictationLevelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDictationLevelTests.swift; sourceTree = "<group>"; };
@@ -582,6 +590,7 @@
 		C4B173D9F2280D017ACC3F0A /* StatusBarIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarIconRenderer.swift; sourceTree = "<group>"; };
 		C4D142DE3586A12D05719764 /* run-2.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "run-2.wav"; sourceTree = "<group>"; };
 		C504CC00C75BF69BA78B4124 /* PaletteEffectsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteEffectsTests.swift; sourceTree = "<group>"; };
+		C5634ED61530B110CEDA470D /* ChatBackdropPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBackdropPicker.swift; sourceTree = "<group>"; };
 		C5E43CFF2C81CBBA5795DFF4 /* AgentRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRegistryTests.swift; sourceTree = "<group>"; };
 		C5F02A3E94F719F02F6B6795 /* SpokenTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpokenTextTests.swift; sourceTree = "<group>"; };
 		C707DA5487FD08582E16A8D6 /* DictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationEngine.swift; sourceTree = "<group>"; };
@@ -674,6 +683,16 @@
 				34599F4861836B4D26BCDEF2 /* whoosh-5.wav */,
 			);
 			path = Sounds;
+			sourceTree = "<group>";
+		};
+		361B0049D876B86911F1B918 /* Backdrop */ = {
+			isa = PBXGroup;
+			children = (
+				0655C4E4BC491597015720AC /* AgentBackdropShaders.metal */,
+				85DEA5DA5BEF40F8F036330D /* AgentBackdropUniforms.h */,
+				518C0C9E2914964246021A32 /* AgentBackdropView.swift */,
+			);
+			path = Backdrop;
 			sourceTree = "<group>";
 		};
 		379478758BF23FE1B576B257 /* Products */ = {
@@ -937,6 +956,7 @@
 				F74D9A4C3F74819F91FBD107 /* BolttyAIAnnouncement.swift */,
 				2A41277421C7FEF2E94156F0 /* BolttyAIFollowUp.swift */,
 				CE2CE768A48E00E96B6AD57D /* BuiltInKeyCatalog.swift */,
+				015093B9A9DA564E415717BD /* ChatBackdrop.swift */,
 				4352A75AF91BCAE69E82E60F /* DictationLanguage.swift */,
 				C0DC676CFC8F17C526B963FB /* GitRepository.swift */,
 				62577DE382EAB09C90865567 /* HexColor.swift */,
@@ -1027,6 +1047,7 @@
 				7B3DF727888637BF7A2BDC30 /* AskBolttySettings.swift */,
 				453CE9624DF49865DD80F707 /* BolttyAISettingsModel.swift */,
 				4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */,
+				C5634ED61530B110CEDA470D /* ChatBackdropPicker.swift */,
 				6DC4384CB1C713DF2697CFFE /* HotkeyRecorderField.swift */,
 				3E6CE8FCF46B26A25BFFEEC8 /* MascotPickerView.swift */,
 				1CAB907A495E0F0B078F6AC7 /* SettingsChrome.swift */,
@@ -1112,6 +1133,7 @@
 			isa = PBXGroup;
 			children = (
 				A0072E386D6A9C20798A53FA /* Appearance */,
+				361B0049D876B86911F1B918 /* Backdrop */,
 				DBA0F5833EE52443E7AF2CAA /* Effects */,
 				6983B1B8166DA2898470AE03 /* Prompt */,
 				BBBA20580776C25C7DDE83F8 /* Settings */,
@@ -1368,6 +1390,8 @@
 				388FCFA50E6719BBB8D65B38 /* AccessPermissions.swift in Sources */,
 				B56C595B8C6FE0F58C820422 /* AccessPermissionsWindow.swift in Sources */,
 				EC9D89EF3A7258F92AD952F5 /* Agent.swift in Sources */,
+				DA7F23D9A6E253BBA200B142 /* AgentBackdropShaders.metal in Sources */,
+				A611F0B60F3449179C92E78A /* AgentBackdropView.swift in Sources */,
 				F60C9DC16F4776AF2BB2C00F /* AgentCapabilities.swift in Sources */,
 				4CFCE470327D9D83B4D544FB /* AgentCatalogService.swift in Sources */,
 				0F5ACE9A1DAD21654EE078D9 /* AgentClient.swift in Sources */,
@@ -1421,6 +1445,8 @@
 				4EFD58C24FCD339D8BD93022 /* BolttyShortcutRouter.m in Sources */,
 				ED9231FBA48DB24F8C51CDD6 /* BolttyTypeface.swift in Sources */,
 				0FBBE1A74F66B84997D60049 /* BuiltInKeyCatalog.swift in Sources */,
+				5EA7F129F0A5C8D1B86FF496 /* ChatBackdrop.swift in Sources */,
+				43485201004FB7EE50F08A63 /* ChatBackdropPicker.swift in Sources */,
 				7DDE39E53BDA5F6AE37BE508 /* ChatWorkspaceCoordinator.swift in Sources */,
 				01C5BB5EED979C52F8F47D4D /* ChipEntranceAnimator.swift in Sources */,
 				903984B004A236DA6B4EED46 /* ClaudeCodeClient.swift in Sources */,

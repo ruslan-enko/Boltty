@@ -245,6 +245,101 @@ final class ConversationEngineTests: XCTestCase {
     )
   }
 
+  func testAnUnconfirmedSendTheRecordShowsRunningStaysWorking() async throws {
+    let id = newConversation()
+    await engine.send(text: "first", in: id)
+    let remote = try XCTUnwrap(store.conversation(id: id)?.remoteSessionID)
+    store.setExecutionState(.idle, for: id)
+    client.sendError = .indeterminate("timed out")
+    client.existingMessagesError = .transport("no answer")
+    client.snapshots[remote] = snapshot(remote: remote, state: .working)
+
+    let accepted = await engine.send(text: "second", in: id)
+
+    XCTAssertTrue(accepted)
+    XCTAssertEqual(
+      store.conversation(id: id)?.lastKnownState, .working,
+      "it landed and runs: idle would invite a second send into a live turn"
+    )
+    client.sendError = nil
+    let again = await engine.send(text: "third", in: id)
+    XCTAssertFalse(again)
+  }
+
+  func testAnUnconfirmedSendWithNoRecordLetsTheChatGo() async throws {
+    let id = newConversation()
+    await engine.send(text: "first", in: id)
+    store.setExecutionState(.idle, for: id)
+    client.sendError = .indeterminate("timed out")
+    client.existingMessagesError = .transport("no answer")
+    client.loadSessionError = .transport("no answer")
+
+    await engine.send(text: "second", in: id)
+
+    XCTAssertEqual(
+      store.conversation(id: id)?.lastKnownState, .idle,
+      "with no way to know, the chat is not held hostage"
+    )
+    XCTAssertNotNil(store.conversation(id: id)?.remoteSessionID, "a read that failed forgets nothing")
+  }
+
+  // MARK: - Quitting
+
+  private func runningChats(_ count: Int) async throws -> [String] {
+    var remotes: [String] = []
+    for index in 0..<count {
+      let id = newConversation()
+      await engine.send(text: "job \(index)", in: id)
+      remotes.append(try XCTUnwrap(store.conversation(id: id)?.remoteSessionID))
+    }
+    return remotes
+  }
+
+  func testQuitWaitsForEveryRunningStopNotTheFirst() async throws {
+    let remotes = try await runningChats(3)
+    client.stopDelays = [remotes[1]: 0.05, remotes[2]: 0.1]
+
+    await engine.requestStopForAll(timeout: 3)
+
+    XCTAssertEqual(
+      Set(client.stopped), Set(remotes),
+      "a turn on the person's own OpenCode service outlives Boltty if its stop is cut short"
+    )
+  }
+
+  func testQuitDoesNotWaitPastItsDeadline() async throws {
+    let remotes = try await runningChats(2)
+    client.stopDelays = [remotes[1]: 60]
+    let started = Date()
+
+    await engine.requestStopForAll(timeout: 0.2)
+
+    XCTAssertLessThan(Date().timeIntervalSince(started), 2, "a stop that never answers cannot hold the quit")
+    XCTAssertEqual(client.stopped, [remotes[0]])
+  }
+
+  // MARK: - A second copy
+
+  func testASecondCopyStartsNoWork() async throws {
+    let second = ConversationStore(persistence: ConversationPersistence(
+      root: root, trash: { try FileManager.default.removeItem(at: $0) }))
+    XCTAssertTrue(second.isReadOnly, "the first store holds the lock")
+    let secondEngine = ConversationEngine(store: second, client: client)
+    let id = second.createConversation(title: "New conversation", workingDirectory: "/tmp").id
+
+    let sent = await secondEngine.send(text: "hello", in: id)
+
+    XCTAssertFalse(sent, "work started here would be lost: nothing of it is saved")
+    XCTAssertTrue(client.createdSessions.isEmpty)
+    XCTAssertTrue(client.sentMessages.isEmpty)
+    XCTAssertEqual(secondEngine.notices[id]?.text, ConversationEngine.secondCopyRefusal)
+    do {
+      _ = try await secondEngine.ensureRemoteSession(for: id)
+      XCTFail("Ask Boltty's warm-up must not start a session either")
+    } catch {}
+    XCTAssertTrue(client.createdSessions.isEmpty)
+  }
+
   func testAConversationThatIsWorkingRefusesANewSend() async {
     let id = newConversation()
     await engine.send(text: "first", in: id)

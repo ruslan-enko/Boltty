@@ -13,7 +13,7 @@ struct BolttyAISettingsView: View {
       page
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: SettingsSurfacePalette.background).ignoresSafeArea())
-        .navigationTitle(navigation.current.title)
+        .navigationTitle(navigation.title)
         .toolbar { history }
     }
     .bolttyInterfaceTypography()
@@ -46,7 +46,9 @@ struct BolttyAISettingsView: View {
     .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 280)
     .onAppear { selection = navigation.current }
     .onChange(of: selection) { _, page in
-      if let page { navigation.open(page) }
+      // Following navigation (back, or the first selection) must not push
+      // the page's top over an agent's page.
+      if let page, page != navigation.current { navigation.open(page) }
     }
     .onChange(of: navigation.current) { _, page in
       if selection != page { selection = page }
@@ -57,7 +59,7 @@ struct BolttyAISettingsView: View {
   private var page: some View {
     switch navigation.current {
     case .general: GeneralSettingsPage(model: model)
-    case .agents: AgentsSettingsPage(model: model)
+    case .agents: AgentsSettingsPage(model: model, navigation: navigation)
     case .usage: UsageSettingsPage(model: model)
     case .voice: VoiceSettingsPage(model: model)
     case .askBoltty: AskBolttySettingsPage(model: model)
