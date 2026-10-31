@@ -50,8 +50,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boltty.app
         PRODUCT_NAME: Boltty
-        MARKETING_VERSION: "0.2.6"
-        CURRENT_PROJECT_VERSION: "9"
+        MARKETING_VERSION: "0.2.7"
+        CURRENT_PROJECT_VERSION: "10"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Boltty
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools

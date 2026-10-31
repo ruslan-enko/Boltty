@@ -2,6 +2,33 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.7
+
+**Boltty AI**
+- An open chat can wear a backdrop, chosen per agent in Settings: Standard
+  glass, Sky, Space or Matrix, each in that agent's colours.
+- Key hints read like Siri's: what you typed, then "— Ask Claude".
+- The chat list shows what a working chat is doing right now ("Reading
+  upscale.py") with a soft shimmer; ↑/↓, ⌘↑/⌘↓ and Page Up/Down move through
+  it without jumping.
+- Auto Mode in the composer is an Ⓐ.
+
+**Agents**
+- OpenCode works in Desktop, Documents, Downloads, iCloud Drive and external
+  drives. Its background service isn't allowed into those folders by macOS,
+  so Boltty runs those chats on its own server.
+
+**Settings**
+- Agents is a list; each agent has its own page with its model, reasoning,
+  permissions and face.
+- Usage meters and charts are drawn in each agent's colours, readable in
+  Light and Dark.
+
+**Fixes**
+- A second copy of Boltty, running read-only, no longer starts chats or
+  changes your shortcut.
+- Quit waits for every running turn to stop.
+
 ## 0.2.6
 
 **Updates**
