@@ -127,15 +127,40 @@ enum UpdateInstaller {
   static let launchGrace: TimeInterval = 2
 
   /// Called first thing at launch: a copy started by `relaunch` waits here
-  /// for the one it replaced to quit.
+  /// for the one it replaced to quit. One that is still there at the deadline
+  /// is stuck (0.2.7 and older hang in their own quit) and is ended, or this
+  /// copy would run beside it read-only.
   static func waitForReplacedCopy(arguments: [String] = CommandLine.arguments) {
     guard let index = arguments.firstIndex(of: waitArgument), index + 1 < arguments.count,
           let pid = pid_t(arguments[index + 1]), pid > 0
     else { return }
-    let deadline = Date().addingTimeInterval(handOverDeadline)
-    while kill(pid, 0) == 0 || errno == EPERM, Date() < deadline {
+    guard !wait(for: pid, seconds: handOverDeadline) else { return }
+    // A pid can be reused; only a process with this one's name is ended. Not
+    // its path: the replaced copy's binary is gone, and it has none.
+    guard let name = Bundle.main.executableURL?.lastPathComponent, self.name(of: pid) == name else { return }
+    kill(pid, SIGTERM)
+    guard !wait(for: pid, seconds: stuckCopyGrace) else { return }
+    kill(pid, SIGKILL)
+    _ = wait(for: pid, seconds: stuckCopyGrace)
+  }
+
+  /// How long a stuck copy is given to go after each signal.
+  static let stuckCopyGrace: TimeInterval = 3
+
+  /// Whether `pid` is gone within `seconds`.
+  private static func wait(for pid: pid_t, seconds: TimeInterval) -> Bool {
+    let deadline = Date().addingTimeInterval(seconds)
+    while kill(pid, 0) == 0 || errno == EPERM {
+      if Date() >= deadline { return false }
       usleep(50_000)
     }
+    return true
+  }
+
+  private static func name(of pid: pid_t) -> String? {
+    var buffer = [CChar](repeating: 0, count: 2 * Int(MAXCOMLEN) + 1)
+    guard proc_name(pid, &buffer, UInt32(buffer.count)) > 0 else { return nil }
+    return String(cString: buffer)
   }
 
   // MARK: - Steps

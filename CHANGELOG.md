@@ -2,6 +2,13 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.8
+
+**Fixes**
+- After installing an update, the old copy of Boltty quits instead of
+  hanging beside the new one. A copy left hanging by an earlier update is
+  closed by the new one, so it no longer starts read-only.
+
 ## 0.2.7
 
 **Boltty AI**
