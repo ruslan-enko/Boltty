@@ -461,25 +461,44 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.speechEngine = newValue ? Self.supertonicEngine : "" } }
   }
 
-  var supertonicState: LocalModelStore.State {
-    localModels?.state(of: .supertonic3) ?? .notInstalled
+  var supertonicState: LocalModelStore.State { modelState(.supertonic3) }
+
+  // MARK: Local models
+
+  func modelState(_ id: LocalVoiceModel.ID) -> LocalModelStore.State {
+    localModels?.state(of: id) ?? .notInstalled
   }
 
-  var supertonicSize: String {
-    let bytes = LocalVoiceCatalog.supertonic3.size
+  func modelSize(_ id: LocalVoiceModel.ID) -> String {
+    let bytes = LocalVoiceCatalog.all.first { $0.id == id }?.size ?? 0
     return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
   }
 
-  func downloadSupertonic() {
+  func download(_ id: LocalVoiceModel.ID) {
     guard let localModels else { return }
-    Task { await localModels.install(.supertonic3) }
+    Task { await localModels.install(id) }
   }
 
-  func cancelSupertonic() { localModels?.cancel(.supertonic3) }
+  func cancelDownload(_ id: LocalVoiceModel.ID) { localModels?.cancel(id) }
 
-  func removeSupertonic() {
-    speech?.stop()
-    localModels?.remove(.supertonic3)
+  func remove(_ id: LocalVoiceModel.ID) {
+    if id == .supertonic3 { speech?.stop() }
+    localModels?.remove(id)
+  }
+
+  // MARK: Parakeet
+
+  static let parakeetEngine = "parakeet"
+
+  /// Parakeet is chosen and here: the second language has no use.
+  var parakeetListens: Bool {
+    usesLocalDictation && modelState(.parakeetUltra) == .ready
+  }
+
+  /// Dictation is Parakeet's where it hears the language.
+  var usesLocalDictation: Bool {
+    get { appModel.settings.dictationEngine == Self.parakeetEngine }
+    set { appModel.updateSettings { $0.dictationEngine = newValue ? Self.parakeetEngine : "" } }
   }
 
   /// Supertonic's presets, as Settings names them.

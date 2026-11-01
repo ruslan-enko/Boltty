@@ -38,6 +38,7 @@ enum DictationEngineError: LocalizedError, Equatable {
   case modelDownloadFailed(String)
   case engineUnavailable
   case startFailed
+  case localModelFailed(String)
 
   var errorDescription: String? {
     switch self {
@@ -51,6 +52,8 @@ enum DictationEngineError: LocalizedError, Equatable {
       "Speech recognition is currently unavailable."
     case .startFailed:
       "Voice input stopped. Please try again."
+    case let .localModelFailed(reason):
+      reason
     }
   }
 }

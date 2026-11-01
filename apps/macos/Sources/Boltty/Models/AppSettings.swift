@@ -15,6 +15,9 @@ struct AppSettings: Equatable, Sendable {
   var dictationLocaleIdentifier: String
   /// A second language dictation listens for beside the first; empty is none.
   var dictationSecondLocaleIdentifier: String
+  /// Who dictates: empty is Apple's recognizers, `parakeet` the local model
+  /// where it hears the dictation language (Apple's elsewhere).
+  var dictationEngine: String
   /// The voice chosen per language code (`en`, `uk`); a language not in it
   /// speaks in the best voice the Mac has for it.
   var speechVoiceByLanguage: [String: String]
@@ -52,6 +55,7 @@ struct AppSettings: Equatable, Sendable {
   private static let legacyBolttyAIHotkeyKey = "boltty.askBolttyHotkey"
   private static let dictationLocaleKey = "boltty.dictationLocale"
   private static let dictationSecondLocaleKey = "boltty.dictationSecondLocale"
+  private static let dictationEngineKey = "boltty.dictation.engine"
   /// What Settings › Voice stored for "Automatic" while Whisper could hear the
   /// language. Apple's engine cannot, and it was the system's language there.
   private static let retiredAutomaticLocale = "automatic"
@@ -85,6 +89,7 @@ struct AppSettings: Equatable, Sendable {
     bolttyAIHotkeyEnabled: Bool = true,
     dictationLocaleIdentifier: String = DictationLanguageCatalog.followSystemIdentifier,
     dictationSecondLocaleIdentifier: String = DictationLanguageCatalog.noSecondLanguageIdentifier,
+    dictationEngine: String = "",
     speechVoiceByLanguage: [String: String] = [:],
     speechRate: Double = 1,
     speechEngine: String = "",
@@ -110,6 +115,7 @@ struct AppSettings: Equatable, Sendable {
     self.mascotSelections = mascotSelections
     self.dictationLocaleIdentifier = dictationLocaleIdentifier
     self.dictationSecondLocaleIdentifier = dictationSecondLocaleIdentifier
+    self.dictationEngine = dictationEngine
     self.speechVoiceByLanguage = speechVoiceByLanguage
     self.speechRate = speechRate
     self.speechEngine = speechEngine
@@ -184,6 +190,7 @@ struct AppSettings: Equatable, Sendable {
       bolttyAIHotkeyEnabled: hotkeyEnabled,
       dictationLocaleIdentifier: dictationLocaleIdentifier,
       dictationSecondLocaleIdentifier: dictationSecondLocaleIdentifier,
+      dictationEngine: defaults.string(forKey: Self.dictationEngineKey) ?? "",
       speechVoiceByLanguage: speechVoiceByLanguage,
       speechRate: speechRate,
       speechEngine: defaults.string(forKey: Self.speechEngineKey) ?? "",
@@ -241,6 +248,7 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(bolttyAIHotkeyIsChosen, forKey: Self.bolttyAIHotkeyChosenKey)
     defaults.set(dictationLocaleIdentifier, forKey: Self.dictationLocaleKey)
     defaults.set(dictationSecondLocaleIdentifier, forKey: Self.dictationSecondLocaleKey)
+    defaults.set(dictationEngine, forKey: Self.dictationEngineKey)
     defaults.set(speechVoiceByLanguage, forKey: Self.speechVoiceByLanguageKey)
     defaults.set(speechRate, forKey: Self.speechRateKey)
     defaults.set(speechEngine, forKey: Self.speechEngineKey)

@@ -700,10 +700,26 @@ final text. A long silence sends, but only after speech was heard.
   reading voice for the Mac's language (stored in `boltty.speech.voiceByLanguage`),
   Automatic being the best installed: quality, then the Mac's reading voices
   before Eloquence and novelty ones (`SpeechVoice.standing`).
-- **Dictation**: Apple's engine only, optional second language as a second
-  recognizer on the same audio (`BilingualDictationEngine`), decided per phrase
-  by confidence (`BilingualTranscript`). `fastResults` lowers confidence, so with
-  two languages the transcriber is built from options.
+- **Dictation**: Apple's engine by default, optional second language as a
+  second recognizer on the same audio (`BilingualDictationEngine`), decided per
+  phrase by confidence (`BilingualTranscript`). `fastResults` lowers
+  confidence, so with two languages the transcriber is built from options.
+- **Parakeet dictation** (`ParakeetDictationEngine`, Settings › Voice ›
+  "Dictate with", `boltty.dictation.engine` = `parakeet`): once downloaded,
+  every take whose dictation language is one of its 25 goes to it
+  (`VoiceDictationService.localEngine`, asked at each take); others stay
+  Apple's. It hears Ukrainian and English in one take, so the second-language
+  picker is hidden, and it needs the microphone only, not Speech Recognition.
+  It reads whole takes: the take so far again every 0.7 s for live words,
+  once more on release for the final text. Own Core ML port
+  (`ParakeetTranscriber`, `ParakeetTDT`): 15 s windows with 1.6 s of sound on
+  each side of what is decoded, the predictor's state carried across. On the
+  owner's 30 takes it matches FluidAudio (WER 14.7 %, CER 10.1 % vs 10.0 %;
+  Apple bilingual 21.8 / 14.0) at ~0.12 s a take, ~600 MB loaded; first load
+  in a new binary 24 s (Core ML compiling), then a fraction of a second.
+  Loaded when chosen (dropped after a minute unused), and 10 minutes after the
+  last take. No Russian letters appeared in Ukrainian takes, so there is no
+  uk/ru filter.
 - **Local voice models** (`LocalModelStore`): Parakeet Ultra (dictation,
   632 MB) and Supertonic-3 (speech, int8 Neural Engine buckets, 268 MB), Core
   ML builds from FluidInference on Hugging Face, run by Boltty's own code — no

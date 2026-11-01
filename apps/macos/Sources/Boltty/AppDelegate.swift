@@ -42,6 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   /// Whether the local voice was chosen when last looked at, so turning it
   /// off reaches the speech output too.
   private var localVoiceWasOn = false
+  /// Parakeet, handed to dictation when Settings chose it and it is here.
+  private let parakeet = ParakeetDictationEngine()
   private var settingsCancellable: AnyCancellable?
   private var cancellables = Set<AnyCancellable>()
   private var shortcutMonitor: Any?
@@ -492,6 +494,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       localVoiceWasOn = on
     }
     .store(in: &cancellables)
+
+    VoiceDictationService.localEngine = { [weak self] in self?.localDictation() }
+    Publishers.CombineLatest(
+      model.$settings.map(\.dictationEngine).removeDuplicates(),
+      localModels.$states.map { $0[.parakeetUltra] == .ready }.removeDuplicates()
+    )
+    .receive(on: DispatchQueue.main)
+    .sink { [weak self] _, _ in
+      guard let self, let model = self.model else { return }
+      let folder = model.settings.dictationEngine == BolttyAISettingsModel.parakeetEngine
+        ? localModels.folder(of: .parakeetUltra) : nil
+      guard folder != parakeet.folder else { return }
+      parakeet.folder = folder
+      parakeet.warm()
+    }
+    .store(in: &cancellables)
+  }
+
+  /// Parakeet when it is chosen, here, and hears the dictation language;
+  /// otherwise Apple's dictation takes the take.
+  private func localDictation() -> DictationEngine? {
+    guard let settings = model?.settings, parakeet.folder != nil,
+          settings.dictationEngine == BolttyAISettingsModel.parakeetEngine
+    else { return nil }
+    let identifier = settings.dictationLocaleIdentifier == DictationLanguageCatalog.followSystemIdentifier
+      ? Locale.current.identifier : settings.dictationLocaleIdentifier
+    return ParakeetDictationEngine.languages.contains(SpeechVoice.code(of: identifier)) ? parakeet : nil
   }
 
   private var appliedHotkey: HotkeyBinding?

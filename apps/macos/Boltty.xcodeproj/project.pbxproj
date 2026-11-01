@@ -99,6 +99,7 @@
 		46D57951B056BEB82244C59D /* done.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8105BCAC2A56EE32F63B3335 /* done.wav */; };
 		48321C4F1C050A5369926BBA /* AgentPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EBE58911EEF98E688619F24 /* AgentPlanTests.swift */; };
 		48D7293C7B0477E8094814DF /* WorkingDirectoryChipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6B0EAE0CBAE353B27A31E2 /* WorkingDirectoryChipTests.swift */; };
+		4BD64532C4C9BC5ADB2C6A21 /* ParakeetDictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D31A8AF459D43CAFB9BC0F5B /* ParakeetDictationEngine.swift */; };
 		4CFA2E5F9DD0D2E831A57BD9 /* AnswerReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = B480B69DC62146AB64331781 /* AnswerReading.swift */; };
 		4CFCE470327D9D83B4D544FB /* AgentCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9193CB515060801FAF1A2BD7 /* AgentCatalogService.swift */; };
 		4D0E2E132D48D93985E60070 /* SupertonicTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD92BE6CFC5155AE0DD1F7C /* SupertonicTextTests.swift */; };
@@ -151,6 +152,7 @@
 		666B6A5C2B50CC895D50C2F7 /* PromptChipPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18D0E89147EC5FDB8DA7198 /* PromptChipPreview.swift */; };
 		6702A38F61B74A0F1D6EC2C4 /* AskBolttyDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ACFE000FA325698D96F2F1 /* AskBolttyDrawing.swift */; };
 		67E3EFC7781FB2FDF2BBF295 /* AgentRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E43CFF2C81CBBA5795DFF4 /* AgentRegistryTests.swift */; };
+		685F0B322DA84944ECF5C67B /* ParakeetTDTTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51DDF230B4DF29DAFFE897CA /* ParakeetTDTTests.swift */; };
 		685FF06981B0B5CCEA0AC1BD /* PromptAttachmentStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD79AF9BBE46205C1197208 /* PromptAttachmentStoreTests.swift */; };
 		68BD432C6457891EA89BC5BC /* SettingsNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3528B9AD49405B290EA785E3 /* SettingsNavigationTests.swift */; };
 		6A3328A88452C2AF98E6521D /* VoiceRecordingControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D15DAD77C3CE856156B67C6 /* VoiceRecordingControls.swift */; };
@@ -188,6 +190,7 @@
 		86F079D01DC285DBD78D2FEC /* WorkingDirectoryResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911EAB2D1501439122B20D6 /* WorkingDirectoryResolver.swift */; };
 		8703D79855A0542A6AAE2EF7 /* AnswerReadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6720FF01A0557277FCD28D8 /* AnswerReadingTests.swift */; };
 		87943558227C1AB3911699BF /* StatusBarIconRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96710DAC0CBC734D37754102 /* StatusBarIconRendererTests.swift */; };
+		879EA1BA90208573024FF72A /* MLArrays.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33DAEE4361F33FEE88584F1 /* MLArrays.swift */; };
 		88A770221A03E5E7AACAFB11 /* InterfaceSoundsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07D4A5FF18FADB3E87D71590 /* InterfaceSoundsTests.swift */; };
 		89B3066E7E9860A698251956 /* ConversationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 751B75F3EE48969055B46F21 /* ConversationEngineTests.swift */; };
 		8A5DBB4CA52BD8E1BA1805AC /* BolttyAISettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453CE9624DF49865DD80F707 /* BolttyAISettingsModel.swift */; };
@@ -219,6 +222,7 @@
 		9E3AF323F5D530EFAE72B970 /* DictationLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4352A75AF91BCAE69E82E60F /* DictationLanguage.swift */; };
 		9F531F022DC478665DCF18E7 /* LocalVoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50DE8B0F1A4E36033E01857 /* LocalVoiceCatalog.swift */; };
 		A23EC100D6ECDD3F22886BAF /* hum-3.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8AA47FD06FC434418911A1F3 /* hum-3.wav */; };
+		A25C8C36D80194BBA7AC4A05 /* ParakeetTDT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFA39871C46A5139ED11782 /* ParakeetTDT.swift */; };
 		A30D243EEEDFD2730FBF6307 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFFE90DB0AF895622BF308C /* LoginItem.swift */; };
 		A457BB588CE225D3B034A513 /* ChipGlass in Resources */ = {isa = PBXBuildFile; fileRef = 721223C7C17BB8CF63B684F2 /* ChipGlass */; };
 		A46A2A69EA180E342A3824D4 /* PaletteActivityContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812E433BEE90F47097100667 /* PaletteActivityContactSheet.swift */; };
@@ -248,6 +252,7 @@
 		B93FCBBA54363F938C743472 /* AskBolttyPointTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC636F3A5CE177349962A68F /* AskBolttyPointTests.swift */; };
 		B9978DEEEDEC8D141ECA03E4 /* ShortcutBindingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45BD1F525E454E09F112799 /* ShortcutBindingStore.swift */; };
 		BA24E0EF23F5027CF0354D28 /* OpenCodeTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618F1C84AB4A26914BE9E308 /* OpenCodeTransportTests.swift */; };
+		BA9DAAB3DB9912C0737D66BD /* ParakeetTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C050D28D03F204E227436FE9 /* ParakeetTranscriber.swift */; };
 		BB228AB293EAB173936FC111 /* MascotShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D6ADE090D4AF8C188208C9 /* MascotShape.swift */; };
 		BC2EFAB5F33BA6352D859000 /* NotchMascotController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B5A46902FC1B2C9FEC926E /* NotchMascotController.swift */; };
 		BD42E1882B6FA9BAFD2F2407 /* BolttyAISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */; };
@@ -461,6 +466,7 @@
 		4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAISettingsView.swift; sourceTree = "<group>"; };
 		5115B25E92F854FAF9E90026 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		518C0C9E2914964246021A32 /* AgentBackdropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentBackdropView.swift; sourceTree = "<group>"; };
+		51DDF230B4DF29DAFFE897CA /* ParakeetTDTTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTDTTests.swift; sourceTree = "<group>"; };
 		5329A54E7D125C2DCCC9416E /* MascotSnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotSnapshotCache.swift; sourceTree = "<group>"; };
 		54017E79AFF01185941AF159 /* BolttyTypeface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyTypeface.swift; sourceTree = "<group>"; };
 		548FFEAEEA2DED98A9BF86C2 /* PaletteIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteIconButton.swift; sourceTree = "<group>"; };
@@ -498,6 +504,7 @@
 		6D666DF783D04D1A4FD1492E /* ScrollEdgeBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollEdgeBlur.swift; sourceTree = "<group>"; };
 		6D8B03A466E5698213704C53 /* AgentPaletteControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteControllerTests.swift; sourceTree = "<group>"; };
 		6DC4384CB1C713DF2697CFFE /* HotkeyRecorderField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderField.swift; sourceTree = "<group>"; };
+		6DFA39871C46A5139ED11782 /* ParakeetTDT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTDT.swift; sourceTree = "<group>"; };
 		6F33EB5E390707BE5445D8DE /* ServerSentEventParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSentEventParser.swift; sourceTree = "<group>"; };
 		6F98E1E94EB5E6C6F9AD9B63 /* AgentFailureReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFailureReport.swift; sourceTree = "<group>"; };
 		714EBB1D5FB1FF38653FDF0D /* AgentPaletteController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteController.swift; sourceTree = "<group>"; };
@@ -605,6 +612,7 @@
 		BB7B592265FEF972E2BC002A /* AskBolttyPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskBolttyPoint.swift; sourceTree = "<group>"; };
 		BBBA0E08F373D6874843EC51 /* PaletteEffectUniforms.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PaletteEffectUniforms.h; sourceTree = "<group>"; };
 		BEB36D576C2E5BF8F96D68A1 /* MascotPaletteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotPaletteTests.swift; sourceTree = "<group>"; };
+		C050D28D03F204E227436FE9 /* ParakeetTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTranscriber.swift; sourceTree = "<group>"; };
 		C09834F7D58DE7A7F5DE453D /* AppPresenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresenceTests.swift; sourceTree = "<group>"; };
 		C0DC676CFC8F17C526B963FB /* GitRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepository.swift; sourceTree = "<group>"; };
 		C1568DBB1B355BCE021C87E2 /* BolttyShortcutRouter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BolttyShortcutRouter.m; sourceTree = "<group>"; };
@@ -631,6 +639,8 @@
 		D1439929FAACA5C20478BB6F /* ShortcutBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutBindingTests.swift; sourceTree = "<group>"; };
 		D168C9012FB83500121E12E9 /* MascotRosterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotRosterTests.swift; sourceTree = "<group>"; };
 		D2D6ADE090D4AF8C188208C9 /* MascotShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotShape.swift; sourceTree = "<group>"; };
+		D31A8AF459D43CAFB9BC0F5B /* ParakeetDictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetDictationEngine.swift; sourceTree = "<group>"; };
+		D33DAEE4361F33FEE88584F1 /* MLArrays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLArrays.swift; sourceTree = "<group>"; };
 		D3C673BD206909601AA84099 /* PaletteAnswerText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteAnswerText.swift; sourceTree = "<group>"; };
 		D41B5A59B33C864E0FCF977B /* DictationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationCatalog.swift; sourceTree = "<group>"; };
 		D577FE3084E3665E32419244 /* VoiceGlowUniforms.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VoiceGlowUniforms.h; sourceTree = "<group>"; };
@@ -707,6 +717,16 @@
 				34599F4861836B4D26BCDEF2 /* whoosh-5.wav */,
 			);
 			path = Sounds;
+			sourceTree = "<group>";
+		};
+		1457A67BBEF54B9C311D9663 /* Parakeet */ = {
+			isa = PBXGroup;
+			children = (
+				D31A8AF459D43CAFB9BC0F5B /* ParakeetDictationEngine.swift */,
+				6DFA39871C46A5139ED11782 /* ParakeetTDT.swift */,
+				C050D28D03F204E227436FE9 /* ParakeetTranscriber.swift */,
+			);
+			path = Parakeet;
 			sourceTree = "<group>";
 		};
 		361B0049D876B86911F1B918 /* Backdrop */ = {
@@ -791,10 +811,12 @@
 		4F82D0E4CF04A59956032025 /* LocalVoice */ = {
 			isa = PBXGroup;
 			children = (
+				1457A67BBEF54B9C311D9663 /* Parakeet */,
 				8D4B44A77FCD24885F2441E0 /* Supertonic */,
 				6A929A8BC8B78AB97BD8B676 /* LocalModelStore.swift */,
 				B50DE8B0F1A4E36033E01857 /* LocalVoiceCatalog.swift */,
 				8D14A88FFF9A8727BA698C6C /* LocalVoiceModel.swift */,
+				D33DAEE4361F33FEE88584F1 /* MLArrays.swift */,
 			);
 			path = LocalVoice;
 			sourceTree = "<group>";
@@ -877,6 +899,7 @@
 				C504CC00C75BF69BA78B4124 /* PaletteEffectsTests.swift */,
 				1E4DD49E64B920778A551453 /* PaletteGlassHostTests.swift */,
 				E4DFD89B92EFD4E04BF3E7CE /* PaletteShadowOnScreen.swift */,
+				51DDF230B4DF29DAFFE897CA /* ParakeetTDTTests.swift */,
 				85E0E7350469D9D6334B0BFC /* PasteboardImageIngestTests.swift */,
 				E31424135CAA4868325FC966 /* PasteboardIngestTests.swift */,
 				393228B9A8992F4F855B71C3 /* PermissionSentenceTests.swift */,
@@ -1542,6 +1565,7 @@
 				9F531F022DC478665DCF18E7 /* LocalVoiceCatalog.swift in Sources */,
 				4FF1229C938A87F3B1302BED /* LocalVoiceModel.swift in Sources */,
 				A30D243EEEDFD2730FBF6307 /* LoginItem.swift in Sources */,
+				879EA1BA90208573024FF72A /* MLArrays.swift in Sources */,
 				85462CFBCBA069294B925FAE /* MascotLook.swift in Sources */,
 				A81C64CB7C87D5453A531E91 /* MascotMotion.swift in Sources */,
 				6F8514381BE7AF7AAE9C8E88 /* MascotPalette.swift in Sources */,
@@ -1574,6 +1598,9 @@
 				55CE1D4E1BB7B1C159083CB1 /* PaletteMessageBlock.swift in Sources */,
 				1157C36AF2DA7CC9C161E6E0 /* PaletteNoticeView.swift in Sources */,
 				32B26A717D4A8F6FE858D0A1 /* PaletteTranscript.swift in Sources */,
+				4BD64532C4C9BC5ADB2C6A21 /* ParakeetDictationEngine.swift in Sources */,
+				A25C8C36D80194BBA7AC4A05 /* ParakeetTDT.swift in Sources */,
+				BA9DAAB3DB9912C0737D66BD /* ParakeetTranscriber.swift in Sources */,
 				A59520A77EA557293E783D91 /* PasteboardIngest.swift in Sources */,
 				B73F6E1B730A5E0F1131AA5D /* PendingInteraction.swift in Sources */,
 				CB638D3B50D0FF5C2F15C0F5 /* PermissionSentence.swift in Sources */,
@@ -1718,6 +1745,7 @@
 				00513CB7FB07CA1C7B1DC1DB /* PaletteEffectsTests.swift in Sources */,
 				C9ABD296E480C075AEA0B998 /* PaletteGlassHostTests.swift in Sources */,
 				E6ACDAE332599FDA577165B5 /* PaletteShadowOnScreen.swift in Sources */,
+				685F0B322DA84944ECF5C67B /* ParakeetTDTTests.swift in Sources */,
 				96B16A1D99BDC167955683A7 /* PasteboardImageIngestTests.swift in Sources */,
 				A7EEF083306E96D90CC93CCF /* PasteboardIngestTests.swift in Sources */,
 				DA8D224E1F403854D40B37F6 /* PermissionSentenceTests.swift in Sources */,

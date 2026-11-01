@@ -97,8 +97,8 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     else { throw Failure.badVoice(name) }
     let voice = Voice(
       name: name,
-      ttl: try Self.floats(style.ttl.data.flatMap { $0.flatMap { $0 } }, shape: style.ttl.dims),
-      dp: try Self.floats(style.dp.data.flatMap { $0.flatMap { $0 } }, shape: style.dp.dims))
+      ttl: try MLArrays.floats(style.ttl.data.flatMap { $0.flatMap { $0 } }, shape: style.ttl.dims),
+      dp: try MLArrays.floats(style.dp.data.flatMap { $0.flatMap { $0 } }, shape: style.dp.dims))
     voices[name] = voice
     return voice
   }
@@ -144,13 +144,13 @@ final class SupertonicSynthesizer: @unchecked Sendable {
   /// window long. `speed` divides the predicted duration.
   func synthesize(tagged: String, voice: Voice, speed: Float) throws -> [Float] {
     let (ids, maskValues) = SupertonicText.encode(tagged, indexer: indexer)
-    let textIDs = try Self.ints(ids, shape: [1, SupertonicText.window])
-    let textMask = try Self.floats(maskValues, shape: [1, 1, SupertonicText.window])
+    let textIDs = try MLArrays.ints(ids, shape: [1, SupertonicText.window])
+    let textMask = try MLArrays.floats(maskValues, shape: [1, 1, SupertonicText.window])
 
     let predicted = try predict("duration predictor", durationPredictor, [
       "text_ids": textIDs, "text_mask": textMask, "style_dp": voice.dp,
     ], output: "duration")
-    let seconds = max(0.05, (Self.values(predicted).first ?? 0) / max(speed, 0.05))
+    let seconds = max(0.05, (MLArrays.values(predicted).first ?? 0) / max(speed, 0.05))
 
     let textEmbedding = try predict("text encoder", textEncoder, [
       "text_ids": textIDs, "text_mask": textMask, "style_ttl": voice.ttl,
@@ -161,27 +161,27 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     guard let bucket = Self.buckets.first(where: { $0 >= length }), let estimator = estimators[bucket]
     else { throw Failure.stage("vector estimator", "\(length) is longer than the longest bucket") }
 
-    var latent = try Self.floats(
+    var latent = try MLArrays.floats(
       Self.noise(channels: channels, length: length, padded: bucket), shape: [1, channels, bucket])
-    let latentMask = try Self.floats(
+    let latentMask = try MLArrays.floats(
       (0..<bucket).map { $0 < length ? 1 : 0 }, shape: [1, 1, bucket])
-    let total = try Self.floats([Float(Self.steps)], shape: [1])
+    let total = try MLArrays.floats([Float(Self.steps)], shape: [1])
     for step in 0..<Self.steps {
       latent = try predict("vector estimator", estimator, [
         "noisy_latent": latent, "text_emb": textEmbedding, "style_ttl": voice.ttl,
         "latent_mask": latentMask, "text_mask": textMask,
-        "current_step": try Self.floats([Float(step)], shape: [1]), "total_step": total,
+        "current_step": try MLArrays.floats([Float(step)], shape: [1]), "total_step": total,
       ], output: "denoised_latent")
       if latent.dataType != .float32 || latent.count != channels * bucket || latent.shape.count != 3 {
-        latent = try Self.floats(Self.values(latent), shape: [1, channels, bucket])
+        latent = try MLArrays.floats(MLArrays.values(latent), shape: [1, channels, bucket])
       }
     }
 
     // The vocoder takes any length: the padding goes before it.
-    let trimmed = try Self.floats(
-      Self.trim(Self.values(latent), channels: channels, from: bucket, to: length),
+    let trimmed = try MLArrays.floats(
+      Self.trim(MLArrays.values(latent), channels: channels, from: bucket, to: length),
       shape: [1, channels, length])
-    let wave = Self.values(try predict("vocoder", vocoder, ["latent": trimmed], output: "wav"))
+    let wave = MLArrays.values(try predict("vocoder", vocoder, ["latent": trimmed], output: "wav"))
     return Array(wave.prefix(min(wave.count, samples)))
   }
 
@@ -200,44 +200,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
       throw failure
     } catch {
       throw Failure.stage(stage, error.localizedDescription)
-    }
-  }
-
-  static func floats(_ values: [Float], shape: [Int]) throws -> MLMultiArray {
-    let array = try MLMultiArray(shape: shape.map(NSNumber.init), dataType: .float32)
-    precondition(array.count == values.count, "\(values.count) values for shape \(shape)")
-    values.withUnsafeBufferPointer { source in
-      array.dataPointer.bindMemory(to: Float.self, capacity: values.count)
-        .update(from: source.baseAddress!, count: values.count)
-    }
-    return array
-  }
-
-  static func ints(_ values: [Int32], shape: [Int]) throws -> MLMultiArray {
-    let array = try MLMultiArray(shape: shape.map(NSNumber.init), dataType: .int32)
-    precondition(array.count == values.count, "\(values.count) values for shape \(shape)")
-    values.withUnsafeBufferPointer { source in
-      array.dataPointer.bindMemory(to: Int32.self, capacity: values.count)
-        .update(from: source.baseAddress!, count: values.count)
-    }
-    return array
-  }
-
-  /// The array's contents as Float, whatever Core ML chose to store.
-  static func values(_ array: MLMultiArray) -> [Float] {
-    let count = array.count
-    switch array.dataType {
-    case .float32:
-      return Array(UnsafeBufferPointer(
-        start: array.dataPointer.bindMemory(to: Float.self, capacity: count), count: count))
-    case .float16:
-      let source = array.dataPointer.bindMemory(to: Float16.self, capacity: count)
-      return (0..<count).map { Float(source[$0]) }
-    case .double:
-      let source = array.dataPointer.bindMemory(to: Double.self, capacity: count)
-      return (0..<count).map { Float(source[$0]) }
-    default:
-      return (0..<count).map { array[$0].floatValue }
     }
   }
 

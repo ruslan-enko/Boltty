@@ -773,12 +773,35 @@ private struct UsageHistoryChart: View {
 
 struct VoiceSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
-  @State private var confirmsRemoval = false
 
   var body: some View {
     SettingsColumnsPage {
+      if model.localModels != nil {
+        Picker("Dictate with:", selection: $model.usesLocalDictation) {
+          Text("Apple Dictation").tag(false)
+          Text("Parakeet (on this Mac)").tag(true)
+        }
+        .pickerStyle(.menu)
+        .fixedSize()
+        .accessibilityIdentifier("boltty.settings.dictationEngine")
+
+        if model.usesLocalDictation {
+          LabeledContent {
+            VStack(alignment: .leading, spacing: 8) {
+              LocalModelStatus(
+                model: model, id: .parakeetUltra, name: "Parakeet",
+                fallback: "Apple Dictation listens")
+              SettingsNote("Hears 25 European languages, Ukrainian and English included, and tells them apart itself, even within a sentence. Downloaded once from Hugging Face; NVIDIA's model, licensed under CC BY 4.0.")
+            }
+            .frame(maxWidth: 320, alignment: .leading)
+          } label: {
+            EmptyView()
+          }
+        }
+      }
+
       Picker(
-        "Dictation language:",
+        model.parakeetListens ? "Other languages:" : "Dictation language:",
         selection: Binding(
           get: { model.dictationLocaleIdentifier },
           set: { identifier in
@@ -798,6 +821,7 @@ struct VoiceSettingsPage: View {
       .accessibilityIdentifier("boltty.settings.dictationLocale")
       .disabled(model.dictationLanguages.isEmpty)
 
+      if !model.parakeetListens {
       Picker(
         "Second language:",
         selection: Binding(
@@ -818,14 +842,17 @@ struct VoiceSettingsPage: View {
       .fixedSize()
       .accessibilityIdentifier("boltty.settings.dictationSecondLocale")
       .disabled(model.dictationLanguages.isEmpty)
+      }
 
       LabeledContent {
         VStack(alignment: .leading, spacing: 8) {
           download
-          if model.dictationSecondLocaleIdentifier != DictationLanguageCatalog.noSecondLanguageIdentifier {
+          if model.parakeetListens {
+            SettingsNote("Parakeet dictates when this language is one of its own; otherwise Apple Dictation listens in it.")
+          } else if model.dictationSecondLocaleIdentifier != DictationLanguageCatalog.noSecondLanguageIdentifier {
             SettingsNote("Both languages listen at once and each phrase is written in the one that heard it. A sentence that changes language halfway stays in one of them.")
           }
-          SettingsNote("Dictation runs entirely on this Mac — nothing is sent to Apple.")
+          SettingsNote("Dictation runs entirely on this Mac: nothing is sent anywhere.")
         }
         .frame(maxWidth: 320, alignment: .leading)
       } label: {
@@ -845,7 +872,9 @@ struct VoiceSettingsPage: View {
           if model.usesLocalVoice {
             LabeledContent {
               VStack(alignment: .leading, spacing: 8) {
-                supertonicStatus
+                LocalModelStatus(
+                  model: model, id: .supertonic3, name: "Supertonic",
+                  fallback: "Mac voices read")
                 SettingsNote("A natural voice for 31 languages, Ukrainian included, that runs on this Mac. Downloaded once from Hugging Face; licensed under BigScience OpenRAIL-M.")
               }
               .frame(maxWidth: 320, alignment: .leading)
@@ -912,55 +941,6 @@ struct VoiceSettingsPage: View {
         } label: {
           EmptyView()
         }
-      }
-    }
-  }
-
-  @ViewBuilder
-  private var supertonicStatus: some View {
-    switch model.supertonicState {
-    case .notInstalled:
-      HStack(spacing: 8) {
-        Button("Download (\(model.supertonicSize))") { model.downloadSupertonic() }
-          .accessibilityIdentifier("boltty.settings.supertonicDownload")
-        Text("Until then, Mac voices read.")
-          .font(BolttyInterfaceTypography.callout)
-          .foregroundStyle(.secondary)
-      }
-    case let .downloading(fraction):
-      HStack(spacing: 8) {
-        ProgressView(value: fraction) {
-          Text("Downloading Supertonic… \(Int(fraction * 100)) %")
-            .font(BolttyInterfaceTypography.callout)
-        }
-        .accessibilityIdentifier("boltty.settings.supertonicProgress")
-        Button("Stop") { model.cancelSupertonic() }
-      }
-    case .preparing:
-      HStack(spacing: 8) {
-        ProgressView().controlSize(.small)
-        Text("Preparing Supertonic for this Mac…")
-          .font(BolttyInterfaceTypography.callout)
-      }
-    case .ready:
-      HStack(spacing: 8) {
-        Label("Downloaded", systemImage: "checkmark.circle.fill")
-          .font(BolttyInterfaceTypography.callout)
-          .foregroundStyle(.secondary)
-        Button("Remove…") { confirmsRemoval = true }
-          .accessibilityIdentifier("boltty.settings.supertonicRemove")
-      }
-      .confirmationDialog(
-        "Remove Supertonic from this Mac?", isPresented: $confirmsRemoval
-      ) {
-        Button("Remove", role: .destructive) { model.removeSupertonic() }
-      } message: {
-        Text("Mac voices read answers until it is downloaded again (\(model.supertonicSize)).")
-      }
-    case let .failed(message):
-      VStack(alignment: .leading, spacing: 6) {
-        SettingsNote(message, color: .red)
-        Button("Try Again") { model.downloadSupertonic() }
       }
     }
   }
@@ -1105,5 +1085,62 @@ struct ShortcutsSettingsPage: View {
       .accessibilityIdentifier("boltty.settings.shortcut.\(shortcut.id)")
     }
     .onHover { hoveredID = $0 ? shortcut.id : (hoveredID == shortcut.id ? nil : hoveredID) }
+  }
+}
+
+/// A local model's row on the Voice page: download, progress, preparing,
+/// ready with Remove…, or what went wrong.
+struct LocalModelStatus: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  let id: LocalVoiceModel.ID
+  let name: String
+  /// What happens until the model is here ("Mac voices read").
+  let fallback: String
+  @State private var confirmsRemoval = false
+
+  var body: some View {
+    switch model.modelState(id) {
+    case .notInstalled:
+      HStack(spacing: 8) {
+        Button("Download (\(model.modelSize(id)))") { model.download(id) }
+          .accessibilityIdentifier("boltty.settings.\(id.rawValue).download")
+        Text("Until then, \(fallback).")
+          .font(BolttyInterfaceTypography.callout)
+          .foregroundStyle(.secondary)
+      }
+    case let .downloading(fraction):
+      HStack(spacing: 8) {
+        ProgressView(value: fraction) {
+          Text("Downloading \(name)… \(Int(fraction * 100)) %")
+            .font(BolttyInterfaceTypography.callout)
+        }
+        .accessibilityIdentifier("boltty.settings.\(id.rawValue).progress")
+        Button("Stop") { model.cancelDownload(id) }
+      }
+    case .preparing:
+      HStack(spacing: 8) {
+        ProgressView().controlSize(.small)
+        Text("Preparing \(name) for this Mac…")
+          .font(BolttyInterfaceTypography.callout)
+      }
+    case .ready:
+      HStack(spacing: 8) {
+        Label("Downloaded", systemImage: "checkmark.circle.fill")
+          .font(BolttyInterfaceTypography.callout)
+          .foregroundStyle(.secondary)
+        Button("Remove…") { confirmsRemoval = true }
+          .accessibilityIdentifier("boltty.settings.\(id.rawValue).remove")
+      }
+      .confirmationDialog("Remove \(name) from this Mac?", isPresented: $confirmsRemoval) {
+        Button("Remove", role: .destructive) { model.remove(id) }
+      } message: {
+        Text("\(fallback) until it is downloaded again (\(model.modelSize(id))).")
+      }
+    case let .failed(message):
+      VStack(alignment: .leading, spacing: 6) {
+        SettingsNote(message, color: .red)
+        Button("Try Again") { model.download(id) }
+      }
+    }
   }
 }
