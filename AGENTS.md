@@ -655,7 +655,12 @@ final text. A long silence sends, but only after speech was heard.
   its own queue).
 - **First run**: a show over a sunset (`SunsetView`, `ShowSpace` maps 1800 × 1169
   slides to the screen; one face carried through every scene; its own clock,
-  `ShowClock`), then the setup card (agents, faces, keys, permissions) on the
+  `ShowClock`). Its beats, each with a caption: the panel under the notch,
+  ⇧Tab walking the agents, a question answered; ↓ to the chat list and its
+  agent's tab; a chart selected and asked about; Ask Boltty in an app,
+  pointing at the menu and drawing on a board; Settings (a face, a backdrop,
+  Usage). Only Boltty's own glass casts shadows, so it stands in front of
+  the made-up apps. Then the setup card (agents, faces, keys, permissions) on the
   panel's glass. `-boltty.replayIntro YES`, `-boltty.skipShow YES`,
   `-boltty.setup.step N` in Debug. Launch with `open`, never the binary from a
   shell (TCC would attribute the request to the shell's app).
