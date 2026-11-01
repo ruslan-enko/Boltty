@@ -371,6 +371,12 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   folder on its record, and the second server's events come on a second stream.
 - The model catalogue is `/api/model` on 2.0 (`/provider` on 1.18); free models
   have `settings.apiKey == "public"`.
+  `GET /api/model/default` names what a session made without a model starts with
+  (2.2.5); that one is the list's default.
+- Reasoning levels are a model's `variants` (`[{id, settings: {reasoningEffort}}]`,
+  2.2.5); the chosen one goes as `model.variant` when the session is made.
+- Auto Mode is Boltty answering `edit` asks "once"; a file outside the folder
+  asks `external_directory` first, and commands still ask.
 - **The free tier refuses a session whose id is not in OpenCode's own
   spelling** (`FreeTierError`, measured 2.0.12–2.0.27). Free-model sessions are
   therefore server-named; minting OpenCode's spelling in

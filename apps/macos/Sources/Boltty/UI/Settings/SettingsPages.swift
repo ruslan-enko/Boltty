@@ -452,7 +452,8 @@ private struct AgentSettingsDetail: View {
           set: { model.setDefaultModel($0.isEmpty ? nil : $0, for: row.agent) }
         )
       ) {
-        Text("Agent default").tag("")
+        Text(row.models.first(where: \.isDefault).map { "Default (\($0.selection.displayName))" } ?? "Agent default")
+          .tag("")
         ForEach(row.models) { option in
           Text(option.selection.displayName).tag(option.selection.modelID)
         }

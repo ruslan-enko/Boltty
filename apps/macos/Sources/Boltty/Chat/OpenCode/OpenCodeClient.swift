@@ -7,7 +7,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
-    .activityHistory, .permissionMessage, .steering
+    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval
   ]
 
   private let server: OpenCodeServer
@@ -31,6 +31,9 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   private var lastSequence: [String: Int] = [:]
   private var allowances = OpenCodeAllowances()
+  /// Sessions in Auto Mode: Boltty answers their `edit` asks "once". OpenCode asks
+  /// `external_directory` first for a file outside the folder, so that still asks.
+  private var autoApproved: Set<String> = []
   private var historyIsAbsent = false
   private var freeModels: Set<String> = []
 
@@ -115,8 +118,13 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   }
 
   private func modelsFromModelRoute() async throws -> [AgentModelOption] {
+    async let fallback: JSONValue? = try? await get("/api/model/default")
     let payload: JSONValue = try await get("/api/model")
     guard let rows = payload["data"]?.arrayValue else { return [] }
+    // What a session made without a model starts with, after the person's own config.
+    let standard = await fallback?["data"]
+    let standardID = standard?["modelID"]?.stringValue ?? standard?["id"]?.stringValue
+    let standardProvider = standard?["providerID"]?.stringValue
     var free: Set<String> = []
     var options: [AgentModelOption] = []
     for row in rows {
@@ -127,14 +135,14 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       if row["settings"]?["apiKey"]?.stringValue == "public" {
         free.insert("\(providerID)/\(id)")
       }
-      options.append(
-        OpenCodeMapper.model(
-          from: OpenCodeDTO.ModelInfo(
-            id: id, providerID: providerID, name: row["name"]?.stringValue
-          ),
-          isDefault: false
-        )
+      var option = OpenCodeMapper.model(
+        from: OpenCodeDTO.ModelInfo(
+          id: id, providerID: providerID, name: row["name"]?.stringValue
+        ),
+        isDefault: id == standardID && providerID == standardProvider
       )
+      option.effortOptions = OpenCodeMapper.efforts(from: row["variants"])
+      options.append(option)
     }
     lock.withLock { freeModels = free }
     return options
@@ -179,7 +187,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       id: free ? nil : id,
       location: OpenCodeDTO.LocationRef(directory: directory, workspaceID: nil),
       model: model.map {
-        OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: nil)
+        OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: options.effort)
       }
     )
     let own = await needsOwnServer(directory: directory)
@@ -187,7 +195,10 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       let response: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await perform(
         path: "/api/session", method: "POST", body: body, on: own ? ownServer : server
       )
-      lock.withLock { runsOnOwnServer[response.data.id] = own }
+      lock.withLock {
+        runsOnOwnServer[response.data.id] = own
+        if options.autoApprove, !options.readOnly { autoApproved.insert(response.data.id) }
+      }
       if own { startOwnStreamIfNeeded() }
       return info(from: response.data, fallbackDirectory: directory)
     } catch AgentClientError.indeterminate {
@@ -389,6 +400,12 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   func stop(sessionID: String) async throws {
     try await postIgnoringResponse("/api/session/\(sessionID)/interrupt", body: EmptyBody())
+  }
+
+  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
+    lock.withLock {
+      if enabled { autoApproved.insert(sessionID) } else { autoApproved.remove(sessionID) }
+    }
   }
 
   // MARK: - Interactions
@@ -616,6 +633,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         let sessionID = ask.remoteSessionID
         let covered = lock.withLock {
           allowances.ask(ask.id, saving: prompt.savePatterns, in: sessionID)
+            || (prompt.action == "edit" && autoApproved.contains(sessionID))
         }
         if covered {
           Task { [weak self] in
