@@ -3402,7 +3402,8 @@ final class AgentPaletteViewTests: XCTestCase {
       state: .finished, body: "Done.", autoMode: true))
     view.layoutSubtreeIfNeeded()
     XCTAssertTrue(view.isAutoModeVisibleForTesting)
-    let button = view.autoModeButtonForTesting.button
+    let button = view.autoModeButtonForTesting
+    XCTAssertEqual(button.title, "Auto", "the word, not a glyph")
     XCTAssertEqual(button.restingTint, ComposerControlGroup.hoverInk, "lit while on")
     XCTAssertEqual(button.accessibilityValue() as? String, "On")
     XCTAssertEqual(button.toolTip, AgentPaletteView.autoModeHelp(on: true, agent: .claude))

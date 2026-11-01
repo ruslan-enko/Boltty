@@ -103,7 +103,7 @@ no adapter; never offer a toggle for them.
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the composer's Ⓐ (`a.circle`, white when on) switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the composer's word **Auto** (white when on) switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -457,13 +457,13 @@ The loop that must keep working:
   **⌘Return** steers where the agent declares `.steering`. **⌘.** stops where it
   declares `.interrupt` or `.terminableTurn`; the Send slot turns into Stop.
 - **A chat's composer foot is two groups.** Left, what shapes the request:
-  + (attach), Ⓐ, folder — the folder last, so a long name moves nothing.
+  + (attach), Auto, folder — the folder last, so a long name moves nothing.
   Right, what is read and pressed: the usage ring, the microphone, Send. Send
   is a white disc with Return in black (the composer's one pure-white fill;
   the glass's fill while there is nothing to send, a filled stop square while
-  it stops). Ⓐ is always the outlined `a.circle`, white when on — never
-  filled. The ring is thin, from twelve o'clock clockwise, in the group's
-  inks. The first screen keeps ring, folder and microphone together on the
+  it stops). Auto Mode is the word "Auto" in the group's inks, white when
+  on — no glyph, never filled. The ring is thin, from twelve o'clock
+  clockwise, in the group's inks. The first screen keeps ring, folder and microphone together on the
   right; the folder's slot moves between the two stacks
   (`placeDirectorySlot`).
 - **Key hints after the typed text** read like Siri's "ds — Ask Siri": an em

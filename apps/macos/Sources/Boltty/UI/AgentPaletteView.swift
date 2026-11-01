@@ -147,23 +147,32 @@ final class AgentPaletteView: NSView {
   /// zero wide when it is not offered.
   private let attachRestSlot = NSView()
   private lazy var attachRestWidth = attachRestSlot.widthAnchor.constraint(equalToConstant: 0)
-  /// The open chat's Auto Mode — the indicator and the switch in one glyph.
-  /// An A in a circle, as a camera's auto mode, always outlined: lit (full
-  /// ink) while Auto Mode is on, at the group's resting ink while every
-  /// permission asks. A filled disc read as a button pressed in rather than
-  /// a mode, and outshone Send. Only in a chat whose agent declares `.autoApproval`
-  /// (`BolttyAISessionPreview.autoMode`), so a switch is never drawn for a
-  /// CLI that would not honour it.
-  private let autoModeButton = GlassCircleButton(
-    symbol: "a.circle",
-    accessibilityDescription: "Auto Mode",
-    diameter: AgentPaletteMetrics.voiceOrbDiameter,
-    pointSize: ComposerControlGroup.pointSize(chat: true),
-    showsGlass: false
-  )
+  /// The open chat's Auto Mode — the indicator and the switch in one word.
+  /// **"Auto", not a glyph**: an A in a circle had to be learned, the word
+  /// says it. Lit (full ink) while Auto Mode is on, at the group's resting
+  /// ink while every permission asks; never filled. Only in a chat whose
+  /// agent declares `.autoApproval` (`BolttyAISessionPreview.autoMode`), so
+  /// a switch is never drawn for a CLI that would not honour it.
+  private let autoModeButton: PaletteIconButton = {
+    let button = PaletteIconButton()
+    button.translatesAutoresizingMaskIntoConstraints = false
+    button.isBordered = false
+    button.bezelStyle = .regularSquare
+    button.imagePosition = .noImage
+    button.title = AgentPaletteView.autoModeWord
+    button.font = AgentPaletteView.autoModeFont
+    return button
+  }()
+  static let autoModeWord = "Auto"
+  /// The folder name's size beside it, at the glyphs' weight.
+  private static let autoModeFont = roundedAppFont(size: AgentPaletteMetrics.typeSecondary, weight: .medium)
+  /// The word's target: its width and the group's gap, as a glyph's is.
+  private static let autoModeTargetWidth = ceil(
+    NSAttributedString(string: autoModeWord, attributes: [.font: autoModeFont]).size().width
+  ) + ComposerControlGroup.gap
   private let autoModeSlot = NSView()
   private lazy var autoModeWidth = autoModeSlot.widthAnchor.constraint(equalToConstant: 0)
-  /// What the glyph last drew — `nil` while it is not offered.
+  /// What the word last drew — `nil` while it is not offered.
   private var shownAutoMode: (on: Bool, agent: AgentId)?
   /// Turns the open chat's Auto Mode on or off.
   var onSetAutoMode: ((UUID, Bool) -> Void)?
@@ -1332,8 +1341,7 @@ final class AgentPaletteView: NSView {
     let mode = composerIsUp && composerGlyphsAreChat ? addressedPreview?.autoMode : nil
     let hidden = mode == nil
     if autoModeButton.isHidden != hidden { autoModeButton.isHidden = hidden }
-    autoModeButton.diameter = composerControlDiameter
-    let width = hidden ? 0 : composerControlDiameter
+    let width = hidden ? 0 : Self.autoModeTargetWidth
     if autoModeWidth.constant != width {
       autoModeWidth.constant = width
       needsLayout = true
@@ -1344,7 +1352,7 @@ final class AgentPaletteView: NSView {
     let wasShown = shownAutoMode?.agent == agent
     shownAutoMode = mode.map { ($0, agent) }
     guard let on = mode else { return }
-    let button = autoModeButton.button
+    let button = autoModeButton
     // A switch the pointer just pressed answers in a beat, not a cut.
     if wasShown, !MotionPreferences.reduceMotion, let layer = button.layer {
       let fade = CATransition()
@@ -1353,7 +1361,6 @@ final class AgentPaletteView: NSView {
       fade.timingFunction = Motion.standardCurve
       layer.add(fade, forKey: "autoMode")
     }
-    button.image = ComposerControlGroup.symbol("a.circle", description: "Auto Mode", chat: true)
     button.restingTint = on ? ComposerControlGroup.hoverInk : ComposerControlGroup.restingInk
     button.toolTip = Self.autoModeHelp(on: on, agent: agent)
     button.setAccessibilityLabel("Auto Mode")
@@ -1380,7 +1387,7 @@ final class AgentPaletteView: NSView {
     onSetAutoMode?(preview.id, !on)
   }
 
-  var autoModeButtonForTesting: GlassCircleButton { autoModeButton }
+  var autoModeButtonForTesting: PaletteIconButton { autoModeButton }
   var isAutoModeVisibleForTesting: Bool { !autoModeButton.isHidden }
   func pressAutoModeForTesting() { autoModeButtonPressed() }
 
@@ -3199,15 +3206,18 @@ final class AgentPaletteView: NSView {
     ])
     autoModeSlot.translatesAutoresizingMaskIntoConstraints = false
     autoModeSlot.addSubview(autoModeButton)
-    autoModeButton.button.target = self
-    autoModeButton.button.action = #selector(autoModeButtonPressed)
-    autoModeButton.button.setAccessibilityIdentifier("boltty.ask.autoMode")
+    autoModeButton.target = self
+    autoModeButton.action = #selector(autoModeButtonPressed)
+    autoModeButton.setAccessibilityIdentifier("boltty.ask.autoMode")
     autoModeButton.isHidden = true
+    // The word fills its slot: a glyph's target, as wide as the word.
     NSLayoutConstraint.activate([
       autoModeWidth,
-      autoModeSlot.heightAnchor.constraint(equalTo: autoModeButton.heightAnchor),
-      autoModeButton.centerXAnchor.constraint(equalTo: autoModeSlot.centerXAnchor),
-      autoModeButton.centerYAnchor.constraint(equalTo: autoModeSlot.centerYAnchor),
+      autoModeSlot.heightAnchor.constraint(equalToConstant: ComposerControlGroup.target),
+      autoModeButton.leadingAnchor.constraint(equalTo: autoModeSlot.leadingAnchor),
+      autoModeButton.trailingAnchor.constraint(equalTo: autoModeSlot.trailingAnchor),
+      autoModeButton.topAnchor.constraint(equalTo: autoModeSlot.topAnchor),
+      autoModeButton.bottomAnchor.constraint(equalTo: autoModeSlot.bottomAnchor),
     ])
     trailingControls.setViews([planRing, directorySlot, micButton, sendSlot], in: .leading)
     // One group on both screens: the same targets and the same three inks.
@@ -3215,7 +3225,7 @@ final class AgentPaletteView: NSView {
     ComposerControlGroup.style(planRing)
     ComposerControlGroup.style(directoryChip)
     ComposerControlGroup.style(attachRestDisc.button)
-    ComposerControlGroup.style(autoModeButton.button)
+    ComposerControlGroup.style(autoModeButton)
     ComposerControlGroup.styleSendDisc(sendButton.button)
     recordingControls.translatesAutoresizingMaskIntoConstraints = false
     recordingControls.isHidden = true
@@ -3228,7 +3238,7 @@ final class AgentPaletteView: NSView {
     }
     promptForeground.addSubview(trailingControls)
     // **A chat's foot is two groups**: on the left what shapes the request —
-    // +, Ⓐ, folder; on the right what is read and pressed — ring,
+    // +, Auto, folder; on the right what is read and pressed — ring,
     // microphone, Send. The +'s ink is the box's one inset from the rim, as
     // the words' is above it. Empty (zero wide) on the first screen.
     leadingControls.orientation = .horizontal
