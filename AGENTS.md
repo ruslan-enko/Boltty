@@ -657,8 +657,10 @@ final text. A long silence sends, but only after speech was heard.
   its own queue).
 - **First run**: a show over a sunset (`SunsetView`, `ShowSpace` maps 1800 × 1169
   slides to the screen; one face carried through every scene; its own clock,
-  `ShowClock`), then the setup card (agents, faces, keys, permissions) on the
-  panel's glass. `-boltty.replayIntro YES`, `-boltty.skipShow YES`,
+  `ShowClock`), then the setup card (agents, faces, keys, voice, permissions) on the
+  panel's glass. The voice step offers Parakeet and Supertonic, both
+  unticked; a ticked one is chosen and downloaded in the background once
+  setup ends (`installSetupVoices`), Apple's engine standing in until then. `-boltty.replayIntro YES`, `-boltty.skipShow YES`,
   `-boltty.setup.step N` in Debug. Launch with `open`, never the binary from a
   shell (TCC would attribute the request to the shell's app).
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,

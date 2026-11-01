@@ -486,6 +486,26 @@ final class BolttyAISettingsModel: ObservableObject {
     localModels?.remove(id)
   }
 
+  /// The local models ticked on the setup card's voice step.
+  @Published private(set) var setupVoices: Set<LocalVoiceModel.ID> = []
+
+  func toggleSetupVoice(_ id: LocalVoiceModel.ID) {
+    if setupVoices.contains(id) { setupVoices.remove(id) } else { setupVoices.insert(id) }
+  }
+
+  /// Chooses each ticked model and downloads it in the background: Apple's
+  /// engine stands in until it is ready, then it takes over by itself.
+  func installSetupVoices() {
+    for id in setupVoices {
+      switch id {
+      case .parakeetUltra: usesLocalDictation = true
+      case .supertonic3: usesLocalVoice = true
+      }
+      download(id)
+    }
+    setupVoices = []
+  }
+
   // MARK: Parakeet
 
   static let parakeetEngine = "parakeet"

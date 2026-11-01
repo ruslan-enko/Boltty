@@ -81,6 +81,12 @@ A few other things it does: chats survive a restart, a face by the notch shows
 what's running, dictation works on-device in two languages, and Settings shows
 how much each agent has been used against its plan limits.
 
+Boltty uses Apple's voices out of the box. If you want, it can download two
+open models that run on your Mac: **Parakeet** for dictation (25 European
+languages, Ukrainian and English mixed in one sentence included) and
+**Supertonic** to read answers aloud (31 languages). Read aloud can also tell
+you how a task went when an agent finishes.
+
 Every agent gets a face of its own, and ↓ keeps your chats, a tab per agent:
 
 <p align="center">
@@ -131,11 +137,14 @@ Boltty collects nothing and has no server. Your prompts go to the agent you
 picked, which talks to its own service exactly as it does from your terminal.
 Chats are stored on your Mac, in a folder you can open from Settings › General.
 The only request Boltty makes on its own is the daily update check to GitHub,
-and you can turn that off.
+and you can turn that off. The local voice models are downloaded from Hugging
+Face only when you ask for them (in setup or Settings › Voice), from a pinned
+version that's checked file by file, and they run entirely on your Mac.
 
 macOS will ask for a few permissions, each only when something needs it:
 
-- **Microphone and Speech Recognition** for dictation (Apple's engine, on-device)
+- **Microphone and Speech Recognition** for dictation (Apple's engine, on-device;
+  Parakeet needs only the microphone)
 - **Screen Recording** to ask about part of the screen
 - **Input Monitoring** for Ask Boltty's held ⌃⌥⌘ chord
 - **Automation (Finder)** to pick up files you've selected in Finder
