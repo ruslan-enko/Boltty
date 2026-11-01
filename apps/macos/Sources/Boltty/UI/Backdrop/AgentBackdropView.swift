@@ -12,13 +12,16 @@ import simd
 /// company with the glass's own. A Metal layer with no sublayers is clipped by
 /// the compositor, so this costs no offscreen pass. Drawn at 20 frames a
 /// second: nothing in it moves fast, and each frame costs a third less.
+///
+/// **The fade is the layer's opacity**, run by Core Animation at the display's
+/// rate. Faded in the shader it moved only when the scene drew, seven steps
+/// over 0.35 s at 20 fps, and the chat's sky arrived late and in jerks.
 @MainActor
 final class AgentBackdropView: MTKView, MTKViewDelegate {
   private let renderer: AgentBackdropRenderer?
   private var palette = MascotPalette.standard
   private var backdrop = ChatBackdrop.standard
   private var clock: CGFloat = 0
-  private var opacity: CGFloat = 0
   private var targetOpacity: CGFloat = 0
   private var lastTick: CFTimeInterval = 0
   private var link: CADisplayLink?
@@ -42,6 +45,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     layer?.isOpaque = false
     layer?.masksToBounds = true
     isHidden = true
+    alphaValue = 0
     setAccessibilityElement(false)
   }
 
@@ -74,7 +78,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
 
   private func syncClock() {
     let onScreen = window?.occlusionState.contains(.visible) == true
-    if onScreen, targetOpacity > 0 || opacity > 0 { startClock() } else { stopClock() }
+    if onScreen, !isHidden { startClock() } else { stopClock() }
   }
 
   /// Shows `backdrop` in `palette`; `.standard` fades the last scene out.
@@ -89,8 +93,39 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     }
     guard target != targetOpacity else { return }
     targetOpacity = target
-    if target > 0 { isHidden = false }
+    if target > 0, isHidden {
+      isHidden = false
+      draw()
+    }
+    fade(to: target)
     syncClock()
+  }
+
+  /// From wherever the last fade had got to, so a chat closed while its sky
+  /// is still arriving turns back without a jump.
+  private func fade(to target: CGFloat) {
+    guard let layer else { return }
+    let from = layer.presentation()?.opacity ?? layer.opacity
+    layer.removeAnimation(forKey: "fade")
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    CATransaction.setCompletionBlock { [weak self] in
+      guard let self, self.targetOpacity <= 0, self.layer?.animation(forKey: "fade") == nil else { return }
+      self.isHidden = true
+      self.stopClock()
+    }
+    alphaValue = target
+    if !MotionPreferences.reduceMotion {
+      let fade = CABasicAnimation(keyPath: "opacity")
+      fade.fromValue = from
+      fade.toValue = Float(target)
+      // In, quick off the mark with the shell's 0.3 s morph; out, the
+      // ordinary step.
+      fade.duration = Motion.scaled(target > 0 ? 0.3 : Motion.standard)
+      fade.timingFunction = target > 0 ? Motion.emphasizedCurve : Motion.standardCurve
+      layer.add(fade, forKey: "fade")
+    }
+    CATransaction.commit()
   }
 
   /// Called by whoever moves the shell, once per frame of its spring, with the
@@ -126,16 +161,9 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     let dt = CGFloat(min(now - lastTick, 0.1))
     lastTick = now
     if !MotionPreferences.reduceMotion { clock += dt }
-    let fade = MotionPreferences.reduceMotion ? 1 : dt / 0.35
-    opacity += max(-fade, min(fade, targetOpacity - opacity))
-    if opacity <= 0, targetOpacity <= 0 {
-      isHidden = true
-      stopClock()
-      return
-    }
-    // Still, once faded in under Reduce Motion: one frame says it all.
-    if MotionPreferences.reduceMotion, opacity == targetOpacity { stopClock() }
     draw()
+    // Still under Reduce Motion: one frame says it all.
+    if MotionPreferences.reduceMotion { stopClock() }
   }
 
   func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -150,7 +178,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       pixelSize: bounds.width > 0 ? bounds.width / sceneScale / max(1, drawableSize.width) : 1,
       backdrop: backdrop,
       clock: clock,
-      opacity: opacity,
+      opacity: 1,
       colors: palette.colors
     )
   }

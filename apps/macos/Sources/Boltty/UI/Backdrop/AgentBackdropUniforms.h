@@ -30,7 +30,7 @@ typedef struct {
   float scene;
   /// Seconds of drift. Frozen under Reduce Motion.
   float clock;
-  /// Overall opacity, including the fade in and out.
+  /// Overall opacity. The live view fades its layer instead and draws at 1.
   float opacity;
   /// sRGB, unpremultiplied; alpha is unused.
   simd_float4 colors[AGENT_BACKDROP_COLOR_COUNT];
