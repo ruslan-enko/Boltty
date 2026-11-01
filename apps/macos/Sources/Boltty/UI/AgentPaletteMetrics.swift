@@ -183,6 +183,10 @@ enum AgentPaletteMetrics {
   /// Return's ink stands at the box's padding.
   static let chatComposerControlsTrailingInset: CGFloat =
     chatComposerControlsPadding - (ComposerControlGroup.target - ComposerControlGroup.glyph) / 2
+  /// Send's disc in from the composer's right rim: its centre where Return's
+  /// ink centre stood, as far in as the icon row's centre is up.
+  static let chatComposerSendDiscInset: CGFloat =
+    chatComposerControlsPadding + ComposerControlGroup.glyph / 2 - ComposerControlGroup.sendDisc / 2
   /// Text to the first glyph's hit target. The frame leaves 10 units of air
   /// between the last letter and the ink, and the target already holds some of
   /// it — a glyph at `restingAttachGlyphPointSize` is ~18pt of ink across — so
@@ -1834,18 +1838,16 @@ enum AgentPaletteMetrics {
   /// a regular-size control at the tag's 13, not a chip-sized pill.
   static let helpActionSpacing: CGFloat = 8
   static let helpActionHeight: CGFloat = 26
-  /// The plan ring: a track of white at 10% — a fill on the glass, not an
-  /// opaque grey, which draws a heavy disc beside the 50% glyphs — and an
-  /// arc in the glyphs' own ink, so the ring reads as one of the group.
-  static let planRingTrack = PaletteInk.fill
+  /// The plan ring: a thin track in the group's disabled ink and an arc in
+  /// its glyphs' own ink (white under the pointer), so the ring reads as one
+  /// of the group. The frames' 3.75-of-18.75 stroke drew a heavy grey donut
+  /// beside glyphs stroked at ~1.5.
+  static let planRingTrack = ComposerControlGroup.disabledInk
   static let planRingInk = ComposerControlGroup.restingInk
   static let planRingDiameter: CGFloat = 20
-  static let planRingStroke: CGFloat = 4
-  /// The frames' stroke against the ring's outer edge: 3.75 of 18.75.
-  static let planRingStrokeRatio: CGFloat = 0.2
-  /// Where the arc starts: the ring's left, running down past the bottom
-  /// (counter-clockwise in AppKit's y-up), as the frames draw it.
-  static let planRingStartAngle: CGFloat = 180
+  static let planRingStroke: CGFloat = 2.5
+  /// The stroke against the ring's outer edge: 2 of a chat's 16.
+  static let planRingStrokeRatio: CGFloat = 0.125
 
   /// Shared worded pill height. Composer icon targets use voiceOrbDiameter.
   static let directoryChipHeight: CGFloat = fromMock(30)
@@ -2052,8 +2054,11 @@ enum PaletteInk {
   static let selectedFill = NSColor.white.withAlphaComponent(0.20)
 }
 
-/// The composer's control group: folder, plan ring, clip, microphone and
-/// Send, in that order, on the initial prompt and in a chat alike.
+/// The composer's control group. The first screen carries ring, folder and
+/// microphone in one row on the right. **A chat splits it in two**: on the
+/// left what the message carries and how and where the agent acts on it —
+/// clip, Auto Mode, folder; on the right what is read and pressed — ring,
+/// microphone, and Send as a disc.
 ///
 /// One description so the two screens cannot drift: the glyphs stand `gap`
 /// apart — targets of glyph + gap that touch, so the air between two glyphs
@@ -2094,6 +2099,36 @@ enum ComposerControlGroup {
   static let restingInk = NSColor.white.withAlphaComponent(0.5)
   static let hoverInk = NSColor.white
   static let disabledInk = NSColor.white.withAlphaComponent(0.2)
+
+  /// Send in a chat: the one primary action on the composer, so the one
+  /// pure-white fill, with the Return glyph in black. Its centre is where
+  /// Return's ink centre stood, which leaves it about concentric with the
+  /// box's corner.
+  static let sendDisc: CGFloat = 28
+  /// From the microphone's target to the disc: with the half-gap the target
+  /// already holds, the group's `gap` from the microphone's ink to the disc.
+  static let sendGap: CGFloat = gap / 2
+  static let sendGlyphPointSize: CGFloat = 12
+  static let sendFill = NSColor.white
+  static let sendHoverFill = NSColor.white.withAlphaComponent(0.85)
+  static let sendInk = NSColor.black
+  /// Nothing to send: the glass's own fill, and the glyph faint on it.
+  static let sendDisabledFill = PaletteInk.fill
+  static let sendDisabledInk = NSColor.white.withAlphaComponent(0.35)
+  /// A glyph inside the disc.
+  static func sendSymbol(_ name: String, description: String) -> NSImage? {
+    NSImage(systemSymbolName: name, accessibilityDescription: description)?
+      .withSymbolConfiguration(.init(pointSize: sendGlyphPointSize, weight: .semibold))
+  }
+
+  /// Dresses the Send disc's glyph. Its fill follows whether it can be
+  /// pressed (`AgentPaletteView.setSendDiscEnabled`).
+  @MainActor
+  static func styleSendDisc(_ button: PaletteIconButton) {
+    button.restingTint = sendInk
+    button.hoverTint = sendInk
+    button.disabledTint = sendDisabledInk
+  }
 
   /// Dresses a bare glyph button in the group's inks.
   @MainActor

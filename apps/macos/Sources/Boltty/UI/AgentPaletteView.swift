@@ -148,9 +148,10 @@ final class AgentPaletteView: NSView {
   private let attachRestSlot = NSView()
   private lazy var attachRestWidth = attachRestSlot.widthAnchor.constraint(equalToConstant: 0)
   /// The open chat's Auto Mode — the indicator and the switch in one glyph.
-  /// An A in a circle, as a camera's auto mode: lit (filled, full ink) while
-  /// Auto Mode is on, at the group's resting ink while every permission
-  /// asks. Only in a chat whose agent declares `.autoApproval`
+  /// An A in a circle, as a camera's auto mode, always outlined: lit (full
+  /// ink) while Auto Mode is on, at the group's resting ink while every
+  /// permission asks. A filled disc read as a button pressed in rather than
+  /// a mode, and outshone Send. Only in a chat whose agent declares `.autoApproval`
   /// (`BolttyAISessionPreview.autoMode`), so a switch is never drawn for a
   /// CLI that would not honour it.
   private let autoModeButton = GlassCircleButton(
@@ -260,10 +261,16 @@ final class AgentPaletteView: NSView {
   /// The microphone disc. While recording it stays put; the pill overlays it
   /// only when the pointer is nearby, so the draft remains fully readable.
   private let trailingControls = NSStackView()
+  /// A chat's foot, left: clip, Auto Mode and folder — what the message
+  /// carries and how and where the agent acts on it. The folder joins it
+  /// from `trailingControls` when the shell becomes a chat
+  /// (`placeDirectorySlot`); the right keeps ring, microphone and Send.
+  private let leadingControls = NSStackView()
+  /// Send, a white disc with Return in it — see `ComposerControlGroup.sendDisc`.
   private let sendButton = GlassCircleButton(
     symbol: "return", accessibilityDescription: "Send message",
-    diameter: AgentPaletteMetrics.voiceOrbDiameter,
-    pointSize: ComposerControlGroup.pointSize(chat: false), showsGlass: false)
+    diameter: ComposerControlGroup.sendDisc,
+    pointSize: ComposerControlGroup.sendGlyphPointSize, weight: .semibold, showsGlass: false)
   private let sendSlot = NSView()
   private lazy var sendSlotWidth = sendSlot.widthAnchor.constraint(equalToConstant: 0)
   var sendButtonForTesting: PaletteIconButton { sendButton.button }
@@ -276,8 +283,8 @@ final class AgentPaletteView: NSView {
   /// the eye already is while waiting. A typed draft takes the slot back —
   /// Enter queues it, and the button has to say what Enter does.
   private var sendSlotStops = false
-  private var returnGlyph = ComposerControlGroup.symbol("return", description: "Send message", chat: false)
-  private var stopGlyph = ComposerControlGroup.symbol("stop", description: "Stop", chat: false)
+  private let returnGlyph = ComposerControlGroup.sendSymbol("return", description: "Send message")
+  private let stopGlyph = ComposerControlGroup.sendSymbol("stop.fill", description: "Stop")
   /// The composer's glyphs at the size of the screen they stand on — 22 on
   /// the first, 16 in a chat (`ComposerControlGroup`). The views travel
   /// between the two, so their symbols are re-made when the screen changes.
@@ -289,9 +296,22 @@ final class AgentPaletteView: NSView {
     directoryChip.setChatSized(chat)
     attachRestDisc.setPointSize(size)
     micButton.restingGlyphPointSize = size
-    returnGlyph = ComposerControlGroup.symbol("return", description: "Send message", chat: chat)
-    stopGlyph = ComposerControlGroup.symbol("stop", description: "Stop", chat: chat)
-    sendButton.setPointSize(size)
+    placeDirectorySlot(inChat: chat)
+  }
+  /// The folder stands between the ring and the microphone on the first
+  /// screen; in a chat it joins the clip and Auto Mode on the left, as part
+  /// of how the chat is set up rather than something pressed. The slot
+  /// moves, not the chip, so the chip keeps its parent.
+  private func placeDirectorySlot(inChat chat: Bool) {
+    let from = chat ? trailingControls : leadingControls
+    guard from.views.contains(directorySlot) else { return }
+    from.removeView(directorySlot)
+    if chat {
+      leadingControls.addView(directorySlot, in: .leading)
+    } else {
+      let afterRing = (trailingControls.views(in: .leading).firstIndex(of: planRing) ?? -1) + 1
+      trailingControls.insertView(directorySlot, at: afterRing, in: .leading)
+    }
   }
   private func syncSendButton() {
     // The words after the draft answer the same state the Send slot does —
@@ -301,30 +321,43 @@ final class AgentPaletteView: NSView {
     // after the words; a chat keeps its Send.
     let visible = composerIsUp && !isVoiceListening && composerGlyphsAreChat
     sendButton.isHidden = !visible
-    sendButton.diameter = composerControlDiameter
-    sendSlotWidth.constant = visible ? composerControlDiameter : 0
+    sendSlotWidth.constant = visible ? ComposerControlGroup.sendDisc : 0
+    trailingControls.setCustomSpacing(visible ? ComposerControlGroup.sendGap : 0, after: micButton)
     let answering = previewCard.pendingQuestion != nil
     let refusing = previewCard.pendingQuestion?.takesWordsAsRefusal == true && draftHasWords
     previewCard.setComposerHasWords(draftHasWords)
     sendSlotStops = stopIsAvailable && !answering && field.draft.isEffectivelyEmpty
     if sendSlotStops {
       sendButton.button.image = stopGlyph
-      sendButton.button.isEnabled = true
+      setSendDiscEnabled(true)
       sendButton.button.toolTip = stopTooltip
       sendButton.button.helpShortcut = "⌘."
       sendButton.button.setAccessibilityLabel("Stop")
-      trailingControls.setCustomSpacing(visible ? trailingControls.spacing : 0, after: micButton)
       return
     }
     sendButton.button.image = returnGlyph
     sendButton.button.setAccessibilityLabel("Send message")
-    sendButton.button.isEnabled = !isVoiceProcessing && (!field.draft.isEffectivelyEmpty || answering)
+    setSendDiscEnabled(!isVoiceProcessing && (!field.draft.isEffectivelyEmpty || answering))
     sendButton.button.toolTip = refusing
       ? (previewCard.pendingQuestion?.kind == .plan ? Self.planChangesHelp : Self.refusalHelp)
       : answering ? "Answer question" : addressedPreview?.isBusy == true
       ? "Queue message — sends when this turn finishes" : "Send message"
     sendButton.button.helpShortcut = "↵"
-    trailingControls.setCustomSpacing(visible ? trailingControls.spacing : 0, after: micButton)
+  }
+  /// The disc is white while Send can be pressed and the glass's quiet fill
+  /// while there is nothing to send — at once: a keystroke is answered, not
+  /// animated.
+  private func setSendDiscEnabled(_ enabled: Bool) {
+    let button = sendButton.button
+    button.isEnabled = enabled
+    let fill = enabled ? ComposerControlGroup.sendFill : ComposerControlGroup.sendDisabledFill
+    button.hoverBackground = enabled ? ComposerControlGroup.sendHoverFill : fill
+    guard button.restingBackground != fill else { return }
+    button.restingBackground = fill
+    if button.isHovered {
+      button.layer?.removeAnimation(forKey: "hoverBackground")
+      button.layer?.backgroundColor = button.hoverBackground.cgColor
+    }
   }
   private let recordingHoverSensor = HoverSensor()
   private var isRecordingControlsRevealed = false
@@ -1283,7 +1316,8 @@ final class AgentPaletteView: NSView {
     // it is a pill as wide as the name (`WorkingDirectoryChipView.slotWidth`).
     let folderWidth: CGFloat = workingDirectory == nil ? 0 : directoryChip.slotWidth
     if directorySlotWidth.constant != folderWidth { directorySlotWidth.constant = folderWidth }
-    trailingControls.setCustomSpacing(folderWidth == 0 ? 0 : trailingControls.spacing, after: directorySlot)
+    let folderStack = composerGlyphsAreChat ? leadingControls : trailingControls
+    folderStack.setCustomSpacing(folderWidth == 0 ? 0 : folderStack.spacing, after: directorySlot)
     syncAutoModeButton()
     let usageHidden = !composerIsUp || !planRing.hasReading
     planRing.chatIsOpen = addressedPreview != nil
@@ -1304,7 +1338,7 @@ final class AgentPaletteView: NSView {
       autoModeWidth.constant = width
       needsLayout = true
     }
-    trailingControls.setCustomSpacing(hidden ? 0 : trailingControls.spacing, after: autoModeSlot)
+    leadingControls.setCustomSpacing(hidden ? 0 : leadingControls.spacing, after: autoModeSlot)
     let agent = addressedPreview?.agent ?? .custom
     guard mode != shownAutoMode?.on || agent != shownAutoMode?.agent else { return }
     let wasShown = shownAutoMode?.agent == agent
@@ -1319,8 +1353,7 @@ final class AgentPaletteView: NSView {
       fade.timingFunction = Motion.standardCurve
       layer.add(fade, forKey: "autoMode")
     }
-    button.image = ComposerControlGroup.symbol(
-      on ? "a.circle.fill" : "a.circle", description: "Auto Mode", chat: true)
+    button.image = ComposerControlGroup.symbol("a.circle", description: "Auto Mode", chat: true)
     button.restingTint = on ? ComposerControlGroup.hoverInk : ComposerControlGroup.restingInk
     button.toolTip = Self.autoModeHelp(on: on, agent: agent)
     button.setAccessibilityLabel("Auto Mode")
@@ -3176,13 +3209,14 @@ final class AgentPaletteView: NSView {
       autoModeButton.centerXAnchor.constraint(equalTo: autoModeSlot.centerXAnchor),
       autoModeButton.centerYAnchor.constraint(equalTo: autoModeSlot.centerYAnchor),
     ])
-    trailingControls.setViews(
-      [planRing, directorySlot, autoModeSlot, micButton, sendSlot], in: .leading)
+    trailingControls.setViews([planRing, directorySlot, micButton, sendSlot], in: .leading)
     // One group on both screens: the same targets and the same three inks.
+    // The ring too: without them it wore a hover wash no glyph beside it had.
+    ComposerControlGroup.style(planRing)
     ComposerControlGroup.style(directoryChip)
     ComposerControlGroup.style(attachRestDisc.button)
     ComposerControlGroup.style(autoModeButton.button)
-    ComposerControlGroup.style(sendButton.button)
+    ComposerControlGroup.styleSendDisc(sendButton.button)
     recordingControls.translatesAutoresizingMaskIntoConstraints = false
     recordingControls.isHidden = true
     recordingControls.alphaValue = 0
@@ -3193,16 +3227,22 @@ final class AgentPaletteView: NSView {
       self?.setRecordingControlsRevealed(hovering, animated: true)
     }
     promptForeground.addSubview(trailingControls)
-    // **The + stands alone at the foot's leading edge**: files come in on
-    // the left, the rest of the group stands on
-    // the right — ring, folder, microphone, Return. Its ink is the box's one
-    // inset from the rim, as the words' is above it.
-    promptForeground.addSubview(attachRestSlot)
+    // **A chat's foot is two groups**: on the left what shapes the request —
+    // +, Ⓐ, folder; on the right what is read and pressed — ring,
+    // microphone, Send. The +'s ink is the box's one inset from the rim, as
+    // the words' is above it. Empty (zero wide) on the first screen.
+    leadingControls.orientation = .horizontal
+    leadingControls.alignment = .centerY
+    leadingControls.spacing = AgentPaletteMetrics.restingControlsSpacing
+    leadingControls.translatesAutoresizingMaskIntoConstraints = false
+    leadingControls.detachesHiddenViews = false
+    leadingControls.setViews([attachRestSlot, autoModeSlot], in: .leading)
+    promptForeground.addSubview(leadingControls)
     NSLayoutConstraint.activate([
-      attachRestSlot.leadingAnchor.constraint(
+      leadingControls.leadingAnchor.constraint(
         equalTo: promptForeground.leadingAnchor,
         constant: AgentPaletteMetrics.chatComposerControlsTrailingInset),
-      attachRestSlot.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
+      leadingControls.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
     ])
     promptForeground.addSubview(recordingHoverSensor)
     promptForeground.addSubview(recordingControls)
@@ -3706,10 +3746,11 @@ final class AgentPaletteView: NSView {
     // chat draft gives its full width to text and puts the icons at the bottom.
     // Recording confirmation stays attached to the microphone in that row.
     let bottomControls = chat && isPromptExpanded
+    // A chat's row ends in Send's disc, which stands by its centre.
     let restingInset = usesExpandedControlLayout
       ? AgentPaletteMetrics.promptTrailingInset
       : chat
-        ? AgentPaletteMetrics.chatComposerControlsTrailingInset
+        ? AgentPaletteMetrics.chatComposerSendDiscInset
         : AgentPaletteMetrics.restingControlsTrailingInset
     controlsTrailing.constant = -restingInset
     // Bare glyphs keep their round hit targets with no gap between them; a
@@ -5112,9 +5153,10 @@ final class AgentPaletteView: NSView {
     attachRestWidth.constant = showsRest ? composerControlDiameter : 0
   }
 
-  /// One width calculation for the icons sharing the field: folder, plan,
-  /// optional attachment, microphone and (in a chat) Send. Hidden slots give
-  /// their width and following gap back to the editor.
+  /// One width calculation for the icons on the right of the field: ring,
+  /// folder (first screen only — a chat's stands on the left), microphone
+  /// and (in a chat) Send. Hidden slots give their width and following gap
+  /// back to the editor.
   /// The room the words leave beside the controls, **as the controls stand
   /// at rest** — whatever recording spreads them to.
   ///
@@ -5125,19 +5167,19 @@ final class AgentPaletteView: NSView {
   /// the ring has no slot.
   private func restingEditorTrailing(chat: Bool) -> CGFloat {
     let inset = chat
-      ? AgentPaletteMetrics.chatComposerControlsTrailingInset
+      ? AgentPaletteMetrics.chatComposerSendDiscInset
       : AgentPaletteMetrics.restingControlsTrailingInset
     let gap = AgentPaletteMetrics.restingControlsSpacing
     let target = composerControlDiameter
-    let folder = directorySlotWidth.constant == 0 ? 0 : directorySlotWidth.constant + gap
+    let folder = chat || directorySlotWidth.constant == 0 ? 0 : directorySlotWidth.constant + gap
     let plan = planRing.hasReading ? target + gap : 0
-    let autoMode = autoModeWidth.constant == 0 ? 0 : target + gap
     // Send stands at rest wherever the glyphs are a chat's (`syncSendButton`).
-    let send = composerIsUp && composerGlyphsAreChat ? target + gap : 0
+    let send = composerIsUp && composerGlyphsAreChat
+      ? ComposerControlGroup.sendGap + ComposerControlGroup.sendDisc : 0
     let words = chat
       ? AgentPaletteMetrics.chatComposerTextControlsGap
       : AgentPaletteMetrics.promptMicTextSpacing
-    return inset + folder + plan + autoMode + target + send + words
+    return inset + folder + plan + target + send + words
   }
 
   var attachControlFrameInPaletteForTesting: CGRect { convert(attachRestDisc.bounds, from: attachRestDisc) }

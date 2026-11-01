@@ -311,6 +311,12 @@ final class PlanUsageRingView: PaletteIconButton {
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+  /// The arc is drawn in the button's tint, so it lights under the pointer
+  /// as the glyphs beside it do.
+  override var contentTintColor: NSColor? {
+    didSet { if contentTintColor != oldValue { needsDisplay = true } }
+  }
+
   func apply(_ usage: AgentUsage?, agent: AgentId?) {
     guard self.usage != usage || self.agent != agent else { return }
     self.usage = usage
@@ -353,7 +359,8 @@ final class PlanUsageRingView: PaletteIconButton {
   override func draw(_ dirtyRect: NSRect) {
     let stroke = ringOuterDiameter * AgentPaletteMetrics.planRingStrokeRatio
     let diameter = ringOuterDiameter - stroke
-    let rect = NSRect(x: bounds.midX - diameter / 2, y: bounds.midY - diameter / 2,
+    let center = NSPoint(x: bounds.midX, y: bounds.midY)
+    let rect = NSRect(x: center.x - diameter / 2, y: center.y - diameter / 2,
                       width: diameter, height: diameter)
     let track = NSBezierPath(ovalIn: rect)
     track.lineWidth = stroke
@@ -361,13 +368,16 @@ final class PlanUsageRingView: PaletteIconButton {
     track.stroke()
     let percent = percentForTesting
     guard percent > 0 else { return }
+    // From twelve o'clock, clockwise, as a clock and every other progress
+    // ring on the Mac — whichever way up the button's coordinates are.
+    let top: CGFloat = isFlipped ? 270 : 90
+    let sweep = CGFloat(percent) * 3.6
     let arc = NSBezierPath()
-    arc.lineWidth = track.lineWidth
+    arc.lineWidth = stroke
     arc.lineCapStyle = .round
-    arc.appendArc(withCenter: NSPoint(x: bounds.midX, y: bounds.midY), radius: diameter / 2,
-                  startAngle: AgentPaletteMetrics.planRingStartAngle,
-                  endAngle: AgentPaletteMetrics.planRingStartAngle + CGFloat(percent) * 3.6)
-    tintForTesting.setStroke()
+    arc.appendArc(withCenter: center, radius: diameter / 2, startAngle: top,
+                  endAngle: isFlipped ? top + sweep : top - sweep, clockwise: !isFlipped)
+    (contentTintColor ?? tintForTesting).setStroke()
     arc.stroke()
   }
 }

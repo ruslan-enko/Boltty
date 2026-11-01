@@ -711,8 +711,9 @@ final class AgentPaletteViewTests: XCTestCase {
       clip.minX, AgentPaletteMetrics.chatComposerControlsTrailingInset, accuracy: 0.6,
       "the + stands alone at the foot's leading edge, as far in as Return is from the right")
     XCTAssertEqual(
-      box.width - mic.maxX, AgentPaletteMetrics.chatComposerControlsTrailingInset
-        + AgentPaletteMetrics.chatComposerControlDiameter, accuracy: 0.6)
+      box.width - mic.maxX, AgentPaletteMetrics.chatComposerSendDiscInset
+        + ComposerControlGroup.sendDisc + ComposerControlGroup.sendGap, accuracy: 0.6,
+      "Send's disc stands last, the group's gap from the microphone's ink")
     XCTAssertEqual(
       mic.midY, AgentPaletteMetrics.chatComposerControlsPadding + ComposerControlGroup.glyph / 2,
       accuracy: 0.6, "along the foot")
@@ -3412,7 +3413,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(field.contains(glyph))
     let folder = view.convert(view.workingDirectoryChipForTesting.bounds,
       from: view.workingDirectoryChipForTesting)
-    XCTAssertLessThanOrEqual(folder.maxX, glyph.minX + 0.5, "after the folder")
+    XCTAssertLessThanOrEqual(glyph.maxX, folder.minX + 0.5, "on the left, before the folder")
     XCTAssertEqual(folder.midY, glyph.midY, accuracy: 0.5)
 
     view.pressAutoModeForTesting()
