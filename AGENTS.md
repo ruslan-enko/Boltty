@@ -620,9 +620,10 @@ final text. A long silence sends, but only after speech was heard.
 - At most two sentences of an answer are said, one at a time: a new sentence
   takes the last one's place (`captionSentences`, `answerSentences`).
 - The answer types out beside the face with blips (`AskBolttyBlips`, rendered on
-  Core Audio's thread — its block is made `nonisolated`). Reading aloud
-  (`SpeechOutput`: Siri's 19 languages, and Supertonic's 31 when it is chosen) exists behind
-  `AskBolttySession.speaksAloud`, off.
+  Core Audio's thread — its block is made `nonisolated`). Saying it aloud
+  (`SpeechOutput`: Siri's 19 languages, and Supertonic's 31 when it is chosen)
+  is Settings › Ask Boltty › "Say answers aloud" (`boltty.talk.speaksAloud`,
+  off), read into `AskBolttySession.speaksAloud` as the chord begins.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
 - Ask Boltty chats raise no banner, unread mark or notch line, are never listed,
@@ -685,6 +686,14 @@ final text. A long silence sends, but only after speech was heard.
   (`claude auth login`, `codex login`, `grok login`); its old limits are
   dropped.
 - **Reading aloud** (`SpeechOutput`): Mac voices, or Supertonic (below).
+  **"Read answers aloud"** (`boltty.speech.readAnswers`: empty = Never,
+  `voice` = When I Asked by Voice, `always`): when a chat's turn ends well
+  (`ChatWorkspaceCoordinator.onTurnFinished`, never Ask Boltty), the start of
+  its last reply is read — up to three sentences, code and marks dropped
+  (`AnswerReading`). "By voice" is the panel's mark that dictation wrote into
+  the prompt sent (`onPromptSent`'s `byVoice`, not stored). It never talks
+  over something else being said; hiding the panel does not stop it; a new
+  request or the microphone opening does.
   Siri's voices are listed to every app
   but spoken only for Apple's; Boltty's process gets compact Samantha in their
   place, silently. They are left out of the list. Settings › Voice picks the

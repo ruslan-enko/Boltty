@@ -58,9 +58,8 @@ final class AskBolttySession: ObservableObject {
   /// The voice for an answer that is only shown: each sentence stays for as
   /// long as it takes to read.
   let reader = AskBolttyReader()
-  /// Off: the answer types out beside the face, which "speaks" in blips;
-  /// the Mac's voices sound poor. The voice path
-  /// stays, behind this, for when a good one is chosen.
+  /// Settings › Ask Boltty › "Say answers aloud", read as the chord begins.
+  /// Off, the answer types out beside the face, which "speaks" in blips.
   var speaksAloud = false
   /// The caption is the sentence being said: a new one takes the last one's
   /// place.

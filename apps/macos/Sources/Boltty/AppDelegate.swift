@@ -29,6 +29,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     return SpeechOutput.Preferences(
       voiceByLanguage: settings.speechVoiceByLanguage, rate: settings.speechRate, local: local)
   }
+  /// Chats whose last request was dictated, for "When I asked by voice".
+  private var dictatedChats: Set<UUID> = []
+  /// The reply being read because its turn finished: hiding the panel does
+  /// not stop it, a new request does.
+  private var readAloudID: String?
   /// The local voice models. A second Boltty (read-only) downloads and
   /// deletes nothing.
   private lazy var localModels = LocalModelStore(canWrite: { [weak self] in
@@ -140,6 +145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     notifications.sound = { [weak sounds] kind in sounds?.notificationSound(for: kind) }
     self.sounds = sounds
     coordinator.notificationDelivery = { [weak notifications] in notifications?.deliver($0) }
+    coordinator.onTurnFinished = { [weak self] conversation in self?.readFinishedTurn(conversation) }
     attentionNotifications = notifications
     chat = coordinator
 
@@ -240,13 +246,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     notchMascot = notch
     palette.onOpenSettings = { [weak self] in self?.showSettings(page: .agents) }
-    palette.onPromptSent = { [weak self] in self?.sounds?.playSend() }
+    palette.onPromptSent = { [weak self] conversation, byVoice in
+      guard let self else { return }
+      sounds?.playSend()
+      if byVoice { dictatedChats.insert(conversation) } else { dictatedChats.remove(conversation) }
+      // A new request cuts off the last one's reading.
+      if let readAloudID, speech.isSaying(readAloudID) { speech.stop() }
+    }
+    palette.onListeningStarted = { [weak self] in
+      guard let speech = self?.speech, speech.speakingID != nil else { return }
+      speech.stop()
+    }
     palette.onPromptRefused = { [weak self] in self?.sounds?.playRefused() }
     palette.onSpeakMessage = { [weak self] message in
       self?.speech.toggle(markdown: message.copyableText, id: message.id)
     }
     palette.onHide = { [weak self] in
-      guard let speech = self?.speech, speech.speakingID?.hasPrefix("settings-") == false else { return }
+      guard let self, let id = speech.speakingID, !id.hasPrefix("settings-"), id != readAloudID
+      else { return }
       speech.stop()
     }
     speech.$speakingID
@@ -439,6 +456,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     guard let settings = model?.settings else { return }
     applyHotkey(settings.bolttyAIHotkey, enabled: settings.bolttyAIHotkeyEnabled)
+  }
+
+  /// Reads the start of a finished turn's reply aloud, when Settings says
+  /// so for this turn. Never over something else being said.
+  private func readFinishedTurn(_ conversation: Conversation) {
+    let mode = AnswerReading(rawValue: model?.settings.speechReadAnswers ?? "") ?? .off
+    guard mode.reads(askedByVoice: dictatedChats.contains(conversation.id)),
+          let reply = chat?.spokenReply(of: conversation.id)
+    else { return }
+    if let busy = speech.speakingID, busy != readAloudID { return }
+    readAloudID = reply.messageID
+    speech.speak(markdown: reply.text, id: reply.messageID)
   }
 
   private func setupSettingsPipeline() {

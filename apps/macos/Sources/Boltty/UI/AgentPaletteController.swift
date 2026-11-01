@@ -45,7 +45,12 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private var cancellables = Set<AnyCancellable>()
 
   var onOpenSettings: (() -> Void)?
-  var onPromptSent: (() -> Void)?
+  /// A prompt went to `conversation`; `byVoice` when dictation wrote any of it.
+  var onPromptSent: ((_ conversation: UUID, _ byVoice: Bool) -> Void)?
+  /// The microphone opened: anything being read aloud stops, or it is heard.
+  var onListeningStarted: (() -> Void)?
+  /// Dictation wrote into the draft being sent; not stored, gone once sent.
+  private var draftIsDictated = false
   /// An answer's read-aloud control was pressed.
   var onSpeakMessage: ((ConversationMessage) -> Void)?
   /// The panel went away; what it was reading aloud stops with it.
@@ -230,6 +235,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       self.confirmDictation()
     }
     voiceDictation.onTranscript = { [weak self] transcript in
+      self?.draftIsDictated = true
       self?.panelView.applyVoiceTranscript(transcript)
     }
     voiceDictation.onStateChange = { [weak self] state in
@@ -239,6 +245,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       }
       guard state != .listening else {
         self.silenceWatcher.reset()
+        self.onListeningStarted?()
         self.panelView.setVoiceListening(true)
         return
       }
@@ -1190,7 +1197,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         return
       }
       conversations.recordSentFiles(files.map(\.file), in: conversationID)
-      onPromptSent?()
+      promptSent(to: conversationID)
       newPromptDraft = PromptDraft()
       panelView.setChatDraft(PromptDraft())
       isSubmitting = false
@@ -1300,7 +1307,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       let outcome = steering
         ? conversations.steerFollowUp(prompt, to: sessionID)
         : conversations.queueFollowUp(prompt, to: sessionID)
-      onPromptSent?()
+      promptSent(to: sessionID)
       conversations.saveDraft(PromptDraft(), for: sessionID)
       panelView.setChatDraft(PromptDraft())
       panelView.announceQueued(
@@ -1317,11 +1324,17 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       panelView.showError("Could not send to this chat. Your message is still here.")
       return
     }
-    onPromptSent?()
+    promptSent(to: sessionID)
     conversations?.saveDraft(PromptDraft(), for: sessionID)
     panelView.setChatDraft(PromptDraft())
     isSubmitting = false
     beginAddressing(sessionID)
+  }
+
+  private func promptSent(to conversation: UUID) {
+    let byVoice = draftIsDictated
+    draftIsDictated = false
+    onPromptSent?(conversation, byVoice)
   }
 
   private func refreshAddressedPreview(_ sessionID: UUID) {

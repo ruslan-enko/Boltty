@@ -441,6 +441,16 @@ final class BolttyAISettingsModel: ObservableObject {
       language: readingLanguage)
   }
 
+  var readAnswers: AnswerReading {
+    get { AnswerReading(rawValue: appModel.settings.speechReadAnswers) ?? .off }
+    set { appModel.updateSettings { $0.speechReadAnswers = newValue.rawValue } }
+  }
+
+  var askBolttySpeaksAloud: Bool {
+    get { appModel.settings.askBolttySpeaksAloud }
+    set { appModel.updateSettings { $0.askBolttySpeaksAloud = newValue } }
+  }
+
   // MARK: Supertonic
 
   static let supertonicEngine = "supertonic"

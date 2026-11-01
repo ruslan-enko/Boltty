@@ -49,6 +49,7 @@ final class AskBolttyController {
 
     monitor.onBegin = { [weak self] in
       guard let self else { return }
+      self.session.speaksAloud = settings().askBolttySpeaksAloud
       self.onBegin?()
       self.session.begin()
     }

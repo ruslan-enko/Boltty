@@ -99,6 +99,7 @@
 		46D57951B056BEB82244C59D /* done.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8105BCAC2A56EE32F63B3335 /* done.wav */; };
 		48321C4F1C050A5369926BBA /* AgentPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EBE58911EEF98E688619F24 /* AgentPlanTests.swift */; };
 		48D7293C7B0477E8094814DF /* WorkingDirectoryChipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6B0EAE0CBAE353B27A31E2 /* WorkingDirectoryChipTests.swift */; };
+		4CFA2E5F9DD0D2E831A57BD9 /* AnswerReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = B480B69DC62146AB64331781 /* AnswerReading.swift */; };
 		4CFCE470327D9D83B4D544FB /* AgentCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9193CB515060801FAF1A2BD7 /* AgentCatalogService.swift */; };
 		4D0E2E132D48D93985E60070 /* SupertonicTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD92BE6CFC5155AE0DD1F7C /* SupertonicTextTests.swift */; };
 		4D646D125F13753EF1980249 /* AppUpdaterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673A3E77CB3A086DB9CA328F /* AppUpdaterTests.swift */; };
@@ -185,6 +186,7 @@
 		84B484E756DA47F6ABE57A26 /* AgentAdapterLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C08A32ED63560E9804C2C6 /* AgentAdapterLiveTests.swift */; };
 		85462CFBCBA069294B925FAE /* MascotLook.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCC2ED2098097D921491C57 /* MascotLook.swift */; };
 		86F079D01DC285DBD78D2FEC /* WorkingDirectoryResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6911EAB2D1501439122B20D6 /* WorkingDirectoryResolver.swift */; };
+		8703D79855A0542A6AAE2EF7 /* AnswerReadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6720FF01A0557277FCD28D8 /* AnswerReadingTests.swift */; };
 		87943558227C1AB3911699BF /* StatusBarIconRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96710DAC0CBC734D37754102 /* StatusBarIconRendererTests.swift */; };
 		88A770221A03E5E7AACAFB11 /* InterfaceSoundsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07D4A5FF18FADB3E87D71590 /* InterfaceSoundsTests.swift */; };
 		89B3066E7E9860A698251956 /* ConversationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 751B75F3EE48969055B46F21 /* ConversationEngineTests.swift */; };
@@ -566,6 +568,7 @@
 		A3741CC8770F4D873A8F84E0 /* BolttyAIScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAIScreenshotTests.swift; sourceTree = "<group>"; };
 		A4AA1DF27F1B70A8B8E19052 /* AgentIconProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentIconProvider.swift; sourceTree = "<group>"; };
 		A548468290B4BC4E201557FF /* run-1.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "run-1.wav"; sourceTree = "<group>"; };
+		A6720FF01A0557277FCD28D8 /* AnswerReadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerReadingTests.swift; sourceTree = "<group>"; };
 		A721ACBD18047573D0E6AE5D /* BolttyBrandMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyBrandMark.swift; sourceTree = "<group>"; };
 		A72D0624690E09A6E941D258 /* AskBolttyBlips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskBolttyBlips.swift; sourceTree = "<group>"; };
 		A7642D0B88111A3C78F2C18B /* UITestKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestKeyboard.swift; sourceTree = "<group>"; };
@@ -588,6 +591,7 @@
 		B0DEDDBF371F2F21633C0FAC /* hum-4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "hum-4.wav"; sourceTree = "<group>"; };
 		B15FEE7371D2C35D4395F86F /* AntigravityTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityTranscript.swift; sourceTree = "<group>"; };
 		B1B5A46902FC1B2C9FEC926E /* NotchMascotController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMascotController.swift; sourceTree = "<group>"; };
+		B480B69DC62146AB64331781 /* AnswerReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerReading.swift; sourceTree = "<group>"; };
 		B488946E72434D43AA6ED7E6 /* ConversationPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationPersistence.swift; sourceTree = "<group>"; };
 		B50DE8B0F1A4E36033E01857 /* LocalVoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVoiceCatalog.swift; sourceTree = "<group>"; };
 		B5890147D10251CF2A9D1024 /* whoosh-3.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "whoosh-3.wav"; sourceTree = "<group>"; };
@@ -814,6 +818,7 @@
 				C5E43CFF2C81CBBA5795DFF4 /* AgentRegistryTests.swift */,
 				0920C841FFD3F600FF644806 /* AgentStatisticsTests.swift */,
 				90B3F3C67107DC67362F0E92 /* AgentUsageTests.swift */,
+				A6720FF01A0557277FCD28D8 /* AnswerReadingTests.swift */,
 				4D8AEA719AFE93CF8E30415A /* AntigravityClientTests.swift */,
 				8F2E86A8A7369DF2D83796D2 /* AntigravityLiveTests.swift */,
 				8A299DF79ADD19AAC14F19AB /* AntigravityPermissionGateTests.swift */,
@@ -995,6 +1000,7 @@
 				DF1D3A4543EC7FB0B7926446 /* AgentHistory.swift */,
 				4A4CFC1A5ECB33FCBAF4C67A /* AgentQuestion.swift */,
 				D649BF997C3A20692101B70F /* AgentRoutingFallback.swift */,
+				B480B69DC62146AB64331781 /* AnswerReading.swift */,
 				5115B25E92F854FAF9E90026 /* AppSettings.swift */,
 				8342FE0B6C10909A74ADF6FB /* BilingualTranscript.swift */,
 				F74D9A4C3F74819F91FBD107 /* BolttyAIAnnouncement.swift */,
@@ -1458,6 +1464,7 @@
 				B313D6F2860C2FF0D9B411BB /* AgentStatistics.swift in Sources */,
 				4FA10C1DB1648C67175892AE /* AgentStatisticsReader.swift in Sources */,
 				3CB9D71DF4563D1723EA042B /* AgentUsage.swift in Sources */,
+				4CFA2E5F9DD0D2E831A57BD9 /* AnswerReading.swift in Sources */,
 				5A694B4AC9447F9D68D62C8D /* AntigravityClient.swift in Sources */,
 				299F5842CFA3C61DD26ECF60 /* AntigravityPermissionGate.swift in Sources */,
 				E777A758DFA919FA1911EF09 /* AntigravityTranscript.swift in Sources */,
@@ -1652,6 +1659,7 @@
 				67E3EFC7781FB2FDF2BBF295 /* AgentRegistryTests.swift in Sources */,
 				1CB5329BA8EE59737A725088 /* AgentStatisticsTests.swift in Sources */,
 				553EF153A9D823B97D482890 /* AgentUsageTests.swift in Sources */,
+				8703D79855A0542A6AAE2EF7 /* AnswerReadingTests.swift in Sources */,
 				739F7BA94ACEA13F3DA54877 /* AntigravityClientTests.swift in Sources */,
 				77CABC084F0814F0BC53A773 /* AntigravityLiveTests.swift in Sources */,
 				42B0B922FA91D11C6F05123A /* AntigravityPermissionGateTests.swift in Sources */,

@@ -888,6 +888,22 @@ struct VoiceSettingsPage: View {
         }
         .id(speech.voicesChanged)
 
+        Picker("Read answers aloud:", selection: $model.readAnswers) {
+          Text("Never").tag(AnswerReading.off)
+          Text("When I Asked by Voice").tag(AnswerReading.askedByVoice)
+          Text("Always").tag(AnswerReading.always)
+        }
+        .pickerStyle(.menu)
+        .fixedSize()
+        .accessibilityIdentifier("boltty.settings.readAnswers")
+
+        LabeledContent {
+          SettingsNote("When an agent finishes, the start of its answer is read: up to three sentences, code left on the screen. A new request or the microphone stops it.")
+            .frame(maxWidth: 320, alignment: .leading)
+        } label: {
+          EmptyView()
+        }
+
         LabeledContent {
           SettingsNote(model.usesLocalVoice
             ? "Reads the languages Supertonic does not speak. Siri’s voices are only for Apple’s apps, so they are not listed."
