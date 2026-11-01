@@ -2,6 +2,23 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.2.9
+
+**Boltty AI**
+- The composer stands in two groups: attach, Auto Mode and folder on the
+  left; the usage ring, the microphone and Send on the right. Send is a white
+  disc.
+- Auto Mode is the word "Auto", white when on.
+- A chat's backdrop fades in smoothly.
+
+**Agents**
+- OpenCode offers reasoning levels and Auto Mode, and Settings names the
+  model a new chat uses by default.
+
+**First run**
+- The intro shows more of Boltty: the panel growing into a chat, every
+  agent's face, the chat list, Ask Boltty pointing at a menu, and Settings.
+
 ## 0.2.8
 
 **Fixes**
