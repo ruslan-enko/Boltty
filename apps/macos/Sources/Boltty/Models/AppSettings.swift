@@ -20,6 +20,11 @@ struct AppSettings: Equatable, Sendable {
   var speechVoiceByLanguage: [String: String]
   /// A multiple of the system's speaking rate.
   var speechRate: Double
+  /// Who reads answers aloud: empty is Apple's voices, `supertonic` the
+  /// local model where it speaks the language (Apple's voices elsewhere).
+  var speechEngine: String
+  /// Supertonic's preset (`F1`…`M5`); empty is `SpeechOutput.defaultLocalVoice`.
+  var speechLocalVoice: String
   /// Ask Boltty: hold the chord, ask about the screen out loud, hear the answer.
   var askBolttyEnabled: Bool
   /// `nil` is automatic: Claude Code where it is ready (the fastest measured).
@@ -48,6 +53,8 @@ struct AppSettings: Equatable, Sendable {
   private static let retiredAutomaticLocale = "automatic"
   private static let speechVoiceByLanguageKey = "boltty.speech.voiceByLanguage"
   private static let speechRateKey = "boltty.speech.rate"
+  private static let speechEngineKey = "boltty.speech.engine"
+  private static let speechLocalVoiceKey = "boltty.speech.localVoice"
   private static let askBolttyEnabledKey = "boltty.talk.enabled"
   private static let askBolttyProviderIDKey = "boltty.talk.agent"
   private static let askBolttyModelIDKey = "boltty.talk.model"
@@ -74,6 +81,8 @@ struct AppSettings: Equatable, Sendable {
     dictationSecondLocaleIdentifier: String = DictationLanguageCatalog.noSecondLanguageIdentifier,
     speechVoiceByLanguage: [String: String] = [:],
     speechRate: Double = 1,
+    speechEngine: String = "",
+    speechLocalVoice: String = "",
     askBolttyEnabled: Bool = false,
     askBolttyProviderID: String? = nil,
     askBolttyModelID: String? = nil,
@@ -95,6 +104,8 @@ struct AppSettings: Equatable, Sendable {
     self.dictationSecondLocaleIdentifier = dictationSecondLocaleIdentifier
     self.speechVoiceByLanguage = speechVoiceByLanguage
     self.speechRate = speechRate
+    self.speechEngine = speechEngine
+    self.speechLocalVoice = speechLocalVoice
     self.askBolttyEnabled = askBolttyEnabled
     self.askBolttyProviderID = askBolttyProviderID
     self.askBolttyModelID = askBolttyModelID
@@ -165,6 +176,8 @@ struct AppSettings: Equatable, Sendable {
       dictationSecondLocaleIdentifier: dictationSecondLocaleIdentifier,
       speechVoiceByLanguage: speechVoiceByLanguage,
       speechRate: speechRate,
+      speechEngine: defaults.string(forKey: Self.speechEngineKey) ?? "",
+      speechLocalVoice: defaults.string(forKey: Self.speechLocalVoiceKey) ?? "",
       askBolttyEnabled: defaults.bool(forKey: Self.askBolttyEnabledKey),
       askBolttyProviderID: defaults.string(forKey: Self.askBolttyProviderIDKey),
       askBolttyModelID: defaults.string(forKey: Self.askBolttyModelIDKey),
@@ -218,6 +231,8 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(dictationSecondLocaleIdentifier, forKey: Self.dictationSecondLocaleKey)
     defaults.set(speechVoiceByLanguage, forKey: Self.speechVoiceByLanguageKey)
     defaults.set(speechRate, forKey: Self.speechRateKey)
+    defaults.set(speechEngine, forKey: Self.speechEngineKey)
+    defaults.set(speechLocalVoice, forKey: Self.speechLocalVoiceKey)
     defaults.set(askBolttyEnabled, forKey: Self.askBolttyEnabledKey)
     defaults.set(askBolttyProviderID, forKey: Self.askBolttyProviderIDKey)
     defaults.set(askBolttyModelID, forKey: Self.askBolttyModelIDKey)

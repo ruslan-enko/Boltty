@@ -19,9 +19,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   /// Boltty's voice, made on first use: the synthesizer loads its voices then.
   private lazy var speech = SpeechOutput { [weak self] in
     let settings = self?.model?.settings ?? AppSettings()
+    var local: SpeechOutput.Local?
+    if settings.speechEngine == BolttyAISettingsModel.supertonicEngine,
+       let folder = self?.localModels.folder(of: .supertonic3) {
+      let voice = SupertonicSynthesizer.presets.contains(settings.speechLocalVoice)
+        ? settings.speechLocalVoice : SpeechOutput.defaultLocalVoice
+      local = SpeechOutput.Local(folder: folder, voice: voice)
+    }
     return SpeechOutput.Preferences(
-      voiceByLanguage: settings.speechVoiceByLanguage, rate: settings.speechRate)
+      voiceByLanguage: settings.speechVoiceByLanguage, rate: settings.speechRate, local: local)
   }
+  /// The local voice models. A second Boltty (read-only) downloads and
+  /// deletes nothing.
+  private lazy var localModels = LocalModelStore(canWrite: { [weak self] in
+    self?.chat.map { !$0.store.isReadOnly } ?? false
+  })
+  /// Whether the local voice was chosen when last looked at, so turning it
+  /// off reaches the speech output too.
+  private var localVoiceWasOn = false
   private var settingsCancellable: AnyCancellable?
   private var cancellables = Set<AnyCancellable>()
   private var shortcutMonitor: Any?
@@ -256,7 +271,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       probeHotkey: { [weak hotkey] binding in hotkey?.probe(binding) ?? .free },
       updater: updater,
       loginItem: loginItem,
-      speech: speech
+      speech: speech,
+      localModels: localModels
     )
     settingsWindowController = controller
     controller.onReviewAccess = { [weak self] in self?.showAccess() }
@@ -360,7 +376,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private func showSetup(then: @escaping () -> Void) -> Bool {
     guard let model, let engine = chat?.engine else { return false }
     let settings = BolttyAISettingsModel(
-      appModel: model, engine: engine, updater: updater, loginItem: loginItem, speech: speech
+      appModel: model, engine: engine, updater: updater, loginItem: loginItem, speech: speech,
+      localModels: localModels
     )
     settings.probeHotkey = { [weak hotkey] binding in hotkey?.probe(binding) ?? .free }
     let setup = SetupWindowController(
@@ -432,6 +449,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       .sink { [weak self] binding, enabled in
         self?.applyHotkey(binding, enabled: enabled)
       }
+    // `@Published` tells before it stores, so the speech output reads the
+    // settings a turn later.
+    Publishers.CombineLatest(
+      model.$settings.map(\.speechEngine).removeDuplicates(),
+      localModels.$states.map { $0[.supertonic3] == .ready }.removeDuplicates()
+    )
+    .receive(on: DispatchQueue.main)
+    .sink { [weak self] engine, _ in
+      guard let self else { return }
+      let on = engine == BolttyAISettingsModel.supertonicEngine
+      if on || localVoiceWasOn { speech.preferencesChanged() }
+      localVoiceWasOn = on
+    }
+    .store(in: &cancellables)
   }
 
   private var appliedHotkey: HotkeyBinding?

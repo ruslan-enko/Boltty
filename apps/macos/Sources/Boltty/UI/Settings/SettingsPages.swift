@@ -773,6 +773,7 @@ private struct UsageHistoryChart: View {
 
 struct VoiceSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
+  @State private var confirmsRemoval = false
 
   var body: some View {
     SettingsColumnsPage {
@@ -832,8 +833,46 @@ struct VoiceSettingsPage: View {
       }
 
       if let speech = model.speech {
+        if model.localModels != nil {
+          Picker("Read answers with:", selection: $model.usesLocalVoice) {
+            Text("Mac Voices").tag(false)
+            Text("Supertonic (on this Mac)").tag(true)
+          }
+          .pickerStyle(.menu)
+          .fixedSize()
+          .accessibilityIdentifier("boltty.settings.speechEngine")
+
+          if model.usesLocalVoice {
+            LabeledContent {
+              VStack(alignment: .leading, spacing: 8) {
+                supertonicStatus
+                SettingsNote("A natural voice for 31 languages, Ukrainian included, that runs on this Mac. Downloaded once from Hugging Face; licensed under BigScience OpenRAIL-M.")
+              }
+              .frame(maxWidth: 320, alignment: .leading)
+            } label: {
+              EmptyView()
+            }
+
+            if model.supertonicState == .ready {
+              HStack(spacing: 8) {
+                Picker("Supertonic voice:", selection: $model.localVoice) {
+                  ForEach(BolttyAISettingsModel.localVoices, id: \.id) { voice in
+                    Text(voice.title).tag(voice.id)
+                  }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .accessibilityIdentifier("boltty.settings.localVoice")
+                Button("Play", systemImage: "play.fill") { model.previewLocalVoice() }
+                  .labelStyle(.iconOnly)
+                  .help("Hear this voice")
+              }
+            }
+          }
+        }
+
         HStack(spacing: 8) {
-          Picker("Reading voice:", selection: $model.readingVoiceID) {
+          Picker(model.usesLocalVoice ? "Mac voice:" : "Reading voice:", selection: $model.readingVoiceID) {
             Text(automaticVoiceTitle).tag("")
             Divider()
             ForEach(model.readingVoices) { voice in
@@ -850,11 +889,62 @@ struct VoiceSettingsPage: View {
         .id(speech.voicesChanged)
 
         LabeledContent {
-          SettingsNote("Siri’s voices are only for Apple’s apps, so they are not listed.")
+          SettingsNote(model.usesLocalVoice
+            ? "Reads the languages Supertonic does not speak. Siri’s voices are only for Apple’s apps, so they are not listed."
+            : "Siri’s voices are only for Apple’s apps, so they are not listed.")
             .frame(maxWidth: 320, alignment: .leading)
         } label: {
           EmptyView()
         }
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var supertonicStatus: some View {
+    switch model.supertonicState {
+    case .notInstalled:
+      HStack(spacing: 8) {
+        Button("Download (\(model.supertonicSize))") { model.downloadSupertonic() }
+          .accessibilityIdentifier("boltty.settings.supertonicDownload")
+        Text("Until then, Mac voices read.")
+          .font(BolttyInterfaceTypography.callout)
+          .foregroundStyle(.secondary)
+      }
+    case let .downloading(fraction):
+      HStack(spacing: 8) {
+        ProgressView(value: fraction) {
+          Text("Downloading Supertonic… \(Int(fraction * 100)) %")
+            .font(BolttyInterfaceTypography.callout)
+        }
+        .accessibilityIdentifier("boltty.settings.supertonicProgress")
+        Button("Stop") { model.cancelSupertonic() }
+      }
+    case .preparing:
+      HStack(spacing: 8) {
+        ProgressView().controlSize(.small)
+        Text("Preparing Supertonic for this Mac…")
+          .font(BolttyInterfaceTypography.callout)
+      }
+    case .ready:
+      HStack(spacing: 8) {
+        Label("Downloaded", systemImage: "checkmark.circle.fill")
+          .font(BolttyInterfaceTypography.callout)
+          .foregroundStyle(.secondary)
+        Button("Remove…") { confirmsRemoval = true }
+          .accessibilityIdentifier("boltty.settings.supertonicRemove")
+      }
+      .confirmationDialog(
+        "Remove Supertonic from this Mac?", isPresented: $confirmsRemoval
+      ) {
+        Button("Remove", role: .destructive) { model.removeSupertonic() }
+      } message: {
+        Text("Mac voices read answers until it is downloaded again (\(model.supertonicSize)).")
+      }
+    case let .failed(message):
+      VStack(alignment: .leading, spacing: 6) {
+        SettingsNote(message, color: .red)
+        Button("Try Again") { model.downloadSupertonic() }
       }
     }
   }

@@ -83,13 +83,28 @@ enum SpeechLanguages {
 }
 
 /// Boltty's voice: an answer said aloud, sentence by sentence, in the voice
-/// the person chose for its language, on the Mac's own synthesizer.
+/// the person chose for its language — Supertonic's on this Mac where it is
+/// chosen, downloaded and speaks the language, the Mac's own otherwise.
 @MainActor
 final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
   struct Preferences: Equatable, Sendable {
     var voiceByLanguage: [String: String] = [:]
     var rate: Double = 1
+    /// Supertonic's folder and preset when it is chosen and ready.
+    var local: Local?
   }
+
+  struct Local: Equatable, Sendable {
+    var folder: URL
+    var voice: String
+  }
+
+  /// Supertonic's preset until the person picks one: the clearest in
+  /// Ukrainian when read back by Parakeet (3.6 % CER, Lesya 6.0 %).
+  static let defaultLocalVoice = "M3"
+
+  /// The languages the local voice reads now; empty while it is off.
+  private(set) static var localLanguages: Set<String> = []
 
   /// What is being said: a message's id, or a preview's.
   @Published private(set) var speakingID: String?
@@ -100,8 +115,12 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
 
   private let synthesizer = AVSpeechSynthesizer()
   private let preferences: () -> Preferences
-  private var pending: Set<ObjectIdentifier> = []
-  private var starts: [ObjectIdentifier: () -> Void] = [:]
+  /// What is still to be heard: Apple's utterances by object, Supertonic's
+  /// pieces by number.
+  private var pending: Set<AnyHashable> = []
+  private var starts: [AnyHashable: () -> Void] = [:]
+  private lazy var local = SupertonicSpeaker()
+  private var localPiece = 0
 
   init(preferences: @escaping () -> Preferences) {
     self.preferences = preferences
@@ -121,10 +140,27 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
     }
   }
 
-  /// Whether Boltty says text in `language` (a code or a tag): one of
-  /// Siri's languages, with a voice on this Mac for it.
+  /// Reads the preferences again: Settings changed the engine or voice, or
+  /// the model was downloaded or removed. Loads the local voice ahead of the
+  /// first answer.
+  func preferencesChanged() {
+    let chosen = preferences().local
+    Self.localLanguages = chosen == nil ? [] : SupertonicText.languages
+    guard chosen?.folder != local.folder else { return }
+    if speakingID != nil { stop() }
+    local.folder = chosen?.folder
+    local.warm()
+  }
+
+  /// Why the local voice did not speak last time, if it did not.
+  var localFailure: String? { local.failure }
+
+  /// Whether Boltty says text in `language` (a code or a tag): one the local
+  /// voice reads, or one of Siri's languages with a voice on this Mac for it.
   static func canSpeak(_ language: String?) -> Bool {
-    guard let language, SpeechLanguages.speaks(language) else { return false }
+    guard let language else { return false }
+    if localLanguages.contains(SpeechVoice.code(of: language)) { return true }
+    guard SpeechLanguages.speaks(language) else { return false }
     let code = SpeechLanguages.normalised(language)
     return installedVoices().contains { SpeechLanguages.normalised($0.language) == code }
   }
@@ -227,8 +263,8 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
       speakingID = id
     }
     let code = language ?? Self.language(of: piece) ?? SpeechVoice.code(of: Locale.current.identifier)
-    let utterance = enqueue(piece, language: code)
-    if let onStart { starts[ObjectIdentifier(utterance)] = onStart }
+    let token = enqueue(piece, language: code)
+    if let onStart { starts[token] = onStart }
   }
 
   /// The voice an answer in `code` is read in.
@@ -245,11 +281,40 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
     pending.removeAll()
     starts.removeAll()
     if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
+    local.stop()
     if speakingID != nil { speakingID = nil }
   }
 
+  /// Hands `piece` to the voice for its language and returns what it is
+  /// known by until it has been heard.
   @discardableResult
-  private func enqueue(_ piece: String, language code: String) -> AVSpeechUtterance {
+  private func enqueue(_ piece: String, language code: String) -> AnyHashable {
+    let prefs = preferences()
+    if let chosen = prefs.local, SupertonicText.languages.contains(code) {
+      localPiece += 1
+      let token = AnyHashable(localPiece)
+      pending.insert(token)
+      let rate = min(max(prefs.rate, Self.rateRange.lowerBound), Self.rateRange.upperBound)
+      local.say(
+        piece, language: code, delivery: .init(voice: chosen.voice, rate: rate),
+        onStart: { [weak self] in self?.started(token) },
+        onFinish: { [weak self] said in
+          guard let self else { return }
+          // A model that will not load or speak leaves the piece to the
+          // Mac's voice, where it has one, rather than to silence.
+          if !said, self.pending.contains(token), SpeechLanguages.speaks(code) {
+            let start = self.starts.removeValue(forKey: token)
+            let fallback = self.speakWithApple(piece, language: code)
+            if let start { self.starts[fallback] = start }
+          }
+          self.finished(token)
+        })
+      return token
+    }
+    return speakWithApple(piece, language: code)
+  }
+
+  private func speakWithApple(_ piece: String, language code: String) -> AnyHashable {
     let utterance = AVSpeechUtterance(string: piece)
     let prefs = preferences()
     utterance.voice = voice(for: code).flatMap { AVSpeechSynthesisVoice(identifier: $0.id) }
@@ -258,19 +323,20 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
       * min(max(prefs.rate, Self.rateRange.lowerBound), Self.rateRange.upperBound)
     utterance.rate = Float(min(max(rate, Double(AVSpeechUtteranceMinimumSpeechRate)),
                                Double(AVSpeechUtteranceMaximumSpeechRate)))
-    pending.insert(ObjectIdentifier(utterance))
+    let token = AnyHashable(ObjectIdentifier(utterance))
+    pending.insert(token)
     synthesizer.speak(utterance)
-    return utterance
+    return token
   }
 
-  private func started(_ utterance: ObjectIdentifier) {
-    guard pending.contains(utterance) else { return }
-    starts.removeValue(forKey: utterance)?()
+  private func started(_ token: AnyHashable) {
+    guard pending.contains(token) else { return }
+    starts.removeValue(forKey: token)?()
   }
 
-  private func finished(_ utterance: ObjectIdentifier) {
-    starts.removeValue(forKey: utterance)
-    guard pending.remove(utterance) != nil, pending.isEmpty else { return }
+  private func finished(_ token: AnyHashable) {
+    starts.removeValue(forKey: token)
+    guard pending.remove(token) != nil, pending.isEmpty else { return }
     speakingID = nil
   }
 
@@ -278,20 +344,20 @@ final class SpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
     _ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance
   ) {
     let id = ObjectIdentifier(utterance)
-    Task { @MainActor in self.started(id) }
+    Task { @MainActor in self.started(AnyHashable(id)) }
   }
 
   nonisolated func speechSynthesizer(
     _ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance
   ) {
     let id = ObjectIdentifier(utterance)
-    Task { @MainActor in self.finished(id) }
+    Task { @MainActor in self.finished(AnyHashable(id)) }
   }
 
   nonisolated func speechSynthesizer(
     _ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance
   ) {
     let id = ObjectIdentifier(utterance)
-    Task { @MainActor in self.finished(id) }
+    Task { @MainActor in self.finished(AnyHashable(id)) }
   }
 }

@@ -22,6 +22,8 @@ final class BolttyAISettingsModel: ObservableObject {
   var onReviewAccess: (() -> Void)?
   /// Says the samples on the Voice page; `nil` where nothing can speak.
   let speech: SpeechOutput?
+  /// The local voice models; `nil` where Settings shows none.
+  let localModels: LocalModelStore?
 
   private var cancellables = Set<AnyCancellable>()
 
@@ -36,9 +38,11 @@ final class BolttyAISettingsModel: ObservableObject {
     engine: ConversationEngine,
     updater: AppUpdater? = nil,
     loginItem: LoginItem = LoginItem(),
-    speech: SpeechOutput? = nil
+    speech: SpeechOutput? = nil,
+    localModels: LocalModelStore? = nil
   ) {
     self.speech = speech
+    self.localModels = localModels
     self.appModel = appModel
     self.engine = engine
     self.updater = updater
@@ -50,6 +54,9 @@ final class BolttyAISettingsModel: ObservableObject {
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
     speech?.objectWillChange
+      .sink { [weak self] _ in self?.objectWillChange.send() }
+      .store(in: &cancellables)
+    localModels?.objectWillChange
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
     appModel.$settings
@@ -433,6 +440,72 @@ final class BolttyAISettingsModel: ObservableObject {
       markdown: "This is how Boltty reads its answers.", id: "settings-voice",
       language: readingLanguage)
   }
+
+  // MARK: Supertonic
+
+  static let supertonicEngine = "supertonic"
+
+  /// Answers are read by Supertonic where it speaks their language.
+  var usesLocalVoice: Bool {
+    get { appModel.settings.speechEngine == Self.supertonicEngine }
+    set { appModel.updateSettings { $0.speechEngine = newValue ? Self.supertonicEngine : "" } }
+  }
+
+  var supertonicState: LocalModelStore.State {
+    localModels?.state(of: .supertonic3) ?? .notInstalled
+  }
+
+  var supertonicSize: String {
+    let bytes = LocalVoiceCatalog.supertonic3.size
+    return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+  }
+
+  func downloadSupertonic() {
+    guard let localModels else { return }
+    Task { await localModels.install(.supertonic3) }
+  }
+
+  func cancelSupertonic() { localModels?.cancel(.supertonic3) }
+
+  func removeSupertonic() {
+    speech?.stop()
+    localModels?.remove(.supertonic3)
+  }
+
+  /// Supertonic's presets, as Settings names them.
+  static let localVoices: [(id: String, title: String)] = SupertonicSynthesizer.presets.map { id in
+    let number = id.dropFirst()
+    return (id, id.hasPrefix("F") ? "Female \(number)" : "Male \(number)")
+  }
+
+  var localVoice: String {
+    get {
+      let stored = appModel.settings.speechLocalVoice
+      return SupertonicSynthesizer.presets.contains(stored) ? stored : SpeechOutput.defaultLocalVoice
+    }
+    set {
+      appModel.updateSettings { $0.speechLocalVoice = newValue }
+      previewLocalVoice()
+    }
+  }
+
+  /// The Mac's language when Supertonic speaks it, otherwise English.
+  var localPreviewLanguage: String {
+    let code = SpeechVoice.code(of: Locale.current.identifier)
+    return SupertonicText.languages.contains(code) ? code : "en"
+  }
+
+  func previewLocalVoice() {
+    let language = localPreviewLanguage
+    speech?.speak(
+      markdown: Self.localSamples[language] ?? Self.localSamples["en"]!, id: "settings-voice",
+      language: language)
+  }
+
+  private static let localSamples = [
+    "en": "This is how Boltty reads its answers, on this Mac.",
+    "uk": "Ось так Boltty читає свої відповіді, просто на цьому Маку.",
+  ]
 
   func loadDictationLanguages() async {
     dictationLanguages = await DictationCatalog.languages()

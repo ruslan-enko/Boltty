@@ -79,6 +79,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Settings | `UI/Settings/` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyTrailLayer.swift`, `UI/AskBolttyDrawingLayer.swift` |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
+| Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
 | Updates, login item, releases | `Services/AppUpdater.swift`, `Services/LoginItem.swift`, `scripts/release.sh`, `scripts/bump-version.sh` |
 
 **A provider is added behind `AgentClient` or not at all**: an adapter, and one
@@ -620,7 +621,7 @@ final text. A long silence sends, but only after speech was heard.
   takes the last one's place (`captionSentences`, `answerSentences`).
 - The answer types out beside the face with blips (`AskBolttyBlips`, rendered on
   Core Audio's thread — its block is made `nonisolated`). Reading aloud
-  (`SpeechOutput`, only Siri's 19 languages) exists behind
+  (`SpeechOutput`: Siri's 19 languages, and Supertonic's 31 when it is chosen) exists behind
   `AskBolttySession.speaksAloud`, off.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
@@ -683,7 +684,8 @@ final text. A long silence sends, but only after speech was heard.
   signed-out agent's row is its face, name and `AgentId.signInCommand`
   (`claude auth login`, `codex login`, `grok login`); its old limits are
   dropped.
-- **Reading aloud** (`SpeechOutput`): Siri's voices are listed to every app
+- **Reading aloud** (`SpeechOutput`): Mac voices, or Supertonic (below).
+  Siri's voices are listed to every app
   but spoken only for Apple's; Boltty's process gets compact Samantha in their
   place, silently. They are left out of the list. Settings › Voice picks the
   reading voice for the Mac's language (stored in `boltty.speech.voiceByLanguage`),
@@ -693,6 +695,43 @@ final text. A long silence sends, but only after speech was heard.
   recognizer on the same audio (`BilingualDictationEngine`), decided per phrase
   by confidence (`BilingualTranscript`). `fastResults` lowers confidence, so with
   two languages the transcriber is built from options.
+- **Local voice models** (`LocalModelStore`): Parakeet Ultra (dictation,
+  632 MB) and Supertonic-3 (speech, int8 Neural Engine buckets, 268 MB), Core
+  ML builds from FluidInference on Hugging Face, run by Boltty's own code — no
+  package. Downloaded only when the person asks; Apple stays the default.
+  `LocalVoiceCatalog` pins each to a commit with every file's size and
+  SHA-256, written by `scripts/pin-local-model.py` (change the revision there,
+  run it, review the diff); a file that does not match is not kept. One folder
+  per model and revision in `Application Support/Boltty/Models`, a download in
+  progress is `<folder>.partial` and resumes with what is missing; folders of
+  older revisions are deleted, nothing else there is touched. Right after a
+  download every `.mlmodelc` is loaded once so Core ML compiles it (Parakeet's
+  first load took 48 s; then 0.3 s). A second Boltty downloads and deletes
+  nothing. Hashing and compiling are blocking and run detached. Licences:
+  Parakeet CC BY 4.0, Supertonic BigScience OpenRAIL-M (its `LICENSE` is
+  downloaded with it). Measurements and the plan: `.scratch/local-voice/`.
+- **Supertonic** (`SupertonicSpeaker`, Settings › Voice › "Read answers
+  with", stored as `boltty.speech.engine` = `supertonic` and
+  `boltty.speech.localVoice` = a preset `F1`…`M5`, default `M3`): once
+  downloaded it reads every language it speaks; the Mac's voices read the
+  rest. Each piece is synthesized on a serial queue while the one before
+  plays through one `AVAudioPlayerNode`; `onStart` fires when a piece is
+  heard. A piece that fails falls back to the Mac's voice where it has one.
+  Measured on an M1 Pro (Boltty's own port): load 0.5 s from Core ML's cache
+  (47 s the first time in a new binary, which "preparing" pays), 0.1–0.2 s
+  per sentence, ~104 MB. All three estimator buckets load up front, so there
+  is no slow first sentence (FluidAudio loads them lazily: 6.7 s). Loaded at
+  launch when chosen, dropped after 10 idle minutes; the audio engine stops
+  whenever nothing is queued.
+  - **One language per pass.** In a Ukrainian, Russian or Bulgarian answer a
+    run of Latin words is its own English pass (`SupertonicText.runs`), joined
+    without the silence each pass ends on (`SupertonicSynthesizer.joint`);
+    read as Ukrainian, "README" came back "ядм". Tagging the Latin runs inside
+    one pass (`<uk>…</uk> <en>README</en> <uk>…</uk>`) made the model drop
+    whole words: never do that.
+  - A pass is at most 70 characters (57 for ko/ja): the 128-scalar window
+    degrades toward its end. The last run of a pass ends on a stop, others on
+    a comma, so they do not fall.
 - **Sounds**: send (system sound, three variants), done and needs-you (the
   banner's own sound), and the system alert for an empty Return. All synthesized
   by `scripts/render-sounds.py`. One switch silences all. No sound on hover or

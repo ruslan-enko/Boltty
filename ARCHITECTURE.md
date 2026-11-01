@@ -141,9 +141,12 @@ read-only by default and are forgotten ten minutes after the last answer.
 
 - **A terminal.** Boltty used to embed one, and it was taken out. There's no
   PTY, VT parser or shell integration, and there won't be again.
-- **A model.** Boltty has no API keys and calls no LLM API itself.
+- **A language model.** Boltty has no API keys and calls no LLM API itself.
+  The only models it runs are the optional local voices (`Services/LocalVoice/`),
+  for dictation and reading aloud, on this Mac.
 - **Sync or a server.** Everything is local. The only network request Boltty
-  makes on its own is the daily check for a new release on GitHub.
+  makes on its own is the daily check for a new release on GitHub; a voice
+  model is downloaded from Hugging Face only when the person asks for it.
 - **Third-party packages.** The app depends on nothing but Apple's frameworks.
 
 ## Where to look
@@ -159,3 +162,4 @@ read-only by default and are forgotten ten minutes after the last answer.
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift` |
 | The mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal` |
 | Releases and updates | `scripts/release.sh`, `Services/AppUpdater.swift` |
+| Local voice models | `Services/LocalVoice/LocalModelStore.swift`, `scripts/pin-local-model.py` |
