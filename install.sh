@@ -73,7 +73,9 @@ main() {
     die "Boltty is running. Choose Quit Boltty in its menu, or use Check for Updates… in it, then run this again."
   fi
 
-  say "Installing into $dir…"
+  # Braced: in a UTF-8 locale bash 3.2 reads the ellipsis's first byte as
+  # part of the name.
+  say "Installing into ${dir}…"
   staged="$dir/.Boltty.app.installing"
   rm -rf "$staged"
   ditto "$source_app" "$staged" || die "could not copy Boltty into $dir."
