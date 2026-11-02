@@ -182,7 +182,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     let directory = options.directory
     let model = options.model
     // The free tier refuses a session id in Boltty's spelling; let the server name free sessions.
-    let free = await isFree(model)
+    // No model is the server's default, which is often free (Big Pickle on 2.2.5).
+    let free = model == nil ? true : await isFree(model)
     let body = OpenCodeDTO.CreateSessionRequest(
       id: free ? nil : id,
       location: OpenCodeDTO.LocationRef(directory: directory, workspaceID: nil),

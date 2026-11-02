@@ -379,8 +379,12 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
 - Auto Mode is Boltty answering `edit` asks "once"; a file outside the folder
   asks `external_directory` first, and commands still ask.
 - **The free tier refuses a session whose id is not in OpenCode's own
-  spelling** (`FreeTierError`, measured 2.0.12–2.0.27). Free-model sessions are
-  therefore server-named; minting OpenCode's spelling in
+  spelling** (`FreeTierError`, measured 2.0.12–2.0.27; on 2.2.5 it is a 429
+  `provider.free-limit`, "Free usage limit reached", which reads as a spent
+  plan but is not). Free-model sessions are therefore server-named, and so is a
+  session made without a model (the server's default, Big Pickle on 2.2.5, is
+  free); a free model switched onto a caller-named session fails the same way.
+  Minting OpenCode's spelling in
   `AgentSessionID.opaque()` would let them be caller-named again. Do not report
   this upstream on the person's behalf.
 - `GET /session/{id}/message` caps `limit` at 200; page with
