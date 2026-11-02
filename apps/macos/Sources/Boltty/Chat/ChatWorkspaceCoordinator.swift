@@ -17,6 +17,8 @@ final class ChatWorkspaceCoordinator {
 
   var onStatusSnapshotChange: ((StatusBarSnapshot) -> Void)?
   var notificationDelivery: ((SystemAttentionNotification) -> Void)?
+  /// A chat's turn ended well (working → idle); never an Ask Boltty chat.
+  var onTurnFinished: ((Conversation) -> Void)?
 
   var isProviderEnabled: (String) -> Bool = { _ in true }
   var preferredProviderID: () -> String? = { nil }
@@ -355,6 +357,7 @@ final class ChatWorkspaceCoordinator {
         guard old.blocksSending else { continue }
         status = "Done"
         kind = .finished
+        if !conversation.isAskBoltty { onTurnFinished?(conversation) }
       case .waiting:
         let transcript = store.transcript(id: conversation.id)
         status = SystemAttentionNotification.needsWords(
@@ -374,6 +377,15 @@ final class ChatWorkspaceCoordinator {
     }
     let ids = Set(conversations.map(\.id))
     previousStates = previousStates.filter { ids.contains($0.key) }
+  }
+
+  /// What would be said of the chat's finished turn, and the reply it is
+  /// from (`AnswerReading`).
+  func spokenReply(of id: UUID) -> (messageID: String, text: String)? {
+    guard let reply = AnswerReading.reply(in: store.transcript(id: id).messages),
+          let text = AnswerReading.excerpt(of: reply.copyableText)
+    else { return nil }
+    return (reply.id, text)
   }
 
   @discardableResult

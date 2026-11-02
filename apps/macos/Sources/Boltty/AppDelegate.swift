@@ -16,12 +16,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var attentionNotifications: SystemAttentionNotificationService?
   private var sounds: InterfaceSounds?
   private var askBoltty: AskBolttyController?
-  /// Boltty's voice, made on first use: the synthesizer loads its voices then.
+  /// Boltty's voice, made on first use.
   private lazy var speech = SpeechOutput { [weak self] in
     let settings = self?.model?.settings ?? AppSettings()
-    return SpeechOutput.Preferences(
-      voiceByLanguage: settings.speechVoiceByLanguage, rate: settings.speechRate)
+    var local: SpeechOutput.Local?
+    if let folder = self?.localModels.folder(of: .supertonic3) {
+      let voice = SupertonicSynthesizer.presets.contains(settings.speechLocalVoice)
+        ? settings.speechLocalVoice : SpeechOutput.defaultLocalVoice
+      local = SpeechOutput.Local(folder: folder, voice: voice)
+    }
+    return SpeechOutput.Preferences(rate: settings.speechRate, local: local)
   }
+  /// Chats whose last request was dictated, for "When I asked by voice".
+  private var dictatedChats: Set<UUID> = []
+  /// The reply being read because its turn finished: hiding the panel does
+  /// not stop it, a new request does.
+  private var readAloudID: String?
+  /// The local voice models. A second Boltty (read-only) downloads and
+  /// deletes nothing.
+  private lazy var localModels = LocalModelStore(canWrite: { [weak self] in
+    self?.chat.map { !$0.store.isReadOnly } ?? false
+  })
+  /// Parakeet, handed to dictation when Settings chose it and it is here.
+  private let parakeet = ParakeetDictationEngine()
   private var settingsCancellable: AnyCancellable?
   private var cancellables = Set<AnyCancellable>()
   private var shortcutMonitor: Any?
@@ -125,6 +142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     notifications.sound = { [weak sounds] kind in sounds?.notificationSound(for: kind) }
     self.sounds = sounds
     coordinator.notificationDelivery = { [weak notifications] in notifications?.deliver($0) }
+    coordinator.onTurnFinished = { [weak self] conversation in self?.readFinishedTurn(conversation) }
     attentionNotifications = notifications
     chat = coordinator
 
@@ -225,13 +243,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     notchMascot = notch
     palette.onOpenSettings = { [weak self] in self?.showSettings(page: .agents) }
-    palette.onPromptSent = { [weak self] in self?.sounds?.playSend() }
+    palette.onPromptSent = { [weak self] conversation, byVoice in
+      guard let self else { return }
+      sounds?.playSend()
+      if byVoice { dictatedChats.insert(conversation) } else { dictatedChats.remove(conversation) }
+      // A new request cuts off the last one's reading.
+      if let readAloudID, speech.isSaying(readAloudID) { speech.stop() }
+    }
+    palette.onListeningStarted = { [weak self] in
+      guard let speech = self?.speech, speech.speakingID != nil else { return }
+      speech.stop()
+    }
     palette.onPromptRefused = { [weak self] in self?.sounds?.playRefused() }
     palette.onSpeakMessage = { [weak self] message in
       self?.speech.toggle(markdown: message.copyableText, id: message.id)
     }
     palette.onHide = { [weak self] in
-      guard let speech = self?.speech, speech.speakingID?.hasPrefix("settings-") == false else { return }
+      guard let self, let id = speech.speakingID, !id.hasPrefix("settings-"), id != readAloudID
+      else { return }
       speech.stop()
     }
     speech.$speakingID
@@ -256,7 +285,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       probeHotkey: { [weak hotkey] binding in hotkey?.probe(binding) ?? .free },
       updater: updater,
       loginItem: loginItem,
-      speech: speech
+      speech: speech,
+      localModels: localModels
     )
     settingsWindowController = controller
     controller.onReviewAccess = { [weak self] in self?.showAccess() }
@@ -360,7 +390,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private func showSetup(then: @escaping () -> Void) -> Bool {
     guard let model, let engine = chat?.engine else { return false }
     let settings = BolttyAISettingsModel(
-      appModel: model, engine: engine, updater: updater, loginItem: loginItem, speech: speech
+      appModel: model, engine: engine, updater: updater, loginItem: loginItem, speech: speech,
+      localModels: localModels
     )
     settings.probeHotkey = { [weak hotkey] binding in hotkey?.probe(binding) ?? .free }
     let setup = SetupWindowController(
@@ -424,6 +455,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     applyHotkey(settings.bolttyAIHotkey, enabled: settings.bolttyAIHotkeyEnabled)
   }
 
+  /// Reads the start of a finished turn's reply aloud, when Settings says
+  /// so for this turn. Never over something else being said.
+  private func readFinishedTurn(_ conversation: Conversation) {
+    let mode = AnswerReading(rawValue: model?.settings.speechReadAnswers ?? "") ?? .off
+    guard mode.reads(askedByVoice: dictatedChats.contains(conversation.id)),
+          let reply = chat?.spokenReply(of: conversation.id)
+    else { return }
+    if let busy = speech.speakingID, busy != readAloudID { return }
+    readAloudID = reply.messageID
+    speech.speak(markdown: reply.text, id: reply.messageID)
+  }
+
   private func setupSettingsPipeline() {
     guard let model else { return }
     settingsCancellable = model.$settings
@@ -432,6 +475,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       .sink { [weak self] binding, enabled in
         self?.applyHotkey(binding, enabled: enabled)
       }
+    // `@Published` tells before it stores, so the speech output reads the
+    // settings a turn later.
+    localModels.$states.map { $0[.supertonic3] == .ready }.removeDuplicates()
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] _ in self?.speech.preferencesChanged() }
+      .store(in: &cancellables)
+
+    VoiceDictationService.localEngine = { [weak self] in self?.localDictation() }
+    Publishers.CombineLatest(
+      model.$settings.map(\.dictationEngine).removeDuplicates(),
+      localModels.$states.map { $0[.parakeetUltra] == .ready }.removeDuplicates()
+    )
+    .receive(on: DispatchQueue.main)
+    .sink { [weak self] _, _ in
+      guard let self, let model = self.model else { return }
+      let folder = model.settings.dictationEngine == BolttyAISettingsModel.parakeetEngine
+        ? localModels.folder(of: .parakeetUltra) : nil
+      guard folder != parakeet.folder else { return }
+      parakeet.folder = folder
+      parakeet.warm()
+    }
+    .store(in: &cancellables)
+  }
+
+  /// Parakeet when it is chosen, here, and hears the dictation language;
+  /// otherwise Apple's dictation takes the take.
+  private func localDictation() -> DictationEngine? {
+    guard let settings = model?.settings, parakeet.folder != nil,
+          settings.dictationEngine == BolttyAISettingsModel.parakeetEngine
+    else { return nil }
+    let identifier = settings.dictationLocaleIdentifier == DictationLanguageCatalog.followSystemIdentifier
+      ? Locale.current.identifier : settings.dictationLocaleIdentifier
+    return ParakeetDictationEngine.languages.contains(LanguageCode.of(identifier)) ? parakeet : nil
   }
 
   private var appliedHotkey: HotkeyBinding?

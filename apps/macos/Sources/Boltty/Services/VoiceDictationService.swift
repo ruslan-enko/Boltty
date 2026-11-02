@@ -23,6 +23,10 @@ final class VoiceDictationService {
   var onFinalTranscript: (() -> Void)?
   var onError: ((String) -> Void)?
 
+  /// The local engine when Settings chose it, it is downloaded and it hears
+  /// the dictation language; `nil` is Apple's. Read at every take.
+  static var localEngine: (() -> DictationEngine?)?
+
   var localeIdentifier: String = DictationLanguageCatalog.followSystemIdentifier
   /// A second language to listen for beside the first
   /// (`DictationLanguageCatalog.noSecondLanguageIdentifier`: none).
@@ -89,6 +93,16 @@ final class VoiceDictationService {
   private func requestPermissionAndStart() {
     cancel()
     let generation = generation
+    // A local engine needs the microphone only, never Speech Recognition.
+    if Self.localEngine?() != nil {
+      guard usageDescription("NSMicrophoneUsageDescription")?.isEmpty == false else {
+        fail("Voice input is unavailable in this Boltty build. Please update or reinstall Boltty.")
+        return
+      }
+      state = .requestingPermission
+      requestMicrophonePermissionAndStart(generation: generation, local: true)
+      return
+    }
     guard hasRequiredUsageDescriptions else {
       fail("Voice input is unavailable in this Boltty build. Please update or reinstall Boltty.")
       return
@@ -109,17 +123,17 @@ final class VoiceDictationService {
     }
   }
 
-  private func requestMicrophonePermissionAndStart(generation: Int) {
+  private func requestMicrophonePermissionAndStart(generation: Int, local: Bool = false) {
     switch AVCaptureDevice.authorizationStatus(for: .audio) {
     case .authorized:
-      Task { await startListening(generation: generation) }
+      Task { await startListening(generation: generation, local: local) }
     case .notDetermined:
       AVCaptureDevice.requestAccess(for: .audio) { @Sendable [weak self] granted in
         Task { @MainActor [weak self] in
           guard let self, self.generation == generation,
                 self.state == .requestingPermission else { return }
           if granted {
-            await self.startListening(generation: generation)
+            await self.startListening(generation: generation, local: local)
           } else {
             self.fail("Microphone access is required for voice input.")
           }
@@ -132,8 +146,31 @@ final class VoiceDictationService {
     }
   }
 
-  private func startListening(generation: Int) async {
+  /// `local`: the take was started for the local engine, which is asked
+  /// for again here (the microphone's answer can take a while).
+  private func startListening(generation: Int, local: Bool = false) async {
     guard self.generation == generation, state == .requestingPermission else { return }
+    if local {
+      guard let engine = Self.localEngine?() else {
+        fail(DictationEngineError.startFailed.localizedDescription)
+        return
+      }
+      let inputNode = audioEngine.inputNode
+      let format = inputNode.outputFormat(forBus: 0)
+      guard format.sampleRate > 0, format.channelCount > 0 else {
+        fail("No microphone input is available.")
+        return
+      }
+      guard let started = await makeSession(
+        engine: engine, locale: Locale.current, inputFormat: format, generation: generation)
+      else { return }
+      guard self.generation == generation, state == .requestingPermission else {
+        started.cancel()
+        return
+      }
+      beginCapture(with: started, inputNode: inputNode, format: format)
+      return
+    }
     let languages = await currentLanguages()
     guard self.generation == generation, state == .requestingPermission else { return }
     let inputNode = audioEngine.inputNode
@@ -163,8 +200,8 @@ final class VoiceDictationService {
     )
 
     guard let started = await makeSession(
-      for: language,
-      second: second,
+      engine: DictationCatalog.engine(for: language, second: second),
+      locale: language.locale,
       inputFormat: format,
       generation: generation
     )
@@ -177,14 +214,14 @@ final class VoiceDictationService {
   }
 
   private func makeSession(
-    for language: DictationLanguage,
-    second: DictationLanguage?,
+    engine: DictationEngine,
+    locale: Locale,
     inputFormat: AVAudioFormat,
     generation: Int
   ) async -> DictationSession? {
     do {
-      return try await DictationCatalog.engine(for: language, second: second).start(
-        locale: language.locale,
+      return try await engine.start(
+        locale: locale,
         inputFormat: inputFormat,
         onTranscript: { [weak self] transcript, isFinal in
           guard let self, self.generation == generation else { return }

@@ -19,10 +19,12 @@ final class SettingsWindowController: NSWindowController {
     probeHotkey: @escaping (HotkeyBinding) -> HotkeyAvailability = { _ in .free },
     updater: AppUpdater? = nil,
     loginItem: LoginItem = LoginItem(),
-    speech: SpeechOutput? = nil
+    speech: SpeechOutput? = nil,
+    localModels: LocalModelStore? = nil
   ) {
     let formModel = BolttyAISettingsModel(
-      appModel: model, engine: engine, updater: updater, loginItem: loginItem, speech: speech
+      appModel: model, engine: engine, updater: updater, loginItem: loginItem, speech: speech,
+      localModels: localModels
     )
     formModel.probeHotkey = probeHotkey
     let navigation = SettingsNavigation()

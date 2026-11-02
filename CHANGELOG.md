@@ -2,6 +2,22 @@
 
 What changed from release to release. The newest is at the top.
 
+## Unreleased
+
+**Voice**
+- Natural voices that run on your Mac, downloaded only when you ask: in
+  setup's new "Your voice" step or in Settings › Voice.
+- Parakeet takes dictation in 25 European languages and tells them apart
+  itself, Ukrainian and English in one sentence included. It needs only the
+  microphone.
+- Supertonic reads answers aloud in 31 languages, Ukrainian included. English
+  names inside a Ukrainian sentence are said in English. It replaces the
+  Mac's voices, which Boltty no longer uses: Settings › Voice lists its ten
+  voices and nothing else.
+- "Read answers aloud" (Never, When I Asked by Voice, Always) reads the start
+  of an agent's answer when it finishes.
+- Ask Boltty can say its answers aloud.
+
 ## 0.2.9
 
 **Boltty AI**

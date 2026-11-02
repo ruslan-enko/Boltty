@@ -133,6 +133,20 @@ struct AskBolttySettingsSection: View {
         .accessibilityIdentifier("boltty.settings.talkModel")
       }
 
+      LabeledContent("Voice:") {
+        VStack(alignment: .leading, spacing: 6) {
+          Toggle("Say answers aloud", isOn: Binding(
+            get: { model.askBolttySpeaksAloud }, set: { model.askBolttySpeaksAloud = $0 }
+          ))
+          .accessibilityIdentifier("boltty.settings.talkSpeaksAloud")
+          .disabled(model.supertonicState != .ready)
+          SettingsNote(model.supertonicState == .ready
+            ? "In the voice chosen under Voice. Off, the face answers in blips."
+            : "Needs Supertonic, downloaded under Voice. Until then the face answers in blips.")
+        }
+        .frame(maxWidth: 320, alignment: .leading)
+      }
+
       LabeledContent("Access:") {
         VStack(alignment: .leading, spacing: 6) {
           Picker("", selection: Binding(

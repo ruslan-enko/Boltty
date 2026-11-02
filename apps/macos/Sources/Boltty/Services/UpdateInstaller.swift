@@ -1,4 +1,3 @@
-import CryptoKit
 import AppKit
 import Security
 import os
@@ -57,7 +56,7 @@ enum UpdateInstaller {
     let image = work.appendingPathComponent("Boltty.dmg")
     try await download(dmg, to: image)
     let expected = try await expectedDigest(from: checksum)
-    guard try digest(of: image) == expected else { throw Failure.checksum }
+    guard try FileDigest.sha256(of: image) == expected else { throw Failure.checksum }
 
     let mount = work.appendingPathComponent("mount")
     let attach = await OneShotCommand.run(
@@ -199,16 +198,6 @@ enum UpdateInstaller {
     let hex = first.lowercased()
     guard hex.count == 64, hex.allSatisfy(\.isHexDigit) else { return nil }
     return hex
-  }
-
-  private static func digest(of file: URL) throws -> String {
-    let handle = try FileHandle(forReadingFrom: file)
-    defer { try? handle.close() }
-    var hasher = SHA256()
-    while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
-      hasher.update(data: chunk)
-    }
-    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
   }
 
   private static func verifySignature(of app: URL) throws {

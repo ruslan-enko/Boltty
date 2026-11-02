@@ -163,13 +163,20 @@ final class AppUpdaterTests: XCTestCase {
 
   // MARK: - Asked from the menu
 
-  func testAFoundReleaseOpensItsPage() async {
+  func testAFoundReleaseOpensItsPage() async throws {
     let updater = makeUpdater(body: releaseJSON(tag: "v0.2.0"))
     await updater.check()
     var opened: URL?
+    var asked = 0
     updater.openURL = { opened = $0 }
+    // The real alert is modal: in the test host it waits for a click nobody makes.
+    updater.presentResult = { _, _ in asked += 1; return true }
     updater.fetch = { _ in XCTFail("no second check"); throw URLError(.badURL) }
     updater.checkForUpdates()
+    // It answers in a task of its own.
+    let deadline = Date().addingTimeInterval(2)
+    while opened == nil, Date() < deadline { try await Task.sleep(nanoseconds: 10_000_000) }
+    XCTAssertEqual(asked, 1)
     XCTAssertEqual(opened?.absoluteString, "https://github.com/ruslan-enko/boltty/releases/tag/v0.2.0")
   }
 

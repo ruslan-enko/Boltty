@@ -15,11 +15,15 @@ struct AppSettings: Equatable, Sendable {
   var dictationLocaleIdentifier: String
   /// A second language dictation listens for beside the first; empty is none.
   var dictationSecondLocaleIdentifier: String
-  /// The voice chosen per language code (`en`, `uk`); a language not in it
-  /// speaks in the best voice the Mac has for it.
-  var speechVoiceByLanguage: [String: String]
-  /// A multiple of the system's speaking rate.
+  /// Who dictates: empty is Apple's recognizers, `parakeet` the local model
+  /// where it hears the dictation language (Apple's elsewhere).
+  var dictationEngine: String
+  /// A multiple of the voice's own pace.
   var speechRate: Double
+  /// Supertonic's preset (`F1`…`M5`); empty is `SpeechOutput.defaultLocalVoice`.
+  var speechLocalVoice: String
+  /// When a finished turn's reply is read aloud (`AnswerReading`); empty is never.
+  var speechReadAnswers: String
   /// Ask Boltty: hold the chord, ask about the screen out loud, hear the answer.
   var askBolttyEnabled: Bool
   /// `nil` is automatic: Claude Code where it is ready (the fastest measured).
@@ -28,6 +32,8 @@ struct AppSettings: Equatable, Sendable {
   var askBolttyEffort: String?
   /// Ask Boltty looks and answers; it changes nothing unless the person allows it.
   var askBolttyReadOnly: Bool
+  /// Ask Boltty says its answer aloud as well as typing it out.
+  var askBolttySpeaksAloud: Bool
   var playsSounds: Bool
   var checksForUpdates: Bool
 
@@ -43,16 +49,19 @@ struct AppSettings: Equatable, Sendable {
   private static let legacyBolttyAIHotkeyKey = "boltty.askBolttyHotkey"
   private static let dictationLocaleKey = "boltty.dictationLocale"
   private static let dictationSecondLocaleKey = "boltty.dictationSecondLocale"
+  private static let dictationEngineKey = "boltty.dictation.engine"
   /// What Settings › Voice stored for "Automatic" while Whisper could hear the
   /// language. Apple's engine cannot, and it was the system's language there.
   private static let retiredAutomaticLocale = "automatic"
-  private static let speechVoiceByLanguageKey = "boltty.speech.voiceByLanguage"
   private static let speechRateKey = "boltty.speech.rate"
+  private static let speechLocalVoiceKey = "boltty.speech.localVoice"
+  private static let speechReadAnswersKey = "boltty.speech.readAnswers"
   private static let askBolttyEnabledKey = "boltty.talk.enabled"
   private static let askBolttyProviderIDKey = "boltty.talk.agent"
   private static let askBolttyModelIDKey = "boltty.talk.model"
   private static let askBolttyEffortKey = "boltty.talk.effort"
   private static let askBolttyReadOnlyKey = "boltty.talk.readOnly"
+  private static let askBolttySpeaksAloudKey = "boltty.talk.speaksAloud"
   private static let playsSoundsKey = "boltty.sounds.enabled"
   private static let checksForUpdatesKey = "boltty.updates.automaticChecks"
 
@@ -72,13 +81,16 @@ struct AppSettings: Equatable, Sendable {
     bolttyAIHotkeyEnabled: Bool = true,
     dictationLocaleIdentifier: String = DictationLanguageCatalog.followSystemIdentifier,
     dictationSecondLocaleIdentifier: String = DictationLanguageCatalog.noSecondLanguageIdentifier,
-    speechVoiceByLanguage: [String: String] = [:],
+    dictationEngine: String = "",
     speechRate: Double = 1,
+    speechLocalVoice: String = "",
+    speechReadAnswers: String = "",
     askBolttyEnabled: Bool = false,
     askBolttyProviderID: String? = nil,
     askBolttyModelID: String? = nil,
     askBolttyEffort: String? = nil,
     askBolttyReadOnly: Bool = true,
+    askBolttySpeaksAloud: Bool = false,
     playsSounds: Bool = true,
     checksForUpdates: Bool = true
   ) {
@@ -93,13 +105,16 @@ struct AppSettings: Equatable, Sendable {
     self.mascotSelections = mascotSelections
     self.dictationLocaleIdentifier = dictationLocaleIdentifier
     self.dictationSecondLocaleIdentifier = dictationSecondLocaleIdentifier
-    self.speechVoiceByLanguage = speechVoiceByLanguage
+    self.dictationEngine = dictationEngine
     self.speechRate = speechRate
+    self.speechLocalVoice = speechLocalVoice
+    self.speechReadAnswers = speechReadAnswers
     self.askBolttyEnabled = askBolttyEnabled
     self.askBolttyProviderID = askBolttyProviderID
     self.askBolttyModelID = askBolttyModelID
     self.askBolttyEffort = askBolttyEffort
     self.askBolttyReadOnly = askBolttyReadOnly
+    self.askBolttySpeaksAloud = askBolttySpeaksAloud
     self.playsSounds = playsSounds
     self.checksForUpdates = checksForUpdates
   }
@@ -115,8 +130,6 @@ struct AppSettings: Equatable, Sendable {
       ? DictationLanguageCatalog.followSystemIdentifier : storedLocale!
     let dictationSecondLocaleIdentifier = defaults.string(forKey: Self.dictationSecondLocaleKey)
       ?? DictationLanguageCatalog.noSecondLanguageIdentifier
-    let speechVoiceByLanguage = defaults.dictionary(forKey: Self.speechVoiceByLanguageKey)
-      as? [String: String] ?? [:]
     let speechRate = defaults.object(forKey: Self.speechRateKey)
       .map { _ in defaults.double(forKey: Self.speechRateKey) } ?? 1
     let askBolttyReadOnly = defaults.object(forKey: Self.askBolttyReadOnlyKey)
@@ -163,13 +176,16 @@ struct AppSettings: Equatable, Sendable {
       bolttyAIHotkeyEnabled: hotkeyEnabled,
       dictationLocaleIdentifier: dictationLocaleIdentifier,
       dictationSecondLocaleIdentifier: dictationSecondLocaleIdentifier,
-      speechVoiceByLanguage: speechVoiceByLanguage,
+      dictationEngine: defaults.string(forKey: Self.dictationEngineKey) ?? "",
       speechRate: speechRate,
+      speechLocalVoice: defaults.string(forKey: Self.speechLocalVoiceKey) ?? "",
+      speechReadAnswers: defaults.string(forKey: Self.speechReadAnswersKey) ?? "",
       askBolttyEnabled: defaults.bool(forKey: Self.askBolttyEnabledKey),
       askBolttyProviderID: defaults.string(forKey: Self.askBolttyProviderIDKey),
       askBolttyModelID: defaults.string(forKey: Self.askBolttyModelIDKey),
       askBolttyEffort: defaults.string(forKey: Self.askBolttyEffortKey),
       askBolttyReadOnly: askBolttyReadOnly,
+      askBolttySpeaksAloud: defaults.bool(forKey: Self.askBolttySpeaksAloudKey),
       playsSounds: playsSounds,
       checksForUpdates: checksForUpdates
     )
@@ -216,13 +232,16 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(bolttyAIHotkeyIsChosen, forKey: Self.bolttyAIHotkeyChosenKey)
     defaults.set(dictationLocaleIdentifier, forKey: Self.dictationLocaleKey)
     defaults.set(dictationSecondLocaleIdentifier, forKey: Self.dictationSecondLocaleKey)
-    defaults.set(speechVoiceByLanguage, forKey: Self.speechVoiceByLanguageKey)
+    defaults.set(dictationEngine, forKey: Self.dictationEngineKey)
     defaults.set(speechRate, forKey: Self.speechRateKey)
+    defaults.set(speechLocalVoice, forKey: Self.speechLocalVoiceKey)
+    defaults.set(speechReadAnswers, forKey: Self.speechReadAnswersKey)
     defaults.set(askBolttyEnabled, forKey: Self.askBolttyEnabledKey)
     defaults.set(askBolttyProviderID, forKey: Self.askBolttyProviderIDKey)
     defaults.set(askBolttyModelID, forKey: Self.askBolttyModelIDKey)
     defaults.set(askBolttyEffort, forKey: Self.askBolttyEffortKey)
     defaults.set(askBolttyReadOnly, forKey: Self.askBolttyReadOnlyKey)
+    defaults.set(askBolttySpeaksAloud, forKey: Self.askBolttySpeaksAloudKey)
     defaults.set(playsSounds, forKey: Self.playsSoundsKey)
     defaults.set(checksForUpdates, forKey: Self.checksForUpdatesKey)
   }

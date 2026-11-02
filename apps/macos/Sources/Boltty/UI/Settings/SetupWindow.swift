@@ -9,13 +9,14 @@ import SwiftUI
 /// described. Every choice is the one Settings holds, made through the same
 /// model; nothing here is stored apart.
 enum SetupStep: Int, CaseIterable {
-  case agents, mascots, keys, access
+  case agents, mascots, keys, voice, access
 
   var title: String {
     switch self {
     case .agents: "Meet your agents"
     case .mascots: "Give them faces"
     case .keys: "Your keys"
+    case .voice: "Your voice"
     case .access: "Almost there"
     }
   }
@@ -27,6 +28,7 @@ enum SetupStep: Int, CaseIterable {
     case .agents: [("The agents already on your Mac.", true), ("\nPick the ones Boltty AI may use.", false)]
     case .mascots: [("Every agent wears its own.", true), ("\nClick one to restyle it.", false)]
     case .keys: [("One chord opens Boltty AI.", true), ("\nHold three to ask about the screen.", false)]
+    case .voice: [("Boltty listens with Apple’s dictation.", true), ("\nAdd natural voices that run on this Mac.", false)]
     case .access: [("macOS asks for each once.", true), ("\nYou can change them any time.", false)]
     }
   }
@@ -120,11 +122,11 @@ struct SetupView: View {
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
           .disabled(access.asking != nil)
-        Button("Not Now", action: onFinish)
+        Button("Not Now", action: finish)
           .buttonStyle(.glass)
           .controlSize(.extraLarge)
       } else {
-        Button(action: onFinish) { SetupButtonLabel(title: "Let’s Go") }
+        Button(action: finish) { SetupButtonLabel(title: "Let’s Go") }
           .buttonStyle(.glassProminent)
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
@@ -147,8 +149,15 @@ struct SetupView: View {
     case .agents: SetupAgentsVisual(model: model, onFaceHover: onFaceHover)
     case .mascots: SetupMascotsVisual(model: model, onFaceHover: onFaceHover)
     case .keys: SetupKeysVisual(model: model)
+    case .voice: SetupVoiceVisual(model: model)
     case .access: SetupAccessVisual(model: access)
     }
+  }
+
+  /// What was ticked on the voice step starts downloading as setup ends.
+  private func finish() {
+    model.installSetupVoices()
+    onFinish()
   }
 
   private func go(to target: SetupStep) {
@@ -617,5 +626,86 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
     NSApp.presentationOptions = []
     access.stopWatching()
     DispatchQueue.main.async { [weak self] in self?.onClose?() }
+  }
+}
+
+// MARK: - Voice
+
+/// The two local models, each a tile to tick. Nothing is ticked at first: a
+/// gigabyte is not downloaded without a yes, and a tick is that yes.
+private struct SetupVoiceVisual: View {
+  @ObservedObject var model: BolttyAISettingsModel
+
+  var body: some View {
+    VStack(spacing: 12) {
+      SetupVoiceTile(
+        model: model, id: .parakeetUltra, symbol: "mic.fill", title: "Natural dictation",
+        detail: "Parakeet hears Ukrainian, English and 23 more, even mixed in one sentence.")
+      SetupVoiceTile(
+        model: model, id: .supertonic3, symbol: "speaker.wave.2.fill", title: "Natural voice",
+        detail: "Supertonic reads answers aloud in 31 languages.")
+      Text(summary)
+        .font(.system(size: 12, design: .rounded))
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
+    }
+  }
+
+  private var summary: String {
+    let chosen = LocalVoiceCatalog.all.filter { model.setupVoices.contains($0.id) }
+    guard !chosen.isEmpty else { return "Nothing is downloaded. Both can be added later in Settings › Voice." }
+    let bytes = chosen.reduce(Int64(0)) { $0 + $1.size }
+    let size = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    return "\(size) downloads from Hugging Face after setup."
+  }
+}
+
+private struct SetupVoiceTile: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  let id: LocalVoiceModel.ID
+  let symbol: String
+  let title: String
+  let detail: String
+  @State private var isHovered = false
+
+  private var isOn: Bool { model.setupVoices.contains(id) }
+  private var isHere: Bool { model.modelState(id) == .ready }
+
+  var body: some View {
+    SetupTile(isOn: isOn || isHere, isHovered: isHovered) {
+      HStack(spacing: 14) {
+        Image(systemName: symbol)
+          .font(.system(size: 22, weight: .medium))
+          .frame(width: 36)
+        VStack(alignment: .leading, spacing: 3) {
+          Text(title).font(.system(size: 14, weight: .semibold, design: .rounded))
+          Text(detail)
+            .font(.system(size: 12, design: .rounded))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+          Text(isHere ? "On this Mac" : model.modelSize(id))
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            .foregroundStyle(.tertiary)
+        }
+        Spacer(minLength: 8)
+        Image(systemName: isOn || isHere ? "checkmark.circle.fill" : "circle")
+          .font(.system(size: 20))
+          .foregroundStyle(isOn || isHere ? .primary : .tertiary)
+      }
+      .padding(.horizontal, 18)
+      .padding(.vertical, 14)
+    }
+    .fixedSize(horizontal: false, vertical: true)
+    .onTapGesture {
+      guard !isHere else { return }
+      withAnimation(SettingsMotion.quick) { model.toggleSetupVoice(id) }
+    }
+    .onHover { hovering in withAnimation(SettingsMotion.quick) { isHovered = hovering } }
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isButton)
+    .accessibilityLabel(title)
+    .accessibilityValue(isOn || isHere ? "On" : "Off")
+    .accessibilityIdentifier("boltty.setup.voice.\(id.rawValue)")
   }
 }

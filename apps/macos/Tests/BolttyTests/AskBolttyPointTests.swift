@@ -116,19 +116,6 @@ final class SmoothLineTests: XCTestCase {
   }
 }
 
-final class SpeechLanguagesTests: XCTestCase {
-  func testBolttySpeaksSirisLanguagesAndNoOthers() {
-    XCTAssertEqual(SpeechLanguages.spoken.count, 19)
-    for tag in ["en-US", "en_GB", "de", "fr-CA", "zh-Hans", "zh-HK", "ja", "no", "nb-NO", "vi"] {
-      XCTAssertTrue(SpeechLanguages.speaks(tag), tag)
-    }
-    for tag in ["uk", "uk-UA", "pl", "he", "ms", ""] {
-      XCTAssertFalse(SpeechLanguages.speaks(tag), tag)
-    }
-    XCTAssertFalse(SpeechLanguages.speaks(nil))
-  }
-}
-
 @MainActor
 final class AskBolttyOverlayGeometryTests: XCTestCase {
   func testANewCaptionTypesOnlyWhatIsNew() {

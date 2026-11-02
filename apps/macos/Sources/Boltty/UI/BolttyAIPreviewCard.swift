@@ -1613,7 +1613,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   /// Whether this answer can be read aloud — in one of the languages Boltty
-  /// speaks (`SpeechLanguages`). Worked out when the pointer first comes to
+  /// speaks (`SpeechOutput.languages`). Worked out when the pointer first comes to
   /// it, not as the transcript draws, and kept while the words stay the same.
   private var speaksThisAnswer: Bool {
     let words = message.copyableText
