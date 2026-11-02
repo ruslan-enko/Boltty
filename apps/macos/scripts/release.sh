@@ -277,6 +277,13 @@ fi
 sha=$(shasum -a 256 "$dmg" | awk '{print $1}')
 print "$sha  Boltty.dmg" > "$out/Boltty.dmg.sha256"
 
+# install.sh pins the signing identity; a release it would refuse is not one.
+step "Checking install.sh takes it"
+trial=$(mktemp -d)
+BOLTTY_DMG="$dmg" BOLTTY_INSTALL_DIR="$trial" sh "$app_dir/../../install.sh" >/dev/null \
+  || { rm -rf "$trial"; die "install.sh refuses this DMG: is its requirement still the signing identity's?" }
+rm -rf "$trial"
+
 # ── What is left to do by hand ────────────────────────────────────────────
 step "Done: $out"
 print "  Boltty.dmg      $(du -h "$dmg" | awk '{print $1}'), sha256 $sha"

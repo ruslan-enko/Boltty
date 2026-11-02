@@ -95,13 +95,26 @@ Every agent gets a face of its own, and ↓ keeps your chats, a tab per agent:
 
 ## Install
 
+Paste this into Terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ruslan-enko/Boltty/main/install.sh | sh
+```
+
+It downloads the latest release, checks its checksum and signature, puts
+Boltty in Applications and opens it. Then press **⌥Space**. The
+[script](install.sh) is short; read it first if you like.
+
+Or by hand:
+
 1. Download **[Boltty.dmg](https://github.com/ruslan-enko/boltty/releases/latest/download/Boltty.dmg)** from the [latest release](https://github.com/ruslan-enko/boltty/releases/latest).
 2. Open it and drag Boltty into Applications.
 3. Open Boltty and press **⌥Space**.
 
 The release isn't notarized yet, so the first time macOS will refuse to open
-it. Go to **System Settings › Privacy & Security**, scroll down and press
-**Open Anyway**. You only do this once.
+a copy downloaded in a browser. Go to **System Settings › Privacy & Security**,
+scroll down and press **Open Anyway**. You only do this once. (The script
+avoids this: macOS checks only what a browser downloaded.)
 
 You need **macOS 26 or later** and at least one of the agents above installed
 and signed in. Boltty doesn't install them for you; **Settings › Agents** shows

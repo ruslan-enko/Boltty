@@ -4,6 +4,10 @@ What changed from release to release. The newest is at the top.
 
 ## 0.3.0
 
+**Install**
+- One line in Terminal installs Boltty, with no trip to Privacy & Security:
+  `curl -fsSL https://raw.githubusercontent.com/ruslan-enko/Boltty/main/install.sh | sh`.
+
 **Voice**
 - Natural voices that run on your Mac, downloaded only when you ask: in
   setup's new "Your voice" step or in Settings › Voice.

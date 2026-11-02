@@ -937,6 +937,16 @@ final text. A long silence sends, but only after speech was heard.
   (`Config/Signing.local.xcconfig`) with hardened runtime off (library
   validation refuses the debug dylib). A grant pinned to an ad hoc build needs
   `tccutil reset … com.boltty.app`.
+- **`install.sh`** (repository root, run as `curl … | sh`) is the way in
+  without Open Anyway: Gatekeeper judges only what carries the quarantine
+  mark, which a browser sets and curl does not. It takes the latest release's
+  `Boltty.dmg`, checks it against `Boltty.dmg.sha256`, checks the app against
+  a pinned requirement (the "Boltty Development" root, as `UpdateInstaller`
+  does), and swaps it into `/Applications` (`~/Applications` if not
+  writable). It refuses while that copy runs, and opens with `open`.
+  `release.sh` runs it on every DMG it builds (`BOLTTY_DMG`,
+  `BOLTTY_INSTALL_DIR`), so a new signing identity changes the pin in the
+  same commit.
 - Entitlements: `device.audio-input`, `automation.apple-events`, in every build.
 - Fixed by the first release: repository `ruslan-enko/boltty`, bundle id
   `com.boltty.app`, asset name `Boltty.dmg`, tag `v<MARKETING_VERSION>`.
