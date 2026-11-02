@@ -173,8 +173,9 @@ final class ParakeetTranscriber: @unchecked Sendable {
     let frame = min(index, frames.shape[2].intValue - 1)
     switch frames.dataType {
     case .float16:
-      let source = frames.dataPointer.bindMemory(to: Float16.self, capacity: frames.count)
-      return (0..<count).map { Float(source[$0 * strides[1] + frame * strides[2]]) }
+      let source = frames.dataPointer.bindMemory(to: UInt16.self, capacity: frames.count)
+      let bits = (0..<count).map { source[$0 * strides[1] + frame * strides[2]] }
+      return bits.withUnsafeBufferPointer(MLArrays.halves)
     default:
       let source = frames.dataPointer.bindMemory(to: Float.self, capacity: frames.count)
       return (0..<count).map { source[$0 * strides[1] + frame * strides[2]] }
