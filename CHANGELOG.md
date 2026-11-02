@@ -2,7 +2,7 @@
 
 What changed from release to release. The newest is at the top.
 
-## Unreleased
+## 0.3.0
 
 **Voice**
 - Natural voices that run on your Mac, downloaded only when you ask: in
