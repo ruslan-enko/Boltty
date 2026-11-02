@@ -18,14 +18,8 @@ struct AppSettings: Equatable, Sendable {
   /// Who dictates: empty is Apple's recognizers, `parakeet` the local model
   /// where it hears the dictation language (Apple's elsewhere).
   var dictationEngine: String
-  /// The voice chosen per language code (`en`, `uk`); a language not in it
-  /// speaks in the best voice the Mac has for it.
-  var speechVoiceByLanguage: [String: String]
-  /// A multiple of the system's speaking rate.
+  /// A multiple of the voice's own pace.
   var speechRate: Double
-  /// Who reads answers aloud: empty is Apple's voices, `supertonic` the
-  /// local model where it speaks the language (Apple's voices elsewhere).
-  var speechEngine: String
   /// Supertonic's preset (`F1`…`M5`); empty is `SpeechOutput.defaultLocalVoice`.
   var speechLocalVoice: String
   /// When a finished turn's reply is read aloud (`AnswerReading`); empty is never.
@@ -59,9 +53,7 @@ struct AppSettings: Equatable, Sendable {
   /// What Settings › Voice stored for "Automatic" while Whisper could hear the
   /// language. Apple's engine cannot, and it was the system's language there.
   private static let retiredAutomaticLocale = "automatic"
-  private static let speechVoiceByLanguageKey = "boltty.speech.voiceByLanguage"
   private static let speechRateKey = "boltty.speech.rate"
-  private static let speechEngineKey = "boltty.speech.engine"
   private static let speechLocalVoiceKey = "boltty.speech.localVoice"
   private static let speechReadAnswersKey = "boltty.speech.readAnswers"
   private static let askBolttyEnabledKey = "boltty.talk.enabled"
@@ -90,9 +82,7 @@ struct AppSettings: Equatable, Sendable {
     dictationLocaleIdentifier: String = DictationLanguageCatalog.followSystemIdentifier,
     dictationSecondLocaleIdentifier: String = DictationLanguageCatalog.noSecondLanguageIdentifier,
     dictationEngine: String = "",
-    speechVoiceByLanguage: [String: String] = [:],
     speechRate: Double = 1,
-    speechEngine: String = "",
     speechLocalVoice: String = "",
     speechReadAnswers: String = "",
     askBolttyEnabled: Bool = false,
@@ -116,9 +106,7 @@ struct AppSettings: Equatable, Sendable {
     self.dictationLocaleIdentifier = dictationLocaleIdentifier
     self.dictationSecondLocaleIdentifier = dictationSecondLocaleIdentifier
     self.dictationEngine = dictationEngine
-    self.speechVoiceByLanguage = speechVoiceByLanguage
     self.speechRate = speechRate
-    self.speechEngine = speechEngine
     self.speechLocalVoice = speechLocalVoice
     self.speechReadAnswers = speechReadAnswers
     self.askBolttyEnabled = askBolttyEnabled
@@ -142,8 +130,6 @@ struct AppSettings: Equatable, Sendable {
       ? DictationLanguageCatalog.followSystemIdentifier : storedLocale!
     let dictationSecondLocaleIdentifier = defaults.string(forKey: Self.dictationSecondLocaleKey)
       ?? DictationLanguageCatalog.noSecondLanguageIdentifier
-    let speechVoiceByLanguage = defaults.dictionary(forKey: Self.speechVoiceByLanguageKey)
-      as? [String: String] ?? [:]
     let speechRate = defaults.object(forKey: Self.speechRateKey)
       .map { _ in defaults.double(forKey: Self.speechRateKey) } ?? 1
     let askBolttyReadOnly = defaults.object(forKey: Self.askBolttyReadOnlyKey)
@@ -191,9 +177,7 @@ struct AppSettings: Equatable, Sendable {
       dictationLocaleIdentifier: dictationLocaleIdentifier,
       dictationSecondLocaleIdentifier: dictationSecondLocaleIdentifier,
       dictationEngine: defaults.string(forKey: Self.dictationEngineKey) ?? "",
-      speechVoiceByLanguage: speechVoiceByLanguage,
       speechRate: speechRate,
-      speechEngine: defaults.string(forKey: Self.speechEngineKey) ?? "",
       speechLocalVoice: defaults.string(forKey: Self.speechLocalVoiceKey) ?? "",
       speechReadAnswers: defaults.string(forKey: Self.speechReadAnswersKey) ?? "",
       askBolttyEnabled: defaults.bool(forKey: Self.askBolttyEnabledKey),
@@ -249,9 +233,7 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(dictationLocaleIdentifier, forKey: Self.dictationLocaleKey)
     defaults.set(dictationSecondLocaleIdentifier, forKey: Self.dictationSecondLocaleKey)
     defaults.set(dictationEngine, forKey: Self.dictationEngineKey)
-    defaults.set(speechVoiceByLanguage, forKey: Self.speechVoiceByLanguageKey)
     defaults.set(speechRate, forKey: Self.speechRateKey)
-    defaults.set(speechEngine, forKey: Self.speechEngineKey)
     defaults.set(speechLocalVoice, forKey: Self.speechLocalVoiceKey)
     defaults.set(speechReadAnswers, forKey: Self.speechReadAnswersKey)
     defaults.set(askBolttyEnabled, forKey: Self.askBolttyEnabledKey)

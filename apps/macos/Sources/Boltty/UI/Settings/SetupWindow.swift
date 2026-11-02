@@ -28,7 +28,7 @@ enum SetupStep: Int, CaseIterable {
     case .agents: [("The agents already on your Mac.", true), ("\nPick the ones Boltty AI may use.", false)]
     case .mascots: [("Every agent wears its own.", true), ("\nClick one to restyle it.", false)]
     case .keys: [("One chord opens Boltty AI.", true), ("\nHold three to ask about the screen.", false)]
-    case .voice: [("Boltty listens and speaks with Apple’s voices.", true), ("\nAdd natural ones that run on this Mac.", false)]
+    case .voice: [("Boltty listens with Apple’s dictation.", true), ("\nAdd natural voices that run on this Mac.", false)]
     case .access: [("macOS asks for each once.", true), ("\nYou can change them any time.", false)]
     }
   }
@@ -657,7 +657,7 @@ private struct SetupVoiceVisual: View {
     guard !chosen.isEmpty else { return "Nothing is downloaded. Both can be added later in Settings › Voice." }
     let bytes = chosen.reduce(Int64(0)) { $0 + $1.size }
     let size = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    return "\(size) downloads from Hugging Face after setup. Apple’s voices work until then."
+    return "\(size) downloads from Hugging Face after setup."
   }
 }
 

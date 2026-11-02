@@ -139,9 +139,10 @@ struct AskBolttySettingsSection: View {
             get: { model.askBolttySpeaksAloud }, set: { model.askBolttySpeaksAloud = $0 }
           ))
           .accessibilityIdentifier("boltty.settings.talkSpeaksAloud")
-          SettingsNote(model.usesLocalVoice
-            ? "In the reading voice chosen under Voice. Off, the face answers in blips."
-            : "In the reading voice chosen under Voice; Supertonic there sounds most natural. Off, the face answers in blips.")
+          .disabled(model.supertonicState != .ready)
+          SettingsNote(model.supertonicState == .ready
+            ? "In the voice chosen under Voice. Off, the face answers in blips."
+            : "Needs Supertonic, downloaded under Voice. Until then the face answers in blips.")
         }
         .frame(maxWidth: 320, alignment: .leading)
       }

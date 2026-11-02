@@ -16,18 +16,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var attentionNotifications: SystemAttentionNotificationService?
   private var sounds: InterfaceSounds?
   private var askBoltty: AskBolttyController?
-  /// Boltty's voice, made on first use: the synthesizer loads its voices then.
+  /// Boltty's voice, made on first use.
   private lazy var speech = SpeechOutput { [weak self] in
     let settings = self?.model?.settings ?? AppSettings()
     var local: SpeechOutput.Local?
-    if settings.speechEngine == BolttyAISettingsModel.supertonicEngine,
-       let folder = self?.localModels.folder(of: .supertonic3) {
+    if let folder = self?.localModels.folder(of: .supertonic3) {
       let voice = SupertonicSynthesizer.presets.contains(settings.speechLocalVoice)
         ? settings.speechLocalVoice : SpeechOutput.defaultLocalVoice
       local = SpeechOutput.Local(folder: folder, voice: voice)
     }
-    return SpeechOutput.Preferences(
-      voiceByLanguage: settings.speechVoiceByLanguage, rate: settings.speechRate, local: local)
+    return SpeechOutput.Preferences(rate: settings.speechRate, local: local)
   }
   /// Chats whose last request was dictated, for "When I asked by voice".
   private var dictatedChats: Set<UUID> = []
@@ -39,9 +37,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private lazy var localModels = LocalModelStore(canWrite: { [weak self] in
     self?.chat.map { !$0.store.isReadOnly } ?? false
   })
-  /// Whether the local voice was chosen when last looked at, so turning it
-  /// off reaches the speech output too.
-  private var localVoiceWasOn = false
   /// Parakeet, handed to dictation when Settings chose it and it is here.
   private let parakeet = ParakeetDictationEngine()
   private var settingsCancellable: AnyCancellable?
@@ -482,18 +477,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       }
     // `@Published` tells before it stores, so the speech output reads the
     // settings a turn later.
-    Publishers.CombineLatest(
-      model.$settings.map(\.speechEngine).removeDuplicates(),
-      localModels.$states.map { $0[.supertonic3] == .ready }.removeDuplicates()
-    )
-    .receive(on: DispatchQueue.main)
-    .sink { [weak self] engine, _ in
-      guard let self else { return }
-      let on = engine == BolttyAISettingsModel.supertonicEngine
-      if on || localVoiceWasOn { speech.preferencesChanged() }
-      localVoiceWasOn = on
-    }
-    .store(in: &cancellables)
+    localModels.$states.map { $0[.supertonic3] == .ready }.removeDuplicates()
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] _ in self?.speech.preferencesChanged() }
+      .store(in: &cancellables)
 
     VoiceDictationService.localEngine = { [weak self] in self?.localDictation() }
     Publishers.CombineLatest(
@@ -520,7 +507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     else { return nil }
     let identifier = settings.dictationLocaleIdentifier == DictationLanguageCatalog.followSystemIdentifier
       ? Locale.current.identifier : settings.dictationLocaleIdentifier
-    return ParakeetDictationEngine.languages.contains(SpeechVoice.code(of: identifier)) ? parakeet : nil
+    return ParakeetDictationEngine.languages.contains(LanguageCode.of(identifier)) ? parakeet : nil
   }
 
   private var appliedHotkey: HotkeyBinding?

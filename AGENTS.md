@@ -621,9 +621,10 @@ final text. A long silence sends, but only after speech was heard.
   takes the last one's place (`captionSentences`, `answerSentences`).
 - The answer types out beside the face with blips (`AskBolttyBlips`, rendered on
   Core Audio's thread — its block is made `nonisolated`). Saying it aloud
-  (`SpeechOutput`: Siri's 19 languages, and Supertonic's 31 when it is chosen)
-  is Settings › Ask Boltty › "Say answers aloud" (`boltty.talk.speaksAloud`,
-  off), read into `AskBolttySession.speaksAloud` as the chord begins.
+  (`SpeechOutput`: Supertonic's 31 languages, once it is downloaded) is
+  Settings › Ask Boltty › "Say answers aloud" (`boltty.talk.speaksAloud`,
+  off, disabled until Supertonic is here), read into
+  `AskBolttySession.speaksAloud` as the chord begins.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
 - Ask Boltty chats raise no banner, unread mark or notch line, are never listed,
@@ -687,7 +688,12 @@ final text. A long silence sends, but only after speech was heard.
   signed-out agent's row is its face, name and `AgentId.signInCommand`
   (`claude auth login`, `codex login`, `grok login`); its old limits are
   dropped.
-- **Reading aloud** (`SpeechOutput`): Mac voices, or Supertonic (below).
+- **Reading aloud** (`SpeechOutput`) is Supertonic's (below) or nothing:
+  the Mac's own voices are never used. In Boltty's process they are the
+  compact ones (Siri's are spoken only for Apple's apps, as compact Samantha
+  for anyone else), and they could not read Ukrainian at all. Until
+  Supertonic is downloaded, Settings › Voice shows only its download, the
+  per-answer speaker button does not appear, and nothing is said.
   **"Read answers aloud"** (`boltty.speech.readAnswers`: empty = Never,
   `voice` = When I Asked by Voice, `always`): when a chat's turn ends well
   (`ChatWorkspaceCoordinator.onTurnFinished`, never Ask Boltty), the start of
@@ -695,23 +701,19 @@ final text. A long silence sends, but only after speech was heard.
   (`AnswerReading`). "By voice" is the panel's mark that dictation wrote into
   the prompt sent (`onPromptSent`'s `byVoice`, not stored). It never talks
   over something else being said; hiding the panel does not stop it; a new
-  request or the microphone opening does.
-  Siri's voices are listed to every app
-  but spoken only for Apple's; Boltty's process gets compact Samantha in their
-  place, silently. They are left out of the list. Settings › Voice picks the
-  reading voice for the Mac's language (stored in `boltty.speech.voiceByLanguage`),
-  Automatic being the best installed: quality, then the Mac's reading voices
-  before Eloquence and novelty ones (`SpeechVoice.standing`).
+  request or the microphone opening does. `boltty.speech.voiceByLanguage`
+  and `boltty.speech.engine` are retired keys, inert on disk.
 - **Dictation**: Apple's engine by default, optional second language as a
   second recognizer on the same audio (`BilingualDictationEngine`), decided per
   phrase by confidence (`BilingualTranscript`). `fastResults` lowers
   confidence, so with two languages the transcriber is built from options.
 - **Parakeet dictation** (`ParakeetDictationEngine`, Settings › Voice ›
-  "Dictate with", `boltty.dictation.engine` = `parakeet`): once downloaded,
+  Dictation, `boltty.dictation.engine` = `parakeet`): once downloaded,
   every take whose dictation language is one of its 25 goes to it
   (`VoiceDictationService.localEngine`, asked at each take); others stay
-  Apple's. It hears Ukrainian and English in one take, so the second-language
-  picker is hidden, and it needs the microphone only, not Speech Recognition.
+  Apple's. It hears Ukrainian and English in one take, so while it is chosen
+  the language pickers are hidden, and it needs the microphone only, not
+  Speech Recognition.
   It reads whole takes: the take so far again every 0.7 s for live words,
   once more on release for the final text. Own Core ML port
   (`ParakeetTranscriber`, `ParakeetTDT`): 15 s windows with 1.6 s of sound on
@@ -726,6 +728,10 @@ final text. A long silence sends, but only after speech was heard.
   632 MB) and Supertonic-3 (speech, int8 Neural Engine buckets, 268 MB), Core
   ML builds from FluidInference on Hugging Face, run by Boltty's own code — no
   package. Downloaded only when the person asks; Apple stays the default.
+  On the Voice page choosing Parakeet is asking: its menu item names the
+  size, the download starts at once, and Stop takes the choice back; one
+  that is here and not chosen gets one line with Remove…. Supertonic has a
+  Download button where its rows will be.
   `LocalVoiceCatalog` pins each to a commit with every file's size and
   SHA-256, written by `scripts/pin-local-model.py` (change the revision there,
   run it, review the diff); a file that does not match is not kept. One folder
@@ -737,13 +743,12 @@ final text. A long silence sends, but only after speech was heard.
   nothing. Hashing and compiling are blocking and run detached. Licences:
   Parakeet CC BY 4.0, Supertonic BigScience OpenRAIL-M (its `LICENSE` is
   downloaded with it). Measurements and the plan: `.scratch/local-voice/`.
-- **Supertonic** (`SupertonicSpeaker`, Settings › Voice › "Read answers
-  with", stored as `boltty.speech.engine` = `supertonic` and
+- **Supertonic** (`SupertonicSpeaker`, Settings › Voice › Voice, stored as
   `boltty.speech.localVoice` = a preset `F1`…`M5`, default `M3`): once
-  downloaded it reads every language it speaks; the Mac's voices read the
-  rest. Each piece is synthesized on a serial queue while the one before
+  downloaded it reads every language it speaks, and nothing else is said.
+  Each piece is synthesized on a serial queue while the one before
   plays through one `AVAudioPlayerNode`; `onStart` fires when a piece is
-  heard. A piece that fails falls back to the Mac's voice where it has one.
+  heard. A piece that fails is skipped.
   Measured on an M1 Pro (Boltty's own port): load 0.5 s from Core ML's cache
   (47 s the first time in a new binary, which "preparing" pays), 0.1–0.2 s
   per sentence, ~104 MB. All three estimator buckets load up front, so there

@@ -93,36 +93,15 @@ final class SentenceChunkerTests: XCTestCase {
   }
 }
 
-final class SpeechVoiceTests: XCTestCase {
-  private let voices = [
-    SpeechVoice(id: "karen", name: "Karen", language: "en-AU", quality: .standard),
-    SpeechVoice(id: "samantha", name: "Samantha", language: "en-US", quality: .standard),
-    SpeechVoice(id: "damon", name: "Voice 3", language: "en-US", quality: .enhanced),
-    SpeechVoice(id: "lesya", name: "Lesya", language: "uk-UA", quality: .standard),
-  ]
-
-  func testTheBestVoiceForALanguageIsTheHighestQuality() {
-    XCTAssertEqual(SpeechVoice.choose(language: "en", among: voices, chosen: nil, region: "AU")?.id, "damon")
-  }
-
-  func testAmongEqualsThePersonsRegionWins() {
-    let plain = voices.filter { $0.quality == .standard }
-    XCTAssertEqual(SpeechVoice.choose(language: "en", among: plain, chosen: nil, region: "AU")?.id, "karen")
-    XCTAssertEqual(SpeechVoice.choose(language: "en", among: plain, chosen: nil, region: "US")?.id, "samantha")
-  }
-
-  func testAChosenVoiceWinsOnlyForItsOwnLanguageAndWhileItIsInstalled() {
-    XCTAssertEqual(SpeechVoice.choose(language: "en", among: voices, chosen: "karen", region: nil)?.id, "karen")
-    XCTAssertEqual(SpeechVoice.choose(language: "uk", among: voices, chosen: "karen", region: nil)?.id, "lesya")
-    XCTAssertEqual(SpeechVoice.choose(language: "en", among: voices, chosen: "gone", region: nil)?.id, "damon")
-  }
-
-  func testALanguageWithNoVoiceHasNone() {
-    XCTAssertNil(SpeechVoice.choose(language: "ja", among: voices, chosen: nil, region: nil))
-  }
-
+final class SpeechLanguageTests: XCTestCase {
   func testTheLanguageOfAnAnswerIsRecognised() {
     XCTAssertEqual(SpeechOutput.language(of: "Натисни кнопку «Поділитися» у верхньому правому куті."), "uk")
     XCTAssertEqual(SpeechOutput.language(of: "Click the Share button in the top right corner."), "en")
+  }
+
+  func testALanguageCodeIgnoresTheRegion() {
+    XCTAssertEqual(LanguageCode.of("uk-UA"), "uk")
+    XCTAssertEqual(LanguageCode.of("en_GB"), "en")
+    XCTAssertEqual(LanguageCode.of("de"), "de")
   }
 }

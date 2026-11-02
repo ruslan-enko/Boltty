@@ -81,11 +81,11 @@ A few other things it does: chats survive a restart, a face by the notch shows
 what's running, dictation works on-device in two languages, and Settings shows
 how much each agent has been used against its plan limits.
 
-Boltty uses Apple's voices out of the box. If you want, it can download two
-open models that run on your Mac: **Parakeet** for dictation (25 European
-languages, Ukrainian and English mixed in one sentence included) and
-**Supertonic** to read answers aloud (31 languages). Read aloud can also tell
-you how a task went when an agent finishes.
+Dictation uses Apple's engine out of the box. If you want, Boltty can
+download two open models that run on your Mac: **Parakeet** for dictation (25
+European languages, Ukrainian and English mixed in one sentence included) and
+**Supertonic**, the voice that reads answers aloud (31 languages). With it,
+Boltty can also tell you how a task went when an agent finishes.
 
 Every agent gets a face of its own, and ↓ keeps your chats, a tab per agent:
 

@@ -51,19 +51,16 @@ final class AppSettingsTests: XCTestCase {
     XCTAssertFalse(AppSettings.load(defaults: suite).playsSounds)
   }
 
-  func testSpeechStartsAtTheSystemPaceWithNoVoiceChosenAndKeepsAChoice() {
+  func testSpeechStartsAtTheSystemPaceAndKeepsAChoice() {
     let suite = defaults()
     let fresh = AppSettings.load(defaults: suite)
     XCTAssertEqual(fresh.speechRate, 1)
-    XCTAssertEqual(fresh.speechVoiceByLanguage, [:])
 
     var settings = fresh
     settings.speechRate = 1.25
-    settings.speechVoiceByLanguage = ["uk": "com.apple.voice.compact.uk-UA.Lesya"]
     settings.save(defaults: suite)
     let loaded = AppSettings.load(defaults: suite)
     XCTAssertEqual(loaded.speechRate, 1.25)
-    XCTAssertEqual(loaded.speechVoiceByLanguage, ["uk": "com.apple.voice.compact.uk-UA.Lesya"])
   }
 
   func testAskBolttyIsOffReadOnlyAndAutomaticUntilChosen() {

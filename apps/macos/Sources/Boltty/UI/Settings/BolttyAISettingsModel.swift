@@ -401,46 +401,6 @@ final class BolttyAISettingsModel: ObservableObject {
     return dictationLanguages.filter { $0.languageCode != taken }
   }
 
-  /// The language answers are most likely read in: the Mac's own when Boltty
-  /// speaks it, otherwise English.
-  var readingLanguage: String {
-    let code = SpeechVoice.code(of: Locale.current.identifier)
-    return SpeechLanguages.speaks(code) ? SpeechLanguages.normalised(code) : "en"
-  }
-
-  /// The voice answers in `readingLanguage` are read in.
-  var readingVoice: SpeechVoice? { speech?.voice(for: readingLanguage) }
-
-  /// The voices that can read `readingLanguage`, best first.
-  var readingVoices: [SpeechVoice] {
-    guard speech != nil else { return [] }
-    let code = readingLanguage
-    return SpeechOutput.installedVoices()
-      .filter { SpeechLanguages.normalised($0.language) == code }
-      .sorted { a, b in
-        if a.quality != b.quality { return a.quality > b.quality }
-        if a.standing != b.standing { return a.standing > b.standing }
-        if a.name != b.name { return a.name < b.name }
-        return a.language < b.language
-      }
-  }
-
-  /// The chosen voice's id; empty is automatic (the best installed).
-  var readingVoiceID: String {
-    get { appModel.settings.speechVoiceByLanguage[readingLanguage] ?? "" }
-    set {
-      let code = readingLanguage
-      appModel.updateSettings { $0.speechVoiceByLanguage[code] = newValue.isEmpty ? nil : newValue }
-      previewReadingVoice()
-    }
-  }
-
-  func previewReadingVoice() {
-    speech?.speak(
-      markdown: "This is how Boltty reads its answers.", id: "settings-voice",
-      language: readingLanguage)
-  }
-
   var readAnswers: AnswerReading {
     get { AnswerReading(rawValue: appModel.settings.speechReadAnswers) ?? .off }
     set { appModel.updateSettings { $0.speechReadAnswers = newValue.rawValue } }
@@ -452,14 +412,6 @@ final class BolttyAISettingsModel: ObservableObject {
   }
 
   // MARK: Supertonic
-
-  static let supertonicEngine = "supertonic"
-
-  /// Answers are read by Supertonic where it speaks their language.
-  var usesLocalVoice: Bool {
-    get { appModel.settings.speechEngine == Self.supertonicEngine }
-    set { appModel.updateSettings { $0.speechEngine = newValue ? Self.supertonicEngine : "" } }
-  }
 
   var supertonicState: LocalModelStore.State { modelState(.supertonic3) }
 
@@ -479,7 +431,19 @@ final class BolttyAISettingsModel: ObservableObject {
     Task { await localModels.install(id) }
   }
 
-  func cancelDownload(_ id: LocalVoiceModel.ID) { localModels?.cancel(id) }
+  /// Choosing Parakeet is asking for it, so stopping its download takes the
+  /// choice back too.
+  func stopDownload(_ id: LocalVoiceModel.ID) {
+    localModels?.cancel(id)
+    if id == .parakeetUltra { usesLocalDictation = false }
+  }
+
+  private func fetchIfMissing(_ id: LocalVoiceModel.ID) {
+    switch modelState(id) {
+    case .notInstalled, .failed: download(id)
+    case .downloading, .preparing, .ready: break
+    }
+  }
 
   func remove(_ id: LocalVoiceModel.ID) {
     if id == .supertonic3 { speech?.stop() }
@@ -493,14 +457,12 @@ final class BolttyAISettingsModel: ObservableObject {
     if setupVoices.contains(id) { setupVoices.remove(id) } else { setupVoices.insert(id) }
   }
 
-  /// Chooses each ticked model and downloads it in the background: Apple's
-  /// engine stands in until it is ready, then it takes over by itself.
+  /// Downloads each ticked model in the background. Parakeet is chosen at
+  /// once, Apple Dictation standing in until it is ready; Supertonic reads
+  /// as soon as it is here.
   func installSetupVoices() {
     for id in setupVoices {
-      switch id {
-      case .parakeetUltra: usesLocalDictation = true
-      case .supertonic3: usesLocalVoice = true
-      }
+      if id == .parakeetUltra { usesLocalDictation = true }
       download(id)
     }
     setupVoices = []
@@ -510,16 +472,21 @@ final class BolttyAISettingsModel: ObservableObject {
 
   static let parakeetEngine = "parakeet"
 
-  /// Parakeet is chosen and here: the second language has no use.
-  var parakeetListens: Bool {
-    usesLocalDictation && modelState(.parakeetUltra) == .ready
-  }
-
   /// Dictation is Parakeet's where it hears the language.
   var usesLocalDictation: Bool {
     get { appModel.settings.dictationEngine == Self.parakeetEngine }
     set { appModel.updateSettings { $0.dictationEngine = newValue ? Self.parakeetEngine : "" } }
   }
+
+  /// Choosing Parakeet starts its download; Apple Dictation listens until it
+  /// is ready. Going back stops a download still running.
+  func chooseLocalDictation(_ local: Bool) {
+    if !local, case .downloading = modelState(.parakeetUltra) { localModels?.cancel(.parakeetUltra) }
+    usesLocalDictation = local
+    if local { fetchIfMissing(.parakeetUltra) }
+  }
+
+  // MARK: Reading voice
 
   /// Supertonic's presets, as Settings names them.
   static let localVoices: [(id: String, title: String)] = SupertonicSynthesizer.presets.map { id in
@@ -540,7 +507,7 @@ final class BolttyAISettingsModel: ObservableObject {
 
   /// The Mac's language when Supertonic speaks it, otherwise English.
   var localPreviewLanguage: String {
-    let code = SpeechVoice.code(of: Locale.current.identifier)
+    let code = LanguageCode.of(Locale.current.identifier)
     return SupertonicText.languages.contains(code) ? code : "en"
   }
 

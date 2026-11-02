@@ -11,7 +11,9 @@ What changed from release to release. The newest is at the top.
   itself, Ukrainian and English in one sentence included. It needs only the
   microphone.
 - Supertonic reads answers aloud in 31 languages, Ukrainian included. English
-  names inside a Ukrainian sentence are said in English.
+  names inside a Ukrainian sentence are said in English. It replaces the
+  Mac's voices, which Boltty no longer uses: Settings › Voice lists its ten
+  voices and nothing else.
 - "Read answers aloud" (Never, When I Asked by Voice, Always) reads the start
   of an agent's answer when it finishes.
 - Ask Boltty can say its answers aloud.

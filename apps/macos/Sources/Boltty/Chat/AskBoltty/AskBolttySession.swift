@@ -16,7 +16,7 @@ protocol AskBolttyListening: AnyObject {
 /// What Ask Boltty speaks with. `onStart` runs as the voice begins the piece.
 @MainActor
 protocol AskBolttySpeaking: AnyObject {
-  /// Whether text in `language` is said at all (`SpeechLanguages`).
+  /// Whether text in `language` is said at all (`SpeechOutput.languages`).
   func canSpeak(_ language: String?) -> Bool
   func say(_ piece: String, id: String, language: String?, onStart: (() -> Void)?)
   func isSaying(_ id: String) -> Bool
@@ -52,8 +52,8 @@ final class AskBolttySession: ObservableObject {
   @Published private(set) var pointing: AskBolttyPointing?
   /// What the answers have drawn so far, in order: up until the next question.
   @Published private(set) var drawn: [AskBolttyStroke] = []
-  /// Whether this answer is said, or only shown: Boltty speaks Siri's
-  /// languages and no others. Shown, `reader` paces it as a voice would.
+  /// Whether this answer is said, or only shown: Boltty speaks Supertonic's
+  /// languages, once it is downloaded, and no others. Shown, `reader` paces it as a voice would.
   @Published private(set) var readsAloud = true
   /// The voice for an answer that is only shown: each sentence stays for as
   /// long as it takes to read.
