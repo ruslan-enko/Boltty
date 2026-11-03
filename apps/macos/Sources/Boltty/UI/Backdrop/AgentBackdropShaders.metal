@@ -152,8 +152,11 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
     // The shade is the sky's own colour, so a cloud belongs to the sky it
     // sits in; the light is the sun's, coloured by its glow. Near-white tops
     // would only come out grey under the ceiling.
-    const float3 shade = mix(underside, color, 0.5);
-    const float3 light = mix(sunlight, glow, 0.3 + sun * 0.3);
+    // Low down the shade is the horizon's, deepened: a blue underside over a
+    // warm horizon mixes to grey, as no sunset does.
+    const float3 under = mix(horizon * 0.82, underside, smoothstep(0.2, 0.62, h));
+    const float3 shade = mix(under, color, 0.5);
+    const float3 light = mix(sunlight, glow, 0.3 + sun * 0.3 + (1.0 - smoothstep(0.0, 0.5, h)) * 0.25);
     float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
     // A silver lining where the cloud is thin and faces the light.
     body += light * (1.0 - thick) * lit * 0.3;
