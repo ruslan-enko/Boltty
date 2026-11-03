@@ -2,7 +2,7 @@ import Foundation
 
 /// Which agent Ask Boltty asks, in which model: what Settings chose where it can
 /// still be had, otherwise the fastest that phase 0 measured (Claude Code ·
-/// Haiku, ~1.5 s to the first word from a warm process).
+/// Haiku, ~1.5 s to the first word from a warm process) — at its fastest effort.
 struct AskBolttyTarget: Equatable, Sendable {
   var providerID: String
   var model: ModelSelection?
@@ -13,6 +13,18 @@ struct AskBolttyTarget: Equatable, Sendable {
 enum AskBolttyConfiguration {
   static let preferredProvider = AgentId.claude
   static let preferredModelHint = "haiku"
+
+  /// An answer is one or two spoken sentences, so it thinks as little as the
+  /// model allows short of switching thinking off: a CLI's own default is its
+  /// highest (Antigravity's Flash took 14 s at high, 7 s at low, 1.4.12).
+  /// `minimal` and `none` are passed over while `low` is offered: they lose
+  /// the pointing and drawing.
+  static func fastestEffort(_ options: [AgentEffortOption]) -> String? {
+    let values = options.map(\.value)
+    return effortOrder.first { values.contains($0) } ?? values.first
+  }
+
+  private static let effortOrder = ["low", "minimal", "none", "medium", "high", "xhigh", "max"]
 
   /// Ask Boltty sends a picture of the screen, so only an agent that takes one.
   static func canAnswer(_ capabilities: AgentCapabilities) -> Bool {
@@ -42,9 +54,7 @@ enum AskBolttyConfiguration {
     } else {
       model = nil
     }
-    let effort = chosen == nil ? nil : settings.askBolttyEffort.flatMap { effort in
-      (model?.effortOptions ?? []).contains { $0.value == effort } ? effort : nil
-    }
+    let effort = fastestEffort(model?.effortOptions ?? [])
     return AskBolttyTarget(
       providerID: providerID, model: model?.selection, effort: effort,
       readOnly: settings.askBolttyReadOnly)

@@ -29,7 +29,6 @@ struct AppSettings: Equatable, Sendable {
   /// `nil` is automatic: Claude Code where it is ready (the fastest measured).
   var askBolttyProviderID: String?
   var askBolttyModelID: String?
-  var askBolttyEffort: String?
   /// Ask Boltty looks and answers; it changes nothing unless the person allows it.
   var askBolttyReadOnly: Bool
   /// Ask Boltty says its answer aloud as well as typing it out.
@@ -59,7 +58,6 @@ struct AppSettings: Equatable, Sendable {
   private static let askBolttyEnabledKey = "boltty.talk.enabled"
   private static let askBolttyProviderIDKey = "boltty.talk.agent"
   private static let askBolttyModelIDKey = "boltty.talk.model"
-  private static let askBolttyEffortKey = "boltty.talk.effort"
   private static let askBolttyReadOnlyKey = "boltty.talk.readOnly"
   private static let askBolttySpeaksAloudKey = "boltty.talk.speaksAloud"
   private static let playsSoundsKey = "boltty.sounds.enabled"
@@ -88,7 +86,6 @@ struct AppSettings: Equatable, Sendable {
     askBolttyEnabled: Bool = false,
     askBolttyProviderID: String? = nil,
     askBolttyModelID: String? = nil,
-    askBolttyEffort: String? = nil,
     askBolttyReadOnly: Bool = true,
     askBolttySpeaksAloud: Bool = false,
     playsSounds: Bool = true,
@@ -112,7 +109,6 @@ struct AppSettings: Equatable, Sendable {
     self.askBolttyEnabled = askBolttyEnabled
     self.askBolttyProviderID = askBolttyProviderID
     self.askBolttyModelID = askBolttyModelID
-    self.askBolttyEffort = askBolttyEffort
     self.askBolttyReadOnly = askBolttyReadOnly
     self.askBolttySpeaksAloud = askBolttySpeaksAloud
     self.playsSounds = playsSounds
@@ -183,7 +179,6 @@ struct AppSettings: Equatable, Sendable {
       askBolttyEnabled: defaults.bool(forKey: Self.askBolttyEnabledKey),
       askBolttyProviderID: defaults.string(forKey: Self.askBolttyProviderIDKey),
       askBolttyModelID: defaults.string(forKey: Self.askBolttyModelIDKey),
-      askBolttyEffort: defaults.string(forKey: Self.askBolttyEffortKey),
       askBolttyReadOnly: askBolttyReadOnly,
       askBolttySpeaksAloud: defaults.bool(forKey: Self.askBolttySpeaksAloudKey),
       playsSounds: playsSounds,
@@ -239,7 +234,6 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(askBolttyEnabled, forKey: Self.askBolttyEnabledKey)
     defaults.set(askBolttyProviderID, forKey: Self.askBolttyProviderIDKey)
     defaults.set(askBolttyModelID, forKey: Self.askBolttyModelIDKey)
-    defaults.set(askBolttyEffort, forKey: Self.askBolttyEffortKey)
     defaults.set(askBolttyReadOnly, forKey: Self.askBolttyReadOnlyKey)
     defaults.set(askBolttySpeaksAloud, forKey: Self.askBolttySpeaksAloudKey)
     defaults.set(playsSounds, forKey: Self.playsSoundsKey)

@@ -654,6 +654,9 @@ final text. A long silence sends, but only after speech was heard.
   Settings › Ask Boltty › "Say answers aloud" (`boltty.talk.speaksAloud`,
   off, disabled until Supertonic is here), read into
   `AskBolttySession.speaksAloud` as the chord begins.
+- "Listening…" and "Thinking…" beside the face wear the shimmer a working
+  row has in the chat list: a band of the face's arrival light across the
+  words; under Reduce Motion they stay plain.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
 - Ask Boltty chats raise no banner, unread mark or notch line, are never listed,
@@ -663,7 +666,13 @@ final text. A long silence sends, but only after speech was heard.
 - Read-only by default (`Conversation.readOnly`): the engine refuses every
   permission, and Claude Code and Codex start without write tools.
 - Who answers: the chosen agent and model if ready, else Claude Code on Haiku,
-  else the first ready agent that takes pictures.
+  else the first ready agent that takes pictures. Always at the model's
+  lowest effort, never the effort the agent's chats use and never stored
+  (`boltty.talk.effort` is retired, inert), `low` before `minimal`
+  (`AskBolttyConfiguration.fastestEffort`):
+  a CLI's own default is its highest, and Antigravity's Flash took 14 s at
+  high, 7 s at low (1.4.12). Antigravity still spends ~3 s on a turn that
+  only opens the screenshot; `content` is text, and `@path` does not inline it.
 - Holding the chord again while an answer runs stops the voice **and the
   agent's turn** (`stopTurn`), so the old turn doesn't keep spending the plan.
 - **Escape calls an answer off** while it thinks or answers: it stops the turn

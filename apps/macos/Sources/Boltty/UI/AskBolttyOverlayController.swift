@@ -102,6 +102,14 @@ final class AskBolttyOverlayController {
   static let bobHeight: CGFloat = 2.5
   /// Measured when the words change, never per frame.
   private var bubbleSize: CGSize = .zero
+  /// "Listening…" and "Thinking…" wear a band of the face's light sweeping
+  /// across them, as a working chat's row does in the list: something is
+  /// under way. Masked by the words' silhouette, cut when the words change.
+  private let shimmer = CALayer()
+  private let shimmerWords = CALayer()
+  private let shimmerBand = CAGradientLayer()
+  private var shimmerCut: String?
+  var isShimmeringForTesting: Bool { !shimmer.isHidden && shimmerBand.animation(forKey: "sweep") != nil }
 
   var isVisible: Bool { panel?.isVisible == true }
   var textForTesting: String { label.stringValue }
@@ -423,6 +431,7 @@ final class AskBolttyOverlayController {
       if agent != self.agent {
         self.agent = agent
         face?.apply(look: look)
+        paintShimmer(look)
         trail.colours = Self.lightColours(of: look)
         drawing.colours = trail.colours
         boardDrawing.colours = trail.colours
@@ -454,6 +463,13 @@ final class AskBolttyOverlayController {
     label.isSelectable = false
     label.translatesAutoresizingMaskIntoConstraints = false
     content.addSubview(label)
+    shimmer.mask = shimmerWords
+    shimmer.isHidden = true
+    shimmerBand.startPoint = CGPoint(x: 0, y: 0.5)
+    shimmerBand.endPoint = CGPoint(x: 1, y: 0.5)
+    shimmer.addSublayer(shimmerBand)
+    content.layer?.addSublayer(shimmer)
+    paintShimmer(look)
     NSLayoutConstraint.activate([
       label.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: Self.bubblePadding.width),
       label.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -Self.bubblePadding.width),
@@ -562,6 +578,75 @@ final class AskBolttyOverlayController {
     // ended in "…" until the next word wrapped it.
     label.preferredMaxLayoutWidth = max(1, bubbleSize.width - Self.bubblePadding.width * 2)
     layoutFace()
+    syncShimmer(quiet)
+  }
+
+  // MARK: - The shimmer
+
+  /// On while the words are the quiet ones: the band crosses the words'
+  /// own width, then rests, over and over. Under Reduce Motion nothing moves.
+  private func syncShimmer(_ quiet: Bool) {
+    guard quiet, !MotionPreferences.reduceMotion, let shade else {
+      shimmer.isHidden = true
+      shimmerBand.removeAnimation(forKey: "sweep")
+      return
+    }
+    shade.layoutSubtreeIfNeeded()
+    let frame = label.frame
+    let words = min(frame.width, ceil(label.attributedStringValue.size().width) + 4)
+    let band = max(
+      AgentPaletteMetrics.resultsShimmerMinimumBand, words * AgentPaletteMetrics.resultsShimmerBandShare)
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    shimmer.frame = frame
+    shimmerWords.frame = shimmer.bounds
+    shimmerBand.frame = CGRect(x: -band, y: 0, width: band, height: frame.height)
+    CATransaction.commit()
+    cutShimmerWords()
+    shimmer.isHidden = false
+    guard shimmerBand.animation(forKey: "sweep") == nil else { return }
+    let sweep = CABasicAnimation(keyPath: "transform.translation.x")
+    sweep.fromValue = 0
+    sweep.toValue = words + band
+    sweep.duration = AgentPaletteMetrics.resultsShimmerSweepDuration
+    sweep.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+    sweep.fillMode = .both
+    let cycle = CAAnimationGroup()
+    cycle.animations = [sweep]
+    cycle.duration = sweep.duration + AgentPaletteMetrics.resultsShimmerRest
+    cycle.repeatCount = .infinity
+    shimmerBand.add(cycle, forKey: "sweep")
+  }
+
+  /// The face's arrival light, fading out at both ends of the band.
+  private func paintShimmer(_ look: MascotLook) {
+    let light = look.palette.arrivalLight
+    guard let first = light.first, let last = light.last else { return }
+    shimmerBand.colors = ([first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)])
+      .map(\.cgColor)
+    let inner = AgentPaletteMetrics.resultsShimmerFade
+    let steps = max(1, light.count - 1)
+    shimmerBand.locations = ([0] + light.indices.map {
+      inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
+    } + [1]).map { NSNumber(value: Double($0)) }
+  }
+
+  /// The words in white, drawn by the label itself, as the band's mask.
+  private func cutShimmerWords() {
+    let text = label.stringValue
+    guard shimmerCut != text, label.bounds.width > 0, label.bounds.height > 0,
+          let rep = label.bitmapImageRepForCachingDisplay(in: label.bounds)
+    else { return }
+    let ink = label.textColor
+    label.textColor = .white
+    label.cacheDisplay(in: label.bounds, to: rep)
+    label.textColor = ink
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    shimmerWords.contents = rep.cgImage
+    shimmerWords.contentsScale = backingScale
+    CATransaction.commit()
+    shimmerCut = text
   }
 
   /// The tail of `heard` that fits in `lines`, cut at a word and marked with

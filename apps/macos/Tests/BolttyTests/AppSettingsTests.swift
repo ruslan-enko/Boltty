@@ -75,14 +75,12 @@ final class AppSettingsTests: XCTestCase {
     settings.askBolttyReadOnly = false
     settings.askBolttyProviderID = "codex"
     settings.askBolttyModelID = "gpt-6-luna"
-    settings.askBolttyEffort = "low"
     settings.save(defaults: suite)
     let loaded = AppSettings.load(defaults: suite)
     XCTAssertTrue(loaded.askBolttyEnabled)
     XCTAssertFalse(loaded.askBolttyReadOnly)
     XCTAssertEqual(loaded.askBolttyProviderID, "codex")
     XCTAssertEqual(loaded.askBolttyModelID, "gpt-6-luna")
-    XCTAssertEqual(loaded.askBolttyEffort, "low")
   }
 
   func testAnUnsetUpdateCheckIsOnAndAnExplicitOffIsOff() {

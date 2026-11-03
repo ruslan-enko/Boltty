@@ -29,11 +29,10 @@ final class AskBolttyConfigurationTests: XCTestCase {
     XCTAssertNil(target?.model)
   }
 
-  func testAChosenAgentModelAndEffortAreKeptWhileTheyExist() {
+  func testAChosenAgentAndModelAreKeptWhileTheyExist() {
     var settings = AppSettings()
     settings.askBolttyProviderID = "codex"
     settings.askBolttyModelID = "gpt-6-luna"
-    settings.askBolttyEffort = "low"
     settings.askBolttyReadOnly = false
     let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["claude", "codex"], models: models)
     XCTAssertEqual(target, AskBolttyTarget(
@@ -80,5 +79,20 @@ final class AskBolttyConfigurationTests: XCTestCase {
     XCTAssertEqual(object["isTalk"] as? Bool, true, "chats on disk carry the old key")
     XCTAssertTrue(try JSONDecoder().decode(Conversation.self, from: json).isAskBoltty)
     XCTAssertEqual(SettingsPage(rawValue: "talk"), .askBoltty)
+  }
+
+  func testAnAnswerThinksAtTheModelsFastest() {
+    var settings = AppSettings()
+    settings.askBolttyProviderID = "codex"
+    settings.askBolttyModelID = "gpt-6-luna"
+    let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["codex"], models: models)
+    XCTAssertEqual(target?.effort, "low")
+  }
+
+  func testTheFastestEffortPrefersLowOverMinimal() {
+    let options = ["high", "minimal", "medium", "low"].map { AgentEffortOption(value: $0) }
+    XCTAssertEqual(AskBolttyConfiguration.fastestEffort(options), "low")
+    XCTAssertEqual(AskBolttyConfiguration.fastestEffort([AgentEffortOption(value: "high")]), "high")
+    XCTAssertNil(AskBolttyConfiguration.fastestEffort([]))
   }
 }

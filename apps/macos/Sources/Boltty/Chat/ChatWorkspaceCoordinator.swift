@@ -66,15 +66,19 @@ final class ChatWorkspaceCoordinator {
   }
 
   func resolvedDefaultEffort(for providerID: String, model: ModelSelection?) -> String? {
-    guard let effort = defaultEffortID(providerID), !effort.isEmpty else { return nil }
+    guard let effort = defaultEffortID(providerID), !effort.isEmpty,
+          let match = modelOption(for: providerID, model: model),
+          match.effortOptions.contains(where: { $0.value == effort })
+    else { return nil }
+    return effort
+  }
+
+  /// The listed model a session would run: the one named, else the agent's default.
+  private func modelOption(for providerID: String, model: ModelSelection?) -> AgentModelOption? {
     let options = engine.modelsByProvider[providerID] ?? []
-    let match = model.flatMap { selection in
+    return model.flatMap { selection in
       options.first { $0.selection.modelID == selection.modelID }
     } ?? options.first { $0.isDefault } ?? options.first
-    guard let match, match.effortOptions.contains(where: { $0.value == effort }) else {
-      return nil
-    }
-    return effort
   }
 
   func defaultProviderID() -> String {
@@ -113,7 +117,10 @@ final class ChatWorkspaceCoordinator {
       workingDirectory: store.defaultWorkingDirectory(),
       providerID: providerID,
       model: model,
-      reasoningEffort: effort ?? resolvedDefaultEffort(for: providerID, model: model),
+      // An answer is a sentence or two: as little thinking as the model
+      // allows, not the effort the agent's chats are set to.
+      reasoningEffort: effort ?? AskBolttyConfiguration.fastestEffort(
+        modelOption(for: providerID, model: model)?.effortOptions ?? []),
       readOnly: readOnly,
       isAskBoltty: true
     )

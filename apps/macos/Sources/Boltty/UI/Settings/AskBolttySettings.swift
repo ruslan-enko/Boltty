@@ -37,7 +37,6 @@ extension BolttyAISettingsModel {
     var settings = appModel.settings
     settings.askBolttyProviderID = nil
     settings.askBolttyModelID = nil
-    settings.askBolttyEffort = nil
     return AskBolttyConfiguration.resolve(
       settings: settings, candidates: askBolttyAgents.map(\.rawValue), models: modelsByProvider)
   }
@@ -49,7 +48,6 @@ extension BolttyAISettingsModel {
       appModel.updateSettings { settings in
         settings.askBolttyProviderID = newValue.isEmpty ? nil : newValue
         settings.askBolttyModelID = nil
-        settings.askBolttyEffort = nil
       }
     }
   }
@@ -67,7 +65,6 @@ extension BolttyAISettingsModel {
     set {
       appModel.updateSettings { settings in
         settings.askBolttyModelID = newValue.isEmpty ? nil : newValue
-        settings.askBolttyEffort = nil
       }
     }
   }
