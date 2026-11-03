@@ -75,14 +75,17 @@ static inline float backdropFBM(float2 p, int octaves) {
 
 static inline float backdropFBM(float2 p) { return backdropFBM(p, 5); }
 
-/// Brightness rolled off above `knee` so it never passes `ceiling`, hue kept:
-/// white prose stays readable on the brightest cloud, and a pale face's sky
-/// keeps its colour instead of clipping to white.
+/// Brightness rolled off above `knee` so it never passes `ceiling`: white
+/// prose stays readable on the brightest cloud. Dimming alone turns white
+/// grey and yellow olive, so what is dimmed gets back saturation in step.
 static inline float3 backdropCeiling(float3 c, float knee, float ceiling) {
   const float y = dot(c, float3(0.2126, 0.7152, 0.0722));
   if (y <= knee) { return c; }
   const float room = ceiling - knee;
-  return c * ((knee + room * (1.0 - exp(-(y - knee) / room))) / y);
+  const float ratio = (knee + room * (1.0 - exp(-(y - knee) / room))) / y;
+  const float3 dimmed = c * ratio;
+  const float grey = y * ratio;
+  return max(mix(float3(grey), dimmed, 1.0 + 0.7 * (1.0 - ratio)), 0.0);
 }
 
 // MARK: - Sky
@@ -146,10 +149,11 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
     const float toward = backdropFBM(at + float2(0.05, 0.16), 4);
     const float lit = clamp((density - toward) * 5.0 + 0.4, 0.0, 1.0);
     const float thick = smoothstep(threshold + 0.04, threshold + 0.32, density);
-    // The shade is the sky's own colour gone deeper, so a cloud belongs to
-    // the sky it sits in; the light is the sun's, warmed by its glow.
-    const float3 shade = mix(underside, color * 0.8, 0.45);
-    const float3 light = mix(sunlight, glow, sun * 0.35);
+    // The shade is the sky's own colour, so a cloud belongs to the sky it
+    // sits in; the light is the sun's, coloured by its glow. Near-white tops
+    // would only come out grey under the ceiling.
+    const float3 shade = mix(underside, color, 0.5);
+    const float3 light = mix(sunlight, glow, 0.3 + sun * 0.3);
     float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
     // A silver lining where the cloud is thin and faces the light.
     body += light * (1.0 - thick) * lit * 0.3;

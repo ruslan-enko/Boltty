@@ -29,9 +29,12 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
-  /// Sharp scenes draw at the display's scale; soft ones at a pixel a point,
-  /// which loses nothing and costs a quarter of a Retina pass.
-  var drawsAtFullScale: Bool { self == .space }
+  /// Pixels drawn per point. Stars are sharp and take the display's scale;
+  /// the sky is all soft edges and takes a pixel per two points, which shows
+  /// nothing and costs a sixteenth of a Retina pass.
+  func pixelsPerPoint(backing: CGFloat) -> CGFloat {
+    self == .space ? backing : 0.5
+  }
 
   static func storageKey(for agent: AgentId) -> String {
     "boltty.chatBackdrop.\(agent.rawValue)"

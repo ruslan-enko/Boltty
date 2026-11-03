@@ -841,15 +841,21 @@ final text. A long silence sends, but only after speech was heard.
   gradient through a few related shades, leaning across the chat and
   breathing, with clouds shaded in the sky's own colour; deeper than
   Messages' and rolled off under a brightness ceiling (`backdropCeiling`)
-  because the prose has no bubbles. Space is near black with only a breath
+  because the prose has no bubbles. The ceiling gives back saturation as it
+  dims, and cloud tops carry the sky's glow: dimmed white read as grey and
+  dimmed yellow as olive. Space is near black with only a breath
   of that sky low down, and stars: no clouds, no milky way, no night colour
   (each was tried and refused). The sky is after
   Messages' (read off `DynamicBackgroundPosterExtension`'s `clouds.vfx`:
   sprites warped by two scrolling noises, edges choked, ramp-tinted, three
   depths), with noise in place of their textures. **The corner is the
   layer's**, from the glass's rendered corner and curve; a squircle formula
-  in the shader did not match. Sky draws a pixel a point, Space at full
-  scale; 20 fps, and the clock stops while the window is occluded (a hidden
+  in the shader did not match. Sky draws a pixel per two points, Space at
+  full scale; while the shell morphs (`morphingTo`) the sky is drawn
+  once at the size it is going to, pinned to the shell's top and uncovered
+  as it grows, with its clock stopped so the live sky that takes over on
+  settling is the same frame (redrawn at every size of the spring, the
+  list-to-chat morph stuttered; held back, it popped in late); 20 fps, and the clock stops while the window is occluded (a hidden
   panel keeps the view).
 - `UI/Effects/`: a thumbnail's reveal out of a blur, a sent chip's whip toward
   its card, the selection border's light. Each always ends by a timer, is made

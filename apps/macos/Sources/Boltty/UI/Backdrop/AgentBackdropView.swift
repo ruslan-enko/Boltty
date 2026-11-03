@@ -13,9 +13,10 @@ import simd
 /// the compositor, so this costs no offscreen pass. Drawn at 20 frames a
 /// second: nothing in it moves fast, and each frame costs a third less.
 ///
-/// **The fade is the layer's opacity**, run by Core Animation at the display's
-/// rate. Faded in the shader it moved only when the scene drew, seven steps
-/// over 0.35 s at 20 fps, and the chat's sky arrived late and in jerks.
+/// **The sky arrives at once and fades out** on the layer's opacity, run by
+/// Core Animation at the display's rate. Faded in the shader it moved only
+/// when the scene drew, seven steps over 0.35 s at 20 fps; faded in on the
+/// layer beside the shell's morph, it still read as lag.
 @MainActor
 final class AgentBackdropView: MTKView, MTKViewDelegate {
   private let renderer: AgentBackdropRenderer?
@@ -25,6 +26,17 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   private var targetOpacity: CGFloat = 0
   private var lastTick: CFTimeInterval = 0
   private var link: CADisplayLink?
+
+  /// The size the shell is morphing to, while it morphs. A sky redrawn at
+  /// every size the spring passes through made the morph from the list into
+  /// a chat stutter; one held back until the shell settled popped in late.
+  /// So the sky is drawn once, at the size it is going to, pinned to the
+  /// shell's top (which stays put) and uncovered as the shell grows; its
+  /// clock stops meanwhile, so the live sky that takes over when the shell
+  /// settles is that same frame.
+  var morphingTo: CGSize?
+  /// The size the scene is laid out at when it is not the view's own.
+  private var sceneSize: CGSize?
 
   /// Points of scene per point of view. Below 1 a small view shows more of
   /// the scene rather than a crop of it (Settings' thumbnails).
@@ -95,7 +107,8 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     targetOpacity = target
     if target > 0, isHidden {
       isHidden = false
-      draw()
+      // Mid-morph, `layOut` draws the frame the shell is going to.
+      if morphingTo == nil { draw() }
     }
     fade(to: target)
     syncClock()
@@ -115,14 +128,14 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       self.stopClock()
     }
     alphaValue = target
-    if !MotionPreferences.reduceMotion {
+    // In, at once: faded in beside the shell's morph out of the list, the
+    // sky read as lag. Out, the ordinary step.
+    if target <= 0, !MotionPreferences.reduceMotion {
       let fade = CABasicAnimation(keyPath: "opacity")
       fade.fromValue = from
       fade.toValue = Float(target)
-      // In, quick off the mark with the shell's 0.3 s morph; out, the
-      // ordinary step.
-      fade.duration = Motion.scaled(target > 0 ? 0.3 : Motion.standard)
-      fade.timingFunction = target > 0 ? Motion.emphasizedCurve : Motion.standardCurve
+      fade.duration = Motion.scaled(Motion.standard)
+      fade.timingFunction = Motion.standardCurve
       layer.add(fade, forKey: "fade")
     }
     CATransaction.commit()
@@ -136,8 +149,29 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       layer.applyPaletteCorner(radius: corner)
       layer.cornerCurve = curve
     }
-    let scale = backdrop.drawsAtFullScale ? (window?.backingScaleFactor ?? 2) : 1
-    let size = CGSize(width: max(1, (rect.width * scale).rounded()), height: max(1, (rect.height * scale).rounded()))
+    let scale = backdrop.pixelsPerPoint(backing: window?.backingScaleFactor ?? 2)
+    // Pinned to the top, the frame is shown at the layer's scale, not
+    // stretched: left at the display's 2, a sky drawn at ½ came up a quarter
+    // of its size, cut off, and jumped when the live sky took over.
+    if layer?.contentsScale != scale { layer?.contentsScale = scale }
+    func pixels(_ size: CGSize) -> CGSize {
+      CGSize(width: max(1, (size.width * scale).rounded()), height: max(1, (size.height * scale).rounded()))
+    }
+    if let destination = morphingTo {
+      layer?.contentsGravity = .top
+      // A sky on its way out keeps the frame it has.
+      guard !isHidden, targetOpacity > 0 else { return }
+      let size = pixels(destination)
+      if drawableSize != size || sceneSize != destination {
+        drawableSize = size
+        sceneSize = destination
+        draw()
+      }
+      return
+    }
+    layer?.contentsGravity = .resize
+    sceneSize = nil
+    let size = pixels(rect.size)
     if drawableSize != size { drawableSize = size }
     if !isHidden { draw() }
   }
@@ -160,6 +194,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     let now = Motion.now
     let dt = CGFloat(min(now - lastTick, 0.1))
     lastTick = now
+    guard morphingTo == nil else { return }
     if !MotionPreferences.reduceMotion { clock += dt }
     draw()
     // Still under Reduce Motion: one frame says it all.
@@ -173,9 +208,10 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   }
 
   var uniforms: AgentBackdropUniforms {
-    AgentBackdropRenderer.uniforms(
-      size: CGSize(width: bounds.width / sceneScale, height: bounds.height / sceneScale),
-      pixelSize: bounds.width > 0 ? bounds.width / sceneScale / max(1, drawableSize.width) : 1,
+    let scene = sceneSize ?? CGSize(width: bounds.width / sceneScale, height: bounds.height / sceneScale)
+    return AgentBackdropRenderer.uniforms(
+      size: scene,
+      pixelSize: scene.width > 0 ? scene.width / max(1, drawableSize.width) : 1,
       backdrop: backdrop,
       clock: clock,
       opacity: 1,
@@ -364,8 +400,9 @@ enum AgentBackdropSky {
   private static let presets: [String: [String]] = [
     // Blue overhead, through periwinkle and rose to an amber dawn.
     "daybreak": ["#0c2262", "#a0646c", "#ffe4c4", "#34448a", "#3c4c8c", "#d8946a"],
-    // Teal overhead, through green to golden hour.
-    "citrus": ["#0a3438", "#8a7a2c", "#fff2a0", "#24503a", "#2c5a44", "#c0a040"],
+    // Teal overhead, through fresh green to amber: a dark yellow is olive,
+    // so the warm end leans gold.
+    "citrus": ["#063a3c", "#b2741a", "#ffe08a", "#1c5040", "#1c6a4c", "#e29a28"],
     // Teal dusk going rose and peach, rosy clouds.
     "candy": ["#0a4250", "#b4687a", "#ffa8b8", "#2a4470", "#3c6478", "#d68a70"],
     // Plum night over an ember sunset.

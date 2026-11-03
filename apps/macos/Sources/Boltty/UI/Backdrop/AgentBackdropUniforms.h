@@ -18,8 +18,8 @@ typedef struct {
   /// Shell size in points; the scene is laid out in points so a 1x and a 2x
   /// display draw the same sky.
   simd_float2 size;
-  /// Points per pixel: 1 for the soft scenes, ½ on Retina for the sharp
-  /// ones (`ChatBackdrop.drawsAtFullScale`).
+  /// Points per pixel: 2 for the sky, ½ on Retina for the stars
+  /// (`ChatBackdrop.pixelsPerPoint`).
   float pixelSize;
   /// Which scene, `ChatBackdrop.sceneIndex`: 1 sky, 2 space. The
   /// corner is not the shader's: the view's layer clips to the glass's own

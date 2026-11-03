@@ -3969,6 +3969,7 @@ final class AgentPaletteView: NSView {
     // Read off Settings on every layout, so a choice made there shows the next
     // time the chat moves; the face only when there is a scene to colour.
     let chosen = isChat ? ChatBackdrop.chosen(for: agent) : .standard
+    backdrop.morphingTo = surfaceMotion.isMoving ? surfaceMotion.destination.size : nil
     backdrop.show(chosen, palette: chosen == .standard ? .standard : MascotPalette.face(for: agent))
     backdrop.layOut(in: rect, corner: corner, curve: curve)
     layoutListeningWords(in: rect, corner: corner, curve: curve)
@@ -5671,6 +5672,13 @@ final class PaletteSurfaceMotion: NSObject {
   /// while it drips, whose fall and spread each have their own.
   var response: CGFloat = AgentPaletteMetrics.surfaceResponse
   init(render: @escaping (CGRect) -> Void) { self.render = render }
+
+  /// Whether the shell is on its way somewhere; false again by the time the
+  /// settled frame is painted.
+  var isMoving: Bool { link != nil }
+
+  /// Where the shell is going, or where it stands once settled.
+  var destination: CGRect { CGRect(x: target[0], y: target[1], width: target[2], height: target[3]) }
 
   /// Returns whether this call actually started or retargeted a travel, so a
   /// caller can hang a one-shot effect (the morph blur) on the trip rather than
