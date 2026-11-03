@@ -398,8 +398,8 @@ enum AgentBackdropSky {
   }
 
   private static let presets: [String: [String]] = [
-    // Blue overhead, through periwinkle and rose to an amber dawn.
-    "daybreak": ["#0c2262", "#a0646c", "#ffe4c4", "#34448a", "#3c4c8c", "#d8946a"],
+    // The face's own: bright blue overhead, a golden dawn low.
+    "daybreak": ["#0e3c94", "#d07c48", "#fff2cc", "#34569e", "#2f6ccc", "#f6bc48"],
     // Teal overhead, through fresh green to amber: a dark yellow is olive,
     // so the warm end leans gold.
     "citrus": ["#063a3c", "#b2741a", "#ffe08a", "#1c5040", "#1c6a4c", "#e29a28"],
