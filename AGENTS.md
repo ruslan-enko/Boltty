@@ -832,19 +832,25 @@ final text. A long silence sends, but only after speech was heard.
 - The listening orb is drawn by a second view on top of the glass.
 - **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
   its transcript, chosen per agent in Settings › Agents › Chat
-  (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space, Matrix,
-  each in the agent's face colours; the Settings picker previews the choice
-  live over a mock chat. Over the glass, under the transcript,
-  dark at the top for the white prose. The sky is after Messages' (read off
-  `DynamicBackgroundPosterExtension`'s `clouds.vfx`: sprites warped by two
-  scrolling noises, edges choked, ramp-tinted, three depths), with noise in
-  place of their textures. **The corner is the layer's**, from the glass's
-  rendered corner and curve; a squircle formula in the shader did not match.
-  Soft scenes draw a pixel a point, sharp ones at full scale; 20 fps, and
-  the clock stops while the window is occluded (a hidden panel keeps the
-  view). Matrix rains the six mascot outlines, plain silhouettes, not
-  letters. Each scene ≈ 1 ms a frame on an M1 Pro; Space asks its noise
-  only inside the nebula's lane.
+  (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
+  was removed; a stored `matrix` reads as Standard. The Settings picker
+  previews the choice live over a mock chat. Over the glass, under the
+  transcript, dark at the top for the white prose. Each face has its own sky
+  (`AgentBackdropSky`: zenith, horizon, cloud light, cloud shade, middle,
+  glow), the feeling of the face's colour rather than a wall of it: a soft
+  gradient through a few related shades, leaning across the chat and
+  breathing, with clouds shaded in the sky's own colour; deeper than
+  Messages' and rolled off under a brightness ceiling (`backdropCeiling`)
+  because the prose has no bubbles. Space is near black with only a breath
+  of that sky low down, and stars: no clouds, no milky way, no night colour
+  (each was tried and refused). The sky is after
+  Messages' (read off `DynamicBackgroundPosterExtension`'s `clouds.vfx`:
+  sprites warped by two scrolling noises, edges choked, ramp-tinted, three
+  depths), with noise in place of their textures. **The corner is the
+  layer's**, from the glass's rendered corner and curve; a squircle formula
+  in the shader did not match. Sky draws a pixel a point, Space at full
+  scale; 20 fps, and the clock stops while the window is occluded (a hidden
+  panel keeps the view).
 - `UI/Effects/`: a thumbnail's reveal out of a blur, a sent chip's whip toward
   its card, the selection border's light. Each always ends by a timer, is made
   through `make` (a failable `NSView` init crashes), and uploads textures as

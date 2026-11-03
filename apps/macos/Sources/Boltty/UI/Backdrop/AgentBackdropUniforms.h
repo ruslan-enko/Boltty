@@ -10,9 +10,6 @@
 
 #include <simd/simd.h>
 
-/// The face's six stops, top of its body to the foot.
-#define AGENT_BACKDROP_COLOR_COUNT 6
-
 typedef enum {
   AgentBackdropBufferIndexUniforms = 0
 } AgentBackdropBufferIndex;
@@ -24,7 +21,7 @@ typedef struct {
   /// Points per pixel: 1 for the soft scenes, ½ on Retina for the sharp
   /// ones (`ChatBackdrop.drawsAtFullScale`).
   float pixelSize;
-  /// Which scene, `ChatBackdrop.sceneIndex`: 1 sky, 2 space, 3 matrix. The
+  /// Which scene, `ChatBackdrop.sceneIndex`: 1 sky, 2 space. The
   /// corner is not the shader's: the view's layer clips to the glass's own
   /// continuous corner, which no formula here matched.
   float scene;
@@ -32,8 +29,10 @@ typedef struct {
   float clock;
   /// Overall opacity. The live view fades its layer instead and draws at 1.
   float opacity;
-  /// sRGB, unpremultiplied; alpha is unused.
-  simd_float4 colors[AGENT_BACKDROP_COLOR_COUNT];
+  /// The sky's own ramp for this face (`AgentBackdropSky`): zenith, horizon,
+  /// the light on the clouds, their shaded undersides, the sky between
+  /// zenith and horizon, the glow where the sun is. sRGB.
+  simd_float4 sky[6];
 } AgentBackdropUniforms;
 
 #endif /* AgentBackdropUniforms_h */

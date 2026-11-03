@@ -1,7 +1,7 @@
 //  AgentBackdropShaders.metal
 //
 //  What an open chat wears behind its transcript, in the agent's own
-//  colours (`ChatBackdrop`): a dusk sky, deep space, or a rain of mascot silhouettes.
+//  sky (`ChatBackdrop`, `AgentBackdropSky`): clouds, or stars on near black.
 //
 //  The sky is after Messages' Sky backgrounds, read off the system's
 //  `DynamicBackgroundPosterExtension` (`clouds.vfx`): there each cloud is a
@@ -10,7 +10,11 @@
 //  a vertical ramp; three depths (far, middle, near) drift at their own
 //  speeds, and a preset is only another row of the ramps. Here the sprite is
 //  replaced by domain-warped noise, so nothing of theirs ships and the shapes
-//  never repeat; the ramp is the face's gradient.
+//  never repeat; the preset is the face's own sky (`AgentBackdropSky`): a
+//  blue face gets a blue day, a pink-and-cyan one a teal dusk with rosy
+//  clouds. The sky is whole and coloured, as theirs is, but deeper, and its
+//  brightness rolls off under a ceiling: theirs carries bubbles, ours carries
+//  bare white prose.
 //
 //  Every scene is dark at the top on purpose: the answer is white prose on
 //  this, and the shell's other states wear a black ramp there too. The corner
@@ -71,104 +75,104 @@ static inline float backdropFBM(float2 p, int octaves) {
 
 static inline float backdropFBM(float2 p) { return backdropFBM(p, 5); }
 
-/// Walks the face's stops, 0 = the first, 1 = the last.
-static inline float3 backdropWalk(constant float4 *colors, float t) {
-  const float scaled = clamp(t, 0.0, 1.0) * float(AGENT_BACKDROP_COLOR_COUNT - 1);
-  const int index = min(int(scaled), AGENT_BACKDROP_COLOR_COUNT - 2);
-  return mix(colors[index].rgb, colors[index + 1].rgb, smoothstep(0.0, 1.0, scaled - float(index)));
-}
-
-/// `c` scaled down, never up, to relative luminance `target`.
-static inline float3 backdropAtLightness(float3 c, float target) {
+/// Brightness rolled off above `knee` so it never passes `ceiling`, hue kept:
+/// white prose stays readable on the brightest cloud, and a pale face's sky
+/// keeps its colour instead of clipping to white.
+static inline float3 backdropCeiling(float3 c, float knee, float ceiling) {
   const float y = dot(c, float3(0.2126, 0.7152, 0.0722));
-  return y > target ? c * (target / y) : c;
-}
-
-static inline float3 backdropLuminanceOnly(float3 c, float amount) {
-  const float y = dot(c, float3(0.2126, 0.7152, 0.0722));
-  return mix(float3(y), c, amount);
+  if (y <= knee) { return c; }
+  const float room = ceiling - knee;
+  return c * ((knee + room * (1.0 - exp(-(y - knee) / room))) / y);
 }
 
 // MARK: - Sky
 
-static float3 backdropSky(float2 local, float2 size, float t, constant float4 *colors) {
+static float3 backdropSky(float2 local, float2 size, float t, constant float4 *sky) {
   // Height 0 at the foot, 1 at the top; uv square, so clouds keep their shape
   // as the chat is resized.
   const float h = local.y / size.y;
-  const float2 uv = local / 340.0;
-  
-  // The sky: the face's warm end low, its first stop as a dim dusk overhead.
-  const float3 horizon = backdropWalk(colors, 0.9) * 0.62;
-  const float3 middle = backdropLuminanceOnly(backdropWalk(colors, 0.45), 0.8) * 0.22;
-  const float3 zenith = colors[0].rgb * 0.05;
-  float3 sky = mix(horizon, middle, smoothstep(0.0, 0.42, h));
-  sky = mix(sky, zenith, smoothstep(0.3, 0.95, h));
-  // The sun just under the foot, a glow rather than a disc.
-  const float2 sunAt = float2(size.x * 0.62, -size.y * 0.08);
-  const float sun = exp(-length((local - sunAt) / float2(size.x * 0.55, size.y * 0.32)) * 2.2);
-  sky += backdropWalk(colors, 0.75) * sun * 0.45;
+  const float2 uv = local / 420.0;
+  const float3 zenith = sky[0].rgb;
+  const float3 horizon = sky[1].rgb;
+  const float3 sunlight = sky[2].rgb;
+  const float3 underside = sky[3].rgb;
+  const float3 middle = sky[4].rgb;
+  const float3 glow = sky[5].rgb;
 
-  // A few stars, only where the sky is darkest.
-  const float2 cell = floor(local / 9.0);
-  const float star = step(0.985, backdropHash(cell));
-  const float2 starAt = (cell + 0.2 + 0.6 * float2(backdropHash(cell + 3.1), backdropHash(cell + 7.7))) * 9.0;
-  const float twinkle = 0.55 + 0.45 * sin(t * (0.6 + backdropHash(cell + 1.3) * 1.4) + backdropHash(cell) * 40.0);
-  sky += star * smoothstep(1.1, 0.0, length(local - starAt)) * twinkle * smoothstep(0.55, 0.9, h) * 0.5;
+  // The feeling of the face's colour, not a wall of it: a soft walk from the
+  // horizon through the middle of the sky to the zenith, leaning across the
+  // chat and breathing with a slow noise, so no two heights are one flat
+  // band. The sun's glow warms one corner low down.
+  const float x = local.x / size.x;
+  const float lean = (backdropFBM(local / size * 1.3 + float2(t * 0.006, 0.0), 3) - 0.5) * 0.3;
+  const float g = clamp(h * 0.85 + (0.5 - x) * 0.25 + lean, 0.0, 1.0);
+  float3 color = mix(horizon, middle, smoothstep(0.0, 0.5, g));
+  color = mix(color, zenith, smoothstep(0.42, 0.95, g));
+  const float2 sunAt = float2(size.x * 0.78, -size.y * 0.06);
+  const float sun = exp(-pow(length((local - sunAt) / float2(size.x * 0.75, size.y * 0.5)), 1.4) * 1.8);
+  color = mix(color, glow, sun * 0.75);
 
-  // Far, middle and near: each larger, faster, denser and lower than the last
-  // — the same three depths as Messages' BG, MG and FG.
-  const float3 scales = float3(2.4, 1.55, 1.0);
-  const float3 speeds = float3(0.010, 0.017, 0.028);
-  const float3 strengths = float3(0.55, 0.7, 0.85);
-  const float3 bands = float3(0.62, 0.42, 0.22);
+  // Far, middle and near: each larger, faster and lower than the last — the
+  // same three depths as Messages' BG, MG and FG. The far ones sit in the
+  // sky's own haze.
+  const float3 scales = float3(2.1, 1.4, 0.95);
+  const float3 speeds = float3(0.0125, 0.023, 0.036);
+  const float3 bands = float3(0.7, 0.45, 0.18);
+  const float3 haze = float3(0.45, 0.2, 0.0);
+  const float3 softness = float3(0.2, 0.13, 0.09);
 
-  float3 color = sky;
   for (int layer = 0; layer < 3; layer++) {
     // Wider than tall, as clouds lie in a sky.
-    const float2 p = float2(uv.x * 0.55, uv.y) * scales[layer]
+    const float2 p = float2(uv.x * 0.5, uv.y) * scales[layer]
       + float2(t * speeds[layer], 0.0) + float2(float(layer) * 11.7, float(layer) * 3.9);
     // Two slow noises push the shape about, as Messages' two scrolling
-    // samples push its sprite's UVs. Gently: pushed harder it reads as smoke.
+    // samples push its sprite's UVs, so the clouds billow as they drift.
     const float2 warp = float2(
-      backdropFBM(p * 0.6 + float2(0.0, t * 0.010)),
-      backdropFBM(p * 0.6 + float2(5.2, 1.3) - t * 0.008)
+      backdropFBM(p * 0.55 + float2(0.0, t * 0.02), 3),
+      backdropFBM(p * 0.55 + float2(5.2, 1.3) - t * 0.016, 3)
     ) - 0.5;
-    const float2 at = p + 0.75 * warp;
-    const float density = backdropFBM(at);
+    const float2 at = p + 0.6 * warp;
+    // Four octaves: a fifth frays the edges into smoke.
+    const float density = backdropFBM(at, 4);
     // A band of weather per layer, so the sky is not covered evenly.
-    const float band = exp(-pow((h - bands[layer]) / 0.24, 2.0));
-    const float threshold = mix(0.68, 0.47, band);
-    // The choke: a soft edge, not a fog.
-    const float cloud = smoothstep(threshold, threshold + 0.16, density);
+    const float band = exp(-pow((h - bands[layer]) / 0.22, 2.0));
+    const float threshold = mix(0.6, 0.36, band);
+    // The choke: a soft edge, not a fog; softer far away.
+    const float cloud = smoothstep(threshold, threshold + softness[layer], density);
     if (cloud <= 0.001) { continue; }
 
-    // Lit from the horizon: where the cloud thins toward the light, it glows.
-    const float toward = backdropFBM(at - float2(0.0, 0.07));
-    const float facing = clamp((density - toward) * 5.0 + 0.45, 0.0, 1.0);
-    const float rim = 1.0 - smoothstep(threshold, threshold + 0.22, density);
-    const float fromBelow = mix(1.0, 0.3, smoothstep(0.0, 0.85, h));
-    const float3 tint = backdropWalk(colors, clamp(1.0 - h * 0.95 + warp.x * 0.5, 0.0, 1.0));
-    const float3 shade = backdropLuminanceOnly(tint, 0.7) * mix(0.14, 0.26, fromBelow);
-    const float3 lit = mix(tint, float3(1.0), 0.18) * mix(0.45, 1.0, fromBelow);
-    float3 cloudColor = mix(shade, lit, facing * (0.4 + 0.6 * fromBelow));
-    cloudColor += tint * rim * 0.22 * fromBelow;
-    color = mix(color, cloudColor, cloud * strengths[layer]);
+    // Lit from above: where the cloud thins toward the light it is bright,
+    // where it thickens away from it, the underside takes the shade.
+    const float toward = backdropFBM(at + float2(0.05, 0.16), 4);
+    const float lit = clamp((density - toward) * 5.0 + 0.4, 0.0, 1.0);
+    const float thick = smoothstep(threshold + 0.04, threshold + 0.32, density);
+    // The shade is the sky's own colour gone deeper, so a cloud belongs to
+    // the sky it sits in; the light is the sun's, warmed by its glow.
+    const float3 shade = mix(underside, color * 0.8, 0.45);
+    const float3 light = mix(sunlight, glow, sun * 0.35);
+    float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
+    // A silver lining where the cloud is thin and faces the light.
+    body += light * (1.0 - thick) * lit * 0.3;
+    // Aerial perspective: far clouds melt into the sky behind them.
+    body = mix(body, color, haze[layer]);
+    color = mix(color, body, cloud);
   }
 
-  return color;
+  return backdropCeiling(color, 0.28, 0.52);
 }
+
 // MARK: - Space
 
 /// One depth of stars: a star in some cells of a grid, drifting left at
 /// `drift` points a second, each twinkling on its own clock.
-static float3 backdropStarLayer(
+static float backdropStarLayer(
   float2 local, float cellSize, float chance, float radius, float drift, float seed,
-  float t, float pixel, constant float4 *colors
+  float t, float pixel
 ) {
   const float2 at = local + float2(t * drift, 0.0);
   const float2 cell = floor(at / cellSize);
   const float pick = backdropHash(cell + seed);
-  if (pick > chance) { return float3(0.0); }
+  if (pick > chance) { return 0.0; }
   const float2 jitter = float2(backdropHash(cell + seed + 3.1), backdropHash(cell + seed + 7.7));
   const float2 centre = (cell + 0.15 + 0.7 * jitter) * cellSize;
   const float size = radius * (0.6 + 0.8 * backdropHash(cell + seed + 1.9));
@@ -176,46 +180,26 @@ static float3 backdropStarLayer(
   const float core = smoothstep(size + pixel, max(size - pixel, 0.0), distance);
   const float halo = exp(-distance / (size * 3.5)) * 0.25 * step(0.7, pick / chance);
   const float twinkle = 0.6 + 0.4 * sin(t * (0.7 + jitter.x * 1.8) + jitter.y * 40.0);
-  const float3 tint = mix(float3(1.0), backdropWalk(colors, jitter.x), 0.35);
-  return tint * (core + halo) * twinkle;
+  return (core + halo) * twinkle;
 }
 
-static float3 backdropSpace(float2 local, float2 size, float t, float pixel, constant float4 *colors) {
+static float3 backdropSpace(float2 local, float2 size, float t, float pixel, constant float4 *sky) {
   const float h = local.y / size.y;
-  float3 color = mix(backdropWalk(colors, 0.85) * 0.07, colors[0].rgb * 0.025, smoothstep(0.0, 0.9, h));
+  const float3 zenith = sky[0].rgb;
+  const float3 horizon = sky[1].rgb;
+  const float3 light = sky[2].rgb;
 
-  // A nebula across the lower half, turning very slowly through the face's
-  // colours: two warped clouds, the second a thin bright filament.
-  //
-  // The costly part of every scene (≈ 2.4 ms a Retina frame on an M1 Pro
-  // when every pixel paid for 25 octaves), so each noise is asked only where
-  // it can show: none outside the nebula's lane, the filament only inside
-  // the cloud, the dust only where there is cloud to darken — and with as few
-  // octaves as its shape needs.
-  const float lane = exp(-pow((h - 0.34 - (local.x / size.x - 0.5) * 0.4) / 0.34, 2.0));
-  if (lane > 0.02) {
-    const float2 uv = local / 300.0 + float2(t * 0.004, t * 0.002);
-    const float2 warp = float2(backdropFBM(uv * 0.8, 3), backdropFBM(uv * 0.8 + float2(3.7, 8.1), 3)) - 0.5;
-    const float body = backdropFBM(uv * 1.1 + 1.4 * warp, 5);
-    const float cloud = smoothstep(0.34, 0.78, body) * lane;
-    const float inside = smoothstep(0.35, 0.7, body);
-    if (cloud > 0.002 || inside > 0.0) {
-      const float3 tint = backdropWalk(colors, clamp(body * 1.4 - 0.2 + warp.y, 0.0, 1.0));
-      float filament = 0.0;
-      if (inside > 0.0) {
-        const float strand = backdropFBM(uv * 2.3 - 2.0 * warp + float2(t * 0.006, 0.0), 4);
-        filament = pow(1.0 - abs(strand - 0.5) * 2.0, 6.0) * lane * inside;
-      }
-      color += tint * cloud * 0.8 + mix(tint, float3(1.0), 0.3) * filament * 0.4;
-      // Dark lanes of dust across the bright part, as a nebula has.
-      color *= 1.0 - smoothstep(0.55, 0.75, backdropFBM(uv * 3.0 + warp * 2.0, 3)) * 0.45 * lane;
-    }
-  }
+  // Near black, as space is, with a breath of the face's sky low down.
+  float3 color = mix(horizon * 0.1, zenith * 0.05, smoothstep(0.0, 0.85, h));
 
-  // Three depths of stars; the nearest drift fastest.
-  color += backdropStarLayer(local, 14.0, 0.10, 0.45, 0.6, 0.0, t, pixel, colors) * 0.45;
-  color += backdropStarLayer(local, 26.0, 0.07, 0.75, 1.4, 17.0, t, pixel, colors) * 0.7;
-  color += backdropStarLayer(local, 48.0, 0.05, 1.1, 2.6, 41.0, t, pixel, colors);
+  // Three depths of stars, white with a breath of the face's light; the
+  // nearest drift fastest.
+  const float3 starTint = mix(float3(1.0), light, 0.25);
+  float stars = backdropStarLayer(local, 8.0, 0.07, 0.45, 0.8, 0.0, t, pixel) * 0.6;
+  stars += backdropStarLayer(local, 20.0, 0.1, 0.75, 1.6, 17.0, t, pixel) * 0.85;
+  stars += backdropStarLayer(local, 46.0, 0.06, 1.05, 2.8, 41.0, t, pixel);
+  // Fewer stars low down, in the dusk's glow.
+  color += starTint * stars * smoothstep(0.0, 0.35, h);
 
   // Now and then a star falls across the upper sky.
   const float period = 9.0;
@@ -232,95 +216,9 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
     const float tail = smoothstep(110.0, 0.0, along) * step(0.0, along);
     const float streak = tail * smoothstep(0.9 + pixel, 0.0, across);
     const float fade = smoothstep(0.0, 0.1, age) * smoothstep(0.9, 0.55, age);
-    color += mix(float3(1.0), backdropWalk(colors, 0.2), 0.3) * streak * fade * 0.8;
+    color += starTint * streak * fade * 0.8;
   }
-  return color;
-}
-
-// MARK: - Matrix
-
-/// The six mascot outlines (`MascotShape`) as signed distances in a unit
-/// cell, y up: Blossom, Hotdog, Spotty, Boltty, Pampuh, Onigiri.
-static inline float backdropMascotShape(float2 p, int shape) {
-  const float angle = atan2(p.y, p.x);
-  switch (shape) {
-  case 0: // Blossom: six round petals.
-    return length(p) - (0.78 + 0.16 * cos(6.0 * angle + 1.5708));
-  case 1: { // Hotdog: a wide pill.
-    const float2 q = abs(p) - float2(0.38, 0.0);
-    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 0.6;
-  }
-  case 2: // Spotty: eight shallow petals.
-    return length(p) - (0.84 + 0.09 * cos(8.0 * angle));
-  case 3: { // Boltty: a rounded hexagon.
-    const float3 k = float3(-0.866025, 0.5, 0.577350);
-    float2 q = abs(p.yx);
-    q -= 2.0 * min(dot(k.xy, q), 0.0) * k.xy;
-    q -= float2(clamp(q.x, -k.z * 0.72, k.z * 0.72), 0.72);
-    return length(q) * sign(q.y) - 0.2;
-  }
-  case 4: // Pampuh: a ball.
-    return length(p) - 0.9;
-  default: { // Onigiri: a rounded triangle, point up.
-    const float k = 1.732051;
-    float2 q = float2(abs(p.x) - 0.62, p.y + 0.3);
-    if (q.x + k * q.y > 0.0) { q = float2(q.x - k * q.y, -k * q.x - q.y) / 2.0; }
-    q.x -= clamp(q.x, -1.24, 0.0);
-    return -length(q) * sign(q.y) - 0.22;
-  }
-  }
-}
-
-/// One depth of falling mascot silhouettes, plain: no eyes or smile. Each
-/// column has its own speed and trail; each cell wears one of the outlines,
-/// and now and then swaps it for another.
-static float3 backdropRain(
-  float2 local, float2 size, float2 cell, float seed, float t, float pixel, constant float4 *colors
-) {
-  // Rows count down from the top, as the rain falls.
-  const float2 fromTop = float2(local.x, size.y - local.y);
-  const float column = floor(fromTop.x / cell.x);
-  const float row = floor(fromTop.y / cell.y);
-  const float speed = 5.0 + 10.0 * backdropHash(float2(column, seed));
-  const float trail = 12.0 + 28.0 * backdropHash(float2(column, seed + 1.0));
-  const float period = trail + 12.0 + 48.0 * backdropHash(float2(column, seed + 2.0));
-  const float headRow = t * speed + period * backdropHash(float2(column, seed + 3.0));
-  const float behind = headRow - row;
-  const float d = behind - floor(behind / period) * period;
-  const bool lit = d < trail;
-  const float fade = lit ? pow(1.0 - d / trail, 1.6) : 0.012;
-
-  // Which outline: some cells change often, most rarely.
-  const float churn = backdropHash(float2(column, row) + seed + 5.0) > 0.85 ? 3.0 : 0.3;
-  const float glyph = floor(t * churn + backdropHash(float2(column, row) + seed) * 10.0);
-  const int shape = int(backdropHash(float2(glyph, column + row * 7.0 + seed)) * 5.999);
-
-  // The outline in a unit square, y up, a little smaller than its cell.
-  const float unit = min(cell.x, cell.y) * 0.4;
-  float2 p = (fromTop - (float2(column, row) + 0.5) * cell) / unit;
-  p.y = -p.y;
-  const float aa = pixel / unit;
-  const float body = smoothstep(aa, -aa, backdropMascotShape(p, shape));
-  if (body <= 0.0) { return float3(0.0); }
-
-  const float on = body;
-
-  // A pale face (Citrus, Daybreak) would rain twice as bright as a deep one
-  // and drown the answer's white prose; every colour is brought to one
-  // lightness, so each agent's rain is its hue at the same quiet level.
-  const float3 trailColor = backdropAtLightness(backdropWalk(colors, 0.15 + 0.7 * clamp(d / trail, 0.0, 1.0)), 0.32);
-  const float3 headColor = backdropAtLightness(mix(colors[2].rgb, float3(1.0), 0.4), 0.6);
-  const float3 tint = (lit && d < 1.0) ? headColor : trailColor;
-  return tint * on * fade;
-}
-
-static float3 backdropMatrix(float2 local, float2 size, float t, float pixel, constant float4 *colors) {
-  const float h = local.y / size.y;
-  float3 color = mix(backdropWalk(colors, 0.6) * 0.05, float3(0.0), smoothstep(0.0, 1.0, h));
-  // A far layer, small and dim, then the near one.
-  color += backdropRain(local, size, float2(5.0, 5.0), 31.0, t * 0.7, pixel, colors) * 0.3;
-  color += backdropRain(local, size, float2(8.5, 8.5), 0.0, t, pixel, colors) * 0.75;
-  return color;
+  return backdropCeiling(color, 0.24, 0.46);
 }
 
 // MARK: - The frame
@@ -335,12 +233,10 @@ fragment float4 agentBackdropFragment(
   const float t = u.clock;
 
   float3 color;
-  if (u.scene > 2.5) {
-    color = backdropMatrix(in.local, size, t, u.pixelSize, u.colors);
-  } else if (u.scene > 1.5) {
-    color = backdropSpace(in.local, size, t, u.pixelSize, u.colors);
+  if (u.scene > 1.5) {
+    color = backdropSpace(in.local, size, t, u.pixelSize, u.sky);
   } else {
-    color = backdropSky(in.local, size, t, u.colors);
+    color = backdropSky(in.local, size, t, u.sky);
   }
 
   // The top darkens toward black, as the shell's ramp does elsewhere.

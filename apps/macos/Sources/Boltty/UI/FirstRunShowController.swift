@@ -2731,7 +2731,7 @@ final class ShowSettingsWindow {
     ("gearshape", "General"), ("person.2", "Agents"), ("chart.bar", "Usage"), ("waveform", "Voice"),
     ("cursorarrow.rays", "Ask Boltty"), ("keyboard", "Shortcuts"),
   ]
-  private static let backdrops: [ChatBackdrop] = [.standard, .sky, .space, .matrix]
+  private static let backdrops: [ChatBackdrop] = [.standard, .sky, .space]
   private static let usage: [(left: CGFloat, words: String)] = [
     (0.62, "62% left · back in 2 h"), (0.35, "35% left · back on Monday"), (0.81, "81% left · back in 5 h"),
   ]

@@ -4,7 +4,7 @@ import MetalKit
 import simd
 
 /// What an open chat wears behind its transcript (`ChatBackdrop`), in the
-/// colours of the agent it belongs to.
+/// sky of the agent it belongs to (`AgentBackdropSky`).
 ///
 /// Stands over the shell's glass and under the transcript, at the shell's
 /// frame. **The corner is the layer's**, set from the glass's rendered corner
@@ -179,7 +179,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       backdrop: backdrop,
       clock: clock,
       opacity: 1,
-      colors: palette.colors
+      palette: palette
     )
   }
 }
@@ -234,7 +234,7 @@ final class AgentBackdropRenderer {
     if let cached = stills[key] { return cached }
     let u = uniforms(
       size: CGSize(width: scene, height: scene * 2), pixelSize: scene / pixels, backdrop: backdrop,
-      clock: 24, opacity: 1, colors: palette.colors
+      clock: 24, opacity: 1, palette: palette
     )
     let side = pixels.rounded()
     guard let whole = shared?.image(of: u, scale: pixels / scene),
@@ -246,7 +246,7 @@ final class AgentBackdropRenderer {
 
   static func uniforms(
     size: CGSize, pixelSize: CGFloat, backdrop: ChatBackdrop,
-    clock: CGFloat, opacity: CGFloat, colors: [NSColor]
+    clock: CGFloat, opacity: CGFloat, palette: MascotPalette
   ) -> AgentBackdropUniforms {
     var u = AgentBackdropUniforms()
     u.size = simd_float2(Float(size.width), Float(size.height))
@@ -254,16 +254,10 @@ final class AgentBackdropRenderer {
     u.scene = backdrop.sceneIndex
     u.clock = Float(clock)
     u.opacity = Float(min(1, max(0, opacity)))
-    let stops = colors.isEmpty ? [NSColor.white] : colors
-    let count = Int(AGENT_BACKDROP_COLOR_COUNT)
-    withUnsafeMutableBytes(of: &u.colors) { raw in
+    withUnsafeMutableBytes(of: &u.sky) { raw in
       let slots = raw.bindMemory(to: simd_float4.self)
-      for index in 0..<count {
-        let source = stops.count == 1
-          ? 0
-          : Int((CGFloat(index) / CGFloat(count - 1) * CGFloat(stops.count - 1)).rounded())
-        let raw = stops[min(source, stops.count - 1)]
-        let color = raw.usingColorSpace(.sRGB) ?? raw
+      for (index, color) in AgentBackdropSky.ramp(for: palette).enumerated() {
+        let color = color.usingColorSpace(.sRGB) ?? color
         slots[index] = simd_float4(
           Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent), 1
         )
@@ -339,4 +333,46 @@ final class AgentBackdropRenderer {
     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     encoder.endEncoding()
   }
+}
+
+/// Each face's sky, after Messages' presets: a row of the ramp per look, not
+/// the face's gradient laid over clouds. The feeling of the face's colour
+/// rather than the colour itself: the sky walks through a few of its
+/// neighbours, as a real one does from zenith to horizon. Deeper than
+/// Messages' own, for the white prose. Space wears only a breath of it.
+///
+/// Zenith, horizon, the light on the clouds, their undersides, the sky
+/// between zenith and horizon, the sun's glow.
+enum AgentBackdropSky {
+  static func ramp(for palette: MascotPalette) -> [NSColor] {
+    if let hexes = presets[palette.id] { return hexes.map(HexColor.nsColor) }
+    // A retired face: its first stop overhead, its last low, its palest lit.
+    let stops = palette.colors.map { $0.usingColorSpace(.sRGB) ?? $0 }
+    guard stops.count >= 5, let first = stops.first, let last = stops.last else {
+      return (presets["lagoon"] ?? []).map(HexColor.nsColor)
+    }
+    return [
+      first.blended(withFraction: 0.75, of: .black) ?? first,
+      last.blended(withFraction: 0.45, of: .black) ?? last,
+      stops[2].blended(withFraction: 0.4, of: .white) ?? stops[2],
+      first.blended(withFraction: 0.6, of: .black) ?? first,
+      stops[1].blended(withFraction: 0.6, of: .black) ?? stops[1],
+      stops[4].blended(withFraction: 0.25, of: .black) ?? stops[4]
+    ]
+  }
+
+  private static let presets: [String: [String]] = [
+    // Blue overhead, through periwinkle and rose to an amber dawn.
+    "daybreak": ["#0c2262", "#a0646c", "#ffe4c4", "#34448a", "#3c4c8c", "#d8946a"],
+    // Teal overhead, through green to golden hour.
+    "citrus": ["#0a3438", "#8a7a2c", "#fff2a0", "#24503a", "#2c5a44", "#c0a040"],
+    // Teal dusk going rose and peach, rosy clouds.
+    "candy": ["#0a4250", "#b4687a", "#ffa8b8", "#2a4470", "#3c6478", "#d68a70"],
+    // Plum night over an ember sunset.
+    "ember": ["#2a0c28", "#a8443c", "#ffc49a", "#5a1c3a", "#5e1c40", "#d8784a"],
+    // A blue day, paler toward the sun, white clouds.
+    "lagoon": ["#0a3888", "#3c80cc", "#f2f7ff", "#4c78bc", "#1c5cb4", "#8ab8e4"],
+    // Violet dusk going mauve, lavender clouds.
+    "slate": ["#1a1240", "#7c5ca4", "#f2e6fc", "#3e3074", "#3e2c72", "#b480b4"]
+  ]
 }

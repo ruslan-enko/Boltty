@@ -82,9 +82,6 @@ private struct ChatBackdropPreview: View {
     case .space:
       ("How big is this repo?",
        "About 1,900 files in 140 folders. Plenty of room out here.")
-    case .matrix:
-      ("Why does the build fail?",
-       "A missing import in AgentBackdropView.swift. Follow the white rabbit to line 12.")
     }
   }
 
@@ -94,7 +91,6 @@ private struct ChatBackdropPreview: View {
     case .standard: .curious
     case .sky: .listening
     case .space: .thinking
-    case .matrix: .focused
     }
   }
 
