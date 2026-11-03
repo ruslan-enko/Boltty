@@ -419,6 +419,8 @@ final class AgentPaletteView: NSView {
   private let surfaceContainer = NSView()
   /// While the shell drips: where it is headed instead of its own frame.
   private var dripTarget: CGRect?
+  /// The drop is falling, before it spreads into the shell (`beginDrip`).
+  private var isDrippingIn = false
   private var dripRun = 0
   private let surface = PaletteGlassHost(content: NSView(), cornerRadius: 36, style: .bolttyAI)
   /// Where the notice stands: under the shell, or — in an open chat — over
@@ -3969,9 +3971,13 @@ final class AgentPaletteView: NSView {
     // Read off Settings on every layout, so a choice made there shows the next
     // time the chat moves; the face only when there is a scene to colour.
     let chosen = isChat ? ChatBackdrop.chosen(for: agent) : .standard
-    backdrop.morphingTo = surfaceMotion.isMoving ? surfaceMotion.destination.size : nil
-    backdrop.show(chosen, palette: chosen == .standard ? .standard : MascotPalette.face(for: agent))
-    backdrop.layOut(in: rect, corner: corner, curve: curve)
+    // Not while the drop falls: drawn for the drop, the sky showed as a small
+    // square. It is drawn once the drop spreads, at the chat's size.
+    if !isDrippingIn {
+      backdrop.morphingTo = surfaceMotion.isMoving ? surfaceMotion.destination.size : nil
+      backdrop.show(chosen, palette: chosen == .standard ? .standard : MascotPalette.face(for: agent))
+      backdrop.layOut(in: rect, corner: corner, curve: curve)
+    }
     layoutListeningWords(in: rect, corner: corner, curve: curve)
     layoutResizeGrabber(in: rect, corner: corner)
     scrollIndicatorShell = (rect, corner)
@@ -4724,6 +4730,7 @@ final class AgentPaletteView: NSView {
     let stations = PaletteDrip.stations(source: source, shell: shell)
     surfaceMotion.response = AgentPaletteMetrics.dripFallResponse
     dripTarget = stations.fallen
+    isDrippingIn = true
     _ = surfaceMotion.move(to: stations.seed, in: self, animated: false)
     _ = surfaceMotion.move(to: stations.fallen, in: self, animated: true)
     fadeShellContent(in: true)
@@ -4732,6 +4739,7 @@ final class AgentPaletteView: NSView {
     ) { [weak self] in
       guard let self, self.dripRun == run else { return }
       self.dripTarget = nil
+      self.isDrippingIn = false
       self.surfaceMotion.response = AgentPaletteMetrics.dripSpreadResponse
       self.needsLayout = true
       self.layoutSubtreeIfNeeded()
@@ -4754,6 +4762,7 @@ final class AgentPaletteView: NSView {
     let run = dripRun
     let stations = PaletteDrip.stations(source: source, shell: shell)
     fadeShellContent(in: false)
+    isDrippingIn = false
     surfaceMotion.response = AgentPaletteMetrics.dripShrinkResponse
     dripTarget = stations.fallen
     _ = surfaceMotion.move(to: stations.fallen, in: self, animated: true)
@@ -4773,6 +4782,7 @@ final class AgentPaletteView: NSView {
     dripRun += 1
     let wasDripping = dripTarget != nil
     dripTarget = nil
+    isDrippingIn = false
     surfaceMotion.response = AgentPaletteMetrics.surfaceResponse
     for view in shellContentViews { view.layer?.removeAnimation(forKey: Self.dripFadeKey) }
     if wasDripping { needsLayout = true }

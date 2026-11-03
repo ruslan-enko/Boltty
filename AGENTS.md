@@ -843,9 +843,12 @@ final text. A long silence sends, but only after speech was heard.
   Messages' and rolled off under a brightness ceiling (`backdropCeiling`)
   because the prose has no bubbles. The ceiling gives back saturation as it
   dims, and cloud tops carry the sky's glow: dimmed white read as grey and
-  dimmed yellow as olive. Space is near black with only a breath
-  of that sky low down, and stars: no clouds, no milky way, no night colour
-  (each was tried and refused). The sky is after
+  dimmed yellow as olive. Space is near black with only breaths
+  of that sky (its glow low in one corner, its zenith high in the other),
+  and stars in four depths: gathered in loose drifts, mostly faint, white,
+  bluish, warm or in the face's light, the brightest with a halo and faint
+  rays. No clouds, no milky way, no night colour (each was tried and
+  refused). The sky is after
   Messages' (read off `DynamicBackgroundPosterExtension`'s `clouds.vfx`:
   sprites warped by two scrolling noises, edges choked, ramp-tinted, three
   depths), with noise in place of their textures. **The corner is the

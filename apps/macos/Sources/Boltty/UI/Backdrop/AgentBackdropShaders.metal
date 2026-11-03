@@ -170,46 +170,83 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
 
 // MARK: - Space
 
-/// One depth of stars: a star in some cells of a grid, drifting left at
-/// `drift` points a second, each twinkling on its own clock.
-static float backdropStarLayer(
+/// The colour of a star: most are white, some lean blue, a few warm, and a
+/// few take the face's own light — a sky of one white reads as a pattern.
+static float3 backdropStarColor(float k, float3 face) {
+  const float3 blue = float3(0.72, 0.82, 1.0);
+  const float3 warm = float3(1.0, 0.84, 0.64);
+  float3 c = mix(blue, float3(1.0), smoothstep(0.0, 0.35, k));
+  c = mix(c, warm, smoothstep(0.75, 1.0, k));
+  return mix(c, face, step(0.82, fract(k * 7.31)) * 0.6);
+}
+
+/// One depth of stars: at most one star in a cell of a grid, drifting left
+/// at `drift` points a second. How many cells hold one swells and thins with
+/// `crowd`, so they gather in loose drifts instead of an even sprinkle;
+/// brightness falls off steeply, so most are faint and few are bright. The
+/// brightest wear a soft halo and, in the nearest depth, faint rays. Each
+/// centre keeps `margin` of its cell clear, so nothing it draws is cut by the
+/// cell's edge.
+static float3 backdropStarLayer(
   float2 local, float cellSize, float chance, float radius, float drift, float seed,
-  float t, float pixel
+  float margin, bool rays, float t, float pixel, float3 face
 ) {
   const float2 at = local + float2(t * drift, 0.0);
   const float2 cell = floor(at / cellSize);
+  const float crowd = smoothstep(0.32, 0.72, backdropFBM(cell * cellSize / 300.0 + seed, 3));
   const float pick = backdropHash(cell + seed);
-  if (pick > chance) { return 0.0; }
+  if (pick > chance * mix(0.35, 1.7, crowd)) { return float3(0.0); }
   const float2 jitter = float2(backdropHash(cell + seed + 3.1), backdropHash(cell + seed + 7.7));
-  const float2 centre = (cell + 0.15 + 0.7 * jitter) * cellSize;
-  const float size = radius * (0.6 + 0.8 * backdropHash(cell + seed + 1.9));
-  const float distance = length(at - centre);
-  const float core = smoothstep(size + pixel, max(size - pixel, 0.0), distance);
-  const float halo = exp(-distance / (size * 3.5)) * 0.25 * step(0.7, pick / chance);
-  const float twinkle = 0.6 + 0.4 * sin(t * (0.7 + jitter.x * 1.8) + jitter.y * 40.0);
-  return (core + halo) * twinkle;
+  const float2 centre = (cell + margin + (1.0 - 2.0 * margin) * jitter) * cellSize;
+  const float magnitude = pow(backdropHash(cell + seed + 1.9), 3.0);
+  const float size = radius * (0.55 + 0.9 * magnitude);
+  const float2 d = at - centre;
+  const float distance = length(d);
+  // Never thinner than a pixel, or a faint star flickers as it drifts.
+  const float r = max(size, pixel * 0.75);
+  float light = smoothstep(r + pixel, max(r - pixel, 0.0), distance) * (0.35 + 0.65 * magnitude);
+  light += exp(-distance / (r * 2.6)) * 0.22 * magnitude;
+  if (rays && magnitude > 0.45) {
+    const float reach = r * 9.0;
+    const float along = 1.0 - smoothstep(0.0, reach, max(abs(d.x), abs(d.y)));
+    const float thin = exp(-min(abs(d.x), abs(d.y)) / max(pixel, 0.35));
+    light += along * along * thin * 0.35 * smoothstep(0.45, 1.0, magnitude);
+  }
+  // A slow scintillation, deeper for the faint ones.
+  const float twinkle = 1.0 - (0.45 - 0.3 * magnitude)
+    * (0.5 + 0.5 * sin(t * (0.6 + jitter.x * 1.6) + jitter.y * 40.0));
+  return backdropStarColor(backdropHash(cell + seed + 5.3), face) * light * twinkle;
 }
 
 static float3 backdropSpace(float2 local, float2 size, float t, float pixel, constant float4 *sky) {
   const float h = local.y / size.y;
+  const float x = local.x / size.x;
   const float3 zenith = sky[0].rgb;
   const float3 horizon = sky[1].rgb;
   const float3 light = sky[2].rgb;
+  const float3 glow = sky[5].rgb;
 
-  // Near black, as space is, with a breath of the face's sky low down.
-  float3 color = mix(horizon * 0.1, zenith * 0.05, smoothstep(0.0, 0.85, h));
+  // Near black, as space is. Only breaths of the face's sky: its glow low in
+  // one corner, as if a dawn were still below the edge, and its zenith in
+  // the opposite one, both drifting slowly so the dark is never one flat
+  // fill. No clouds, no milky way, no night colour.
+  const float breath = backdropFBM(local / 380.0 + float2(t * 0.004, 0.0), 3);
+  float3 color = float3(0.006, 0.007, 0.011);
+  const float dawn = exp(-pow(length(float2((x - 0.82) * 1.1, h + 0.08)), 2.0) * 3.2);
+  color += mix(horizon, glow, 0.4) * dawn * (0.13 + 0.05 * breath);
+  const float dusk = exp(-pow(length(float2((x - 0.08) * 1.2, h - 0.95)), 2.0) * 3.5);
+  color += zenith * dusk * (0.08 + 0.04 * breath);
 
-  // Three depths of stars, white with a breath of the face's light; the
-  // nearest drift fastest.
-  const float3 starTint = mix(float3(1.0), light, 0.25);
-  float stars = backdropStarLayer(local, 8.0, 0.07, 0.45, 0.8, 0.0, t, pixel) * 0.6;
-  stars += backdropStarLayer(local, 20.0, 0.1, 0.75, 1.6, 17.0, t, pixel) * 0.85;
-  stars += backdropStarLayer(local, 46.0, 0.06, 1.05, 2.8, 41.0, t, pixel);
-  // Fewer stars low down, in the dusk's glow.
-  color += starTint * stars * smoothstep(0.0, 0.35, h);
+  // Four depths: dust, small, middle and near; the nearest drift fastest.
+  float3 stars = backdropStarLayer(local, 7.0, 0.11, 0.3, 0.5, 0.0, 0.15, false, t, pixel, light) * 0.45;
+  stars += backdropStarLayer(local, 16.0, 0.13, 0.5, 0.9, 17.0, 0.15, false, t, pixel, light) * 0.75;
+  stars += backdropStarLayer(local, 38.0, 0.12, 0.8, 1.5, 41.0, 0.2, false, t, pixel, light) * 1.1;
+  stars += backdropStarLayer(local, 84.0, 0.26, 1.1, 2.4, 73.0, 0.25, true, t, pixel, light) * 1.15;
+  // Fewer stars where the dawn still glows.
+  color += stars * (1.0 - 0.7 * dawn);
 
   // Now and then a star falls across the upper sky.
-  const float period = 9.0;
+  const float period = 11.0;
   const float which = floor(t / period);
   const float age = fract(t / period) * period;
   if (age < 0.9) {
@@ -223,7 +260,7 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
     const float tail = smoothstep(110.0, 0.0, along) * step(0.0, along);
     const float streak = tail * smoothstep(0.9 + pixel, 0.0, across);
     const float fade = smoothstep(0.0, 0.1, age) * smoothstep(0.9, 0.55, age);
-    color += starTint * streak * fade * 0.8;
+    color += mix(float3(1.0), light, 0.25) * streak * fade * 0.8;
   }
   return backdropCeiling(color, 0.24, 0.46);
 }
