@@ -407,7 +407,14 @@ final class AgentPaletteView: NSView {
   /// surface, so neither greys them; clipped to the shell by `listeningWordsHost`
   /// while the shell springs wider than it was.
   private let listeningWordsHost = PassThroughView()
-  private let listeningWords = NSTextField(labelWithString: "")
+  private let listeningWords = ListeningWordsView(frame: .zero)
+  /// The face in the listening orb, wearing the prompt's face; it watches
+  /// the newest word (`MascotNSView.lookAtWindowPoint`).
+  private let listeningFace = MascotNSView(conversationID: UUID(), look: MascotLook.face(for: nil))
+  /// The face on its way from the prompt to the orb: where it started, in
+  /// this view's coordinates, and when (`beginFaceFlight`).
+  private var faceFlight: (from: CGRect, start: CFTimeInterval)?
+  private var faceFlightTimer: Timer?
   /// The width the listening shell is growing to, which the words are laid
   /// out at while it is still on its way.
   private var listeningWordsWidth: CGFloat = 0
@@ -485,7 +492,7 @@ final class AgentPaletteView: NSView {
       && (addressedPreview == nil || voicePrefixDraft?.isEffectivelyEmpty != false)
   }
   var isCompactListeningForTesting: Bool { showsCompactListening }
-  var listeningWordsForTesting: String { listeningWords.stringValue }
+  var listeningWordsForTesting: String { listeningWords.text }
   var listeningWordsShownForTesting: Bool { listeningWordsHost.alphaValue > 0 }
   var unifiedSurfaceFrameForTesting: CGRect { surfaceFrame }
   var unifiedSurfaceLayerForTesting: CALayer? { surfaceContainer.layer }
@@ -1052,6 +1059,10 @@ final class AgentPaletteView: NSView {
   /// better transcription and is exactly what should land. Only a new
   /// dictation may replace the prefix, which the recapture below does.
   func setVoiceListening(_ listening: Bool, ending: VoiceGlowPhase = .completed) {
+    // Read where the prompt's face stands before the shell changes shape.
+    let collapses = listening && !isVoiceListening && !isResultsExpanded
+      && (addressedPreview == nil || field.draft.isEffectivelyEmpty)
+    if collapses { beginFaceFlight() } else if !listening { endFaceFlight() }
     if listening, !isVoiceListening {
       voicePrefixDraft = field.draft
       // A new session starts from nothing, so the first result of it always
@@ -1202,32 +1213,25 @@ final class AgentPaletteView: NSView {
     let words = transcript
       .replacingOccurrences(of: "\u{FFFC}", with: "")
       .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard words != listeningWords.stringValue else { return }
-    let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.5)
-    shadow.shadowBlurRadius = 6
-    shadow.shadowOffset = NSSize(width: 0, height: -1)
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.lineBreakMode = .byTruncatingHead
-    listeningWords.attributedStringValue = NSAttributedString(string: words, attributes: [
-      .font: roundedAppFont(size: AgentPaletteMetrics.listeningWordsFontSize, weight: .medium),
-      .foregroundColor: PaletteInk.primary,
-      .shadow: shadow,
-      .paragraphStyle: paragraph
-    ])
+    let before = listeningWords.wordCount
+    listeningWords.setText(words, animated: window?.isVisible == true)
+    // The face takes each new word in with a small nod.
+    if listeningWords.wordCount > before { listeningFace.nod() }
   }
 
-  /// The listening shell's width: the orb until a word is heard, then a
-  /// capsule round the words, no longer than the prompt.
-  ///
-  /// Measured off the string, not `sizeToFit()`: a label that truncates at its
-  /// head answers that with the width it was given, not the one it wants.
-  private func listeningShellWidth() -> CGFloat {
+  /// The listening shell: the orb until a word is heard, then a capsule as
+  /// wide as the words' widest line (no wider than `listeningMaxWidth`), and
+  /// a line taller for every line they run to, up to the most.
+  private func listeningShellSize() -> CGSize {
     let orb = AgentPaletteMetrics.listeningOrbDiameter
-    guard !listeningWords.stringValue.isEmpty else { return orb }
-    let natural = ceil(listeningWords.attributedStringValue.size().width)
-    let padded = natural + AgentPaletteMetrics.listeningWordsInset * 2
-    return min(AgentPaletteMetrics.listeningMaxWidth, max(orb, padded))
+    guard !listeningWords.text.isEmpty else { return CGSize(width: orb, height: orb) }
+    let inset = AgentPaletteMetrics.listeningWordsInset
+    let room = AgentPaletteMetrics.listeningMaxWidth - inset * 2
+    let measured = listeningWords.measure(width: room)
+    let width = min(AgentPaletteMetrics.listeningMaxWidth, max(orb, measured.widest + inset * 2))
+    let height = AgentPaletteMetrics.listeningWordedHeight(
+      lines: measured.lines, lineHeight: listeningWords.lineHeight)
+    return CGSize(width: width, height: height)
   }
 
   /// Writes only the part of the transcript that differs from what is shown.
@@ -1622,6 +1626,8 @@ final class AgentPaletteView: NSView {
       .flatMap(MascotPalette.palette(withID:))
       ?? MascotPalette.face(for: agentForNewPrompt)
     voiceGlow.apply(palette: palette)
+    if let look = selectedAgentImage.mascotLook { listeningFace.apply(look: look) }
+    listeningWords.colors = VoiceEdgeGlowLayout.rayColors(from: palette)
     // The caret's light too: one face, one light, on the words.
     field.caretPalette = palette
   }
@@ -3585,13 +3591,13 @@ final class AgentPaletteView: NSView {
     listeningWordsHost.layer?.masksToBounds = true
     listeningWordsHost.alphaValue = 0
     listeningWords.translatesAutoresizingMaskIntoConstraints = true
-    // **Head**, not tail: once the capsule is as long as the prompt, the words
-    // still coming are at the end.
-    listeningWords.lineBreakMode = .byTruncatingHead
-    listeningWords.cell?.truncatesLastVisibleLine = true
-    listeningWords.maximumNumberOfLines = 1
-    listeningWords.isSelectable = false
+    listeningWords.alphaValue = 0
+    listeningFace.emotion = .listening
+    listeningFace.isHidden = true
+    // The words under the face: a line leaving by the top fades out
+    // beneath it.
     listeningWordsHost.addSubview(listeningWords)
+    listeningWordsHost.addSubview(listeningFace)
     addSubview(listeningWordsHost)
     scrollIndicator.translatesAutoresizingMaskIntoConstraints = true
     scrollIndicator.autoresizingMask = [.width, .height]
@@ -3717,9 +3723,9 @@ final class AgentPaletteView: NSView {
     let chat = addressedPreview != nil
     applyComposerGlyphSize(chat: chat)
     promptHost.apply(surfaceStyle: chat ? .bolttyAIComposer : .bolttyAI)
-    // The shell wears the black ramp over its glass in every state but
-    // listening, whose orb draws its own dark on top of the glass.
-    applySurfaceStyle(showsCompactListening ? .bolttyAI : .bolttyAIPrompt)
+    // The shell wears the black ramp over its glass in every state, the
+    // listening orb included: the orb is that glass, with the face in it.
+    applySurfaceStyle(.bolttyAIPrompt)
     errorTopToPromptConstraint.constant = AgentPaletteMetrics.errorTopSpacing
     // **A capsule while it is a bar, a rounded rectangle once it is a box.**
     // The mock states both as arbitrary values on one component — 100 at h=36,
@@ -3882,14 +3888,14 @@ final class AgentPaletteView: NSView {
     // words as they are said, and is the orb again in silence.
     let width: CGFloat
     if listening {
-      width = listeningShellWidth()
+      width = listeningShellSize().width
     } else {
       width = isOpenChat ? chatSurfaceSize.width
         : isHistoryOpen ? historySurfaceWidth : AgentPaletteMetrics.promptSize.width
     }
     let unclamped: CGFloat
     if listening {
-      unclamped = AgentPaletteMetrics.listeningOrbDiameter
+      unclamped = listeningShellSize().height
     } else if list {
       unclamped = historySurfaceHeight
     } else if chat {
@@ -3907,18 +3913,30 @@ final class AgentPaletteView: NSView {
     )
     promptHost.isHidden = !chat || listening
     listeningWordsWidth = width
-    let saysWords = listening && !listeningWords.stringValue.isEmpty
-    if saysWords != (listeningWordsHost.alphaValue > 0) {
-      if saysWords, !MotionPreferences.reduceMotion, window?.isVisible == true {
+    let saysWords = listening && !listeningWords.text.isEmpty
+    // The host holds the face, there from the first moment of the orb; the
+    // words come and go inside it.
+    let fades: [(NSView, Bool)] = [(listeningWordsHost, listening), (listeningWords, saysWords)]
+    // A face out of sight stops drawing: hidden once the orb has faded.
+    if listening { listeningFace.isHidden = false }
+    for (view, shown) in fades where shown != (view.alphaValue > 0) {
+      let hidesFace = view === listeningWordsHost && !shown
+      if !MotionPreferences.reduceMotion, window?.isVisible == true {
+        // Out quicker than in: leaving, they go with the orb.
         NSAnimationContext.runAnimationGroup { context in
-          context.duration = Motion.standard
+          context.duration = shown ? Motion.standard : Motion.quick
           context.timingFunction = Motion.emphasizedCurve
-          listeningWordsHost.animator().alphaValue = 1
+          view.animator().alphaValue = shown ? 1 : 0
+        } completionHandler: { [weak self] in
+          guard hidesFace, let self, !self.showsCompactListening else { return }
+          self.listeningFace.isHidden = true
         }
       } else {
-        listeningWordsHost.alphaValue = saysWords ? 1 : 0
+        view.alphaValue = shown ? 1 : 0
+        if hidesFace { listeningFace.isHidden = true }
       }
     }
+    listeningFace.reduceMotion = MotionPreferences.reduceMotion
     promptCapsule.alphaValue = (list && !searching) || listening ? 0 : 1
     previewCapsule.alphaValue = listening ? 0 : 1
     resultsCapsule.alphaValue = 1
@@ -4014,23 +4032,100 @@ final class AgentPaletteView: NSView {
     CATransaction.commit()
   }
 
-  /// The words stand from the capsule's left end at the width it is growing
-  /// to, so as it springs wider they slide with that end and the newest word
-  /// is uncovered by the other, rather than jumping each time one is heard.
+  /// The words stand under the face, centred, at the width the capsule is
+  /// growing to, so a line does not re-break as it springs; the capsule's
+  /// foot uncovers each new line as it grows down to it.
   private func layoutListeningWords(in rect: CGRect, corner: CGFloat, curve: CALayerCornerCurve) {
     listeningWordsHost.frame = rect
     listeningWordsHost.layer?.cornerRadius = corner
     listeningWordsHost.layer?.cornerCurve = curve
     let inset = AgentPaletteMetrics.listeningWordsInset
-    let height = ceil(listeningWords.intrinsicContentSize.height)
-    // By its alignment rect: a label draws its text 2pt in from its frame,
-    // and measured without them a one-word take read "…".
-    listeningWords.frame = listeningWords.frame(forAlignmentRect: CGRect(
-      x: inset,
-      y: ((rect.height - height) / 2).rounded(),
-      width: max(0, listeningWordsWidth - inset * 2),
+    let blur = AgentPaletteMetrics.listeningWordBlur
+    let room = AgentPaletteMetrics.listeningMaxWidth - inset * 2
+    let lines = listeningWords.measure(width: room).lines
+    let width = max(0, listeningWordsWidth - inset * 2)
+    // From the shell's top, so the room over the lines — under the face — is
+    // where a line leaving by the top fades out.
+    let headroom = AgentPaletteMetrics.listeningFaceTopInset
+      + AgentPaletteMetrics.listeningFaceSize + AgentPaletteMetrics.listeningFaceWordsGap - blur
+    let height = headroom + CGFloat(max(1, lines)) * listeningWords.lineHeight + blur * 2
+    listeningWords.wrapWidth = room
+    listeningWords.headroom = headroom
+    listeningWords.frame = CGRect(
+      x: ((rect.width - width) / 2).rounded(),
+      y: (rect.height - height).rounded(),
+      width: width,
       height: height
-    ))
+    )
+    layoutListeningFace()
+  }
+
+  /// The face rides the spring: centred in the orb, and at the top of the
+  /// capsule as it grows tall enough for words, in proportion to how far it
+  /// has grown — so it rises with the shell rather than jumping. While it
+  /// flies in from the prompt it is on its way there instead.
+  private func layoutListeningFace() {
+    let rect = listeningWordsHost.frame
+    let face = AgentPaletteMetrics.listeningFaceSize
+    let orb = AgentPaletteMetrics.listeningOrbDiameter
+    let worded = AgentPaletteMetrics.listeningWordedHeight(lines: 1, lineHeight: listeningWords.lineHeight)
+    let grown = max(0, min(1, (rect.height - orb) / (worded - orb)))
+    let centred = (rect.height - face) / 2
+    let atTop = rect.height - AgentPaletteMetrics.listeningFaceTopInset - face
+    var frame = CGRect(
+      x: ((rect.width - face) / 2).rounded(),
+      y: (centred + (atTop - centred) * grown).rounded(),
+      width: face,
+      height: face
+    )
+    if let flight = faceFlight {
+      let progress = (Motion.now - flight.start) / AgentPaletteMetrics.listeningFaceFlight
+      if progress >= 1 {
+        endFaceFlight()
+      } else {
+        let p = CGFloat(max(0, progress))
+        // Eased out, and on a small arc: it leaps up toward the orb's middle
+        // rather than sliding across.
+        let eased = 1 - pow(1 - p, 3)
+        let from = flight.from.offsetBy(dx: -rect.minX, dy: -rect.minY)
+        let side = from.width + (face - from.width) * eased
+        let midX = from.midX + (frame.midX - from.midX) * eased
+        let midY = from.midY + (frame.midY - from.midY) * eased + sin(.pi * p) * 14
+        frame = CGRect(x: midX - side / 2, y: midY - side / 2, width: side, height: side)
+      }
+    }
+    listeningFace.frame = frame
+    // It watches the word arriving; with none it follows the pointer.
+    listeningFace.lookAtWindowPoint = listeningWords.newestWordCentre.map {
+      listeningWords.convert($0, to: nil)
+    }
+  }
+
+  /// Sends the prompt's face to the orb: from where it stands on the prompt,
+  /// at its size there, wearing its drift, so it is the same face moving.
+  private func beginFaceFlight() {
+    guard !MotionPreferences.reduceMotion, window?.isVisible == true,
+          selectedAgentImage.window != nil, !selectedAgentImage.isHidden
+    else { return }
+    let mark = selectedAgentImage
+    let centre = mark.convert(CGPoint(x: mark.bounds.midX, y: mark.bounds.midY), to: self)
+    let side = AgentPaletteMetrics.promptMascotSize
+    faceFlight = (CGRect(x: centre.x - side / 2, y: centre.y - side / 2, width: side, height: side), Motion.now)
+    if let identity = mark.mascotIdentity, let look = mark.mascotLook {
+      listeningFace.reseed(conversationID: identity, look: look)
+    }
+    faceFlightTimer?.invalidate()
+    let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated { self?.layoutListeningFace() }
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    faceFlightTimer = timer
+  }
+
+  private func endFaceFlight() {
+    faceFlight = nil
+    faceFlightTimer?.invalidate()
+    faceFlightTimer = nil
   }
 
   private func revealSurfaceContent() {

@@ -89,6 +89,16 @@ struct MascotMotion {
     pointerTarget = SIMD3(max(-1, min(1, x)), max(-1, min(1, y)), weight)
   }
 
+  /// A small bob, as if taking a word in: the listening orb's face nods at
+  /// each word it hears. Skipped while anything else is being acted.
+  mutating func nod() {
+    guard action == nil else { return }
+    bopCount += 1
+    action = Action(
+      kind: .bop(height: 2.4, spin: false, side: bopCount % 2 == 0 ? 1 : -1),
+      start: t, side: random.next() < 0.5 ? -1 : 1)
+  }
+
   mutating func poke(_ reaction: MascotReaction? = nil) {
     if let action, action.progress(at: t) < 0.5 { return }
     let chosen = reaction ?? {
@@ -337,8 +347,11 @@ struct MascotMood: Equatable {
       actionEvery = 6.5...11
     case .listening:
       pitch = 0.07
-      gazeReach = SIMD2(0.8, 0.5)
-      turnReach = SIMD2(0.12, 0.05)
+      // Wide enough to be seen following what is said: the orb's face
+      // watches each word arrive under it (`lookAtWindowPoint`), and at the
+      // old 0.8 × 0.5 and a turn of 0.12 nobody noticed it look.
+      gazeReach = SIMD2(1.9, 1.4)
+      turnReach = SIMD2(0.34, 0.2)
       glanceEvery = 1.6...3.5
       eyeScale = 1.1
       breathPeriod = 3.0

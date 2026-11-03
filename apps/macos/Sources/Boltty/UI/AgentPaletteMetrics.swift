@@ -860,12 +860,42 @@ enum AgentPaletteMetrics {
   /// voice's light in it. A little taller than the prompt capsule, so the
   /// collapse reads as a change of shape and not as a shrink.
   static let listeningOrbDiameter: CGFloat = 84
+  /// **The face sits in the orb**, this big; in silence the orb is glass
+  /// round it, and once words are heard it moves to the top of the capsule
+  /// and watches each word arrive under it.
+  static let listeningFaceSize: CGFloat = 48
+  /// The capsule round the face and the words: the face this far from its
+  /// top, the words this far under the face and this far from its foot. It
+  /// grows downward a line at a time, to `listeningMaxLines`.
+  static let listeningFaceTopInset: CGFloat = 14
+  static let listeningFaceWordsGap: CGFloat = 4
+  static let listeningWordsBottomInset: CGFloat = 16
+  static let listeningMaxLines = 5
+  static let listeningWordsLineSpacing: CGFloat = 1.34
+  static func listeningWordedHeight(lines: Int, lineHeight: CGFloat) -> CGFloat {
+    listeningFaceTopInset + listeningFaceSize + listeningFaceWordsGap
+      + CGFloat(max(1, lines)) * lineHeight + listeningWordsBottomInset
+  }
+  /// When the mic is pressed the prompt's face flies to the orb: this long.
+  static let listeningFaceFlight: CFTimeInterval = 0.55
   /// **And it grows round the words as they are said**: a capsule as tall as the orb, the
   /// words this far in from each round end, as long as the prompt at most —
   /// the words land there when the take ends.
   static let listeningWordsInset: CGFloat = 30
   static let listeningWordsFontSize: CGFloat = typePrimary
-  static let listeningMaxWidth: CGFloat = promptSize.width
+  /// Narrower than the prompt: a capsule as long as the prompt read as a
+  /// banner, not as the orb grown round a few words. Past this the words
+  /// break onto the next line (`ListeningWordsView`).
+  static let listeningMaxWidth: CGFloat = 380
+  /// **Each word arrives out of a blur** (`ListeningWordsView`): this long
+  /// from soft to sharp, from this far blurred, rising this far into place.
+  static let listeningWordArrival: CFTimeInterval = 1.1
+  static let listeningWordBlur: CGFloat = 9
+  static let listeningWordRise: CGFloat = 4
+  /// Words heard together arrive one after another, this far apart.
+  static let listeningWordStagger: CFTimeInterval = 0.09
+  /// Words a line re-centres glide to their new places with this time constant.
+  static let listeningWordGlide: CFTimeInterval = 0.14
 
   /// How far a glyph button sinks while held.
   ///

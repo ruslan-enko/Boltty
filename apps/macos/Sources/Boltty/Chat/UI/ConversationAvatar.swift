@@ -150,6 +150,11 @@ final class MascotNSView: NSView {
 
   var onBeat: ((Bool) -> Void)?
 
+  /// A point in the window the face looks at instead of the pointer — the
+  /// listening orb's face watches each word as it arrives. Nil follows the
+  /// pointer, as every other face does.
+  var lookAtWindowPoint: CGPoint?
+
   // MARK: Going to rest, and waking
 
   /// How awake the face is, 0 to 1 — for a face that goes back to a picture
@@ -329,6 +334,12 @@ final class MascotNSView: NSView {
     motion.poke(reaction)
   }
 
+  /// A small bob, as if taking a word in (`MascotMotion.nod`).
+  func nod() {
+    guard !reduceMotion else { return }
+    motion.nod()
+  }
+
   override func viewDidChangeBackingProperties() {
     super.viewDidChangeBackingProperties()
     render()
@@ -387,6 +398,13 @@ extension MascotNSView {
   }
 
   private func pointerOffset() -> (x: Double, y: Double, strength: Double)? {
+    if let target = lookAtWindowPoint, window != nil, !bounds.isEmpty {
+      let inView = convert(target, from: nil)
+      let dx = (inView.x - bounds.midX) / bounds.width
+      let dy = (inView.y - bounds.midY) / bounds.width
+      let d = max(1, (dx * dx + dy * dy).squareRoot())
+      return (dx / d, dy / d, 1)
+    }
     guard let window, NSApp.isActive, !bounds.isEmpty else { return nil }
     let inView = convert(window.mouseLocationOutsideOfEventStream, from: nil)
     let dx = (inView.x - bounds.midX) / bounds.width

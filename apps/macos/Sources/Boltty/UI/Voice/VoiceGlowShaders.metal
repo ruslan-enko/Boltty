@@ -2,10 +2,8 @@
 //
 //  The Boltty AI voice glow: rays of the mascot's colours fanning out of one
 //  point, drawn **under the shell's glass** so the glass bends and frosts them
-//  as they move — and, while listening, an orb: the shell gone round and
-//  filled with one soft, saturated gradient of the face's colours, drawn under
-//  the glass and again **on** it by a second view (`layer` 1), since the glass
-//  greys whatever is under it.
+//  as they move. While listening the shell is the orb, and the orb is the
+//  glass itself: nothing is drawn there (see the orb's section below).
 //
 //  A burst of coloured rays that keep sliding through one another: the
 //  colour of a ray is a value noise of
@@ -13,15 +11,14 @@
 //  also drifts along the radius, so each wedge streams outward from the origin
 //  as if the picture were being flown through. Three octaves turn at different
 //  rates in different directions, which is what makes the rays pass through one
-//  another rather than rotate as a disc. The orb is after Siri's ball and
-//  tiles of mesh gradients; see the orb's own section below.
+//  another rather than rotate as a disc. The orb has its own section below.
 //
 //  What the voice does is **move it**: the CPU integrates a speed that follows
 //  the level into `flow`, so a loud syllable quickens the rays and the picture
 //  does not lurch (see `VoiceGlowUniforms.flow`).
 //
 //  Under the glass this is a picture the glass looks through, drawn
-//  premultiplied; on it, the orb's surface is light added over a veil.
+//  premultiplied; the view on it draws nothing now.
 
 #include <metal_stdlib>
 #include "VoiceGlowUniforms.h"
@@ -188,155 +185,12 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
 
 // MARK: - The orb
 //
-// Dark, with the face's colours running through it in waves, in the shape of
-// the shell. Nothing in it has an edge or a line but the shell's own. No
-// grain: a visible one was tried, and the gradient reads cleaner without it.
-//
-// **Silence is near black; the voice lights the edge.** At rest a faint rim and
-// the dim crests of slow waves. A word fills the rim unevenly, in waves that
-// run round it, quickens everything (`flow`), and sends ripples in from the
-// edge that die before the middle (`voice`, a quick envelope). The middle
-// stays calm.
-//
-// **It is drawn on top of the panel's glass** (`layer` 1), opaque to a crisp
-// edge, and the system glass under it does not show: under the glass it
-// comes out frosted, its rim a soft halo. The layer
-// under the glass draws the same picture, for the moment the shell is still
-// turning into the orb.
-
-/// Pushed away from grey by `amount` (1 leaves it).
-static inline float3 vivid(float3 c, float amount) {
-  const float luma = dot(c, float3(0.2126, 0.7152, 0.0722));
-  return saturate(mix(float3(luma), c, amount));
-}
-
-/// A walk along the face's stops, 0…1 top of its body to the foot, straight
-/// between neighbours: the field it is handed is smooth, so the colour is.
-static inline float3 orbWalk(constant VoiceGlowUniforms &u, float v) {
-  const float pos = saturate(v) * float(VOICE_GLOW_COLOR_COUNT - 1);
-  const int i = min(int(floor(pos)), VOICE_GLOW_COLOR_COUNT - 2);
-  return mix(u.colors[i].rgb, u.colors[i + 1].rgb, pos - float(i));
-}
-
-/// The two colours the orb is made of: the face's most saturated stop, and
-/// the stop that is most saturated *and* furthest from it. Never a pale stop —
-/// a gradient of Daybreak's pale band and Candy's pale pink came out a cream
-/// ball, where the reference's tiles are deep, saturated colour.
-static inline void orbColours(constant VoiceGlowUniforms &u, thread float3 &ground, thread float3 &second) {
-  int g = 0;
-  float best = -1.0;
-  for (int i = 0; i < VOICE_GLOW_COLOR_COUNT; ++i) {
-    const float3 c = u.colors[i].rgb;
-    const float chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
-    if (chroma > best) { best = chroma; g = i; }
-  }
-  ground = u.colors[g].rgb;
-  int k = g == 0 ? 1 : 0;
-  float bestScore = -1.0;
-  for (int i = 0; i < VOICE_GLOW_COLOR_COUNT; ++i) {
-    if (i == g) { continue; }
-    const float3 c = u.colors[i].rgb;
-    const float chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
-    const float score = chroma * (0.25 + length(c - ground));
-    if (score > bestScore) { bestScore = score; k = i; }
-  }
-  second = u.colors[k].rgb;
-}
-
-/// The orb's geometry, for the ball and for the capsule it grows into round
-/// the words being said: `R` is half the shell's short side, and the *spine*
-/// is the segment its round ends are centred on — a point for the ball.
-struct OrbShape {
-  /// From the spine, in the ball's unit: 0 on the spine, 1 at the rim.
-  float2 q;
-  /// The point as the pools see it: the ball's unit, a long shell widening
-  /// them by the square root of its length, not in proportion.
-  float2 g;
-  /// How far `g` runs from the middle to each end: 1 for the ball.
-  float2 span;
-};
-
-static inline OrbShape orbShape(float2 p, float2 halfSize) {
-  OrbShape o;
-  const float R = max(min(halfSize.x, halfSize.y), 1.0);
-  const float2 c = p - halfSize;
-  const float2 spine = max(halfSize - R, 0.0);
-  o.q = (c - clamp(c, -spine, spine)) / R;
-  const float len = max(halfSize.x, halfSize.y) / R;
-  const float2 axis = halfSize.x >= halfSize.y ? float2(sqrt(len), 1.0) : float2(1.0, sqrt(len));
-  o.g = c / (R * axis);
-  o.span = halfSize / (R * axis);
-  return o;
-}
-
-/// The gradient at a point of the shell (y up).
-static inline float3 orbGradient(constant VoiceGlowUniforms &u, OrbShape o, float level) {
-  const float f = u.flow;
-  const float voice = saturate(u.voice);
-  const float lift = saturate(0.45 * level + 1.10 * voice);
-  const float2 g = o.g;
-
-  float3 ground;
-  float3 second;
-  orbColours(u, ground, second);
-  ground = vivid(ground, 1.35);
-  second = vivid(second, 1.35);
-
-  // Where a point is: how far round the shape's edge, in turns, and how far
-  // in from it — 0 on the edge, 1 on the middle (the capsule's spine).
-  const float2 across = g / max(o.span, float2(0.001));
-  const float around = atan2(across.y, across.x) * (1.0 / 6.2831853);
-  const float r = min(length(o.q), 1.0);
-  const float inward = 1.0 - r;
-  // How much "round the edge" still means anything: every angle meets in the
-  // middle, and a pattern that follows the angle there is a pinwheel.
-  const float rimward = 1.0 - smoothstep(0.25, 0.85, inward);
-
-  // The field the colour runs through, swirled twice so a band bends and folds
-  // as it travels instead of sliding past as a stripe.
-  float2 w = g;
-  w += 0.40 * float2(sin(1.9 * g.y + 0.80 * f), cos(1.7 * g.x - 0.65 * f));
-  w += 0.20 * float2(sin(3.1 * w.y - 1.20 * f + 1.7), cos(2.7 * w.x + 1.05 * f + 0.4));
-
-  // The colour walks the face's own gradient, so blue meets amber through the
-  // stops between them, as on the face, not as two patches side by side; and
-  // round the edge the walk turns slowly, so the rim wears the whole gradient.
-  const float shade = 0.5 + 0.30 * sin(1.6 * w.x + 1.1 * w.y - 0.90 * f)
-    + 0.18 * sin(6.2831853 * around + 0.40 * f) * rimward;
-  float3 colour = vivid(orbWalk(u, shade), 1.30);
-
-  // The middle is calm: only the crests of slow waves, dim, and dimmer toward
-  // the middle. The light lives at the edge.
-  const float lit = sqrt(lift);
-  const float run = 0.5 + 0.5 * sin(2.2 * w.x + 1.3 * w.y - 1.50 * f);
-  const float body = pow(run, mix(3.2, 1.6, lit)) * (0.06 + 0.32 * lit) * (0.35 + 0.65 * r);
-
-  // The edge fills with the voice, unevenly: how far in its light reaches
-  // swells and falls in waves that run round the rim, two and three to a turn.
-  const float swell = 0.5 + (0.25 * sin(6.2831853 * 2.0 * around - 1.30 * f)
-    + 0.25 * sin(6.2831853 * 3.0 * around + 0.90 * f + 1.3)) * rimward;
-  const float depth = 0.05 + lit * (0.08 + 0.34 * swell);
-  const float edge = exp(-inward / depth);
-
-  // And the voice's echo runs in from the edge, gone before the middle.
-  const float echo = pow(0.5 + 0.5 * sin(14.0 * inward + 3.0 * f + 2.0 * rimward * sin(6.2831853 * around + 0.5 * f)), 2.0)
-    * exp(-4.0 * inward) * voice;
-
-  colour *= body + edge * (0.22 + 0.95 * lit) + echo * 0.35;
-
-  // Saturated the more is said.
-  colour = vivid(colour, 1.20 + 0.35 * lift);
-
-  // Grown round the words, the middle goes deep — leaning to the second
-  // colour, since a yellow only darkened is olive — for white words to stand
-  // on, and the light keeps to the rim and the round ends. The ball has no
-  // words, and none of this.
-  const float worded = smoothstep(1.02, 1.30, max(o.span.x, o.span.y));
-  const float smoke = (1.0 - smoothstep(0.30, 0.95, r)) * worded;
-  const float3 deep = vivid(mix(colour, second, 0.45), 1.30) * (0.42 + 0.10 * lift);
-  colour = mix(colour, deep, smoke);
-  return saturate(colour) * mix(1.0, 0.85, u.appearance);
-}
+// The orb draws nothing: listening, the shell is the panel's own glass under
+// its black ramp, with the face in it and the words arriving under the face
+// in its colours (`ListeningWordsView`). A black orb on the glass, lit
+// gradients and an aurora were each tried and refused. The rays under the
+// glass fade out as the shell becomes the orb (`orb`), and the view on the
+// glass (`layer` 1) stays clear.
 
 fragment float4 voiceGlowFragment(
   Varyings in [[stage_in]],
@@ -351,13 +205,8 @@ fragment float4 voiceGlowFragment(
   const float grain = ditherNoise(in.position.xy) * (1.0 / 255.0);
 
   if (u.layer > 0.5) {
-    // On the glass: the orb, whole and opaque, to the shell's own edge — the
-    // glass under it does not show, so nothing frosts it.
-    const float edge = 1.0 - smoothstep(-aa, 0.0, distance);
-    const float strength = u.orb * u.opacity * edge;
-    if (!fills || strength <= 0.0) { return float4(0.0); }
-    const float3 colour = orbGradient(u, orbShape(p, halfSize), level);
-    return float4(saturate(colour + grain) * strength, strength);
+    // On the glass: nothing — the orb is the glass itself.
+    return float4(0.0);
   }
 
   // Under the glass. Clipped a point inside its edge, so no fringe of colour
@@ -395,7 +244,7 @@ fragment float4 voiceGlowFragment(
 
   float4 picture = float4(colour, 1.0) * foot;
   if (fills) {
-    picture = mix(picture, float4(orbGradient(u, orbShape(p, halfSize), level), 1.0), u.orb);
+    picture *= 1.0 - u.orb;
   }
 
   // Premultiplied: this is a picture the glass looks through. Not quite opaque

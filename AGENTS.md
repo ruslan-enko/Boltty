@@ -492,7 +492,7 @@ The loop that must keep working:
   a symbol is only the fallback for a kind with no picture. Not a thumbnail of
   the file: the glass is the point.
 - **The black ramp** (`bolttyAIPrompt`) is worn by the shell in every state
-  but listening — first screen, list and chat — never by the composer, and only
+  — first screen, listening, list and chat — never by the composer, and only
   once the state has settled (`applySurfaceStyle` defers changes *to* a wash to
   the end of the turn).
 - Refreshing rows never orders the window forward or steals first responder.
@@ -605,17 +605,26 @@ actions remain.
 
 ### Listening
 
-Pressing the microphone on the first screen collapses the shell into an orb of
-the face's colours, drawn **on top of** the glass (the glass frosts what is
-under it); it grows into a capsule round this take's words. At rest the orb is
-near black with a faint lit rim. **The light lives at the edge, not the
-middle**: the voice (on a square root, so an ordinary word is already bright)
-fills the rim unevenly — how far in it reaches swells in waves running round
-the edge — and sends ripples in from it that die before the middle. Its colour
-walks the face's own gradient (`orbWalk`), so two colours meet through the
-stops between them. Anything that follows the angle round the edge fades out
-toward the middle, where every angle meets (`rimward`), or it draws a
-pinwheel (`orbGradient`). In an open chat a
+Pressing the microphone on the first screen collapses the shell into an
+orb of the panel's own glass under its black ramp, and the prompt's face
+**flies into it** (`beginFaceFlight`, 0.55 s on a
+small arc, from its place and size on the prompt to 48 in the 84 orb). The
+orb draws nothing of its own: a black orb, lit gradients and an aurora were
+each tried and refused. Once words are heard it grows into a capsule (up to 380 wide,
+`listeningMaxWidth`): the face rises to its top with the spring and
+**watches the newest word** (`MascotNSView.lookAtWindowPoint`; the
+`.listening` mood's gaze and turn were widened so it is seen to) and nods
+at each new one (`MascotNSView.nod`), and the
+words stand under it in centred lines that **run downward**, the capsule
+growing a line at a time to five (`listeningMaxLines`); past five the oldest
+line rises under the face and fades through a gradient mask over the room
+above the lines (`ListeningWordsView.headroom`), never cut at an edge. A word a line re-centres glides there. **Each word
+arrives slowly out of a soft blur in the face's colours**
+(`ListeningWordsView`, 1.1 s: the word drawn in the face's gradient round
+rings of offsets, closing into the sharp white word, no filter), rising a
+little into place; words heard together a beat apart. Only words past the
+end arrive: a word the engine revises changes in place (arriving again, the
+last few words blinked on every result). In an open chat a
 non-empty draft keeps the composer. Enter is ✓, which waits for the engine's
 final text. A long silence sends, but only after speech was heard.
 
@@ -829,7 +838,8 @@ final text. A long silence sends, but only after speech was heard.
   `flow` so speed changes never jump. Nothing in it has an edge. Reduce
   Transparency puts it over the shell. Never `presentsWithTransaction` (it
   starved the run loop).
-- The listening orb is drawn by a second view on top of the glass.
+- The listening orb is the shell's glass; the second view on top of the
+  glass draws nothing.
 - **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
   its transcript, chosen per agent in Settings › Agents › Chat
   (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
@@ -868,7 +878,7 @@ final text. A long silence sends, but only after speech was heard.
 ## Design contract (AppKit)
 
 - **Glass is the system's**, in four kinds: the shell (`PaletteGlassHost`, bare
-  regular glass under a black ramp, bare while listening), controls (the same
+  regular glass under a black ramp), controls (the same
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,
   `GlassPillLabelButton`), and the selected history tab. Density goes *over* the
   glass, never into its tint. The system's Tinted/Clear setting is respected.
