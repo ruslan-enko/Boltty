@@ -5,7 +5,6 @@ import SwiftUI
 struct HotkeyRecorderField: View {
   let binding: HotkeyBinding
   let isEnabled: Bool
-  var isRowHovered = false
   var probe: (HotkeyBinding) -> HotkeyAvailability = { _ in .free }
   @Binding var problem: HotkeyProblem?
   let onRecord: (HotkeyBinding) -> Void
@@ -26,7 +25,7 @@ struct HotkeyRecorderField: View {
       accessibilityName: "Boltty AI shortcut",
       accessibilityIdentifier: "boltty.settings.hotkeyRecorder",
       isConflicting: problem?.isConflict == true,
-      isRowHovered: isRowHovered,
+      restoreAlwaysShown: true,
       onEvent: handleEvent,
       onRestoreDefault: restoreControl
     )

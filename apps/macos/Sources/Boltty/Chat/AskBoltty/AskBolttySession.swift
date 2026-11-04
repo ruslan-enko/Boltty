@@ -1,18 +1,6 @@
 import AppKit
 import Combine
 
-/// What Ask Boltty listens with: dictation, as a thing that hears until it is told
-/// to finish and then hands back the final words.
-@MainActor
-protocol AskBolttyListening: AnyObject {
-  var onText: ((String) -> Void)? { get set }
-  var onFailure: ((String) -> Void)? { get set }
-  func start()
-  /// Stops listening and waits for the engine's final words.
-  func finish() async -> String
-  func cancel()
-}
-
 /// What Ask Boltty speaks with. `onStart` runs as the voice begins the piece.
 @MainActor
 protocol AskBolttySpeaking: AnyObject {
@@ -25,15 +13,14 @@ protocol AskBolttySpeaking: AnyObject {
 
 extension SpeechOutput: AskBolttySpeaking {}
 
-/// One Ask Boltty, from the chord being held to the answer's last word: the screen
-/// is frozen and the agent's session started while the person speaks, their
-/// words go with a picture of the screen when they let go, and the answer is
-/// said a sentence at a time as it arrives.
+/// One question about the screen, from the region being drawn to the answer's
+/// last word: the agent's session starts as the region is drawn (`warmUp`),
+/// the words and the region go together (`ask`), and the answer is shown — or
+/// said — a sentence at a time beside the face as it arrives.
 @MainActor
 final class AskBolttySession: ObservableObject {
   enum Phase: Equatable {
     case idle
-    case listening
     case thinking
     case speaking
     case needsYou(String)
@@ -41,8 +28,6 @@ final class AskBolttySession: ObservableObject {
   }
 
   @Published private(set) var phase: Phase = .idle
-  /// What the person has said so far.
-  @Published private(set) var heard = ""
   /// The sentence the voice was last handed.
   @Published private(set) var caption = ""
   /// The answer's agent, for the face that shows it.
@@ -58,7 +43,7 @@ final class AskBolttySession: ObservableObject {
   /// The voice for an answer that is only shown: each sentence stays for as
   /// long as it takes to read.
   let reader = AskBolttyReader()
-  /// Settings › Ask Boltty › "Say answers aloud", read as the chord begins.
+  /// Settings › Ask Boltty › "Say answers aloud", read as a question is sent.
   /// Off, the answer types out beside the face, which "speaks" in blips.
   var speaksAloud = false
   /// The caption is the sentence being said: a new one takes the last one's
@@ -67,36 +52,15 @@ final class AskBolttySession: ObservableObject {
   /// An answer is said up to this many sentences; the rest stays in the chat.
   static let answerSentences = 2
 
-  /// The line the pointer traced while the chord was held, in AppKit's
-  /// global coordinates; sent drawn on the screen's picture.
-  private(set) var trail: [CGPoint] = []
-  /// A trace shorter than this is a hand at rest, not a line.
-  static let minimumTrailLength: CGFloat = 24
-  static let trailStep: CGFloat = 3
-
   /// A question asked within this of the last answer continues that chat,
   /// so a run of questions shares what was said; past it the chat is let go.
   static let followUpWindow: TimeInterval = 600
-  /// How long the final words may take once the chord is let go.
-  static let finalWordsDeadline: TimeInterval = 3
 
   private let coordinator: ChatWorkspaceCoordinator
-  private let listener: AskBolttyListening
   private let speech: AskBolttySpeaking
-  private let target: () -> AskBolttyTarget?
-  var pointer: () -> CGPoint = { NSEvent.mouseLocation }
-  var freeze: (CGPoint) async throws -> FrozenScreen? = { point in
-    guard ScreenRegionCapture.ensureAccess() else { throw ScreenRegionCapture.Failure.notAllowed }
-    let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? NSScreen.main
-    guard let id = screen?.displayID else { return nil }
-    return try await ScreenRegionCapture.freeze(displayID: id)
-  }
   var pictureDirectory: URL = PromptAttachmentStore.shared.directory
   var now: () -> Date = Date.init
 
-  private var freezeTask: Task<FrozenScreen?, Error>?
-  private var heldAt: CGPoint?
-  private var releasedAt: CGPoint?
   /// Where the picture was taken, in AppKit's coordinates: what a point's
   /// 0–1000 is measured across.
   private var answerFrame: CGRect?
@@ -120,69 +84,52 @@ final class AskBolttySession: ObservableObject {
 
   init(
     coordinator: ChatWorkspaceCoordinator,
-    listener: AskBolttyListening,
-    speech: AskBolttySpeaking,
-    target: @escaping () -> AskBolttyTarget?
+    speech: AskBolttySpeaking
   ) {
     self.coordinator = coordinator
-    self.listener = listener
     self.speech = speech
-    self.target = target
-    listener.onText = { [weak self] text in self?.heard = text }
     reader.onIdle = { [weak self] in self?.speechFinished() }
-    listener.onFailure = { [weak self] message in self?.fail(message) }
   }
 
   var speechID: String? { conversationID.map { "talk-\($0.uuidString)" } }
 
-  // MARK: - The chord
+  // MARK: - The question
 
-  /// The chord has been held long enough: freeze the screen, start the
-  /// agent, listen.
-  func begin() {
+  /// A region is drawn: the agent's session starts while the person speaks.
+  /// What was being said stops — a new question is not a reason for the old
+  /// answer to go on.
+  func warmUp(_ target: AskBolttyTarget) {
     interruptAnswer()
     stopTurn()
-    guard let target = target() else {
-      return fail("No agent that can see the screen is ready. Turn one on in Settings › Agents.")
-    }
-    let point = pointer()
-    heldAt = point
-    releasedAt = nil
-    trail = [point]
+    pointing = nil
+    phase = .idle
+    choosePlace(for: target)
+  }
+
+  /// The region was let go of without a question: a chat made for it goes.
+  func cancel() {
+    guard phase == .idle else { return }
+    discardIfNew()
+  }
+
+  /// Sends `words` about `selection`; `displayFrame` is the screen it was
+  /// cut from, in AppKit's coordinates — what the answer's points measure.
+  func ask(_ words: String, about selection: ScreenSelection, on displayFrame: CGRect,
+           target: AskBolttyTarget, speaksAloud: Bool) {
+    let words = words.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !words.isEmpty else { return }
+    interruptAnswer()
+    stopTurn()
+    self.speaksAloud = speaksAloud
+    choosePlace(for: target)
     pointing = nil
     drawn = []
-    freezeTask = Task { [freeze] in try await freeze(point) }
-    choosePlace(for: target)
-    heard = ""
     caption = ""
     readsAloud = true
-    phase = .listening
-    listener.start()
-  }
-
-  /// The pointer moved while the chord is held.
-  func trace(_ point: CGPoint) {
-    guard phase == .listening else { return }
-    if let last = trail.last, hypot(point.x - last.x, point.y - last.y) < Self.trailStep { return }
-    trail.append(point)
-  }
-
-  /// Whether the trail is long enough to be a line the person drew.
-  var hasTrail: Bool {
-    var length: CGFloat = 0
-    for (a, b) in zip(trail, trail.dropFirst()) {
-      length += hypot(b.x - a.x, b.y - a.y)
-      if length >= Self.minimumTrailLength { return true }
-    }
-    return false
-  }
-
-  /// The chord was let go: send what was said.
-  func end() {
-    guard phase == .listening else { return }
-    releasedAt = pointer()
     phase = .thinking
-    sendTask = Task { [weak self] in await self?.send() }
+    sendTask = Task { [weak self] in
+      await self?.send(words, about: selection, on: displayFrame)
+    }
   }
 
   /// Escape while it thinks or answers: the agent's turn is stopped, the
@@ -193,7 +140,7 @@ final class AskBolttySession: ObservableObject {
       interruptAnswer()
       stopTurn()
       phase = .idle
-    case .idle, .listening, .failed:
+    case .idle, .failed:
       return
     }
   }
@@ -208,18 +155,6 @@ final class AskBolttySession: ObservableObject {
     Task { await engine.stop(conversationID: id) }
   }
 
-  /// A key or a click while the chord was held: nothing is sent.
-  func cancel() {
-    listener.cancel()
-    freezeTask?.cancel()
-    freezeTask = nil
-    sendTask?.cancel()
-    if phase == .listening || phase == .thinking { discardIfNew() }
-    trail = []
-    pointing = nil
-    phase = .idle
-  }
-
   // MARK: - Sending
 
   private func choosePlace(for target: AskBolttyTarget) {
@@ -228,12 +163,15 @@ final class AskBolttySession: ObservableObject {
        conversation.providerID == target.providerID,
        conversation.readOnly == target.readOnly,
        !conversation.lastKnownState.blocksSending,
-       let last = lastAnsweredAt, now().timeIntervalSince(last) < Self.followUpWindow {
-      isNewConversation = false
+       isNewConversation
+        || lastAnsweredAt.map({ now().timeIntervalSince($0) < Self.followUpWindow }) == true {
+      // Warmed up for this question, or a follow-up within the window.
       providerID = conversation.providerID
       return
     }
-    // Ask Boltty keeps no history past the window: the chats before this one are done with.
+    // A chat warmed up for another agent and never asked in goes; and Ask
+    // Boltty keeps no history past the window, so the chats before this do too.
+    discardIfNew()
     coordinator.forgetAskBolttyChats()
     let conversation = coordinator.prepareAskBolttyConversation(
       providerID: target.providerID, model: target.model, effort: target.effort,
@@ -243,56 +181,41 @@ final class AskBolttySession: ObservableObject {
     isNewConversation = true
   }
 
-  private func send() async {
-    let words = await finalWords()
-    guard !Task.isCancelled, phase == .thinking, let id = conversationID else { return }
-    guard !words.isEmpty else {
-      discardIfNew()
-      phase = .idle
-      return
-    }
-    heard = words
-    let frozen = try? await freezeTask?.value
+  private func send(_ words: String, about selection: ScreenSelection, on displayFrame: CGRect) async {
+    guard let id = conversationID else { return }
+    let directory = pictureDirectory
+    // Two PNGs of a 5K screen are tens of milliseconds: off the main thread.
+    let urls = await Task.detached(priority: .userInitiated) {
+      (Self.writePicture(selection.screen, in: directory),
+       Self.writePicture(selection.region, in: directory))
+    }.value
     guard !Task.isCancelled, phase == .thinking else { return }
-    let primaryHeight = NSScreen.screens.first?.frame.height ?? frozen?.displayFrame.height ?? 0
-    let traced = hasTrail
-    // Scaling a 5K screen and writing its PNG is tens of milliseconds: off the
-    // main thread, so the face and the line do not stall as the chord is let go.
-    let made: (shot: (png: Data, size: CGSize, context: String?), url: URL)?
-    if let frozen {
-      let pointer = releasedAt ?? heldAt
-      let line = traced ? trail : []
-      let directory = pictureDirectory
-      made = await Task.detached(priority: .userInitiated) {
-        guard let shot = ScreenRegionCapture.wholeScreen(
-          frozen, pointer: pointer, trail: line, primaryScreenHeight: primaryHeight),
-          let url = Self.writePicture(shot.png, in: directory)
-        else { return nil }
-        return (shot, url)
-      }.value
-    } else {
-      made = nil
+    guard let screenURL = urls.0, let areaURL = urls.1 else {
+      return fail("Boltty could not keep a picture of the screen.")
     }
-    guard !Task.isCancelled, phase == .thinking else { return }
-    guard let frozen, let made else {
-      return fail(CGPreflightScreenCaptureAccess()
-        ? "Boltty could not take a picture of the screen."
-        : AgentPaletteController.screenRecordingNeeded)
-    }
-    let (shot, url) = made
+    let wholeScreen = selection.frame.insetBy(dx: -1, dy: -1).contains(displayFrame)
+    let region = AskBolttyRegion(
+      screenPath: screenURL.path, areaPath: areaURL.path, context: selection.context,
+      recognizedText: selection.recognizedText, isWholeScreen: wholeScreen)
     let readOnly = coordinator.store.conversation(id: id)?.readOnly ?? true
-    let bracket = AskBolttyPrompt.bracket(
-      context: shot.context, screenshotPath: url.path, readOnly: readOnly, traced: traced)
-    let picture = ConversationAttachment(
-      id: "talk-\(url.lastPathComponent)", displayName: "Screen", url: url,
-      mimeType: "image/png", byteCount: shot.png.count)
-    // The card shows the question and the screen's picture, not the bracket.
+    let bracket = AskBolttyPrompt.bracket(region: region, readOnly: readOnly)
+    func picture(_ url: URL, _ name: String, _ data: Data) -> ConversationAttachment {
+      ConversationAttachment(
+        id: "talk-\(url.lastPathComponent)", displayName: name, url: url,
+        mimeType: "image/png", byteCount: data.count)
+    }
+    let pictures = wholeScreen
+      ? [picture(screenURL, "Screen", selection.screen)]
+      : [picture(screenURL, "Screen", selection.screen), picture(areaURL, "Area", selection.region)]
+    // The card shows the question and the area's picture, not the bracket.
     coordinator.store.recordSentFiles(
-      [SentFile(path: url.path, label: "", name: "Screen.png", expansion: bracket)], for: id)
+      [SentFile(path: (wholeScreen ? screenURL : areaURL).path, label: "",
+                name: wholeScreen ? "Screen.png" : "Area.png", expansion: bracket)],
+      for: id)
     if isNewConversation {
       coordinator.store.rename(id: id, to: ConversationEngine.title(from: words))
     }
-    answerFrame = frozen.displayFrameInAppKit(primaryScreenHeight: primaryHeight)
+    answerFrame = displayFrame
     marks = []
     captioned = []
     language = SpeechOutput.language(of: words)
@@ -302,16 +225,11 @@ final class AskBolttySession: ObservableObject {
     turnBegan = false
     chunker = SentenceChunker()
     sentencesSaid = 0
-    guard coordinator.sendFollowUp(bracket + words, pictures: [picture], to: id) else {
+    guard coordinator.sendFollowUp(bracket + words, pictures: pictures, to: id) else {
       return fail("That question was not sent.")
     }
     isNewConversation = false
     watch(id)
-  }
-
-  private func finalWords() async -> String {
-    let words = await listener.finish()
-    return words.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   nonisolated private static func writePicture(_ data: Data, in directory: URL) -> URL? {
@@ -479,7 +397,7 @@ final class AskBolttySession: ObservableObject {
   private func expire() {
     expiry = nil
     switch phase {
-    case .listening, .thinking, .speaking: return
+    case .thinking, .speaking: return
     case .idle, .needsYou, .failed: break
     }
     coordinator.forgetAskBolttyChats()
@@ -493,7 +411,6 @@ final class AskBolttySession: ObservableObject {
     pointing = nil
     storeWatch = nil
     sendTask?.cancel()
-    if case .listening = phase { listener.cancel() }
   }
 
   private func discardIfNew() {
@@ -504,7 +421,6 @@ final class AskBolttySession: ObservableObject {
   }
 
   private func fail(_ message: String) {
-    listener.cancel()
     discardIfNew()
     storeWatch = nil
     phase = .failed(message)
@@ -580,54 +496,4 @@ struct AskBolttyPointing: Equatable {
   var label: String?
   /// Counts up, so pointing at the same place twice is still news.
   var sequence: Int
-}
-
-/// Ask Boltty's ears: Boltty's dictation, with its final words awaited.
-@MainActor
-final class DictationListener: AskBolttyListening {
-  var onText: ((String) -> Void)?
-  var onFailure: ((String) -> Void)?
-  let dictation: VoiceDictationService
-  private var latest = ""
-  private var waiting: CheckedContinuation<String, Never>?
-
-  init(dictation: VoiceDictationService = VoiceDictationService()) {
-    self.dictation = dictation
-    dictation.onTranscript = { [weak self] text in
-      self?.latest = text
-      self?.onText?(text)
-    }
-    dictation.onFinalTranscript = { [weak self] in self?.resume() }
-    dictation.onError = { [weak self] message in
-      self?.resume()
-      self?.onFailure?(message)
-    }
-  }
-
-  func start() {
-    latest = ""
-    if dictation.state == .idle { dictation.toggle() }
-  }
-
-  func finish() async -> String {
-    guard dictation.state != .idle else { return latest }
-    return await withCheckedContinuation { continuation in
-      waiting = continuation
-      dictation.stop()
-      DispatchQueue.main.asyncAfter(deadline: .now() + AskBolttySession.finalWordsDeadline) { [weak self] in
-        self?.resume()
-      }
-    }
-  }
-
-  func cancel() {
-    dictation.cancel()
-    resume()
-  }
-
-  private func resume() {
-    guard let waiting else { return }
-    self.waiting = nil
-    waiting.resume(returning: latest)
-  }
 }

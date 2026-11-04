@@ -106,13 +106,20 @@ final class PermissionDisclosureTests: XCTestCase {
   func testALongCommandSaysHowMuchIsLeft() {
     let well = BolttyAICommandWell(frame: NSRect(x: 0, y: 0, width: 400, height: 200))
     well.show((["bash"] + (1...9).map { "echo \($0)" }).joined(separator: "\n"))
-    XCTAssertEqual(well.moreTitleForTesting, "Show 3 More Lines", "the tool's name is not a line")
+    XCTAssertEqual(well.moreTitleForTesting, "Show 5 More Lines", "the tool's name is not a line")
     XCTAssertFalse(well.stringForTesting.contains("…"), "the link says it, not a line of dots")
     well.toggleForTesting()
     XCTAssertEqual(well.moreTitleForTesting, "Show Less")
 
-    well.show((["bash"] + (1...7).map { "echo \($0)" }).joined(separator: "\n"))
+    well.show((["bash"] + (1...5).map { "echo \($0)" }).joined(separator: "\n"))
     XCTAssertNil(well.moreTitleForTesting, "a link never hides the one line it would stand in")
+  }
+
+  func testOneLongLineFoldsAsTheLinesItDraws() {
+    let command = "bash\nssh host '" + (1...30).map { "echo step \($0)" }.joined(separator: "; ") + "'"
+    let folded = BolttyAICommandWell.height(for: command, width: 400)
+    let whole = BolttyAICommandWell.height(for: command, width: 400, expanded: true)
+    XCTAssertLessThan(folded, whole, "a single wrapped line is as long as it draws")
   }
 
   func testTheHeadingStandsTogetherAndTheButtonsFurthest() {
@@ -394,12 +401,12 @@ final class PermissionAnsweringTests: XCTestCase {
     }
   }
 
-  func testTheButtonsWearTheirKeys() throws {
+  func testTheAccentMarksWhatReturnPresses() throws {
     let (view, _) = panel()
     let bar = try XCTUnwrap(view.previewCardForTesting.approvalBarForTesting)
-    XCTAssertEqual(bar.keysForTesting, ["Deny", "Always allow", "Allow once  ↵"])
+    XCTAssertEqual(bar.defaultTitleForTesting, "Allow once")
     key(view, #selector(NSResponder.moveDown(_:)))
-    XCTAssertEqual(bar.keysForTesting, ["Deny", "Always allow  ↵", "Allow once"])
+    XCTAssertEqual(bar.defaultTitleForTesting, "Always allow")
   }
 
   func testAnswersThatDoNotFitStandInAColumn() throws {
@@ -483,7 +490,7 @@ final class PermissionAnsweringTests: XCTestCase {
     type("use pnpm", into: view)
     let bar = try XCTUnwrap(view.previewCardForTesting.approvalBarForTesting)
     XCTAssertNil(bar.returnTitleForTesting, "Return presses no button while words stand")
-    XCTAssertFalse(bar.keysForTesting.contains { $0.contains("↵") }, "\(bar.keysForTesting)")
+    XCTAssertNil(bar.defaultTitleForTesting)
     XCTAssertEqual(view.trailingHintForTesting, ["Deny and send ↵"])
     key(view, #selector(NSResponder.insertNewline(_:)))
     XCTAssertEqual(answered(), ["reject", "use pnpm"])

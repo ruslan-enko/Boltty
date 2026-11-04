@@ -1,28 +1,30 @@
 import AppKit
+import Carbon
 import Combine
 
-/// Ask Boltty, put together: the held chord, the session it drives, the line on
-/// screen, and the settings that turn it on and choose its agent.
+/// Ask Boltty, put together: the session that answers about a region beside
+/// the face, and the settings that choose its agent. The region and the words
+/// are the panel's.
 @MainActor
 final class AskBolttyController {
-  static let chord: CGEventFlags = [.maskControl, .maskAlternate, .maskCommand]
-  static let chordName = "⌃⌥⌘"
-  /// How often a chord waiting for Input Monitoring tries again.
-  static let accessRetryInterval: TimeInterval = 2
-
   let session: AskBolttySession
   private let overlay = AskBolttyOverlayController()
-  private let monitor = ModifierHoldMonitor(chord: AskBolttyController.chord)
-  private let listener: DictationListener
-  private var retry: Timer?
+  private let coordinator: ChatWorkspaceCoordinator
+  private let settings: () -> AppSettings
   private var cancellables = Set<AnyCancellable>()
-  private var enabled = false
+  /// Escape, from whichever app is in front, needing no permission: held only
+  /// while the face is on the screen and the panel, which has its own Escape,
+  /// is not.
+  private lazy var escapeKey = GlobalHotkeyService(number: 2) { [weak self] in
+    MainActor.assumeIsolated { self?.escapePressed() }
+  }
+  private var holdsEscape = false
+  /// What the last question was about, in global coordinates.
+  private var lastRegion: CGRect?
+  private var panelIsUp = false
 
-  /// The chord began: whatever Boltty was showing steps aside.
-  var onBegin: (() -> Void)?
-  var onSent: (() -> Void)?
-  /// The answer waits on the person — a permission, a question. Ask Boltty chats
-  /// are in no history, so the panel opens on it.
+  /// The answer waits on the person — a permission, a question: the panel
+  /// opens on its chat.
   var onNeedsYou: ((UUID) -> Void)?
 
   init(
@@ -30,47 +32,19 @@ final class AskBolttyController {
     speech: SpeechOutput,
     settings: @escaping () -> AppSettings
   ) {
-    let listener = DictationListener()
-    self.listener = listener
-    session = AskBolttySession(coordinator: coordinator, listener: listener, speech: speech) {
-      let current = settings()
-      let engine = coordinator.engine
-      let candidates = AgentHistory.tabOrder
-        .filter { current.isProviderEnabled($0.rawValue) }
-        .compactMap { agent -> String? in
-          guard let installation = engine.registry.installation(for: agent), installation.isReady,
-                AskBolttyConfiguration.canAnswer(installation.capabilities)
-          else { return nil }
-          return agent.rawValue
-        }
-      return AskBolttyConfiguration.resolve(
-        settings: current, candidates: candidates, models: engine.modelsByProvider)
-    }
+    self.coordinator = coordinator
+    self.settings = settings
+    session = AskBolttySession(coordinator: coordinator, speech: speech)
 
-    monitor.onBegin = { [weak self] in
-      guard let self else { return }
-      self.session.speaksAloud = settings().askBolttySpeaksAloud
-      self.onBegin?()
-      self.session.begin()
-    }
-    monitor.onEnd = { [weak self] in
-      guard let self, self.session.phase == .listening else { return }
-      self.session.end()
-      self.onSent?()
-    }
-    monitor.onCancel = { [weak self] in self?.session.cancel() }
-    monitor.onEscape = { [weak self] in
-      self?.session.stop()
-      self?.overlay.hide()
-    }
-    overlay.onTrace = { [weak self] point in self?.session.trace(point) }
+    overlay.onVisibleChange = { [weak self] in self?.syncEscapeKey() }
 
-    Publishers.CombineLatest3(session.$phase, session.$heard, session.$caption)
+    Publishers.CombineLatest(session.$phase, session.$caption)
       .receive(on: RunLoop.main)
-      .sink { [weak self] phase, heard, caption in
+      .sink { [weak self] phase, caption in
         guard let self else { return }
+        self.overlay.isSaidAloud = self.session.readsAloud
         self.overlay.show(
-          phase, heard: heard, caption: caption,
+          phase, caption: caption,
           agent: self.session.providerID.flatMap(AgentId.init(rawValue:)))
       }
       .store(in: &cancellables)
@@ -104,46 +78,116 @@ final class AskBolttyController {
       .store(in: &cancellables)
   }
 
-  var isListeningForTheChord: Bool { monitor.isRunning }
+  // MARK: - A question about a region
+
+  /// The agent a region is asked of, before ⇧Tab moves it: Settings › Ask
+  /// Boltty's choice where it is ready, else the fastest that sees.
+  var answeringAgent: AgentId? {
+    target(for: nil).flatMap { AgentId(rawValue: $0.providerID) }
+  }
+
+  /// A region was drawn: the agent's session starts while the person speaks.
+  func warmUp(agent: AgentId?) {
+    guard let target = target(for: agent) else { return }
+    overlay.hide()
+    session.warmUp(target)
+  }
+
+  /// The question the launch key goes on with, while the face that answered it
+  /// is still beside the pointer and the pointer is on that screen.
+  var questionToContinue: (region: CGRect, agent: AgentId?)? {
+    guard overlay.isFaceUp, let lastRegion else { return nil }
+    switch session.phase {
+    case .idle, .thinking, .speaking: break
+    case .needsYou, .failed: return nil
+    }
+    let middle = CGPoint(x: lastRegion.midX, y: lastRegion.midY)
+    guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }),
+          screen.frame.contains(middle)
+    else { return nil }
+    return (lastRegion, session.providerID.flatMap(AgentId.init(rawValue:)))
+  }
+
+  /// Sends the question; `false` when no agent could take it. The turn starts
+  /// now; the face beside the pointer waits for `faceArrives`.
+  func ask(
+    _ words: String, about selection: ScreenSelection, on displayFrame: CGRect, agent: AgentId?
+  ) -> Bool {
+    guard let target = target(for: agent) else { return false }
+    lastRegion = selection.frame
+    overlay.holdForArrival()
+    session.ask(
+      words, about: selection, on: displayFrame, target: target,
+      speaksAloud: settings().askBolttySpeaksAloud)
+    return true
+  }
+
+  /// The panel has gone from under its face, which stood at `point`: this one
+  /// takes up from there and flies to the pointer.
+  func faceArrives(from point: CGPoint?) {
+    overlay.arrive(from: point)
+  }
+
+  /// The region was let go of without a question.
+  func cancelQuestion() {
+    session.cancel()
+  }
+
+  /// Ask Boltty's agent and model, or — when ⇧Tab chose another agent — that
+  /// one at its default model; always at the model's lowest effort.
+  private func target(for agent: AgentId?) -> AskBolttyTarget? {
+    let current = settings()
+    let engine = coordinator.engine
+    let candidates = AgentHistory.tabOrder
+      .filter { current.isProviderEnabled($0.rawValue) }
+      .compactMap { agent -> String? in
+        guard let installation = engine.registry.installation(for: agent), installation.isReady,
+              AskBolttyConfiguration.canAnswer(installation.capabilities)
+        else { return nil }
+        return agent.rawValue
+      }
+    let resolved = AskBolttyConfiguration.resolve(
+      settings: current, candidates: candidates, models: engine.modelsByProvider)
+    guard let agent, agent.rawValue != resolved?.providerID else { return resolved }
+    guard candidates.contains(agent.rawValue) else { return nil }
+    return AskBolttyTarget(
+      providerID: agent.rawValue, model: nil, effort: nil, readOnly: current.askBolttyReadOnly)
+  }
 
   func apply(_ settings: AppSettings) {
     overlay.makesSounds = settings.playsSounds
-    listener.dictation.localeIdentifier = settings.dictationLocaleIdentifier
-    listener.dictation.secondLocaleIdentifier = settings.dictationSecondLocaleIdentifier
-    guard settings.askBolttyEnabled != enabled else { return }
-    enabled = settings.askBolttyEnabled
-    if enabled {
-      listenForTheChord(asking: true)
+  }
+
+  /// The panel came up or went. A face resting from its last answer gives way
+  /// to it; one still answering stays, without Escape.
+  func setPanelVisible(_ visible: Bool) {
+    panelIsUp = visible
+    if visible, session.phase == .idle { overlay.hide() }
+    syncEscapeKey()
+  }
+
+  private func syncEscapeKey() {
+    let wanted = overlay.isVisible && !panelIsUp
+    guard wanted != holdsEscape else { return }
+    if wanted {
+      // Another app holding it costs only the key: a click still works.
+      holdsEscape = escapeKey.register(
+        HotkeyBinding(keyCode: UInt32(kVK_Escape), carbonModifiers: 0)
+      ).isFree
     } else {
-      retry?.invalidate()
-      retry = nil
-      monitor.stop()
-      session.cancel()
-      overlay.hide()
+      escapeKey.stop()
+      holdsEscape = false
     }
   }
 
-  /// Input Monitoring is asked once; a grant given in System Settings is
-  /// taken up on the next try, without a relaunch.
-  private func listenForTheChord(asking: Bool) {
-    guard enabled, !monitor.isRunning else { return }
-    if monitor.start() == .free {
-      retry?.invalidate()
-      retry = nil
-      return
-    }
-    if asking { ModifierHotkeyMonitor.requestAccess() }
-    guard retry == nil else { return }
-    retry = Timer.scheduledTimer(withTimeInterval: Self.accessRetryInterval, repeats: true) {
-      [weak self] _ in
-      MainActor.assumeIsolated { self?.listenForTheChord(asking: false) }
-    }
+  private func escapePressed() {
+    session.stop()
+    overlay.hide()
   }
 
   func shutDown() {
-    retry?.invalidate()
-    retry = nil
-    monitor.stop()
+    escapeKey.stop()
+    holdsEscape = false
     session.cancel()
     overlay.hide()
   }

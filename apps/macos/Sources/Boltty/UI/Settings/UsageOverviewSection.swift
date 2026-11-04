@@ -78,7 +78,7 @@ struct UsageOverviewSection: View {
         days: summary.days,
         firstDay: AgentStatisticsSummary(statistics, range: .all, agent: agent).days.keys.min(),
         rangeStart: range.start(now: Date(), calendar: .current),
-        tint: tint
+        tint: .accentColor
       )
       if let line = AgentStatisticsSummary.bookComparison(tokens: summary.tokens) {
         Text(line)
@@ -93,10 +93,6 @@ struct UsageOverviewSection: View {
         models(summary)
       }
     }
-  }
-
-  private var tint: Color {
-    agent.map { model.usageTint(for: $0) } ?? Color(nsColor: .systemBlue)
   }
 
   // MARK: Overview
@@ -140,7 +136,6 @@ struct UsageOverviewSection: View {
     let total = max(summary.tokens, 1)
     return VStack(alignment: .leading, spacing: 12) {
       ForEach(summary.models) { row in
-        let ink = row.agent.map { model.usageInk(for: $0) } ?? [.accentColor]
         VStack(alignment: .leading, spacing: 5) {
           HStack(spacing: 10) {
             if let agent = row.agent {
@@ -158,7 +153,7 @@ struct UsageOverviewSection: View {
               .foregroundStyle(.secondary)
           }
           if summary.tokens > 0 {
-            UsageMeter(fraction: Double(row.tokens) / Double(total), ink: ink, height: 6)
+            UsageMeter(fraction: Double(row.tokens) / Double(total), height: 6)
               .accessibilityLabel("\(row.id) share of tokens")
           }
         }

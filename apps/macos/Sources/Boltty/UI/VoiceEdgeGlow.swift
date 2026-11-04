@@ -259,7 +259,7 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
 
     case .completed:
       targetOpacity = 0
-      fadeRate = rate(for: next.fadeDuration)
+      fadeRate = rate(for: fillsShell ? AgentPaletteMetrics.voiceGlowOrbReleaseDuration : next.fadeDuration)
       if opacity <= 0 { settleIdle() } else { startClock() }
 
     case .cancelled, .failed:
@@ -422,11 +422,19 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
       flow: flow,
       voice: voice,
       orb: fillsShell ? 1 : 0,
-      opacity: opacity,
+      opacity: shownOpacity,
       isLightAppearance: isLightAppearance,
       reduceMotion: MotionPreferences.reduceMotion,
       colors: resolved
     )
+  }
+
+  /// The fade on a curve: the clock steps `opacity` evenly, which read as a
+  /// light switched off. In, it eases both ways; out, it drops fast, so the
+  /// opaque orb is mostly gone before the shell has grown far under it.
+  private var shownOpacity: CGFloat {
+    let o = min(1, max(0, opacity))
+    return targetOpacity > o ? o * o * (3 - 2 * o) : o * o
   }
 
   private var isLightAppearance: Bool {

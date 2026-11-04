@@ -56,8 +56,8 @@ read off it.
   <img src=".github/readme/chat.png" width="100%" alt="A finished chat with Claude Code">
 </p>
 
-**Ask Boltty.** Hold ⌃⌥⌘, ask about what's on your screen out loud, and
-circle the thing you mean with the pointer. The agent's face answers right
+**Ask Boltty.** Open the panel, drag across the part of the screen you mean,
+and ask about it out loud. The agent's face answers right
 next to the cursor, and can point at things or draw on the screen while it
 explains.
 
@@ -133,7 +133,7 @@ drag the new one over the old.
 | | |
 |---|---|
 | Open or hide Boltty AI | `⌥Space` (change it in Settings › General) |
-| Ask about the screen | hold `⌃⌥⌘` (turn on in Settings › Ask Boltty) |
+| Ask about the screen | open the panel, drag an area, speak |
 | Pick the agent for a new prompt | `⇧Tab` |
 | Recent chats | `↓`, then type to search |
 | Stop a running turn | `⌘.` |
@@ -159,7 +159,7 @@ macOS will ask for a few permissions, each only when something needs it:
 - **Microphone and Speech Recognition** for dictation (Apple's engine, on-device;
   Parakeet needs only the microphone)
 - **Screen Recording** to ask about part of the screen
-- **Input Monitoring** for Ask Boltty's held ⌃⌥⌘ chord
+- **Input Monitoring** only if you set ⌥⌘ alone as the key that opens the panel
 - **Automation (Finder)** to pick up files you've selected in Finder
 
 The ⌥Space hotkey itself needs no permission.

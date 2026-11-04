@@ -29,8 +29,45 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
     return [stops[0], stops[4], stops[2]]
   }
 
+  /// Light passing through arriving words reads as a gradient only if its
+  /// stops differ in hue: lifted to the same lightness, a face of one hue
+  /// (Ember, Mist, Lilac) became one pastel that vanished into the ink. Such
+  /// a face's stops are fanned out round their own hue, in stop order, and
+  /// given at least a little colour; a face that already mixes hues keeps
+  /// its own.
   var arrivalLight: [NSColor] {
-    light(atLeast: Self.arrivalLightness)
+    let stops = colors.map(Oklab.init)
+    let hues = stops.map(\.hue)
+    let centre = Self.circularMean(hues)
+    let offsets = hues.map { Self.signedAngle(from: centre, to: $0) }
+    guard let low = offsets.min(), let high = offsets.max(),
+          high - low < Self.arrivalHueSpread, stops.count > 1
+    else { return light(atLeast: Self.arrivalLightness) }
+    let drift: Double = offsets.last! >= offsets.first! ? 1 : -1
+    return stops.enumerated().map { index, stop in
+      let place = Double(index) / Double(stops.count - 1) - 0.5
+      return Oklab(
+        hue: centre + drift * place * Self.arrivalHueSpread,
+        chroma: max(stop.chroma, Self.arrivalMinimumChroma), l: max(stop.l, Self.arrivalLightness)
+      ).color(fitting: true)
+    }
+  }
+
+  /// Degrees of hue a one-hue face's arrival light is fanned across.
+  static let arrivalHueSpread = 80.0
+  private static let arrivalMinimumChroma = 0.09
+
+  private static func circularMean(_ degrees: [Double]) -> Double {
+    let x = degrees.reduce(0) { $0 + cos($1 * .pi / 180) }
+    let y = degrees.reduce(0) { $0 + sin($1 * .pi / 180) }
+    return atan2(y, x) * 180 / .pi
+  }
+
+  private static func signedAngle(from: Double, to: Double) -> Double {
+    var delta = (to - from).truncatingRemainder(dividingBy: 360)
+    if delta > 180 { delta -= 360 }
+    if delta < -180 { delta += 360 }
+    return delta
   }
 
   func light(atLeast lightness: Double) -> [NSColor] {
@@ -38,26 +75,6 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
   }
 
   static let arrivalLightness = 0.8
-
-  /// The gradient as ink for a meter or a chart: near-grey stops dropped (a
-  /// face's pale middle vanishes on a white track), the rest kept within a
-  /// lightness band that reads on the window — darker in Light, lighter in Dark.
-  var meterInk: [NSColor] {
-    let vivid = colors.filter { Oklab($0).chroma >= Self.meterMinimumChroma }
-    let stops = vivid.count >= 2 ? vivid : colors
-    return stops.map { stop in
-      NSColor(name: nil) { appearance in
-        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        var lab = Oklab(stop)
-        lab.l = isDark ? max(lab.l, Self.meterDarkFloor) : min(lab.l, Self.meterLightCeiling)
-        return lab.color(fitting: true)
-      }
-    }
-  }
-
-  private static let meterMinimumChroma = 0.05
-  private static let meterLightCeiling = 0.72
-  private static let meterDarkFloor = 0.62
 
   static func mix(_ from: NSColor, _ to: NSColor, _ t: CGFloat) -> NSColor {
     let a = Oklab(from), b = Oklab(to), t = Double(min(1, max(0, t)))
@@ -78,6 +95,14 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
     init(l: Double, a: Double, b: Double) { self.l = l; self.a = a; self.b = b }
 
     var chroma: Double { (a * a + b * b).squareRoot() }
+
+    var hue: Double { atan2(b, a) * 180 / .pi }
+
+    init(hue: Double, chroma: Double, l: Double) {
+      self.l = l
+      self.a = chroma * cos(hue * .pi / 180)
+      self.b = chroma * sin(hue * .pi / 180)
+    }
 
     init(_ color: NSColor) {
       let srgb = color.usingColorSpace(.sRGB) ?? color

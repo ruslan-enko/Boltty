@@ -206,22 +206,14 @@ final class ReadmeShotsOnScreen: XCTestCase {
     // "Trip to Lviv", the document's first line.
     let heading = CGPoint(x: note.frame.minX + 92, y: note.frame.maxY - 60)
 
-    let started = Date()
     let overlay = AskBolttyOverlayController()
-    let loopCentre = heading
-    overlay.pointer = {
-      let t = min(1, Date().timeIntervalSince(started) / 2.4)
-      let angle = t * 2 * .pi * 1.05
-      return CGPoint(x: loopCentre.x + 90 * cos(angle), y: loopCentre.y + 26 * sin(angle))
-    }
+    overlay.pointer = { CGPoint(x: heading.x + 90, y: heading.y) }
     let area = CGRect(x: note.frame.minX - 140, y: note.frame.minY - 60,
                       width: note.frame.width + 520, height: note.frame.height + 120)
-    let reel = try record(area, seconds: 10, to: "ask-boltty.mov")
-    overlay.show(.listening, heard: "how do I make this heading bigger", caption: "", agent: .claude)
-    try await Task.sleep(for: .seconds(2.6))
-    overlay.show(.thinking, heard: "", caption: "", agent: .claude)
+    let reel = try record(area, seconds: 8, to: "ask-boltty.mov")
+    overlay.show(.thinking, caption: "", agent: .claude)
     try await Task.sleep(for: .seconds(1.2))
-    overlay.show(.speaking, heard: "",
+    overlay.show(.speaking,
                  caption: "Select the heading, then press ⌘T and pick a bigger size.", agent: .claude)
     overlay.point(at: CGPoint(x: note.frame.minX + 152, y: heading.y))
     // Long enough for the sentence to type out in full.

@@ -2,7 +2,9 @@ import AppKit
 import CoreImage
 
 /// Boltty AI — glass capsule with text input + session switcher list (↓).
-final class AgentPaletteView: NSView {
+final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
+  var helpRoom: NSRect? { convert(surface.bounds, from: surface) }
+
   /// Carries chips, not just characters — a pasted file has no string form the
   /// palette could hand over without deciding what it expands to, and that
   /// decision belongs to `PromptExpansion`, past the controller.
@@ -70,6 +72,8 @@ final class AgentPaletteView: NSView {
   /// freezes the screen under it (`showFrozenScreen`), or refuses
   /// (`cancelScreenSelection`).
   var onScreenSelectionBegan: (() -> Void)?
+  /// A region is drawn on the first screen: the question about it begins.
+  var onScreenRegionReady: (() -> Void)?
   /// In an open chat, the region drawn — global screen coordinates — to be
   /// put in the composer as a chip (`insertScreenSelection`).
   var onScreenRegionSelected: ((CGRect) -> Void)?
@@ -77,6 +81,9 @@ final class AgentPaletteView: NSView {
   var onScreenSelectionCancelled: (() -> Void)?
   /// The dragged regions, drawn where they were taken (under the shell).
   private let screenOutlines = ScreenSelectionOverlay()
+  /// "Drag to ask about an area" beside the pointer on the empty glass.
+  private let selectionPointerHint = ScreenSelectionPointerHint()
+  private var selectionPointerHintTimer: Timer?
   var onSelectSession: ((UUID) -> Void)?
   /// The switcher is about to open and wants its rows.
   var onWillShowSessions: (() -> Void)?
@@ -88,6 +95,8 @@ final class AgentPaletteView: NSView {
   var onVoiceToggle: (() -> Void)?
   /// ✕ — discard the dictated span. ✓ — stop and send.
   var onVoiceCancel: (() -> Void)?
+  /// The person let go of a drawn region: the panel goes with it.
+  var onLetGoOfRegion: (() -> Void)?
   var onVoiceConfirm: (() -> Void)?
   var onVoiceEditingInterrupted: (() -> Void)?
   /// The chat this names was left. Said once the panel has let go of it, so
@@ -486,8 +495,14 @@ final class AgentPaletteView: NSView {
   /// ends. In an open chat an empty composer collapses the card to the same
   /// capsule, but a draft that holds words or chips keeps the composer, so
   /// what is being added to stays beside the transcript it answers.
+  ///
+  /// A confirmed take stays the orb while the engine finalises, and goes from
+  /// it straight to what follows — the chat, or the prompt — in one move. Let
+  /// go at ✓, it spread into the prompt capsule first with the orb stretched
+  /// across it, then into the chat: two jumps.
   private var showsCompactListening: Bool {
-    isVoiceListening
+    (isVoiceListening || (isVoiceProcessing && voiceGlow.fillsShell) || isHandingOver
+      || (awaitsRegionVoice && field.string.isEmpty))
       && !isResultsExpanded
       && (addressedPreview == nil || voicePrefixDraft?.isEffectivelyEmpty != false)
   }
@@ -902,6 +917,7 @@ final class AgentPaletteView: NSView {
   }
   var promptCapsuleHeightForTesting: CGFloat { promptCapsuleHeightConstraint.constant }
   var isVoiceListeningForTesting: Bool { isVoiceListening }
+  var isVoiceListeningNow: Bool { isVoiceListening }
   var micButtonForTesting: GlassCircleVoiceButton { micButton }
   var isShowingRecordingControlsForTesting: Bool { !recordingControls.isHidden }
   var voiceGlowForTesting: VoiceEdgeGlowView { voiceGlow }
@@ -1062,7 +1078,12 @@ final class AgentPaletteView: NSView {
     // Read where the prompt's face stands before the shell changes shape.
     let collapses = listening && !isVoiceListening && !isResultsExpanded
       && (addressedPreview == nil || field.draft.isEffectivelyEmpty)
-    if collapses { beginFaceFlight() } else if !listening { endFaceFlight() }
+    // Beside a region the orb opens round the face where it stands: the prompt
+    // it would fly from was never there to be seen.
+    if collapses, screenSelectionPhase == .idle { beginFaceFlight() } else if !listening { endFaceFlight() }
+    regionVoiceWait?.cancel()
+    regionVoiceWait = nil
+    awaitsRegionVoice = false
     if listening, !isVoiceListening {
       voicePrefixDraft = field.draft
       // A new session starts from nothing, so the first result of it always
@@ -1130,7 +1151,12 @@ final class AgentPaletteView: NSView {
   /// moment and the glow to the second.
   func setVoiceGlowPhase(_ phase: VoiceGlowPhase) {
     voiceGlow.setPhase(phase)
-    isVoiceProcessing = phase == .processing
+    let processing = phase == .processing
+    if processing != isVoiceProcessing {
+      isVoiceProcessing = processing
+      // The orb held through processing lets go here (`showsCompactListening`).
+      needsLayout = true
+    }
     applyMicAppearance()
     syncSendButton()
   }
@@ -1224,7 +1250,7 @@ final class AgentPaletteView: NSView {
   /// a line taller for every line they run to, up to the most.
   private func listeningShellSize() -> CGSize {
     let orb = AgentPaletteMetrics.listeningOrbDiameter
-    guard !listeningWords.text.isEmpty else { return CGSize(width: orb, height: orb) }
+    guard !listeningWords.text.isEmpty, !isHandingOver else { return CGSize(width: orb, height: orb) }
     let inset = AgentPaletteMetrics.listeningWordsInset
     let room = AgentPaletteMetrics.listeningMaxWidth - inset * 2
     let measured = listeningWords.measure(width: room)
@@ -1315,7 +1341,7 @@ final class AgentPaletteView: NSView {
 
   private func syncDirectoryChipVisibility() {
     let composerIsUp = self.composerIsUp
-    let hidden = workingDirectory == nil || !composerIsUp
+    let hidden = workingDirectory == nil || !composerIsUp || asksAboutRegion
     // Assigned only on a change: this runs inside `layout`, and writing
     // `isHidden` on an arranged subview invalidates the stack every time.
     if directoryChip.isHidden != hidden {
@@ -1329,17 +1355,24 @@ final class AgentPaletteView: NSView {
     trailingControls.setCustomSpacing(planRing.hasReading ? trailingControls.spacing : 0, after: planRing)
     // At home the folder is a target like its neighbours; naming a folder,
     // it is a pill as wide as the name (`WorkingDirectoryChipView.slotWidth`).
-    let folderWidth: CGFloat = workingDirectory == nil ? 0 : directoryChip.slotWidth
+    let folderWidth: CGFloat = workingDirectory == nil || asksAboutRegion ? 0 : directoryChip.slotWidth
     if directorySlotWidth.constant != folderWidth { directorySlotWidth.constant = folderWidth }
     let folderStack = composerGlyphsAreChat ? leadingControls : trailingControls
     folderStack.setCustomSpacing(folderWidth == 0 ? 0 : folderStack.spacing, after: directorySlot)
     syncAutoModeButton()
-    let usageHidden = !composerIsUp || !planRing.hasReading
+    let usageHidden = !composerIsUp || !planRing.hasReading || asksAboutRegion
     planRing.chatIsOpen = addressedPreview != nil
     if planRing.isHidden != usageHidden {
       planRing.isHidden = usageHidden
     }
     syncLatestPill()
+  }
+
+  /// A region of the screen is being asked about: the shell is the face, the
+  /// words and the microphone, and nothing that shapes a chat — the answer
+  /// comes beside the face, read-only, in no folder.
+  private var asksAboutRegion: Bool {
+    screenSelectionPhase != .idle && addressedPreview == nil
   }
 
   /// Drawn in an open chat whose agent offers Auto Mode, lit while it is on.
@@ -1450,9 +1483,9 @@ final class AgentPaletteView: NSView {
 
   @objc private func scrollTranscriptToLatest() { previewCard.glideToLatest() }
 
-  /// The composer's placeholder once the shell is a chat — WORK PAGE
-  /// `1030:5810`. The initial prompt keeps its own (*Describe your task...*).
-  static let chatComposerPlaceholder = "Do anything"
+  /// The composer's placeholder once the shell is a chat, the same words as
+  /// the first screen's.
+  static let chatComposerPlaceholder = "Describe a task or ask a question"
 
   /// While a permission waits, the composer says what typing there does:
   /// the words refuse it and tell the agent what to do instead, as Claude
@@ -1891,11 +1924,19 @@ final class AgentPaletteView: NSView {
   private var isOpenChat: Bool { addressedPreview != nil && !showsCompactListening }
 
   /// The shell's width in the state it is in: the chat's, the list's, or the
-  /// prompt's fixed 520.
+  /// prompt's (`promptSurfaceWidth`).
   private var stateSurfaceWidth: CGFloat {
     if isOpenChat { return chatSurfaceWidth }
     if isHistoryOpen { return historySurfaceWidth }
-    return AgentPaletteMetrics.promptSize.width
+    return promptSurfaceWidth
+  }
+
+  /// The first screen's width: the resting capsule, or wider once the draft
+  /// has wrapped. Keyed on `isDraftExpanded`, which holds until the draft is
+  /// emptied, so text that fits one line at the wider width does not narrow
+  /// the shell again and wrap it back.
+  private var promptSurfaceWidth: CGFloat {
+    isDraftExpanded ? AgentPaletteMetrics.promptGrownWidth : AgentPaletteMetrics.promptSize.width
   }
 
   /// The chat list is up, with no chat open over it.
@@ -2853,6 +2894,19 @@ final class AgentPaletteView: NSView {
     syncTrailingHint()
   }
 
+  /// The agent a region is asked of: Ask Boltty's, until ⇧Tab moves it.
+  func chooseAgent(_ agent: AgentId) {
+    guard agentChoices.contains(agent) else { return }
+    let chosen = agent == plannedAgent ? nil : agent
+    guard chosen != chosenAgent else { return }
+    chosenAgent = chosen
+    if mode == .prompt, addressedPreview == nil {
+      renderPromptMark(animated: true)
+    }
+    onAgentChoiceChange?()
+    syncTrailingHint()
+  }
+
   /// Back to the preferred agent. The panel calls this each time it opens.
   func resetAgentChoice() {
     guard chosenAgent != nil else { return }
@@ -2959,6 +3013,25 @@ final class AgentPaletteView: NSView {
     }
   }
 
+  /// A button's chord does what a click does, and only while that button
+  /// stands: a hidden control has no key either.
+  private func pressComposerChord(_ chord: ComposerChord) -> Bool {
+    guard mode == .prompt else { return false }
+    let button: NSButton = switch chord {
+    case .dictate: micButton
+    case .folder: directoryChip
+    case .attach: attachRestDisc.button
+    }
+    let standing = switch chord {
+    case .dictate: !micButton.isHidden
+    case .folder: !directoryChip.isHidden
+    case .attach: !attachRestDisc.isHidden
+    }
+    guard standing, button.isEnabled else { return false }
+    button.performClick(nil)
+    return true
+  }
+
   /// The keys after the typed text, the way macOS 27's Siri field writes
   /// "— Ask Siri": what Return will do, and only that — a second hint beside
   /// it read as a second answer.
@@ -3038,7 +3111,7 @@ final class AgentPaletteView: NSView {
       syncSelectionOverlay()
     }
 
-    hintLabel.stringValue = "Describe your task..."
+    hintLabel.stringValue = "Describe a task or ask a question"
     selectedAgentImage.showMascot(
       conversationID: pendingConversationID,
       emotion: isVoiceListening ? .listening : .curious,
@@ -3160,6 +3233,7 @@ final class AgentPaletteView: NSView {
     field.onCommandPeriod = { [weak self] in self?.stopFromKeyboard() ?? false }
     field.onCommandReturn = { [weak self] in self?.submitSteeringFromKeyboard() ?? false }
     field.onCommandN = { [weak self] in self?.startNewChatFromKeyboard() ?? false }
+    field.onComposerChord = { [weak self] in self?.pressComposerChord($0) ?? false }
     field.onMouseDown = { [weak self] in self?.setComposerKeyTarget(.text) }
     registerForDraggedTypes([.fileURL, .png, .tiff, .string])
     let agentClick = NSClickGestureRecognizer(
@@ -3265,7 +3339,7 @@ final class AgentPaletteView: NSView {
     promptForeground.addSubview(recordingHoverSensor)
     promptForeground.addSubview(recordingControls)
 
-    hintLabel.stringValue = "Describe your task..."
+    hintLabel.stringValue = "Describe a task or ask a question"
     hintLabel.font = PromptTextView.promptFont
     hintLabel.textColor = AgentPaletteMetrics.chatComposerPlaceholderInk
     hintLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -3492,6 +3566,7 @@ final class AgentPaletteView: NSView {
     notice.setAccessibilityIdentifier("boltty.ask.notice")
 
     directoryChip.onChoose = { [weak self] in self?.onWorkingDirectoryMenu?() }
+    directoryChip.helpShortcut = ComposerChord.folder.display
     planRing.onCompact = { [weak self] in self?.onCompact?() }
     directoryChip.isHidden = true
     latestPill.button.target = self
@@ -3668,6 +3743,7 @@ final class AgentPaletteView: NSView {
     // follows, past the composer and the tabs alike.
     scrollIndicator.frame = bounds
     addSubview(scrollIndicator)
+    addSubview(selectionPointerHint)
   }
 
   override func setFrameSize(_ newSize: NSSize) {
@@ -3685,6 +3761,9 @@ final class AgentPaletteView: NSView {
   override func layout() {
     isPerformingLayout = true
     defer { isPerformingLayout = false }
+    // The list opened, a take began, a region was drawn: the pointer did not
+    // move, but a drag would no longer select.
+    if !selectsOnDrag { hideSelectionPointerHint() }
     applyPlacement()
     super.layout()
     // The panel moves to another screen when it opens there. Only then:
@@ -3797,7 +3876,7 @@ final class AgentPaletteView: NSView {
       : (chat ? AgentPaletteMetrics.chatComposerHeight / 2 : AgentPaletteMetrics.promptSize.height / 2)
     let inset = chat ? AgentPaletteMetrics.shellContentInset : 0
     let width = chat ? chatSurfaceSize.width
-      : isHistoryOpen ? historySurfaceWidth : AgentPaletteMetrics.promptSize.width
+      : isHistoryOpen ? historySurfaceWidth : promptSurfaceWidth
     promptWidthConstraint.constant = width - inset * 2
     // Inside a chat it keeps clear of the transcript's walls; under the
     // shell it may be as wide as the shell.
@@ -3891,7 +3970,7 @@ final class AgentPaletteView: NSView {
       width = listeningShellSize().width
     } else {
       width = isOpenChat ? chatSurfaceSize.width
-        : isHistoryOpen ? historySurfaceWidth : AgentPaletteMetrics.promptSize.width
+        : isHistoryOpen ? historySurfaceWidth : promptSurfaceWidth
     }
     let unclamped: CGFloat
     if listening {
@@ -3905,15 +3984,17 @@ final class AgentPaletteView: NSView {
     }
     let height = unclamped
 
+    // Beside a region the anchor is worked out for this very width, so the
+    // edge by the region stays as the shell grows.
     let rect = CGRect(
-      x: bounds.midX + promptCenterXConstraint.constant - width / 2,
+      x: bounds.midX + (shellAnchor?.offset ?? promptCenterXConstraint.constant) - width / 2,
       y: bounds.height - top - height,
       width: width,
       height: height
     )
     promptHost.isHidden = !chat || listening
     listeningWordsWidth = width
-    let saysWords = listening && !listeningWords.text.isEmpty
+    let saysWords = listening && !listeningWords.text.isEmpty && !isHandingOver
     // The host holds the face, there from the first moment of the orb; the
     // words come and go inside it.
     let fades: [(NSView, Bool)] = [(listeningWordsHost, listening), (listeningWords, saysWords)]
@@ -3946,11 +4027,16 @@ final class AgentPaletteView: NSView {
     // A region asked about moves the shell from under the notch to beside
     // it and back: across the screen, a spring would be a fly-by.
     let jumps = placedPhase != screenSelectionPhase
+    let opensBesideRegion = placedPhase == .drawing && screenSelectionPhase == .editing
     placedPhase = screenSelectionPhase
+    // A region just drawn: the shell grows out of its edge, on the spring.
+    let grows = opensBesideRegion && surfaceReady && dripTarget == nil
+      && window?.isVisible == true && !MotionPreferences.reduceMotion
+    if grows { surfaceMotion.move(to: regionSeed(for: rect), in: self, animated: false) }
     _ = surfaceMotion.move(
       to: dripTarget ?? rect,
       in: self,
-      animated: resizeDrag == nil && surfaceReady && !jumps
+      animated: resizeDrag == nil && surfaceReady && (!jumps || grows)
         && window?.isVisible == true && !MotionPreferences.reduceMotion
     )
     surfaceReady = true
@@ -4001,6 +4087,7 @@ final class AgentPaletteView: NSView {
     scrollIndicatorShell = (rect, corner)
     syncScrollIndicator()
     applyFloatingShadow(to: surfaceContainer, cornerRadius: corner)
+    syncShellShadow()
     // Clip live text to the moving shell; never scale or snapshot the editor.
     let clippedContent = [promptForeground, resultsForeground, previewForeground]
     for content in clippedContent {
@@ -4301,6 +4388,7 @@ final class AgentPaletteView: NSView {
   /// Lights the grabber whenever the pointer is on any grip, and dresses the
   /// pointer for what a press there would do (`pointerCursor(at:)`).
   private func syncPointer(at point: NSPoint?) {
+    syncSelectionPointerHint(at: point)
     guard resizeDrag == nil else { return }
     let onGrip = point.flatMap(gripRegion(at:)) != nil
     if onGrip != resizeGrabber.isHovered { resizeGrabber.isHovered = onGrip }
@@ -4319,6 +4407,36 @@ final class AgentPaletteView: NSView {
     syncPointer(at: bounds.contains(point) ? point : nil)
   }
 
+  /// Shows "Drag to ask about an area" beside `point` while a drag there
+  /// would select: once the pointer has rested on the empty glass, and from
+  /// then on following it until it reaches the shell, presses, or the
+  /// screen stops taking a selection.
+  private func syncSelectionPointerHint(at point: NSPoint?) {
+    guard let point, resizeDrag == nil, selectsOnDrag,
+          isEmptyGlass(point), !isNearShellEdge(point) else {
+      hideSelectionPointerHint()
+      return
+    }
+    selectionPointerHint.place(at: point, in: bounds)
+    if selectionPointerHint.superview === self, subviews.last !== selectionPointerHint {
+      addSubview(selectionPointerHint, positioned: .above, relativeTo: nil)
+    }
+    guard !selectionPointerHint.isShowing else { return }
+    selectionPointerHintTimer?.invalidate()
+    selectionPointerHintTimer = Timer.scheduledTimer(
+      withTimeInterval: AgentPaletteMetrics.screenSelectionHintDelay,
+      repeats: false
+    ) { [weak self] _ in
+      MainActor.assumeIsolated { self?.selectionPointerHint.show() }
+    }
+  }
+
+  private func hideSelectionPointerHint() {
+    selectionPointerHintTimer?.invalidate()
+    selectionPointerHintTimer = nil
+    selectionPointerHint.hide()
+  }
+
   /// Whether the pointer wears a cursor this view set. Given back as the
   /// arrow when the pointer leaves that ground — the text view's I-beam and
   /// the other cursor rects take it from there.
@@ -4331,6 +4449,7 @@ final class AgentPaletteView: NSView {
   /// controller calls it as the panel goes: a resize arrow left behind would
   /// stand over the app the panel uncovers.
   func releasePointerCursor() {
+    hideSelectionPointerHint()
     guard ownsPointer else { return }
     ownsPointer = false
     NSCursor.arrow.set()
@@ -4487,10 +4606,12 @@ final class AgentPaletteView: NSView {
     }
     // A press that just missed a grip is not a request to go away.
     if isNearShellEdge(point) { return }
+    if isHandingOver { return }
     guard isEmptyGlass(point) else {
       super.mouseDown(with: event)
       return
     }
+    hideSelectionPointerHint()
     if screenSelectionPhase == .editing {
       editScreenSelection(from: point)
       return
@@ -4544,6 +4665,23 @@ final class AgentPaletteView: NSView {
   /// without the spring, which would fly it across the screen.
   private var placedPhase: ScreenSelectionPhase = .idle
 
+  /// `onScreenRegionReady` has been called for this selection: a region drawn
+  /// again over the first is the same question.
+  private var regionAnnounced = false
+  /// The region is drawn and the microphone is on its way: the shell is the
+  /// orb from the first frame, not the prompt for the moment the engine takes
+  /// to start. Given up on if it does not (`regionVoiceWait`).
+  private var awaitsRegionVoice = false {
+    didSet { if awaitsRegionVoice != oldValue { needsLayout = true } }
+  }
+  private var regionVoiceWait: DispatchWorkItem?
+  /// The question has gone: the shell closes round the face, the words and the
+  /// dim go, and the face is handed on (`collapseToFace`).
+  private var isHandingOver = false
+  /// Which corner of the region the drag ended at: the shell stands there.
+  private var regionEndedAtLeft = false
+  private var regionEndedAtFoot = false
+
   /// Where the region being asked about stands, while the shell is beside it.
   var screenSelectionFrame: CGRect? {
     screenSelectionPhase == .editing ? screenSelectionGlobal : nil
@@ -4557,6 +4695,11 @@ final class AgentPaletteView: NSView {
     onScreenSelectionBegan != nil && mode == .prompt && addressedPreview == nil
       && !isVoiceListening && !showsCompactListening
       && !isResultsExpanded
+  }
+
+  /// Whether a drag on the empty glass now would draw a region.
+  private var selectsOnDrag: Bool {
+    acceptsScreenSelection && screenSelectionPhase == .idle
   }
 
   /// Follows a press on the empty glass to its release. Moved past
@@ -4586,9 +4729,12 @@ final class AgentPaletteView: NSView {
       if event.type == .leftMouseUp { break }
     }
     guard isDrag else {
-      if replacing { cancelScreenSelection() } else { onCancel?() }
+      if replacing { letGoOfRegion() } else { onCancel?() }
       return
     }
+    let release = NSEvent.mouseLocation
+    regionEndedAtLeft = release.x < origin.x
+    regionEndedAtFoot = release.y < origin.y
     finishScreenDrawing()
   }
 
@@ -4645,11 +4791,23 @@ final class AgentPaletteView: NSView {
       onScreenRegionSelected?(region)
       return
     }
+    let first = !regionAnnounced
+    regionAnnounced = true
+    if first, field.draft.isEffectivelyEmpty {
+      // The last question's words, still in the view, are not this one's.
+      setListeningWords("")
+      syncVoiceGlowPalette()
+      awaitsRegionVoice = true
+      let wait = DispatchWorkItem { [weak self] in self?.awaitsRegionVoice = false }
+      regionVoiceWait = wait
+      DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionVoiceWait, execute: wait)
+    }
     screenSelectionPhase = .editing
     screenOutlines.showsHandles = true
     syncSelectionOverlay()
     syncPointerWhereItIs()
     _ = focusField()
+    if first { onScreenRegionReady?() }
   }
 
   private static func region(from start: CGPoint, to end: CGPoint) -> CGRect {
@@ -4692,16 +4850,42 @@ final class AgentPaletteView: NSView {
     applyIngest(.attachments([chip]))
   }
 
-  /// Escape, a click off the region, or a refusal: the screen is the screen
+  /// Escape or a click off the region: the whole question goes, panel and all.
+  private func letGoOfRegion() {
+    guard let onLetGoOfRegion, screenSelectionPhase == .editing else {
+      cancelScreenSelection()
+      return
+    }
+    onLetGoOfRegion()
+  }
+
+  /// A region too small to ask about, or a refusal: the screen is the screen
   /// again and the shell goes back under the notch.
   func cancelScreenSelection() {
-    guard screenSelectionPhase != .idle else { return }
+    // Once the question has gone there is nothing left to let go of.
+    guard screenSelectionPhase != .idle, !isHandingOver else { return }
     endScreenSelection()
     onScreenSelectionCancelled?()
   }
 
+  /// Where the prompt's face stands, or the listening one's, in global
+  /// coordinates.
+  var promptFaceOnScreen: CGPoint? {
+    guard let window else { return nil }
+    let face: NSView = showsCompactListening ? listeningFace : selectedAgentImage
+    guard !face.isHidden, face.window != nil else { return nil }
+    let centre = CGPoint(x: face.bounds.midX, y: face.bounds.midY)
+    return window.convertPoint(toScreen: face.convert(centre, to: nil))
+  }
+
   /// Done with the region — sent with the prompt, or put in a chat as a chip.
   func endScreenSelection() {
+    regionVoiceWait?.cancel()
+    regionVoiceWait = nil
+    awaitsRegionVoice = false
+    isHandingOver = false
+    screenOutlines.alphaValue = 1
+    regionAnnounced = false
     screenSelectionPhase = .idle
     screenSelectionGlobal = nil
     frozenScreenGlobal = nil
@@ -4731,10 +4915,62 @@ final class AgentPaletteView: NSView {
     screenOutlines.frozen = frozenScreenGlobal.map { (image: $0.image, frame: local($0.frame)) }
   }
 
+  /// A region already chosen, standing as if just dragged out (`askAgain`).
+  func holdRegion(_ region: CGRect) {
+    PaletteHelpPresenter.shared.dismiss()
+    hideNotice()
+    screenSelectionGlobal = region
+    screenSelectionPhase = .drawing
+    screenOutlines.showsHandles = false
+    screenOutlines.isDimmed = true
+    syncSelectionOverlay()
+  }
+
+  /// And the drag let go of.
+  func finishHeldRegion() {
+    finishScreenDrawing()
+  }
+
+  /// What the shell grows out of as a region appears: a speck on its edge by
+  /// the region, level with where the face will be.
+  private func regionSeed(for rect: CGRect) -> CGRect {
+    let side = AgentPaletteMetrics.regionSeedSide
+    let orb = AgentPaletteMetrics.listeningOrbDiameter
+    var edge = rect.minX
+    if let window, let global = screenSelectionGlobal,
+       rect.midX < convert(window.convertFromScreen(global), from: nil).midX {
+      edge = rect.maxX
+    }
+    return CGRect(x: edge - side / 2, y: rect.maxY - orb / 2 - side / 2, width: side, height: side)
+  }
+
+  /// The question has gone. The shell closes into the orb round the face, its
+  /// words go and the screen comes back; `done` when it has, which hands the
+  /// face on. The turn is already running, so nothing waits on this.
+  func collapseToFace(then done: @escaping () -> Void) {
+    guard window?.isVisible == true, !MotionPreferences.reduceMotion else {
+      done()
+      return
+    }
+    isHandingOver = true
+    screenOutlines.showsHandles = false
+    needsLayout = true
+    let duration = Motion.scaled(AgentPaletteMetrics.regionHandOverDuration)
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = duration
+      context.timingFunction = Motion.standardCurve
+      screenOutlines.animator().alphaValue = 0
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: done)
+  }
+
   /// Where the shell stands while a region is asked about: out of the way
-  /// while it is drawn, beside it once it is — to its right, else its left,
-  /// else under or over it — and inside the screen whatever the region.
-  /// `top` is from the view's top; `offset` from its centre.
+  /// while it is drawn, beside it once it is, at the corner the drag ended at —
+  /// on that side, else the other, else under or over it — and inside the
+  /// screen whatever the region. The side is chosen for the prompt's width, so
+  /// a typed key does not move it across; the edge by the region stays, and the
+  /// shell grows away from it. `top` is from the view's top; `offset` from its
+  /// centre.
   private var shellAnchor: (top: CGFloat, offset: CGFloat)? {
     switch screenSelectionPhase {
     case .idle:
@@ -4744,16 +4980,22 @@ final class AgentPaletteView: NSView {
     case .editing:
       guard let window, let global = screenSelectionGlobal else { return nil }
       let region = convert(window.convertFromScreen(global), from: nil)
-      let width = AgentPaletteMetrics.promptSize.width
-      let height = promptCapsuleHeightConstraint.constant
+      let prompt = promptSurfaceWidth
+      let listening = showsCompactListening
+      let size = listening ? listeningShellSize() : CGSize(width: prompt, height: promptCapsuleHeightConstraint.constant)
+      let width = size.width
+      let height = size.height
       let gap = AgentPaletteMetrics.screenSelectionShellGap
       let highest = bounds.height - topReserve - gap
       var left: CGFloat
-      var shellTop = region.maxY
-      if region.maxX + gap + width <= bounds.maxX - gap {
-        left = region.maxX + gap
-      } else if region.minX - gap - width >= bounds.minX + gap {
+      // Level with the corner, and its top holds as lines are added below.
+      var shellTop = regionEndedAtFoot ? region.minY + AgentPaletteMetrics.listeningOrbDiameter : region.maxY
+      let fitsRight = region.maxX + gap + prompt <= bounds.maxX - gap
+      let fitsLeft = region.minX - gap - prompt >= bounds.minX + gap
+      if fitsLeft, !fitsRight || regionEndedAtLeft {
         left = region.minX - gap - width
+      } else if fitsRight {
+        left = region.maxX + gap
       } else {
         left = min(max(region.midX - width / 2, bounds.minX + gap), bounds.maxX - gap - width)
         shellTop = region.minY - gap >= height + gap
@@ -4897,9 +5139,14 @@ final class AgentPaletteView: NSView {
     for view in shellContentViews {
       guard let layer = view.layer else { continue }
       layer.removeAnimation(forKey: Self.dripFadeKey)
+      // Fade to the opacity the view stands at, not to 1: an animation's
+      // value replaces the model's, so the listening words (kept at 0 with
+      // the last take still in them) showed through every drip.
+      let opacity = layer.opacity
+      guard !view.isHidden, opacity > 0 else { continue }
       let fade = CABasicAnimation(keyPath: "opacity")
-      fade.fromValue = arriving ? 0 : 1
-      fade.toValue = arriving ? 1 : 0
+      fade.fromValue = arriving ? 0 : opacity
+      fade.toValue = arriving ? opacity : 0
       fade.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil)
         + (arriving ? AgentPaletteMetrics.dripContentInAfter : 0)
       fade.duration = arriving ? AgentPaletteMetrics.dripContentInDuration : Motion.quick
@@ -4971,6 +5218,34 @@ final class AgentPaletteView: NSView {
       )
     }
     if view === surfaceContainer { applyAmbientShadow(in: layer, cornerRadius: cornerRadius) }
+  }
+
+  /// Whether the shell's shadows were last set to fall.
+  private var shellCastsShadow = true
+
+  /// The orb is a light, and casts no shadow: under the bright ball the
+  /// contact shadow read as a dark rim round it, and the pool as a smudge.
+  /// Both come back as the shell turns into glass again. Set after every
+  /// `applyFloatingShadow`, which writes the glass's opacity back when the
+  /// geometry changes.
+  private func syncShellShadow() {
+    guard let layer = surfaceContainer.layer else { return }
+    let casts = !showsCompactListening
+    let contact: Float = casts ? PaletteGlassHost.floatingShadowOpacity : 0
+    let pool: Float = casts ? 1 : 0
+    if casts != shellCastsShadow, window?.isVisible == true, !MotionPreferences.reduceMotion {
+      for (target, key, value) in [(layer, "shadowOpacity", contact), (ambientShadow, "opacity", pool)] {
+        let fade = CABasicAnimation(keyPath: key)
+        fade.fromValue = target.presentation()?.value(forKeyPath: key) ?? target.value(forKeyPath: key)
+        fade.toValue = value
+        fade.duration = Motion.standard
+        fade.timingFunction = Motion.standardCurve
+        target.add(fade, forKey: key)
+      }
+    }
+    shellCastsShadow = casts
+    layer.shadowOpacity = contact
+    ambientShadow.opacity = pool
   }
 
   /// The shell's second, broad shadow: the one a Mac window casts.
@@ -5057,6 +5332,8 @@ final class AgentPaletteView: NSView {
     let expanded = isDraftExpanded || isOpenChat
     guard expanded != isPromptExpanded else { return }
     isPromptExpanded = expanded
+    // The first screen widens with it (`promptSurfaceWidth`).
+    needsLayout = true
     NSLayoutConstraint.deactivate(expanded ? inlineControlConstraints : expandedPromptConstraints)
     NSLayoutConstraint.activate(expanded ? expandedPromptConstraints : inlineControlConstraints)
     field.setExpandedStyle(expanded)
@@ -5183,6 +5460,7 @@ final class AgentPaletteView: NSView {
     attachRestDisc.button.target = self
     attachRestDisc.button.action = #selector(attachButtonPressed)
     attachRestDisc.button.toolTip = "Attach a file"
+    attachRestDisc.button.helpShortcut = ComposerChord.attach.display
     attachRestDisc.setAccessibilityIdentifier("boltty.ask.attach")
     attachRestDisc.button.setAccessibilityIdentifier("boltty.ask.attach")
     attachRestDisc.button.setAccessibilityLabel("Attach a file")
@@ -5225,6 +5503,7 @@ final class AgentPaletteView: NSView {
     micButton.toolTip = isVoiceProcessing ? "Processing recording…" : isVoiceListening
       ? "Listening — hover for controls"
       : "Dictate prompt"
+    micButton.helpShortcut = isVoiceProcessing || isVoiceListening ? nil : ComposerChord.dictate.display
     micButton.setAccessibilityLabel(isVoiceProcessing ? "Processing recording" : isVoiceListening ? "Listening" : "Dictate prompt")
     micButton.setAccessibilityValue(isVoiceProcessing ? "Processing" : isVoiceListening ? "Listening" : "Idle")
     if isVoiceListening {
@@ -5408,6 +5687,12 @@ extension AgentPaletteView: NSTextViewDelegate {
     if !isTab, !isBacktab, composerKeyTarget != .text {
       setComposerKeyTarget(.text)
     }
+    // Asking about a region is face, words and microphone: ↓ opened the list
+    // over the region, and Tab walked to a folder that is not there.
+    if screenSelectionPhase != .idle, isTab
+      || commandSelector == #selector(moveDown(_:)) || commandSelector == #selector(moveUp(_:)) {
+      return true
+    }
     // ←/→ walk the agent tabs while the history is up. Only there: in a search
     // the field holds words and the arrows move the caret through them, and
     // over the install hints there is no strip to walk.
@@ -5543,7 +5828,7 @@ extension AgentPaletteView: NSTextViewDelegate {
     }
     if commandSelector == #selector(cancelOperation(_:)) {
       if screenSelectionPhase != .idle {
-        cancelScreenSelection()
+        letGoOfRegion()
         return true
       }
       if addressedPreview != nil {

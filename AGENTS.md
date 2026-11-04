@@ -12,9 +12,10 @@ Two features:
 - **Boltty AI** — a floating panel on ⌥Space (rebindable). Return starts a
   conversation in the background; the same panel is the chat list and the
   open chat.
-- **Ask Boltty** — hold ⌃⌥⌘, ask about the screen out loud, circle what you
-  mean; the agent's face answers beside the pointer, in typed words and
-  blips, and can point and draw.
+- **Ask Boltty** — select an area of the screen and ask about it out loud:
+  open the panel with its usual key, drag a region, speak; the
+  agent's face answers beside the pointer, in typed words and blips, and can
+  point and draw.
 
 Settings and a small permissions window are the only windows. There is a menu
 bar item and a face beside the notch.
@@ -77,7 +78,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
 | Settings | `UI/Settings/` |
-| Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyTrailLayer.swift`, `UI/AskBolttyDrawingLayer.swift` |
+| Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyDrawingLayer.swift`; the region is the panel's (`AgentPaletteController.beginScreenAsk`) |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
 | Updates, login item, releases | `Services/AppUpdater.swift`, `Services/LoginItem.swift`, `scripts/release.sh`, `scripts/bump-version.sh` |
@@ -104,7 +105,7 @@ no adapter; never offer a toggle for them.
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the composer's word **Auto** (white when on) switches it per chat. `acceptEdits`-level, never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the composer's word **Auto** (white when on) switches it per chat. Edits only (commands still ask), except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -123,8 +124,8 @@ no adapter; never offer a toggle for them.
 - SwiftUI state lives only in `UI/Settings/`.
 - One home each for `NSPanel` (`UI/KeyablePanel.swift`), `NSStatusItem`
   (`StatusBarController`), `RegisterEventHotKey` (`GlobalHotkeyService`), and
-  `CGEventTap` (`Services/ModifierHotkeyMonitor.swift`, for the opt-in ⌥⌘ chord
-  and Ask Boltty's ⌃⌥⌘).
+  `CGEventTap` (`Services/ModifierHotkeyMonitor.swift`, for the opt-in ⌥⌘
+  chord).
 - Resume only by stored id: `--resume <id>`; never `--last` or `--continue`.
 - No `bypassPermissions`. `--dangerously-skip-permissions` appears only in
   `AntigravityClient`, beside its gate.
@@ -189,6 +190,9 @@ implementation first. Versions say what was measured.
   reads that; `probe()` drops the cached handshake so a new sign-in is seen.
 - `--permission-prompt-tool stdio` is what makes it ask; without it print mode
   decides alone.
+- Auto is `--permission-mode auto` (and `set_permission_mode` `auto` mid-chat):
+  the CLI's classifier decides; `ls`, `rm -rf ./junk` and `git push --force`,
+  each asked for, ran with no `can_use_tool` (2.1.296, Haiku).
 - A `deny` answer to `can_use_tool` carries a `message`, which the model reads
   as the tool's result; Boltty frames the person's words as theirs
   (`ClaudeCodeClient.denialMessage`).
@@ -436,7 +440,8 @@ The loop that must keep working:
 
 ```
 ⌥Space → the panel (drips out of the notch)
-  → optionally drag across the screen to ask about a region
+  → or drag across the screen: that is Ask Boltty (select, speak,
+    answered beside the face; the panel hides)
   → type or dictate, Return → conversation starts in the background
   → the shell morphs into the open chat
   → follow up in the same composer; ↓ lists saved chats
@@ -461,12 +466,17 @@ The loop that must keep working:
   centre stays put. The cursor reaches the screen from a non-activating panel
   through `BackgroundCursor` (private `CGSSetConnectionProperty`, looked up with
   `dlsym`). Sizes are kept in `BolttyAISurfaceSizes`.
-- **Sizes:** first screen 540 × 85 capsule, grows up to five lines; list five
+- **Sizes:** first screen 540 × 85 capsule; once the draft wraps it widens to
+  680 (until emptied) and grows up to five lines; list five
   rows; chat 584 × 680 default. They reserve their space; short content does
   not shrink them.
 - **Return while a turn runs queues** (one slot, shown, cancellable).
   **⌘Return** steers where the agent declares `.steering`. **⌘.** stops where it
   declares `.interrupt` or `.terminableTurn`; the Send slot turns into Stop.
+- **A composer button has its own key**, shown as keycaps on its help tag:
+  ⌘D the microphone, ⌘O the folder, ⇧⌘A attach (`ComposerChord`, through
+  the field's `performKeyEquivalent`). A hidden or disabled button's key does
+  nothing.
 - **A chat's composer foot is two groups.** Left, what shapes the request:
   + (attach), Auto, folder — the folder last, so a long name moves nothing.
   Right, what is read and pressed: the usage ring, the microphone, Send. Send
@@ -495,6 +505,9 @@ The loop that must keep working:
   — first screen, listening, list and chat — never by the composer, and only
   once the state has settled (`applySurfaceStyle` defers changes *to* a wash to
   the end of the turn).
+- Opened over Finder with an empty first screen, the panel attaches the files
+  selected there (`FinderSelectionService`, Finder Automation). Settings ›
+  General › Finder switches it (`boltty.finderSelection.enabled`, on).
 - Refreshing rows never orders the window forward or steals first responder.
 - **Clicking outside** (a click, not a drag) hides; the panel takes every press
   on the screen, so a click outside does not reach the window below.
@@ -503,16 +516,22 @@ The loop that must keep working:
 
 - The question is a white bubble with black text; the answer is prose on the
   glass, Codex's proportions (headings 1.5/1.25/1.125×, line 24 on 15).
-- **Tool calls are rows, folded into one pill per run of work**
+- **Tool calls are rows, folded into one line per run of work**
   (`PaletteActivityGroupView`), said in one line ("Thought • Read 3 files •
-  Edit config.ts"). Messages with no words of their own join the next
-  (`PaletteTranscript.joined`), so every agent's turn draws alike.
+  Edit config.ts") with a small chevron after its last word. No box: opened,
+  the rows hang off a hairline thread at the leading edge, and an opened
+  row's output sits in a filled well. Messages with no words of their own join the next
+  (`PaletteTranscript.joined`), so every agent's turn draws alike. A tool
+  id with no description of its own is read as words (`run_command` → "Run
+  command"); Antigravity's calls fall back to their command and file.
 - A finished turn with work gets "Worked for …" and folds to its last prose. A
   running turn, the first one included, shows the transcript and under it a
   working line with the agent's face.
 - Streaming prose: finished paragraphs are rendered as markdown; the paragraph
   still growing is plain text with words fading in through the agent's light
-  (`MascotPalette.arrivalLight`).
+  (`MascotPalette.arrivalLight`). A face of one hue (Ember, Mist, Lilac)
+  has its light fanned 80° round that hue: lifted as it was, it was one
+  pastel and read as no light at all.
 - Only files a turn **made** get cards; reads and searches leave rows only.
   Pictures get Quick Look thumbnails that resolve out of a blur.
 - What the person sent with chips is shown as file cards over their words
@@ -584,16 +603,51 @@ The loop that must keep working:
 
 ### Selecting the screen
 
-On the first screen only, a press on empty glass that moves past 4 pt draws a
-region. ScreenCaptureKit freezes the display (Boltty's windows excluded), the
+Selecting an area and asking about it is Ask Boltty, and there is one way in:
+the panel's first screen, where a press on empty glass that moves past 4 pt
+draws a region. Nothing switches it on. A chord of its own (⌃⌥⌘) was tried and
+removed: one key to remember is the point. ScreenCaptureKit freezes the display (Boltty's windows excluded), the
 outside dims to 40%, the border is light in the agent's gradient
 (`ScreenSelectionGlowView`), and the shell stands beside the region. The
-pointer stays an arrow; only handles show resize cursors. On Return the region
-is cut off the main thread: the region at display pixels, the whole screen at
-1568 with the region outlined, the app and window under it, and Vision's text in
-`<screen-text>` — to every agent. Pictures go as pictures where the adapter can
-take them (≤ 3.75 MB), otherwise as paths. Screen Recording is asked the first
-time; refusals are said in the panel.
+pointer stays an arrow; only handles show resize cursors. While a drag
+would select, the pointer resting on the empty glass gets "Drag to ask about
+an area" beside it (`ScreenSelectionPointerHint`, help-tag style, after the
+help tag's rest), following it until it reaches the shell or presses.
+
+Once a region is drawn the shell is the face, the words and the microphone:
+no folder chip or usage ring, and ↓ ↑ Tab do nothing (↓ used to open the
+list over the region). ⇧Tab still changes the agent; it wears Ask
+Boltty's (`regionAgent`) from the selection's first frame, and the first
+screen gets its agent back afterwards. **Escape or a click off the region lets
+go of the whole question** (`letGoOfRegion`): the microphone stops first (left
+running, its silence sent the words as a chat with the first screen's agent),
+what was said goes, the prompt is as it was before the region, and the panel
+closes. The microphone opens by itself — select, then
+speak — and a typed key takes over from it. Return, ✓, a silence after
+speech sends. The region is cut off the main thread (the
+region at display pixels, the whole screen at 1568 with the region outlined,
+the app and window under it, Vision's text) and goes with the words to
+`AskBolttySession.ask`.
+
+**It is one movement.** The shell stands at the corner of the region where the
+drag ended, on that side if the prompt fits there (`shellAnchor`), and is the
+orb from the first frame (`awaitsRegionVoice`, until the microphone is up or 2 s
+pass), growing out of a speck on the region's edge on the shell's spring
+(`regionSeed`); the face does not fly in, since the prompt it would come from
+was never seen. The edge by the region and the shell's top hold as it grows
+with the words. Sent, the turn starts at once and the shell closes into the orb
+round the face while the words and the dim fade (`collapseToFace`, 0.26 s).
+Then the panel goes at once, and the face beside the pointer takes up from
+where the orb's stood, at its size (`handRegionOver` →
+`AskBolttyOverlayController.arrive`). It flies on a low arc (0.55–1.1 s by
+distance, at most 80 pt up, a little larger at the top), landing at its own
+size, and only then does its bubble come out of it (`popBubble`). The answer
+done, the bubble draws back into the face (`rest`). A bare version, face and
+words on the dimmed screen with no glass, was tried and refused: the face hung
+in nothing.
+
+Over an open chat a dragged region is still a chip in its composer. Screen
+Recording is asked the first time; refusals are said in the panel.
 
 ### The folder chip
 
@@ -626,35 +680,56 @@ little into place; words heard together a beat apart. Only words past the
 end arrive: a word the engine revises changes in place (arriving again, the
 last few words blinked on every result). In an open chat a
 non-empty draft keeps the composer. Enter is ✓, which waits for the engine's
-final text. A long silence sends, but only after speech was heard.
+final text **as the orb**, then goes from the orb straight to the chat (or the
+prompt) in one move while the orb fades on the shell's spring
+(`voiceGlowOrbReleaseDuration`). The orb casts no shadow: the shell's shadows
+read as a dark rim round it. A long silence sends, but only after speech was
+heard.
 
 ## Ask Boltty
 
-- **The chord** (`ModifierHoldMonitor`): exactly ⌃⌥⌘ held 0.25 s begins; releasing
-  any of the three sends; a key, a click or a fourth modifier cancels. Needs
-  Input Monitoring, asked when Ask Boltty is switched on. Escape stops an answer
-  and clears its drawings.
-- While held: the chat and session warm up, the screen is frozen, the pointer's
-  path is drawn as a soft, short-lived line (`AskBolttyTrailLayer`, curves
-  through midpoints, runs of 20 points), and speech is recognised and shown
-  beside the face as it comes (the latest words, up to three lines).
-- Sent: the whole screen at 1568 px with a ring at the pointer and the traced
-  line, the window under the pointer, and `AskBolttyPrompt.bracket` (answer in
-  one or two sentences, in the asker's language, point and draw with tags).
-  Nothing said is nothing sent, and leaves no chat.
+- **One gesture: select, then speak.** The region, the listening and the
+  words are the panel's (*Selecting the screen*); Ask Boltty is the session
+  and the answer. The freehand trail and the ring at the pointer
+  were removed: a region says what is meant exactly.
+- A region drawn warms up the chat and its session (`warmUp`); let go of
+  unasked, a chat made for it goes (`cancel`).
+- Sent: the whole screen at 1568 px with the region outlined (what 0–1000
+  measures across) and the region up close — one picture when the whole
+  screen was asked about — the window under the region, Vision's text in
+  `<screen-text>`, and `AskBolttyPrompt.bracket` (answer in one or two
+  sentences, in the asker's language, a link as it is, point and draw with
+  tags). Nothing said is nothing sent.
 - Tags: `<point x y label/>`, `<circle>`, `<box>`, `<arrow>`, `<line>`,
   `<path d>`, `<label>`, `<board>…</board>`, coordinates 0–1000 of the picture.
   Each is shown when the reading reaches its sentence; drawings stay until the
   next question, a click or Escape. The chat card strips the tags.
 - At most two sentences of an answer are said, one at a time: a new sentence
   takes the last one's place (`captionSentences`, `answerSentences`).
-- The answer types out beside the face with blips (`AskBolttyBlips`, rendered on
-  Core Audio's thread — its block is made `nonisolated`). Saying it aloud
+- The answer comes beside the face word by word, each arriving out of the blur
+  the listening words have (`ListeningWordsView`, `isCentred` off), the bubble
+  growing to fit what has come (`revealWords`, `growBubble`); a new sentence
+  starts it afresh. **The words hold still**: the bubble's top stays and lines
+  are added below, only the face bobs, and the side stays while the widest
+  bubble fits, gliding across when it does not. On the left it stands at its
+  whole sentence's width (the words hang from its left edge). With blips
+  (`AskBolttyBlips`, rendered on Core Audio's thread — its block is made
+  `nonisolated`). Saying it aloud
   (`SpeechOutput`: Supertonic's 31 languages, once it is downloaded) is
   Settings › Ask Boltty › "Say answers aloud" (`boltty.talk.speaksAloud`,
-  off, disabled until Supertonic is here), read into
-  `AskBolttySession.speaksAloud` as the chord begins.
-- "Listening…" and "Thinking…" beside the face wear the shimmer a working
+  off; until Supertonic is here its download stands in the switch's place),
+  read into `AskBolttySession.speaksAloud` as a question is sent. Said aloud,
+  the words still type out, without blips over the voice.
+- **The face waits after the answer** (`AskBolttyOverlayController.rest`): its
+  words go once said, it returns to the pointer, and goes by itself after 12 s.
+  **While it is there the launch key goes on with the question**
+  (`AskBolttyController.questionToContinue` → `AgentPaletteController.askAgain`):
+  no panel to pass through, the same region, the same agent, listening; the
+  screen is taken afresh. A question within ten minutes, by either way, continues
+  the same chat (`choosePlace`).
+  A click or Escape takes it sooner; the panel opening does too. What it drew
+  outlasts it, until a click or Escape.
+- "Thinking…" beside the face wears the shimmer a working
   row has in the chat list: a band of the face's arrival light across the
   words; under Reduce Motion they stay plain.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
@@ -662,25 +737,33 @@ final text. A long silence sends, but only after speech was heard.
 - Ask Boltty chats raise no banner, unread mark or notch line, are never listed,
   and are forgotten (record, screenshots, session released via
   `AgentClient.release`) ten minutes after the last answer unless working or
-  waiting. A chat waiting on the person opens the panel on it.
+  waiting; a question within those ten minutes continues the chat. A chat
+  waiting on the person opens the panel on it.
 - Read-only by default (`Conversation.readOnly`): the engine refuses every
-  permission, and Claude Code and Codex start without write tools.
+  permission, and Claude Code and Codex start without write tools. Claude
+  Code's read-only tools include WebSearch and WebFetch, let through without
+  asking (`readOnlyAllowedTools`): "find where this news is" needs a search.
 - Who answers: the chosen agent and model if ready, else Claude Code on Haiku,
-  else the first ready agent that takes pictures. Always at the model's
-  lowest effort, never the effort the agent's chats use and never stored
+  else the first ready agent that takes pictures. Chosen in Settings › Ask
+  Boltty as a strip of bare faces, no circle or ring, the chosen one told by
+  its name (`AskBolttyAgentPicker`, on `RingedChoice` with `isRinged` off),
+  Automatic wearing the face it would pick; "Can make
+  changes" is the one switch for access. Always at the model's lowest
+  effort, never the effort the agent's chats use and never stored
   (`boltty.talk.effort` is retired, inert), `low` before `minimal`
   (`AskBolttyConfiguration.fastestEffort`):
   a CLI's own default is its highest, and Antigravity's Flash took 14 s at
   high, 7 s at low (1.4.12). Antigravity still spends ~3 s on a turn that
   only opens the screenshot; `content` is text, and `@path` does not inline it.
-- Holding the chord again while an answer runs stops the voice **and the
-  agent's turn** (`stopTurn`), so the old turn doesn't keep spending the plan.
+- A new region while an answer runs stops the voice **and the agent's
+  turn** (`stopTurn`), so the old turn doesn't keep spending the plan.
 - **Escape calls an answer off** while it thinks or answers: it stops the turn
   (`ConversationEngine.stop`) and takes the face, its words and its drawings
-  away. It arrives through the chord's own tap (`ModifierHoldMonitor.onEscape`
-  — the one key that tap reads by code, alone and outside a hold), so it needs
-  nothing beyond Ask Boltty's Input Monitoring; the overlay itself takes no
-  keys.
+  away. It is a Carbon hotkey (`AskBolttyController.escapeKey`), so it needs no
+  permission, held **only while the face or a drawing is on the screen and the
+  panel is not up**: for that time Escape does not reach other apps, which is
+  why the face does not stay for good. Before sending, Escape is the panel's: it
+  closes the question (*Selecting the screen*).
 
 ## Other surfaces
 
@@ -697,11 +780,13 @@ final text. A long silence sends, but only after speech was heard.
 - **First run**: a show over a sunset (`SunsetView`, `ShowSpace` maps 1800 × 1169
   slides to the screen; one face carried through every scene; its own clock,
   `ShowClock`). Its beats, each with a caption: the panel under the notch,
-  ⇧Tab walking the agents, a question answered; ↓ to the chat list and its
-  agent's tab; a chart selected and asked about; Ask Boltty in an app,
-  pointing at the menu and drawing on a board; Settings (a face, a backdrop,
-  Usage). Only Boltty's own glass casts shadows, so it stands in front of
-  the made-up apps. Then the setup card (agents, faces, keys, voice,
+  ⇧Tab walking the agents, a question answered in a chat whose composer has
+  Auto and Send; ↓ to the chat list and its agent's tab; Ask Boltty in an app
+  as one movement (the panel, a dragged region, the orb on its corner with
+  the words out of a blur, the face to the pointer and on to what it names,
+  drawing a loop and an arrow on the app itself); Settings (a face, a backdrop's round window, Usage, Voice). A
+  feature's real gesture changing means this script changes with it. Only the
+  shell's glass casts shadows, so it stands in front of the made-up apps. Then the setup card (agents, faces, keys, voice,
   permissions) on the panel's glass. The voice step offers Parakeet and
   Supertonic, both unticked; a ticked one is chosen and downloaded in the
   background once setup ends (`installSetupVoices`), Apple's engine standing
@@ -721,9 +806,8 @@ final text. A long silence sends, but only after speech was heard.
   the face's shape, gradient and finish as rows. Never expand every agent on
   the list again. `-boltty.settings.agent claude` opens an agent's page.
 - **Usage**: plan windows per agent (each: what remains and when it
-  comes back, the bar and the activity chart in the agent's own gradient,
-  `MascotPalette.meterInk` — near-grey stops dropped, lightness kept readable
-  in Light and Dark), 14 days of activity, and an overview counted
+  comes back, the bar and the activity chart flat in the system accent
+  colour, never the face's gradient), 14 days of activity, and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`). Never summed across
   agents' different units. Signing in happens in a terminal, so the page asks
@@ -788,7 +872,10 @@ final text. A long silence sends, but only after speech was heard.
   Parakeet CC BY 4.0, Supertonic BigScience OpenRAIL-M (its `LICENSE` is
   downloaded with it). Measurements and the plan: `.scratch/local-voice/`.
 - **Supertonic** (`SupertonicSpeaker`, Settings › Voice › Voice, stored as
-  `boltty.speech.localVoice` = a preset `F1`…`M5`, default `M3`): once
+  `boltty.speech.localVoice` = a preset `F1`…`M5`, default `M3`; chosen on a
+  sideways strip of plain circles in the mascots' gradients, no faces (faces
+  were tried and refused; `VoiceSwatch`, `VoicePicker`): a press chooses and
+  plays, a press on the chosen one plays again): once
   downloaded it reads every language it speaks, and nothing else is said.
   Each piece is synthesized on a serial queue while the one before
   plays through one `AVAudioPlayerNode`; `onStart` fires when a piece is
@@ -852,8 +939,11 @@ final text. A long silence sends, but only after speech was heard.
 - **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
   its transcript, chosen per agent in Settings › Agents › Chat
   (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
-  was removed; a stored `matrix` reads as Standard. The Settings picker
-  previews the choice live over a mock chat. Over the glass, under the
+  was removed; a stored `matrix` reads as Standard. Standard is every
+  agent's default, and nothing stores another for the person. The Settings
+  picker is round windows only (`RingedChoice`), with no face in them: the
+  chosen one moves under a ringed edge, the others are stills. There is no
+  mock-chat preview. Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky
   (`AgentBackdropSky`: zenith, horizon, cloud light, cloud shade, middle,
   glow), the feeling of the face's colour rather than a wall of it: a soft
@@ -886,10 +976,11 @@ final text. A long silence sends, but only after speech was heard.
 
 ## Design contract (AppKit)
 
-- **Glass is the system's**, in four kinds: the shell (`PaletteGlassHost`, bare
+- **Glass is the system's**, in five kinds: the shell (`PaletteGlassHost`, bare
   regular glass under a black ramp), controls (the same
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,
-  `GlassPillLabelButton`), and the selected history tab. Density goes *over* the
+  `GlassPillLabelButton`), the selected history tab, and help tags
+  (`PaletteHelpBackdrop`). Density goes *over* the
   glass, never into its tint. The system's Tinted/Clear setting is respected.
   A glass host's corner must be set again whenever its size changes.
 - The shell casts two shadows: a tight contact one and a broad pool behind the
@@ -921,7 +1012,10 @@ final text. A long silence sends, but only after speech was heard.
   `NSVisualEffectView`, `CIGaussianBlur`, component colour constructors,
   `NSFont.systemFont(ofSize:)`. `scripts/lint-baseline.txt` may only shrink.
 - **Help tags** are drawn like a menu row inside the panel, above the control,
-  450 ms delay, instant when moving between controls.
+  450 ms delay, instant when moving between controls. They stand on the
+  system's glass with black density over it (`helpDensity`), as a Mac's
+  popovers and menus are glass; a flat `#202020` read as a grey patch on the
+  shell.
 
 ## Keyboard shortcuts and the hotkey
 

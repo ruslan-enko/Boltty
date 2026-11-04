@@ -172,8 +172,16 @@ struct AgentActivity: Identifiable, Codable, Equatable, Sendable {
 
   var headline: String {
     if let summary, !summary.isEmpty { return summary }
-    if let file = files.first { return "\(name) \((file as NSString).lastPathComponent)" }
-    return name
+    if let file = files.first { return "\(spokenName) \((file as NSString).lastPathComponent)" }
+    return spokenName
+  }
+
+  /// A tool's own id read as words: `run_command` is "Run command". Names
+  /// that already read as words, `Bash` or `mcp__x__y`, are left alone.
+  private var spokenName: String {
+    guard name.contains("_"), !name.contains("__"), !name.contains(" ") else { return name }
+    let words = name.replacingOccurrences(of: "_", with: " ")
+    return words.prefix(1).uppercased() + words.dropFirst()
   }
 }
 

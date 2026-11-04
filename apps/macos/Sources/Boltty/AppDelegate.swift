@@ -149,8 +149,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let askBoltty = AskBolttyController(coordinator: coordinator, speech: speech) { [weak appModel = model] in
       appModel?.settings ?? AppSettings()
     }
-    askBoltty.onBegin = { [weak self] in self?.palette?.hide() }
-    askBoltty.onSent = { [weak self] in self?.sounds?.playSend() }
     askBoltty.onNeedsYou = { [weak self] id in self?.requirePalette()?.addressConversation(id) }
     self.askBoltty = askBoltty
     model?.$settings
@@ -161,6 +159,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     statusBar?.attach(coordinator)
     if ProcessInfo.processInfo.arguments.contains(Self.uiTestingFlag) {
       requireSettingsWindow()?.present(activating: false)
+    }
+  }
+
+  /// The face still beside the pointer: the key goes on with its question,
+  /// about the same region. Otherwise it is the panel's.
+  private func launchKeyPressed() {
+    guard let palette = requirePalette() else { return }
+    if !palette.isShowing, let question = askBoltty?.questionToContinue {
+      palette.askAgain(about: question.region, agent: question.agent)
+    } else {
+      palette.toggle()
     }
   }
 
@@ -238,8 +247,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
       }
       .store(in: &cancellables)
-    palette.onVisibilityChange = { [weak notch] visible, screen, conversationID in
+    palette.onVisibilityChange = { [weak notch, weak self] visible, screen, conversationID in
       notch?.setPanelVisible(visible, screen: screen, conversationID: conversationID)
+      self?.askBoltty?.setPanelVisible(visible)
     }
     notchMascot = notch
     palette.onOpenSettings = { [weak self] in self?.showSettings(page: .agents) }
@@ -255,6 +265,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       speech.stop()
     }
     palette.onPromptRefused = { [weak self] in self?.sounds?.playRefused() }
+    // A region of the screen is Ask Boltty's question: the panel holds the
+    // region and the words, the answer comes beside the face.
+    palette.regionAgent = { [weak self] in self?.askBoltty?.answeringAgent }
+    palette.onRegionReady = { [weak self] agent in self?.askBoltty?.warmUp(agent: agent) }
+    palette.onRegionDropped = { [weak self] in self?.askBoltty?.cancelQuestion() }
+    palette.onRegionFaceLeft = { [weak self] face in self?.askBoltty?.faceArrives(from: face) }
+    palette.onAskAboutRegion = { [weak self] words, selection, displayFrame, agent in
+      guard let self, let askBoltty = self.askBoltty,
+            askBoltty.ask(words, about: selection, on: displayFrame, agent: agent)
+      else { return false }
+      self.sounds?.playSend()
+      if let readAloudID = self.readAloudID, self.speech.isSaying(readAloudID) { self.speech.stop() }
+      return true
+    }
     palette.onSpeakMessage = { [weak self] message in
       self?.speech.toggle(markdown: message.copyableText, id: message.id)
     }
@@ -448,7 +472,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private func setupHotkey() {
     hotkey = GlobalHotkeyService { [weak self] in
       Task { @MainActor in
-        self?.requirePalette()?.toggle()
+        self?.launchKeyPressed()
       }
     }
     guard let settings = model?.settings else { return }

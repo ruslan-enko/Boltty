@@ -63,21 +63,18 @@ final class AppSettingsTests: XCTestCase {
     XCTAssertEqual(loaded.speechRate, 1.25)
   }
 
-  func testAskBolttyIsOffReadOnlyAndAutomaticUntilChosen() {
+  func testAskBolttyIsReadOnlyAndAutomaticUntilChosen() {
     let suite = defaults()
     let fresh = AppSettings.load(defaults: suite)
-    XCTAssertFalse(fresh.askBolttyEnabled)
     XCTAssertTrue(fresh.askBolttyReadOnly)
     XCTAssertNil(fresh.askBolttyProviderID)
 
     var settings = fresh
-    settings.askBolttyEnabled = true
     settings.askBolttyReadOnly = false
     settings.askBolttyProviderID = "codex"
     settings.askBolttyModelID = "gpt-6-luna"
     settings.save(defaults: suite)
     let loaded = AppSettings.load(defaults: suite)
-    XCTAssertTrue(loaded.askBolttyEnabled)
     XCTAssertFalse(loaded.askBolttyReadOnly)
     XCTAssertEqual(loaded.askBolttyProviderID, "codex")
     XCTAssertEqual(loaded.askBolttyModelID, "gpt-6-luna")

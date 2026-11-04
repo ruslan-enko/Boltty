@@ -107,15 +107,14 @@ replay it.
 
 ## Ask Boltty
 
-Holding ⌃⌥⌘ is watched by a listen-only event tap (the one place one is
-allowed, and the reason this feature needs Input Monitoring). While the chord
-is held, Boltty freezes a picture of the screen, records the pointer's path,
-listens through Apple's on-device speech recognizer, and warms up the agent's
-session. On release it sends the picture, the traced line and the words as a
-normal conversation, marked as an Ask Boltty chat. The answer is shown beside
-the pointer as it streams; small tags in it (`<point>`, `<circle>`, `<arrow>`,
-…) make the face fly to a spot or draw on the screen. These chats are
-read-only by default and are forgotten ten minutes after the last answer.
+Ask Boltty is one gesture: select an area of the screen, then speak. It starts
+with a drag on the panel's first screen, which freezes the screen. Once a region
+is drawn the panel listens, and the agent's session warms up. The words, the region and the whole screen go to
+`AskBolttySession` as a normal conversation, marked as an Ask Boltty chat. The
+answer is shown beside the pointer as it streams; small tags in it
+(`<point>`, `<circle>`, `<arrow>`, …) make the face fly to a spot or draw on
+the screen. These chats are read-only by default, are never listed, and are
+forgotten ten minutes after the last answer.
 
 ## Rules that hold it together
 

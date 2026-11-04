@@ -598,16 +598,17 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertEqual(view.screenSelectionPhase, .editing)
   }
 
-  func testEscapeLetsTheRegionGoAndKeepsThePanel() throws {
+  func testEscapeLetsTheRegionGoAndClosesThePanel() throws {
     let (controller, conversations, view) = try makeSelectingController()
 
     view.selectScreenRegionForTesting(CGRect(x: 120, y: 200, width: 300, height: 180))
     view.pressEscapeForTesting()
+    RunLoop.current.run(until: Date().addingTimeInterval(AgentPaletteMetrics.regionHandOverDuration + 0.2))
 
     XCTAssertEqual(view.screenSelectionPhase, .idle)
     XCTAssertEqual(view.screenOutlinesForTesting, [])
-    XCTAssertTrue(controller.isShowing)
-    XCTAssertTrue(conversations.startedPrompts.isEmpty)
+    XCTAssertFalse(controller.isShowing)
+    XCTAssertTrue(conversations.startedPrompts.isEmpty, "what was said goes with the region")
   }
 
   func testAnOpenChatTakesNoRegion() throws {

@@ -1222,8 +1222,11 @@ final class ClaudeCodeReadOnlyArgumentsTests: XCTestCase {
       id: "11111111-1111-1111-1111-111111111111",
       options: AgentSessionOptions(directory: "/tmp", readOnly: true), resuming: false)
     let tools = try! XCTUnwrap(arguments.firstIndex(of: "--tools"))
-    XCTAssertEqual(arguments[tools + 1], "Read,Glob,Grep")
+    XCTAssertEqual(arguments[tools + 1], "Read,Glob,Grep,WebSearch,WebFetch")
     XCTAssertTrue(arguments[tools + 2].hasPrefix("--"), "--tools is variadic: a flag must end it")
+    let allowed = try! XCTUnwrap(arguments.firstIndex(of: "--allowedTools"))
+    XCTAssertEqual(arguments[allowed + 1], "WebSearch,WebFetch")
+    XCTAssertTrue(arguments[allowed + 2].hasPrefix("--"), "--allowedTools is variadic: a flag must end it")
   }
 
   func testAnOrdinarySessionKeepsEveryTool() {

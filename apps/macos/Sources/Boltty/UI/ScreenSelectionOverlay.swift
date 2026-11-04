@@ -264,3 +264,72 @@ private final class OverlayLayerView: NSView {
 
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
+
+/// "Drag to ask about an area", beside the pointer while it rests on the
+/// first screen's empty glass. Selecting is a plain drag with no cursor of
+/// its own, so without words the gesture is undiscoverable. Drawn like a help
+/// tag, and never in the way: it takes no clicks.
+final class ScreenSelectionPointerHint: NSView {
+  private let label = NSTextField(labelWithString: AgentPaletteMetrics.screenSelectionHintText)
+
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    wantsLayer = true
+    PaletteHelpBackdrop.install(in: self)
+    label.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
+    label.textColor = PaletteInk.primary
+    label.isSelectable = false
+    addSubview(label)
+    setAccessibilityElement(false)
+    alphaValue = 0
+    isHidden = true
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+  var isShowing: Bool { !isHidden }
+
+  /// Stands the tag down and right of `pointer`, flipped to the other side
+  /// of it where `room` (the view's bounds, unflipped) runs out.
+  func place(at pointer: NSPoint, in room: NSRect) {
+    let text = label.intrinsicContentSize
+    let size = NSSize(
+      width: ceil(text.width) + AgentPaletteMetrics.helpHorizontalPadding * 2,
+      height: ceil(text.height) + AgentPaletteMetrics.helpVerticalPadding * 2
+    )
+    let offset = AgentPaletteMetrics.screenSelectionHintOffset
+    var origin = NSPoint(x: pointer.x + offset.width, y: pointer.y - offset.height - size.height)
+    if origin.x + size.width > room.maxX { origin.x = pointer.x - offset.width - size.width }
+    if origin.y < room.minY { origin.y = pointer.y + offset.width }
+    let scale = window?.backingScaleFactor ?? 2
+    origin.x = (origin.x * scale).rounded() / scale
+    origin.y = (origin.y * scale).rounded() / scale
+    frame = NSRect(origin: origin, size: size)
+    label.frame = NSRect(
+      x: AgentPaletteMetrics.helpHorizontalPadding,
+      y: AgentPaletteMetrics.helpVerticalPadding,
+      width: ceil(text.width),
+      height: ceil(text.height)
+    )
+  }
+
+  func show() {
+    guard isHidden else { return }
+    isHidden = false
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = Motion.quick
+      animator().alphaValue = 1
+    }
+  }
+
+  /// At once: the pointer has moved on to something else, and a fading tag
+  /// left over it would read as belonging there.
+  func hide() {
+    guard !isHidden else { return }
+    alphaValue = 0
+    isHidden = true
+  }
+}

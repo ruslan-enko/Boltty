@@ -291,9 +291,10 @@ private final class OptionMarkView: NSView {
 /// that says how much is left. The tool's name is a label, not the
 /// command's first line: in the same mono it reads as part of the command.
 final class BolttyAICommandWell: NSView {
-  /// The lines a long command shows. One line more shows whole: the link
-  /// would take that line's room to hide it.
-  static let maximumLines = 6
+  /// The lines a long command shows, counted as drawn: one `ssh` with ten
+  /// commands after `;` is one line of text and eight of well. One line
+  /// more shows whole: the link would take that line's room to hide it.
+  static let maximumLines = 4
 
   private let label = NSTextField(labelWithString: "")
   private let text = NSTextField(wrappingLabelWithString: "")
@@ -302,6 +303,7 @@ final class BolttyAICommandWell: NSView {
   private var tool: String?
   private var command = ""
   private var isExpanded = false
+  private var measuredWidth: CGFloat = 0
 
   var stringForTesting: String {
     ([tool].compactMap { $0 } + [text.stringValue]).joined(separator: "\n")
@@ -325,6 +327,7 @@ final class BolttyAICommandWell: NSView {
     label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
     text.isSelectable = true
+    text.cell?.truncatesLastVisibleLine = true
     text.allowsEditingTextAttributes = true
     text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -378,9 +381,12 @@ final class BolttyAICommandWell: NSView {
     super.layout()
     layer?.applyPaletteCorner(radius: AgentPaletteMetrics.failureDetailsCornerRadius)
     let width = bounds.width - AgentPaletteMetrics.serviceWellPadding * 2
-    guard width > 0, abs(text.preferredMaxLayoutWidth - width) > 0.5 else { return }
+    guard width > 0, abs(measuredWidth - width) > 0.5 else { return }
+    measuredWidth = width
     text.preferredMaxLayoutWidth = width
+    refresh()
     text.invalidateIntrinsicContentSize()
+    onResize?()
   }
 
   private func toggle() {
@@ -390,23 +396,33 @@ final class BolttyAICommandWell: NSView {
   }
 
   private func refresh() {
-    let lines = command.components(separatedBy: "\n")
+    let lines = Self.lineCount(command, width: measuredWidth)
     let truncates = Self.truncates(lines)
     label.stringValue = tool ?? ""
     label.isHidden = tool == nil
-    text.attributedStringValue = Self.styled(Self.shown(lines, expanded: isExpanded))
+    text.attributedStringValue = Self.styled(command)
+    text.maximumNumberOfLines = truncates && !isExpanded ? Self.maximumLines : 0
     more.isHidden = !truncates
-    more.stringValue = isExpanded ? "Show Less" : "Show \(lines.count - Self.maximumLines) More Lines"
+    more.stringValue = isExpanded ? "Show Less" : "Show \(lines - Self.maximumLines) More Lines"
     more.setAccessibilityLabel(more.stringValue)
     column.edgeInsets = Self.insets(labelled: tool != nil, linked: truncates)
     needsLayout = true
   }
 
-  private static func truncates(_ lines: [String]) -> Bool { lines.count > maximumLines + 1 }
+  private static func truncates(_ lines: Int) -> Bool { lines > maximumLines + 1 }
 
-  private static func shown(_ lines: [String], expanded: Bool) -> String {
-    let cut = truncates(lines) && !expanded ? Array(lines.prefix(maximumLines)) : lines
-    return cut.joined(separator: "\n")
+  /// Lines as drawn at this width; before the well has one, lines of text.
+  private static func lineCount(_ command: String, width: CGFloat) -> Int {
+    guard width > 0 else { return command.components(separatedBy: "\n").count }
+    let height = codeHeight(command, width: width)
+    return max(Int((height / AgentPaletteMetrics.serviceWellCodeLineHeight).rounded()), 1)
+  }
+
+  private static func codeHeight(_ command: String, width: CGFloat) -> CGFloat {
+    ceil(styled(command).boundingRect(
+      with: CGSize(width: width, height: .greatestFiniteMagnitude),
+      options: [.usesLineFragmentOrigin, .usesFontLeading]
+    ).height)
   }
 
   /// Measured to the ink: the first line's caps and the last line's
@@ -443,14 +459,12 @@ final class BolttyAICommandWell: NSView {
 
   static func height(for words: String, width: CGFloat, expanded: Bool = false) -> CGFloat {
     let parts = parts(of: words)
-    let lines = parts.command.components(separatedBy: "\n")
-    let truncates = truncates(lines)
-    let insets = insets(labelled: parts.tool != nil, linked: truncates)
     let codeWidth = max(width - AgentPaletteMetrics.serviceWellPadding * 2, 1)
-    let code = ceil(styled(shown(lines, expanded: expanded)).boundingRect(
-      with: CGSize(width: codeWidth, height: .greatestFiniteMagnitude),
-      options: [.usesLineFragmentOrigin, .usesFontLeading]
-    ).height)
+    let truncates = truncates(lineCount(parts.command, width: codeWidth))
+    let insets = insets(labelled: parts.tool != nil, linked: truncates)
+    let code = truncates && !expanded
+      ? CGFloat(maximumLines) * AgentPaletteMetrics.serviceWellCodeLineHeight
+      : codeHeight(parts.command, width: codeWidth)
     let line = AgentPaletteMetrics.labelHeight(labelFont)
     return insets.top + code + insets.bottom
       + (parts.tool == nil ? 0 : line + AgentPaletteMetrics.serviceWellLabelGap)
@@ -678,8 +692,10 @@ final class BolttyAIApprovalBar: NSView {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: reset)
   }
 
+  /// One kind of button for every answer: a white pill beside glass ones
+  /// read as two kinds of control. The one Return presses wears the accent,
+  /// as a Mac's default button does, and no key glyph.
   private static func makeButton(at index: Int) -> NSButton {
-    guard index > 0 else { return ApprovalDefaultButton(frame: .zero) }
     let glass = GlassPillLabelButton(frame: .zero)
     glass.titleFontSize = AgentPaletteMetrics.typeMeta
     glass.height = buttonHeight
@@ -688,22 +704,20 @@ final class BolttyAIApprovalBar: NSView {
 
   private func refreshTitles() {
     for (index, button) in buttons.enumerated() {
-      let key = returnPressesAnAnswer && index == focusedIndex ? "↵" : ""
-      Self.setTitle(of: button, to: options[index].label, key: key)
+      guard let glass = button as? GlassPillLabelButton else { continue }
+      glass.title = options[index].label
+      Self.mark(glass, asDefault: returnPressesAnAnswer && index == focusedIndex)
     }
   }
 
-  private static func setTitle(of button: NSButton, to label: String, key: String) {
-    if let primary = button as? ApprovalDefaultButton {
-      primary.setLabel(label, key: key)
-    } else if let glass = button as? GlassPillLabelButton {
-      glass.title = label
-      glass.trailingKey = key
-    }
+  private static func mark(_ button: GlassPillLabelButton, asDefault: Bool) {
+    button.bezelColor = asDefault ? .controlAccentColor : nil
+    button.restingTint = asDefault ? .white : AgentPaletteMetrics.directoryChipTextColor
   }
 
-  var keysForTesting: [String] {
-    answerButtonsInRow.map(\.attributedTitle.string)
+  var defaultTitleForTesting: String? {
+    answerButtonsInRow.first { ($0 as? GlassPillLabelButton)?.bezelColor != nil }
+      .map { options[$0.tag].label }
   }
 
   /// Whether the bar opens on a note, which the card stands closer to what
@@ -751,7 +765,7 @@ final class BolttyAIApprovalBar: NSView {
     }
     let widths = labels.indices.map { index -> CGFloat in
       let button = makeButton(at: index)
-      setTitle(of: button, to: labels[index], key: index < reach ? "↵" : "")
+      button.title = labels[index]
       return ceil(button.intrinsicContentSize.width)
     }
     measuredWidths = (labels: labels, reach: reach, widths: widths)
@@ -773,61 +787,5 @@ final class BolttyAIApprovalBar: NSView {
       attributes: [.font: roundedAppFont(size: AgentPaletteMetrics.typeFootnote)]
     )
     return buttons + noteSpacing + ceil(bounds.height)
-  }
-}
-
-private final class ApprovalDefaultButton: PaletteIconButton {
-  override init(frame frameRect: NSRect) {
-    super.init(frame: frameRect)
-    isBordered = false
-    imagePosition = .noImage
-    restingBackground = NSColor.white.withAlphaComponent(0.92)
-    hoverBackground = .white
-    cell?.usesSingleLineMode = true
-    cell?.lineBreakMode = .byTruncatingTail
-    applyRestingBackground()
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-  func setLabel(_ label: String, key: String) {
-    let quiet: [NSAttributedString.Key: Any] = [
-      .font: roundedAppFont(size: AgentPaletteMetrics.typeMeta, weight: .medium),
-      .foregroundColor: NSColor.black.withAlphaComponent(0.4),
-    ]
-    let title = NSMutableAttributedString()
-    title.append(NSAttributedString(
-      string: label,
-      attributes: [
-        .font: roundedAppFont(size: AgentPaletteMetrics.typeMeta, weight: .semibold),
-        .foregroundColor: NSColor.black.withAlphaComponent(0.88),
-      ]
-    ))
-    if !key.isEmpty { title.append(NSAttributedString(string: "  " + key, attributes: quiet)) }
-    attributedTitle = title
-    setAccessibilityTitle(label)
-    invalidateIntrinsicContentSize()
-  }
-
-  /// The room a glass button beside it leaves either side of its words.
-  /// The white one took its words and 14 a side against the glass's ~25,
-  /// so "Allow once" stood squeezed beside a roomy "Always allow".
-  private static let sidePadding: CGFloat = {
-    let glass = GlassPillLabelButton(frame: .zero)
-    glass.titleFontSize = AgentPaletteMetrics.typeMeta
-    glass.height = BolttyAIApprovalBar.buttonHeight
-    glass.title = "Allow once"
-    let words = glass.attributedTitle.size().width
-    return max(
-      ((glass.intrinsicContentSize.width - words) / 2).rounded(),
-      GlassPillLabelButton.horizontalInset)
-  }()
-
-  override var intrinsicContentSize: NSSize {
-    NSSize(
-      width: ceil(attributedTitle.size().width) + Self.sidePadding * 2,
-      height: BolttyAIApprovalBar.buttonHeight
-    )
   }
 }

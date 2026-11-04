@@ -106,7 +106,7 @@ final class ChatWorkspaceCoordinator {
 
   // MARK: - Ask Boltty
 
-  /// Ask Boltty's chat is made the moment the chord is held, and its session
+  /// Ask Boltty's chat is made the moment the region is drawn, and its session
   /// started then, so the agent is up by the time the person stops speaking.
   func prepareAskBolttyConversation(
     providerID: String, model: ModelSelection?, effort: String?, readOnly: Bool

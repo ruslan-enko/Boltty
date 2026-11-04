@@ -40,6 +40,9 @@ final class ListeningWordsView: NSView {
   var wrapWidth: CGFloat = 0 {
     didSet { if wrapWidth != oldValue { needsDisplay = true; startClock() } }
   }
+  /// Lines centred on the view, as under the listening face; otherwise from
+  /// its leading edge, past the room the blur takes.
+  var isCentred = true
   /// Room above the first line, inside this view, that a line leaving by the
   /// top rises into and fades through.
   var headroom: CGFloat = 0 {
@@ -66,21 +69,40 @@ final class ListeningWordsView: NSView {
 
   /// The words, broken into lines at `width`: indices into `words`.
   private func lines(at width: CGFloat) -> [[Int]] {
-    guard !words.isEmpty else { return [] }
-    let space = spaceWidth
+    Self.broken(widths: words.map(\.width), space: spaceWidth, at: width)
+  }
+
+  /// Words of these widths, broken into lines at `width`: indices into them.
+  private static func broken(widths: [CGFloat], space: CGFloat, at width: CGFloat) -> [[Int]] {
+    guard !widths.isEmpty else { return [] }
     var lines: [[Int]] = [[]]
     var used: CGFloat = 0
-    for (index, word) in words.enumerated() {
-      let needed = lines[lines.count - 1].isEmpty ? word.width : used + space + word.width
+    for (index, wordWidth) in widths.enumerated() {
+      let needed = lines[lines.count - 1].isEmpty ? wordWidth : used + space + wordWidth
       if needed > width, !lines[lines.count - 1].isEmpty {
         lines.append([index])
-        used = word.width
+        used = wordWidth
       } else {
         lines[lines.count - 1].append(index)
         used = needed
       }
     }
     return lines
+  }
+
+  /// How `text` will stand at `width` once all of it has arrived, whatever is
+  /// shown now: a bubble that grows knows from this where it will end.
+  func measure(_ text: String, width: CGFloat) -> (lines: Int, widest: CGFloat) {
+    let attributes: [NSAttributedString.Key: Any] = [.font: font]
+    let widths = text.split(whereSeparator: \.isWhitespace).map {
+      ceil(NSAttributedString(string: String($0), attributes: attributes).size().width)
+    }
+    let space = spaceWidth
+    let broken = Self.broken(widths: widths, space: space, at: width)
+    let widest = broken.map { line in
+      line.reduce(0) { $0 + widths[$1] } + space * CGFloat(max(0, line.count - 1))
+    }.max() ?? 0
+    return (min(broken.count, AgentPaletteMetrics.listeningMaxLines), ceil(widest))
   }
 
   private func lineWidth(_ line: [Int]) -> CGFloat {
@@ -107,7 +129,7 @@ final class ListeningWordsView: NSView {
       let fromTop = CGFloat(row - (broken.count - shown) + 1)
       let foot = bounds.height - headroom - pad - fromTop * lineHeight
         + (lineHeight - ceil(font.ascender - font.descender)) / 2
-      var x = (bounds.midX - lineWidth(line) / 2).rounded()
+      var x = isCentred ? (bounds.midX - lineWidth(line) / 2).rounded() : pad
       for index in line {
         points[index] = CGPoint(x: x, y: foot.rounded())
         x += words[index].width + spaceWidth

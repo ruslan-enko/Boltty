@@ -407,12 +407,15 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
           case "ERROR": .failed
           default: .running
           }
-          let info = step.object("tool_info")?.object("parameters")
+          let call = step.object("tool_info")?.object("parameters")
+            .map(AntigravityTranscript.described)
           let activity = AgentActivity(
             id: "\(replyID)-tool-\(step.int("step_index") ?? 0)",
             name: name,
-            summary: info?.string("toolAction") ?? info?.string("toolSummary"),
-            state: state
+            summary: call?.summary,
+            state: state,
+            detail: call?.detail,
+            files: call?.files ?? []
           )
           reply?.upsert(.activity(activity))
           emit(.partUpdated(sessionID: sessionID, messageID: replyID, part: .activity(activity)))

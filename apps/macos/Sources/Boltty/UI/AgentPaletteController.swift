@@ -58,6 +58,39 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
   func setSpeakingMessage(_ id: String?) { panelView.setSpeakingMessage(id) }
   var onPromptRefused: (() -> Void)?
+
+  // MARK: Asking about a region
+
+  /// The agent a region is asked of until ⇧Tab moves it: Ask Boltty's.
+  var regionAgent: (() -> AgentId?)?
+  /// A region is drawn: the agent's session starts while the person speaks.
+  var onRegionReady: ((AgentId?) -> Void)?
+  /// The question about the region, with the screen it was cut from; `false`
+  /// when no agent could take it. The answer comes beside the face.
+  var onAskAboutRegion: ((_ words: String, _ selection: ScreenSelection, _ displayFrame: CGRect,
+                          _ agent: AgentId?) -> Bool)?
+  /// The panel has gone from under the face, which stood at this point (global
+  /// coordinates): the one beside the pointer takes up from there.
+  var onRegionFaceLeft: ((CGPoint?) -> Void)?
+  /// Opened on a region already chosen (`askAgain`): no drop out of the notch
+  /// on the way, and the prompt's draft is put back after, not sent.
+  private var opensForRegion = false
+  /// The question has gone and the shell is closing round the face.
+  private var isHandingRegionOver = false
+  /// Whether the face beside the pointer takes up from it: not when the
+  /// question was let go of instead.
+  private var regionFaceFlies = false
+  /// What the prompt held before the region: what is said about a region
+  /// belongs to it, and goes with it.
+  private var draftBeforeRegion = PromptDraft()
+  /// The panel goes at once, its face being taken up by the one beside the
+  /// pointer: not down into the notch, and not fading on top of it.
+  private var hidesAtOnce = false
+  /// The region was let go of with nothing asked.
+  var onRegionDropped: (() -> Void)?
+  /// The region wears Ask Boltty's agent because this selection put it on.
+  private var regionChoseAgent = false
+
   var onVisibilityChange: ((_ visible: Bool, _ screen: NSScreen?, _ conversationID: UUID?) -> Void)?
   var onSelectSession: ((UUID) -> Void)?
   private var observingPreviewID: UUID?
@@ -215,8 +248,21 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.onScreenRegionSelected = { [weak self] region in
       self?.putScreenRegionInChat(region)
     }
+    panelView.onLetGoOfRegion = { [weak self] in self?.letGoOfRegion() }
     panelView.onScreenSelectionCancelled = { [weak self] in
-      self?.finishScreenSelection()
+      guard let self else { return }
+      self.dropRegionWords()
+      self.panelView.setVoiceListening(false, ending: .cancelled)
+      self.finishScreenSelection()
+      self.onRegionDropped?()
+      if self.regionChoseAgent {
+        // Back on the first screen, its agent is the one it had.
+        self.regionChoseAgent = false
+        self.panelView.resetAgentChoice()
+      }
+    }
+    panelView.onScreenRegionReady = { [weak self] in
+      self?.regionReady()
     }
     panelView.onSurfaceSizesChange = { sizes in
       sizes.save()
@@ -454,7 +500,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     let resumed = resumableChat()
     panelView.prepareForPresentation(resumingChat: resumed != nil)
     if let resumed { resumeAddressing(resumed) }
-    adoptFinderSelectionIfAppropriate(generation: generation)
+    if !opensForRegion { adoptFinderSelectionIfAppropriate(generation: generation) }
     panelView.revealInstallHintsIfNeeded()
     #if DEBUG
     if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
@@ -596,12 +642,19 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   func hide() {
     PaletteHelpPresenter.shared.dismiss()
     guard isShowing else { return }
+    if isHandingRegionOver {
+      handRegionOver()
+      return
+    }
     onHide?()
     panelView.releasePointerCursor()
     if panelView.screenSelectionPhase != .idle {
       panelView.endScreenSelection()
       finishScreenSelection()
+      onRegionDropped?()
     }
+    regionChoseAgent = false
+    opensForRegion = false
     leftChat = panelView.addressedSessionID.map { (sessionID: $0, at: Date()) }
     saveCurrentDraft()
     panelView.suspendChatAnimations()
@@ -627,7 +680,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     previouslyActiveApplication = nil
     applicationPendingRestoreForTesting = appToRestore
 
-    guard let layer = panelView.presentationLayer else {
+    let atOnce = hidesAtOnce
+    hidesAtOnce = false
+    guard !atOnce, let layer = panelView.presentationLayer else {
       panelView.cancelAllAnimationsAndSettle()
       window?.orderOut(nil)
       DispatchQueue.main.async { [weak self] in
@@ -721,7 +776,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   private var willDrip: Bool {
-    dripsEnabled && !MotionPreferences.reduceMotion
+    dripsEnabled && !MotionPreferences.reduceMotion && !opensForRegion
   }
 
   private func setOpacity(of layer: CALayer, to opacity: Float) {
@@ -806,6 +861,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   private func adoptFinderSelectionIfAppropriate(generation: Int) {
+    guard model.settings.attachesFinderSelection else { return }
     let frontmost = frontmostBundleIDForTesting
       ?? previouslyActiveApplication?.bundleIdentifier
     guard frontmost == FinderSelectionService.finderBundleID else { return }
@@ -833,6 +889,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   private func beginScreenSelection() {
+    wearRegionAgent()
+    draftBeforeRegion = panelView.currentDraft
     guard screenRecordingAccess() else {
       panelView.cancelScreenSelection()
       panelView.showError(Self.screenRecordingNeeded)
@@ -1115,6 +1173,63 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       send(draft, endingScreenSelection: false, steering: steering)
       return
     }
+    ask(draft.typedText, about: region)
+  }
+
+  // MARK: - Asking about a region
+
+  /// The launch key while the face is still beside the pointer: the panel opens
+  /// straight on the last question's region, on its agent, listening. The same
+  /// way on from there as a region just drawn; the screen is taken afresh, and
+  /// within its window the question continues the same chat. Whatever the
+  /// prompt held waits out of the way.
+  func askAgain(about region: CGRect, agent: AgentId?) {
+    leftChat = nil
+    opensForRegion = true
+    // Before the panel shows, so the shell is never seen under the notch; and
+    // again after, since presenting it sets the first screen up afresh.
+    panelView.holdRegion(region)
+    show()
+    guard isShowing else { return }
+    panelView.holdRegion(region)
+    if let agent, panelView.agentForNewPrompt != agent {
+      panelView.chooseAgent(agent)
+      regionChoseAgent = panelView.chosenAgent != nil
+    }
+    beginScreenSelection()
+    panelView.setChatDraft(PromptDraft())
+    panelView.finishHeldRegion()
+  }
+
+  /// Ask Boltty's agent, from the first frame of the selection: put on only
+  /// once a region was drawn, the border and the glow began in the preferred
+  /// agent's gradient and changed under the person's hand. ⇧Tab's choice stands.
+  private func wearRegionAgent() {
+    guard panelView.addressedSessionID == nil, panelView.chosenAgent == nil,
+          let agent = regionAgent?()
+    else { return }
+    panelView.chooseAgent(agent)
+    regionChoseAgent = panelView.chosenAgent != nil
+  }
+
+  /// The region is drawn: its agent's session starts, and the microphone
+  /// opens — select, then speak.
+  private func regionReady() {
+    onRegionReady?(panelView.agentForNewPrompt)
+    if !panelView.isVoiceListeningNow, panelView.currentDraft.isEffectivelyEmpty {
+      cancelPendingVoiceSubmit()
+      voiceDictation.toggle()
+    }
+  }
+
+  /// Cuts the region off the frozen screen and hands it, with the words, to
+  /// Ask Boltty; the panel goes, and the answer comes beside the face.
+  private func ask(_ words: String, about region: CGRect) {
+    let words = words.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !words.isEmpty else {
+      onPromptRefused?()
+      return
+    }
     isSubmitting = true
     Task { [weak self] in
       _ = await self?.freezeTask?.value
@@ -1122,15 +1237,76 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       guard let self else { return }
       self.isSubmitting = false
       guard self.isShowing, self.panelView.screenSelectionFrame == region else { return }
-      guard let selection else {
+      let primaryHeight = NSScreen.screens.first?.frame.height ?? region.maxY
+      guard let selection,
+            let displayFrame = self.frozenScreen?.displayFrameInAppKit(primaryScreenHeight: primaryHeight)
+      else {
         self.panelView.showError("Could not capture that part of the screen.")
         return
       }
-      var draft = draft
-      draft.append(PromptAttachment(
-        kind: .image, payload: .screen(selection), label: draft.nextGeneratedLabel(for: .image)))
-      self.send(draft, endingScreenSelection: true)
+      guard self.onAskAboutRegion?(words, selection, displayFrame, self.panelView.agentForNewPrompt) == true
+      else {
+        self.panelView.showError(
+          "No agent that can see the screen is ready. Turn one on in Settings › Agents.")
+        return
+      }
+      self.draftIsDictated = false
+      let left = self.opensForRegion ? self.draftBeforeRegion : PromptDraft()
+      self.newPromptDraft = left
+      self.panelView.setChatDraft(left)
+      self.isHandingRegionOver = true
+      self.regionFaceFlies = true
+      // Nothing more can be sent while it closes.
+      self.isSubmitting = true
+      self.panelView.collapseToFace { [weak self] in self?.handRegionOver() }
     }
+  }
+
+  /// The shell has closed round the face: the panel goes, and the face beside
+  /// the pointer, if there is to be one, takes up from where this one stood.
+  /// Also if the panel is told to hide before then.
+  private func handRegionOver() {
+    guard isHandingRegionOver else { return }
+    isHandingRegionOver = false
+    let face = regionFaceFlies ? panelView.promptFaceOnScreen : nil
+    let flies = regionFaceFlies
+    window?.orderOut(nil)
+    panelView.endScreenSelection()
+    finishScreenSelection()
+    if regionChoseAgent {
+      // Next time, the first screen's agent is the one it had.
+      panelView.resetAgentChoice()
+    }
+    hidesAtOnce = true
+    hide()
+    if flies { onRegionFaceLeft?(face) }
+  }
+
+  /// Escape or a click off the region. Everything about the question goes: the
+  /// microphone first, whose silence would otherwise send the words as a chat
+  /// with the first screen's agent; then what was said, the chat made for it,
+  /// and the panel, closing as it does for a question sent, with no face to
+  /// fly on.
+  private func letGoOfRegion() {
+    guard isShowing, !isHandingRegionOver else { return }
+    dropRegionWords()
+    onRegionDropped?()
+    isHandingRegionOver = true
+    regionFaceFlies = false
+    isSubmitting = true
+    panelView.collapseToFace { [weak self] in self?.handRegionOver() }
+    panelView.setVoiceListening(false, ending: .cancelled)
+  }
+
+  /// The microphone off, and the prompt as it was before the region.
+  private func dropRegionWords() {
+    cancelPendingVoiceSubmit()
+    silenceWatcher.reset()
+    voiceDictation.cancel()
+    panelView.discardVoiceTranscript()
+    draftIsDictated = false
+    newPromptDraft = draftBeforeRegion
+    panelView.setChatDraft(draftBeforeRegion)
   }
 
   private func send(_ draft: PromptDraft, endingScreenSelection: Bool, steering: Bool = false) {

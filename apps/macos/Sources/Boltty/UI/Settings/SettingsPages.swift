@@ -6,63 +6,69 @@ import SwiftUI
 
 struct GeneralSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
-  @State private var hoveredHotkey = false
 
   var body: some View {
-    SettingsColumnsPage {
-      LabeledContent("Boltty AI:") {
-        VStack(alignment: .leading, spacing: 10) {
-          Toggle("Enable system-wide hotkey", isOn: Binding(
-            get: { model.bolttyAIHotkeyEnabled },
-            set: { model.bolttyAIHotkeyEnabled = $0 }
-          ))
-          .accessibilityIdentifier("boltty.settings.hotkeyEnabled")
+    Form {
+      Section {
+        Toggle("System-wide hotkey", isOn: Binding(
+          get: { model.bolttyAIHotkeyEnabled },
+          set: { model.bolttyAIHotkeyEnabled = $0 }
+        ))
+        .accessibilityIdentifier("boltty.settings.hotkeyEnabled")
 
+        LabeledContent("Shortcut") {
           HotkeyRecorderField(
             binding: model.bolttyAIHotkey,
             isEnabled: model.bolttyAIHotkeyEnabled,
-            isRowHovered: hoveredHotkey,
             probe: model.probeHotkey ?? { _ in .free },
             problem: $model.hotkeyProblem,
             onRecord: { model.bolttyAIHotkey = $0 },
             onRestoreDefault: { model.bolttyAIHotkey = .optionSpace }
           )
-          .onHover { hoveredHotkey = $0 }
-
-          hotkeyNote
-            .frame(maxWidth: 320, alignment: .leading)
         }
-        .padding(.bottom, 14)
+        .foregroundStyle(model.bolttyAIHotkeyEnabled ? .primary : .secondary)
+      } header: {
+        SettingsSectionHeader("Boltty AI")
+      } footer: {
+        hotkeyNote
       }
 
-      LabeledContent("Startup:") {
-        VStack(alignment: .leading, spacing: 8) {
-          Toggle("Open Boltty at login", isOn: Binding(
-            get: { model.loginItem.isOn },
-            set: { model.loginItem.setEnabled($0) }
-          ))
-          .accessibilityIdentifier("boltty.settings.openAtLogin")
-          loginNote
-            .frame(maxWidth: 320, alignment: .leading)
-        }
-        .padding(.bottom, 14)
+      Section {
+        Toggle("Open Boltty at login", isOn: Binding(
+          get: { model.loginItem.isOn },
+          set: { model.loginItem.setEnabled($0) }
+        ))
+        .accessibilityIdentifier("boltty.settings.openAtLogin")
+      } header: {
+        SettingsSectionHeader("Startup")
+      } footer: {
+        loginNote
       }
 
-      LabeledContent("Sounds:") {
-        VStack(alignment: .leading, spacing: 8) {
-          Toggle("Play sounds", isOn: Binding(
-            get: { model.playsSounds },
-            set: { model.playsSounds = $0 }
-          ))
-          .accessibilityIdentifier("boltty.settings.playsSounds")
-          SettingsNote("When a message is sent, a reply is ready, or an agent needs you. Boltty's own, made for it.")
-            .frame(maxWidth: 320, alignment: .leading)
+      Section {
+        Toggle(isOn: Binding(
+          get: { model.attachesFinderSelection },
+          set: { model.attachesFinderSelection = $0 }
+        )) {
+          Text("Attach selected files")
+          Text("Opening Boltty AI over Finder puts the files selected there into the prompt.")
         }
-        .padding(.bottom, 14)
+        .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
+
+        Toggle(isOn: Binding(
+          get: { model.playsSounds },
+          set: { model.playsSounds = $0 }
+        )) {
+          Text("Play sounds")
+          Text("When a message is sent, a reply is ready, or an agent needs you.")
+        }
+        .accessibilityIdentifier("boltty.settings.playsSounds")
+      } header: {
+        SettingsSectionHeader("Behaviour")
       }
 
-      LabeledContent("Conversations:") {
-        VStack(alignment: .leading, spacing: 8) {
+      Section {
+        LabeledContent {
           HStack(spacing: 8) {
             Button("Show in Finder") {
               NSWorkspace.shared.activateFileViewerSelecting([model.conversationsDirectory])
@@ -72,34 +78,55 @@ struct GeneralSettingsPage: View {
               .disabled(model.conversationCount == 0)
               .accessibilityIdentifier("boltty.settings.clearHistory")
           }
-          SettingsNote("Transcripts stay on this Mac. Nothing is re-run when Boltty restarts.")
-            .frame(maxWidth: 320, alignment: .leading)
+        } label: {
+          Text("Conversations")
+          Text("Transcripts stay on this Mac. Nothing is re-run when Boltty restarts.")
         }
-        .padding(.bottom, 14)
-      }
 
-      LabeledContent("Permissions:") {
-        VStack(alignment: .leading, spacing: 8) {
+        LabeledContent {
           Button("Review…") { model.onReviewAccess?() }
             .accessibilityIdentifier("boltty.settings.reviewAccess")
-          SettingsNote("The microphone, Screen Recording, notifications and Finder — what each is for, and where it stands.")
-            .frame(maxWidth: 320, alignment: .leading)
+        } label: {
+          Text("Permissions")
+          Text("The microphone, Screen Recording, notifications and Finder.")
         }
-        .padding(.bottom, 14)
+      } header: {
+        SettingsSectionHeader("Privacy")
       }
 
-      LabeledContent("Updates:") {
-        updates
-          .frame(maxWidth: 320, alignment: .leading)
-          .padding(.bottom, 14)
-      }
+      Section {
+        Toggle("Check for updates automatically", isOn: Binding(
+          get: { model.checksForUpdates },
+          set: { model.checksForUpdates = $0 }
+        ))
+        .accessibilityIdentifier("boltty.settings.checkForUpdates")
 
-      LabeledContent("Version:") {
-        Text(model.versionDescription)
-          .foregroundStyle(.secondary)
-          .textSelection(.enabled)
+        LabeledContent("Version") {
+          HStack(spacing: 8) {
+            if let updater = model.updater, updater.isChecking || updater.isInstalling {
+              ProgressView().controlSize(.small)
+            }
+            Text(model.versionDescription)
+              .foregroundStyle(.secondary)
+              .textSelection(.enabled)
+            if let updater = model.updater {
+              Button(updateButtonTitle(updater)) {
+                updater.checkForUpdates()
+              }
+              .disabled(updater.isChecking || updater.isInstalling)
+              .accessibilityIdentifier("boltty.settings.checkNow")
+            }
+          }
+        }
+      } header: {
+        SettingsSectionHeader("Updates")
+      } footer: {
+        if let updater = model.updater {
+          SettingsNote(updatesNote(updater))
+        }
       }
     }
+    .settingsGroupedPage()
     .onAppear { model.loginItem.refresh() }
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       model.loginItem.refresh()
@@ -119,30 +146,6 @@ struct GeneralSettingsPage: View {
       SettingsNote("So \(model.bolttyAIHotkey.displayName) works right after a restart, with nothing to open first.")
     } else {
       SettingsNote("Boltty starts in the menu bar, with nothing on screen.")
-    }
-  }
-
-  @ViewBuilder
-  private var updates: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Toggle("Check for updates automatically", isOn: Binding(
-        get: { model.checksForUpdates },
-        set: { model.checksForUpdates = $0 }
-      ))
-      .accessibilityIdentifier("boltty.settings.checkForUpdates")
-      if let updater = model.updater {
-        HStack(spacing: 8) {
-          Button(updateButtonTitle(updater)) {
-            updater.checkForUpdates()
-          }
-          .disabled(updater.isChecking || updater.isInstalling)
-          .accessibilityIdentifier("boltty.settings.checkNow")
-          if updater.isChecking || updater.isInstalling {
-            ProgressView().controlSize(.small)
-          }
-        }
-        SettingsNote(updatesNote(updater))
-      }
     }
   }
 
@@ -260,6 +263,8 @@ struct AgentsSettingsPage: View {
     switch agent {
     case .codex:
       "Codex works inside its workspace sandbox without asking."
+    case .claude:
+      "Claude Code decides what is safe to run and asks only about the rest."
     default:
       "edits in the chat's folder go through without asking; commands still ask."
     }
@@ -596,7 +601,6 @@ struct UsageSettingsPage: View {
   }
 
   private func usageRow(_ row: BolttyAISettingsModel.UsageRow) -> some View {
-    let ink = model.usageInk(for: row.agent)
     return VStack(alignment: .leading, spacing: 20) {
       if row.isSignedOut {
         signedOutTitle(row.agent)
@@ -605,11 +609,11 @@ struct UsageSettingsPage: View {
       }
       if let usage = row.usage {
         ForEach(usage.windows, id: \.title) { window in
-          UsageLimitCard(window: window, ink: ink)
+          UsageLimitCard(window: window)
         }
       }
       if let history = row.history {
-        UsageHistoryChart(history: history, ink: ink)
+        UsageHistoryChart(history: history)
       }
     }
     .padding(.vertical, 6)
@@ -637,10 +641,9 @@ struct UsageSettingsPage: View {
 }
 
 /// One plan window, said the way plan pages say it: what is left, and when
-/// it comes back. The bar is what remains, drawn in the agent's gradient.
+/// it comes back. The bar is what remains.
 private struct UsageLimitCard: View {
   let window: AgentUsageWindow
-  let ink: [Color]
 
   private var remaining: Int { max(0, 100 - window.usedPercent) }
 
@@ -660,7 +663,7 @@ private struct UsageLimitCard: View {
       }
       .font(BolttyInterfaceTypography.callout)
       .monospacedDigit()
-      UsageMeter(fraction: Double(remaining) / 100, ink: ink)
+      UsageMeter(fraction: Double(remaining) / 100)
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
@@ -673,11 +676,10 @@ private struct UsageLimitCard: View {
   }
 }
 
-/// A capsule track with the gradient spread over the filled part, so even a
-/// short bar shows the whole face.
+/// A capsule track, the filled part in the accent colour, as the system's
+/// own meters are. The faces' colours made every agent's bar a scale of its own.
 struct UsageMeter: View {
   let fraction: Double
-  let ink: [Color]
   var height: CGFloat = 8
 
   var body: some View {
@@ -687,7 +689,7 @@ struct UsageMeter: View {
         Capsule().fill(Color.primary.opacity(0.08))
         if filled > 0 {
           Capsule()
-            .fill(LinearGradient(colors: ink, startPoint: .leading, endPoint: .trailing))
+            .fill(Color.accentColor)
             .frame(width: max(filled, height))
         }
       }
@@ -698,7 +700,6 @@ struct UsageMeter: View {
 
 private struct UsageHistoryChart: View {
   let history: AgentActivityHistory
-  let ink: [Color]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -710,7 +711,7 @@ private struct UsageHistoryChart: View {
           width: .ratio(0.62)
         )
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
-        .foregroundStyle(LinearGradient(colors: ink.reversed(), startPoint: .top, endPoint: .bottom))
+        .foregroundStyle(Color.accentColor)
       }
       .chartYAxis {
         AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
@@ -776,95 +777,81 @@ struct VoiceSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
 
   var body: some View {
-    SettingsColumnsPage {
+    Form {
       dictation
       if let speech = model.speech {
         reading(speech)
       }
     }
+    .settingsGroupedPage()
   }
 
   // MARK: Dictation
 
-  @ViewBuilder
   private var dictation: some View {
-    if model.localModels != nil {
-      LabeledContent("Dictation:") {
-        VStack(alignment: .leading, spacing: 8) {
-          Picker("Dictation", selection: Binding(
-            get: { model.usesLocalDictation }, set: { model.chooseLocalDictation($0) }
-          )) {
-            Text("Apple Dictation").tag(false)
-            Text(modelTitle("Parakeet", .parakeetUltra)).tag(true)
-          }
-          .labelsHidden()
-          .pickerStyle(.menu)
-          .fixedSize()
-          .accessibilityIdentifier("boltty.settings.dictationEngine")
-          if model.usesLocalDictation {
-            SettingsNote("Hears 25 languages and tells them apart itself.")
-          }
-          LocalModelProgress(model: model, id: .parakeetUltra, chosen: model.usesLocalDictation)
+    Section {
+      if model.localModels != nil {
+        Picker("Engine", selection: Binding(
+          get: { model.usesLocalDictation }, set: { model.chooseLocalDictation($0) }
+        )) {
+          Text("Apple Dictation").tag(false)
+          Text(modelTitle("Parakeet", .parakeetUltra)).tag(true)
         }
-        .frame(maxWidth: 320, alignment: .leading)
-        .padding(.bottom, model.usesLocalDictation ? 14 : 4)
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("boltty.settings.dictationEngine")
+        LocalModelProgress(model: model, id: .parakeetUltra, chosen: model.usesLocalDictation)
       }
-    }
 
-    if !model.usesLocalDictation {
-      Picker(
-        "Language:",
-        selection: Binding(
-          get: { model.dictationLocaleIdentifier },
-          set: { identifier in
-            Task { await model.selectDictationLanguage(identifier) }
+      if !model.usesLocalDictation {
+        Picker(
+          "Language",
+          selection: Binding(
+            get: { model.dictationLocaleIdentifier },
+            set: { identifier in
+              Task { await model.selectDictationLanguage(identifier) }
+            }
+          )
+        ) {
+          Text("Follow System").tag(DictationLanguageCatalog.followSystemIdentifier)
+          Divider()
+          ForEach(model.dictationLanguages) { language in
+            Text(language.isInstalled ? language.displayName : "\(language.displayName) (download)")
+              .tag(language.identifier)
           }
-        )
-      ) {
-        Text("Follow System").tag(DictationLanguageCatalog.followSystemIdentifier)
-        Divider()
-        ForEach(model.dictationLanguages) { language in
-          Text(language.isInstalled ? language.displayName : "\(language.displayName) (download)")
-            .tag(language.identifier)
         }
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("boltty.settings.dictationLocale")
+        .disabled(model.dictationLanguages.isEmpty)
+
+        Picker(
+          "Second language",
+          selection: Binding(
+            get: { model.dictationSecondLocaleIdentifier },
+            set: { identifier in
+              Task { await model.selectSecondDictationLanguage(identifier) }
+            }
+          )
+        ) {
+          Text("None").tag(DictationLanguageCatalog.noSecondLanguageIdentifier)
+          Divider()
+          ForEach(model.secondDictationLanguages) { language in
+            Text(language.isInstalled ? language.displayName : "\(language.displayName) (download)")
+              .tag(language.identifier)
+          }
+        }
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("boltty.settings.dictationSecondLocale")
+        .disabled(model.dictationLanguages.isEmpty)
+
+        download
       }
-      .pickerStyle(.menu)
-      .fixedSize()
-      .accessibilityIdentifier("boltty.settings.dictationLocale")
-      .disabled(model.dictationLanguages.isEmpty)
-
-      Picker(
-        "Second language:",
-        selection: Binding(
-          get: { model.dictationSecondLocaleIdentifier },
-          set: { identifier in
-            Task { await model.selectSecondDictationLanguage(identifier) }
-          }
-        )
-      ) {
-        Text("None").tag(DictationLanguageCatalog.noSecondLanguageIdentifier)
-        Divider()
-        ForEach(model.secondDictationLanguages) { language in
-          Text(language.isInstalled ? language.displayName : "\(language.displayName) (download)")
-            .tag(language.identifier)
-        }
-      }
-      .pickerStyle(.menu)
-      .fixedSize()
-      .accessibilityIdentifier("boltty.settings.dictationSecondLocale")
-      .disabled(model.dictationLanguages.isEmpty)
-
-      LabeledContent {
-        VStack(alignment: .leading, spacing: 8) {
-          download
-          if model.dictationSecondLocaleIdentifier != DictationLanguageCatalog.noSecondLanguageIdentifier {
-            SettingsNote("Both listen at once; each phrase is written in the one that heard it.")
-          }
-        }
-        .frame(maxWidth: 320, alignment: .leading)
-        .padding(.bottom, 14)
-      } label: {
-        EmptyView()
+    } header: {
+      SettingsSectionHeader("Dictation")
+    } footer: {
+      if model.usesLocalDictation {
+        SettingsNote("Hears 25 languages and tells them apart itself.")
+      } else if model.dictationSecondLocaleIdentifier != DictationLanguageCatalog.noSecondLanguageIdentifier {
+        SettingsNote("Both listen at once; each phrase is written in the one that heard it.")
       }
     }
   }
@@ -875,39 +862,28 @@ struct VoiceSettingsPage: View {
   /// page offers only the download.
   @ViewBuilder
   private func reading(_ speech: SpeechOutput) -> some View {
-    if model.localModels != nil, model.supertonicState == .ready {
-      LabeledContent("Voice:") {
-        HStack(spacing: 8) {
-          Picker("Voice", selection: $model.localVoice) {
-            ForEach(BolttyAISettingsModel.localVoices, id: \.id) { voice in
-              Text(voice.title).tag(voice.id)
-            }
-          }
-          .labelsHidden()
-          .pickerStyle(.menu)
-          .fixedSize()
-          .accessibilityIdentifier("boltty.settings.localVoice")
-          Button("Play", systemImage: "play.fill") { model.previewLocalVoice() }
-            .labelStyle(.iconOnly)
-            .help("Hear this voice")
-        }
-      }
+    if model.localModels != nil {
+      Section {
+        if model.supertonicState == .ready {
+          VoicePicker(model: model)
 
-      Picker("Read answers:", selection: $model.readAnswers) {
-        Text("Never").tag(AnswerReading.off)
-        Text("When I Asked by Voice").tag(AnswerReading.askedByVoice)
-        Text("Always").tag(AnswerReading.always)
-      }
-      .pickerStyle(.menu)
-      .fixedSize()
-      .accessibilityIdentifier("boltty.settings.readAnswers")
-    } else if model.localModels != nil {
-      LabeledContent("Reading aloud:") {
-        VStack(alignment: .leading, spacing: 8) {
-          LocalModelProgress(model: model, id: .supertonic3, chosen: true)
-          SettingsNote("Supertonic reads answers aloud in 31 languages, on this Mac.")
+          Picker("Read answers", selection: $model.readAnswers) {
+            Text("Never").tag(AnswerReading.off)
+            Text("When I Asked by Voice").tag(AnswerReading.askedByVoice)
+            Text("Always").tag(AnswerReading.always)
+          }
+          .pickerStyle(.menu)
+          .accessibilityIdentifier("boltty.settings.readAnswers")
+        } else {
+          LabeledContent {
+            LocalModelProgress(model: model, id: .supertonic3, chosen: true)
+          } label: {
+            Text("Supertonic")
+            Text("Reads answers aloud in 31 languages, on this Mac.")
+          }
         }
-        .frame(maxWidth: 320, alignment: .leading)
+      } header: {
+        SettingsSectionHeader("Reading aloud")
       }
     }
   }
@@ -937,15 +913,16 @@ struct VoiceSettingsPage: View {
   }
 }
 
-/// Settings › Ask Boltty. Voice is dictation; holding ⌃⌥⌘ to ask is Ask
+/// Settings › Ask Boltty. Voice is dictation; a region asked about is Ask
 /// Boltty's.
 struct AskBolttySettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
 
   var body: some View {
-    SettingsColumnsPage {
+    Form {
       AskBolttySettingsSection(model: model)
     }
+    .settingsGroupedPage()
   }
 }
 
@@ -1108,5 +1085,167 @@ struct LocalModelProgress: View {
         }
       }
     }
+  }
+}
+
+// MARK: - Voice picker
+
+/// Settings › Voice › Reading aloud: Supertonic's ten voices as a strip of
+/// gradients, scrolled sideways. A press chooses the voice and says a line in
+/// it; a press on the chosen one says it again, so there is no Play button.
+struct VoicePicker: View {
+  @ObservedObject var model: BolttyAISettingsModel
+
+  var body: some View {
+    ChoiceStrip(title: "Voice", identifier: "boltty.settings.localVoice") {
+      ForEach(BolttyAISettingsModel.localVoices, id: \.id) { voice in
+        let chosen = voice.id == model.localVoice
+        RingedChoice(
+          title: voice.title, isChosen: chosen,
+          help: chosen ? "Hear this voice again" : "Use this voice"
+        ) {
+          if chosen {
+            model.previewLocalVoice()
+          } else {
+            withAnimation(SettingsMotion.quick) { model.localVoice = voice.id }
+          }
+        } picture: { _ in
+          VoiceSwatch(id: voice.id)
+        }
+        .accessibilityIdentifier("boltty.settings.localVoice.\(voice.id)")
+      }
+    }
+  }
+}
+
+/// A voice's circle: one of the mascots' gradients and nothing else. Ten
+/// voices, six gradients: a gradient worn twice runs the other way.
+private struct VoiceSwatch: View {
+  let id: String
+
+  private static let looks: [String: (palette: String, start: UnitPoint, end: UnitPoint)] = [
+    "F1": ("ember", .topLeading, .bottomTrailing),
+    "F2": ("candy", .top, .bottom),
+    "F3": ("citrus", .topLeading, .bottomTrailing),
+    "F4": ("daybreak", .top, .bottom),
+    "F5": ("slate", .topTrailing, .bottomLeading),
+    "M1": ("lagoon", .top, .bottom),
+    "M2": ("citrus", .bottomTrailing, .topLeading),
+    "M3": ("slate", .bottomLeading, .topTrailing),
+    "M4": ("daybreak", .bottomLeading, .topTrailing),
+    "M5": ("candy", .bottomTrailing, .topLeading),
+  ]
+
+  private var gradient: LinearGradient {
+    let look = Self.looks[id] ?? ("ember", .top, .bottom)
+    let palette = MascotPalette.palette(withID: look.palette) ?? .standard
+    let stops = zip(palette.colors, palette.stopPlaces).map {
+      Gradient.Stop(color: Color(nsColor: $0), location: $1)
+    }
+    return LinearGradient(stops: stops, startPoint: look.start, endPoint: look.end)
+  }
+
+  var body: some View {
+    Circle().fill(gradient)
+  }
+}
+
+/// A titled row of round choices that scrolls sideways when it runs out of
+/// room: voices on the Voice page, agents on Ask Boltty's.
+struct ChoiceStrip<Choices: View>: View {
+  let title: String
+  let identifier: String
+  @ViewBuilder let choices: () -> Choices
+
+  /// The form's row inset, which `listRowInsets` does not remove on macOS:
+  /// the strip reaches past it to the card's edges, so a choice scrolls out
+  /// under the edge rather than being cut short of it.
+  private static var rowInset: CGFloat { 10 }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(title)
+      ScrollView(.horizontal) {
+        HStack(alignment: .top, spacing: 14) {
+          choices()
+        }
+        .padding(.horizontal, Self.rowInset)
+        .padding(.vertical, 6)
+      }
+      .scrollIndicators(.never)
+      .padding(.horizontal, -Self.rowInset)
+      .accessibilityIdentifier(identifier)
+    }
+    .padding(.vertical, 8)
+  }
+}
+
+/// One round choice: its picture in a circle, its name under it, and an
+/// accent ring standing off the chosen one, as a chat backdrop is chosen.
+/// `picture` is told how many times it was pressed, to answer each press.
+struct RingedChoice<Picture: View>: View {
+  let title: String
+  let isChosen: Bool
+  var help: String?
+  var diameter: CGFloat = 52
+  /// False for a picture that stands on its own: no circle, no ring, no
+  /// shadow, and the chosen one is told by its name alone.
+  var isRinged = true
+  let action: () -> Void
+  @ViewBuilder let picture: (_ presses: Int) -> Picture
+  @State private var isHovered = false
+  @State private var presses = 0
+
+  private static var ringGap: CGFloat { 3 }
+  private static var ringWidth: CGFloat { 2.5 }
+
+  var body: some View {
+    Button {
+      presses += 1
+      action()
+    } label: {
+      VStack(spacing: 7) {
+        picture(presses)
+          .frame(width: diameter, height: diameter)
+          .overlay(Circle().strokeBorder(Color.primary.opacity(isRinged ? 0.1 : 0), lineWidth: 1))
+          .padding(Self.ringGap + Self.ringWidth)
+          .overlay(
+            Circle()
+              .strokeBorder(Color.accentColor, lineWidth: Self.ringWidth)
+              .opacity(isRinged && isChosen ? 1 : 0)
+              .scaleEffect(isChosen ? 1 : 0.9)
+          )
+          .shadow(
+            color: .black.opacity(isRinged ? (isChosen ? 0.22 : 0.1) : 0),
+            radius: isChosen ? 8 : 3, y: isChosen ? 3 : 1
+          )
+          .scaleEffect(scale)
+          .animation(.spring(duration: 0.35, bounce: 0.35), value: isChosen)
+          .animation(.spring(duration: 0.3, bounce: 0.4), value: isHovered)
+        Text(title)
+          .font(BolttyInterfaceTypography.callout.weight(isChosen ? .semibold : .regular))
+          .foregroundStyle(isChosen ? .primary : .secondary)
+          .fixedSize()
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(RingedChoiceStyle())
+    .onHover { isHovered = $0 }
+    .help(help ?? "")
+    .accessibilityLabel(title)
+    .accessibilityValue(isChosen ? "Selected" : "")
+  }
+
+  private var scale: CGFloat {
+    guard !MotionPreferences.reduceMotion else { return 1 }
+    return isHovered && !isChosen ? 1.06 : 1
+  }
+}
+
+private struct RingedChoiceStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed && !MotionPreferences.reduceMotion ? 0.94 : 1)
+      .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
   }
 }

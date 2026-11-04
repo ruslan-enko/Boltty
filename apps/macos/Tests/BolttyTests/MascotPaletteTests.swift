@@ -88,6 +88,28 @@ final class MascotPaletteTests: XCTestCase {
     XCTAssertTrue(stops.allSatisfy { $0.blueComponent < 0.5 }, "the reference stays coral/apricot")
   }
 
+  func testAOneHueFaceFansItsArrivalLightAcrossHues() throws {
+    func spread(_ colours: [NSColor]) -> Double {
+      let hues = colours.map { Double($0.usingColorSpace(.sRGB)!.hueComponent) * 360 }
+      let sorted = hues.sorted()
+      let gaps = zip(sorted, sorted.dropFirst() + [sorted[0] + 360]).map { $1 - $0 }
+      return 360 - (gaps.max() ?? 360)
+    }
+    for id in ["ember", "lagoon", "slate", "citrus"] {
+      let palette = try XCTUnwrap(MascotPalette.palette(withID: id))
+      let plain = spread(palette.light(atLeast: MascotPalette.arrivalLightness))
+      XCTAssertGreaterThan(spread(palette.arrivalLight), max(45, plain + 20),
+                           "\(id)'s light reads as a gradient, not one pastel")
+    }
+  }
+
+  func testAFaceThatMixesHuesKeepsItsOwnArrivalLight() throws {
+    for id in ["daybreak", "candy"] {
+      let palette = try XCTUnwrap(MascotPalette.palette(withID: id))
+      XCTAssertEqual(palette.arrivalLight, palette.light(atLeast: MascotPalette.arrivalLightness), id)
+    }
+  }
+
   func testEveryRetiredGradientRemainsReadableButIsNotOffered() throws {
     let retired = [
       "electric", "dusk", "moss", "orchid", "sand", "abyss", "aurora", "sunset",

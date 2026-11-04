@@ -36,4 +36,19 @@ final class GrokLaunchTests: XCTestCase {
     let flag = arguments.firstIndex(of: "--permission-mode")!
     XCTAssertLessThan(flag, arguments.firstIndex(of: "agent")!, "the flag is global: after `agent`, grok refuses it")
   }
+
+  func testAPermissionIsItsKindAndItsCommandNotItsTitle() {
+    let command = "ssh zima 'free -h; df -h'"
+    let asked = ACPClient.permissionSubject(of: JSONObject([
+      "kind": "execute", "title": "Execute `\(command)`", "rawInput": ["command": command],
+    ]))
+    XCTAssertEqual(asked.action, "execute")
+    XCTAssertEqual(asked.resources, [command])
+    XCTAssertEqual(PermissionSentence.sentence(action: asked.action, resources: asked.resources), "Run this command?")
+
+    let edit = ACPClient.permissionSubject(of: JSONObject([
+      "kind": "edit", "title": "Edit notes.md", "locations": [["path": "/tmp/notes.md"]],
+    ]))
+    XCTAssertEqual(edit.resources, ["/tmp/notes.md"])
+  }
 }

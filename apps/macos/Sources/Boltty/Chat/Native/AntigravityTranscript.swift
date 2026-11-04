@@ -202,11 +202,14 @@ enum AntigravityTranscript {
         for (offset, call) in reply.messages(7).enumerated() {
           guard let name = call.string(2) else { continue }
           let callID = call.string(1) ?? "\(id)-call-\(offset)"
+          let call = call.string(3).flatMap { JSONObject(line: $0) }.map { described($0) }
           parts.append(.activity(AgentActivity(
             id: callID,
             name: name,
-            summary: call.string(3).flatMap(summary(ofArguments:)),
-            state: failedCalls.contains(callID) ? .failed : .completed
+            summary: call?.summary,
+            state: failedCalls.contains(callID) ? .failed : .completed,
+            detail: call?.detail,
+            files: call?.files ?? []
           )))
         }
         guard !parts.isEmpty else { continue }
@@ -230,10 +233,18 @@ enum AntigravityTranscript {
   }
 
   /// `agy` describes each call in its own words (`toolAction`), which reads
-  /// better than the arguments.
-  private static func summary(ofArguments json: String) -> String? {
-    guard let object = JSONObject(line: json) else { return nil }
-    return object.string("toolAction") ?? object.string("toolSummary")
+  /// better than the arguments. Not every call carries them, so the command
+  /// and the file are kept too: the row names the file, and an opened
+  /// command shows what was run.
+  static func described(
+    _ arguments: JSONObject
+  ) -> (summary: String?, detail: String?, files: [String]) {
+    let command = arguments.string("CommandLine")
+    let file = arguments.string("TargetFile") ?? arguments.string("AbsolutePath")
+      ?? arguments.string("DirectoryPath") ?? arguments.string("SearchPath")
+    let summary = arguments.string("toolAction") ?? arguments.string("toolSummary")
+      ?? command.map { $0.split(whereSeparator: \.isNewline).first.map(String.init) ?? $0 }
+    return (summary, command.map { "$ " + $0 }, file.map { [$0] } ?? [])
   }
 
   private static func date(from timestamp: ProtoFields) -> Date? {

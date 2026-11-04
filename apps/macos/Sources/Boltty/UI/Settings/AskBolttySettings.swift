@@ -4,11 +4,6 @@ import SwiftUI
 // MARK: - Ask Boltty
 
 extension BolttyAISettingsModel {
-  var askBolttyEnabled: Bool {
-    get { appModel.settings.askBolttyEnabled }
-    set { appModel.updateSettings { $0.askBolttyEnabled = newValue } }
-  }
-
   var askBolttyReadOnly: Bool {
     get { appModel.settings.askBolttyReadOnly }
     set { appModel.updateSettings { $0.askBolttyReadOnly = newValue } }
@@ -69,106 +64,130 @@ extension BolttyAISettingsModel {
     }
   }
 
-  var askBolttyNeedsInputMonitoring: Bool {
-    appModel.settings.askBolttyEnabled && !ModifierHotkeyMonitor.hasAccess
-  }
-
-  static let inputMonitoringPane =
-    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
 }
 
-/// Settings › Voice › Ask Boltty: the chord, who answers, what they may do.
+/// Settings › Ask Boltty: who answers, what they may do. The way in is the
+/// panel's: there is nothing to switch on.
 struct AskBolttySettingsSection: View {
   @ObservedObject var model: BolttyAISettingsModel
 
   var body: some View {
-    LabeledContent("Ask Boltty:") {
-      VStack(alignment: .leading, spacing: 6) {
-        Toggle(
-          "Hold \(AskBolttyController.chordName) to ask about the screen",
-          isOn: Binding(get: { model.askBolttyEnabled }, set: { model.askBolttyEnabled = $0 })
-        )
-        .accessibilityIdentifier("boltty.settings.talkEnabled")
-        SettingsNote("Hold the keys, ask out loud, let go. The agent sees your screen and answers beside the pointer, in words and blips.")
-        if model.askBolttyNeedsInputMonitoring {
-          SettingsNote("Boltty needs Input Monitoring to notice the keys being held. Allow it in System Settings › Privacy & Security.", color: .orange)
-          if let pane = BolttyAISettingsModel.inputMonitoringPane {
-            Button("Open Privacy Settings…") { NSWorkspace.shared.open(pane) }
-          }
-        }
-      }
-      .frame(maxWidth: 320, alignment: .leading)
+    Section {
+      AskBolttyAgentPicker(model: model)
+      if !model.askBolttyModels.isEmpty { modelPicker }
+    } header: {
+      SettingsSectionHeader("Who answers")
+    } footer: {
+      SettingsNote(answererNote)
     }
-    .padding(.bottom, 14)
 
-    if model.askBolttyEnabled {
-      Picker("Answers:", selection: Binding(
-        get: { model.askBolttyProviderID }, set: { model.askBolttyProviderID = $0 }
+    Section {
+      speaking
+      Toggle(isOn: Binding(
+        get: { !model.askBolttyReadOnly }, set: { model.askBolttyReadOnly = !$0 }
       )) {
-        Text(automaticAgentTitle).tag("")
-        Divider()
-        ForEach(model.askBolttyAgents, id: \.rawValue) { agent in
-          Text(agent.displayName).tag(agent.rawValue)
-        }
+        Text("Can make changes")
+        Text("Edits files and runs commands when you ask, asking first as a chat does. Off, it only looks and answers.")
       }
-      .pickerStyle(.menu)
-      .fixedSize()
-      .accessibilityIdentifier("boltty.settings.talkAgent")
+      .accessibilityIdentifier("boltty.settings.talkAccess")
+    } header: {
+      SettingsSectionHeader("Answers")
+    } footer: {
+      SettingsNote("Open Boltty AI, drag across what you mean, and ask out loud. The agent answers beside the pointer.")
+    }
+  }
 
-      if !model.askBolttyModels.isEmpty {
-        Picker("Model:", selection: Binding(
-          get: { model.askBolttyModelID }, set: { model.askBolttyModelID = $0 }
-        )) {
-          Text("Agent default").tag("")
-          Divider()
-          ForEach(model.askBolttyModels) { option in
-            Text(option.selection.displayName).tag(option.selection.modelID)
-          }
-        }
-        .pickerStyle(.menu)
-        .fixedSize()
-        .accessibilityIdentifier("boltty.settings.talkModel")
+  private var modelPicker: some View {
+    Picker("Model", selection: Binding(
+      get: { model.askBolttyModelID }, set: { model.askBolttyModelID = $0 }
+    )) {
+      Text(agentDefaultTitle).tag("")
+      Divider()
+      ForEach(model.askBolttyModels) { option in
+        Text(option.selection.displayName).tag(option.selection.modelID)
       }
+    }
+    .pickerStyle(.menu)
+    .accessibilityIdentifier("boltty.settings.talkModel")
+  }
 
-      LabeledContent("Voice:") {
-        VStack(alignment: .leading, spacing: 6) {
-          Toggle("Say answers aloud", isOn: Binding(
-            get: { model.askBolttySpeaksAloud }, set: { model.askBolttySpeaksAloud = $0 }
-          ))
-          .accessibilityIdentifier("boltty.settings.talkSpeaksAloud")
-          .disabled(model.supertonicState != .ready)
-          SettingsNote(model.supertonicState == .ready
-            ? "In the voice chosen under Voice. Off, the face answers in blips."
-            : "Needs Supertonic, downloaded under Voice. Until then the face answers in blips.")
-        }
-        .frame(maxWidth: 320, alignment: .leading)
+  /// Saying it needs Supertonic: until it is here, its download stands in
+  /// the switch's place, as on the Voice page.
+  @ViewBuilder
+  private var speaking: some View {
+    if model.supertonicState == .ready {
+      Toggle(isOn: Binding(
+        get: { model.askBolttySpeaksAloud }, set: { model.askBolttySpeaksAloud = $0 }
+      )) {
+        Text("Say answers aloud")
+        Text("In the voice chosen under Voice. Off, the face answers in blips.")
       }
+      .accessibilityIdentifier("boltty.settings.talkSpeaksAloud")
+    } else {
+      LabeledContent {
+        LocalModelProgress(model: model, id: .supertonic3, chosen: true)
+      } label: {
+        Text("Say answers aloud")
+        Text("Needs Supertonic, a voice that runs on this Mac. Until then the face answers in blips.")
+      }
+      .accessibilityIdentifier("boltty.settings.talkSpeaksAloud")
+    }
+  }
 
-      LabeledContent("Access:") {
-        VStack(alignment: .leading, spacing: 6) {
-          Picker("", selection: Binding(
-            get: { model.askBolttyReadOnly }, set: { model.askBolttyReadOnly = $0 }
-          )) {
-            Text("Read only").tag(true)
-            Text("Can make changes").tag(false)
-          }
-          .labelsHidden()
-          .pickerStyle(.radioGroup)
-          .accessibilityIdentifier("boltty.settings.talkAccess")
-          SettingsNote(model.askBolttyReadOnly
-            ? "Ask Boltty looks and answers. Whatever it asks to change or run is refused."
-            : "Ask Boltty can edit files and run commands, asking you first as a chat does.")
+  /// The model a chat with the chosen agent starts in, named.
+  private var agentDefaultTitle: String {
+    guard let id = model.appModel.settings.askBolttyProviderID,
+          let name = model.adapterRows.first(where: { $0.agent.rawValue == id })?
+            .currentModel?.selection.displayName
+    else { return "Agent default" }
+    return "Agent default (\(name))"
+  }
+
+  private var answererNote: String {
+    let quick = "Every model thinks as little as it can, so answers come quickly."
+    guard model.askBolttyProviderID.isEmpty,
+          let target = model.askBolttyAutomaticTarget,
+          let agent = AgentId(rawValue: target.providerID)
+    else { return quick }
+    let modelName = target.model.map { " on \($0.displayName)" } ?? ""
+    return "Automatic is \(agent.displayName)\(modelName), the quickest to answer. \(quick)"
+  }
+}
+
+/// Who answers, as their faces: the face that will answer beside the
+/// pointer is the one chosen here. Automatic wears the face it would pick.
+private struct AskBolttyAgentPicker: View {
+  @ObservedObject var model: BolttyAISettingsModel
+
+  var body: some View {
+    let chosen = model.askBolttyProviderID
+    ChoiceStrip(title: "Agent", identifier: "boltty.settings.talkAgent") {
+      RingedChoice(title: "Automatic", isChosen: chosen.isEmpty, isRinged: false) {
+        choose("")
+      } picture: { _ in
+        face(model.askBolttyAutomaticTarget.flatMap { AgentId(rawValue: $0.providerID) })
+      }
+      .accessibilityIdentifier("boltty.settings.talkAgent.automatic")
+      ForEach(model.askBolttyAgents, id: \.rawValue) { agent in
+        RingedChoice(title: agent.shortDisplayName, isChosen: chosen == agent.rawValue, isRinged: false) {
+          choose(agent.rawValue)
+        } picture: { _ in
+          face(agent)
         }
-        .frame(maxWidth: 320, alignment: .leading)
+        .accessibilityIdentifier("boltty.settings.talkAgent.\(agent.rawValue)")
       }
     }
   }
 
-  private var automaticAgentTitle: String {
-    guard let target = model.askBolttyAutomaticTarget,
-          let agent = AgentId(rawValue: target.providerID)
-    else { return "Automatic" }
-    let modelName = target.model.map { " · \($0.displayName)" } ?? ""
-    return "Automatic (\(agent.displayName)\(modelName))"
+  private func choose(_ id: String) {
+    guard id != model.askBolttyProviderID else { return }
+    withAnimation(SettingsMotion.quick) { model.askBolttyProviderID = id }
+  }
+
+  @ViewBuilder
+  private func face(_ agent: AgentId?) -> some View {
+    if let agent {
+      MascotStill(look: model.mascotLook(for: agent), size: 52)
+    }
   }
 }

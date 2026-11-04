@@ -78,16 +78,6 @@ final class MascotSettingsTests: XCTestCase {
     XCTAssertEqual(model.mascotLook(for: .codex), claudes)
   }
 
-  func testTheUsageBarWearsTheColourOfTheFace() throws {
-    let (model, _) = makeModel()
-    model.chooseMascot(look(.orb, "solar"), for: .grok)
-    let ink = try XCTUnwrap(MascotPalette.palette(withID: "solar")).meterInk
-    XCTAssertEqual(
-      NSColor(model.usageTint(for: .grok)).usingColorSpace(.sRGB),
-      ink[ink.count / 2].usingColorSpace(.sRGB)
-    )
-  }
-
   // MARK: - The swatches
 
   func testASwatchIsDrawnOnceAndKept() throws {

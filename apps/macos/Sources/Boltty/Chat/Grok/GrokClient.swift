@@ -556,11 +556,8 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let options = params.array("options")
     var byDecision: [PermissionDecision: String] = [:]
     var reject: String?
-    var names: [String] = []
     for option in options {
       guard let optionID = option.string("optionId") else { continue }
-      let name = option.string("name") ?? optionID
-      names.append(name)
       switch option.string("kind") {
       case "allow_once": byDecision[.once] = optionID
       case "allow_always": byDecision[.always] = optionID
@@ -571,8 +568,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       }
     }
 
-    // Auto Mode is edits only, as Claude Code's acceptEdits is: a command
-    // still asks.
+    // Auto Mode is edits only: a command still asks.
     if params.object("toolCall")?.string("kind") == "edit",
        lock.withLock({ sessions[sessionID]?.autoApprove == true }),
        let allow = byDecision[.once] {
@@ -596,17 +592,34 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       return
     }
     let tool = params.object("toolCall")
+    let asked = Self.permissionSubject(of: tool)
     emit(.interactionAsked(PendingInteraction(
       id: requestID,
       conversationID: conversationID,
       remoteSessionID: sessionID,
       kind: .permission(PermissionPrompt(
-        action: tool?.string("title") ?? tool?.string("kind") ?? "run a tool",
-        resources: names,
+        action: asked.action,
+        resources: asked.resources,
         savePatterns: [],
         toolCallID: tool?.string("toolCallId")
       ))
     )))
+  }
+
+  /// What a permission is about, for the card. The title is the whole ask
+  /// ("Execute `ssh … ; df -h ; docker ps …`"), which made a heading of the
+  /// command; the kind says what sort of thing it is and `rawInput` or
+  /// `locations` what it touches. The options' names are buttons, not
+  /// resources: listed in the well they read as a second set of answers.
+  static func permissionSubject(of tool: JSONObject?) -> (action: String, resources: [String]) {
+    let command = tool?.object("rawInput")?.string("command")
+    let paths = (tool?.array("locations") ?? []).compactMap { $0.string("path") }
+    let title = tool?.string("title")
+    let action = tool?.string("kind") ?? (command == nil ? title : "execute") ?? "run a tool"
+    if let command { return (action, [command]) }
+    if !paths.isEmpty { return (action, paths) }
+    if let title, title != action { return (action, [title]) }
+    return (action, [])
   }
 
   private func handleAsk(id: Int, params outer: JSONObject) {

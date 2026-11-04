@@ -63,34 +63,36 @@ enum AskBolttyConfiguration {
 
 /// What an Ask Boltty question carries to the agent besides the person's words.
 enum AskBolttyPrompt {
-  static func text(
-    question: String, context: String?, screenshotPath: String, readOnly: Bool, traced: Bool = false
-  ) -> String {
-    bracket(context: context, screenshotPath: screenshotPath, readOnly: readOnly, traced: traced)
-      + question
+  static func text(question: String, region: AskBolttyRegion, readOnly: Bool) -> String {
+    bracket(region: region, readOnly: readOnly) + question
   }
 
   /// Everything before the question, the blank line after it included — what
-  /// the chat card lifts back to the screen's picture (`SentFile.expansion`).
-  static func bracket(
-    context: String?, screenshotPath: String, readOnly: Bool, traced: Bool
-  ) -> String {
-    let screen = context.map { "their whole screen, in \($0)" } ?? "their whole screen"
-    let marks = traced
-      ? "the red line is what they traced around with the pointer while asking, and the red ring is where the pointer stopped"
-      : "the red ring is where their pointer is"
+  /// the chat card lifts back to the region's picture (`SentFile.expansion`).
+  static func bracket(region: AskBolttyRegion, readOnly: Bool) -> String {
+    let screen = region.context.map { "their whole screen, in \($0)" } ?? "their whole screen"
+    let area = region.isWholeScreen
+      ? "They asked about the whole screen."
+      : "The red outline on it is the area they selected to ask about; the second picture is that area up close."
+    let pictures = region.isWholeScreen
+      ? "Screenshot: \(region.screenPath)."
+      : "Screenshots: \(region.screenPath) (the screen), \(region.areaPath) (the area)."
+    let text = region.recognizedText.map {
+      " The text read off the area:\n<screen-text>\n\($0)\n</screen-text>\n"
+    } ?? " "
     let tools = readOnly
-      ? "Answer from what you see: do not run commands or change anything. If the picture did not come with this message, open the screenshot file to look at it; that one read is allowed."
-      : "Answer from what you see — if the picture did not come with this message, open the screenshot file first; run commands or change files only if they clearly ask you to."
+      ? "Answer from what you see: do not run commands or change anything. You may search the web when the question needs it, and give the link. If the pictures did not come with this message, open the screenshot files to look at them; those reads are allowed."
+      : "Answer from what you see — if the pictures did not come with this message, open the screenshot files first; search the web when the question needs it; run commands or change files only if they clearly ask you to."
     return """
-      [Talk: the person asked this out loud about their screen. The picture is \(screen); \
-      \(marks). Screenshot: \(screenshotPath). \
-      Your answer is read aloud: one or two short spoken sentences, never more, in the language they \
-      asked in, no markdown, no lists, no code, one step at a time. \
+      [Talk: the person asked this about their screen. The first picture is \(screen); \
+      \(area) \(pictures)\(text)\
+      Your answer is shown beside them, and may be read aloud: one or two short sentences, \
+      never more, in the language they asked in, no markdown, no lists, no code, one step at \
+      a time; a link goes in as it is. \
       To show them where something is, put <point x="…" y="…" label="…"/> right before the \
-      sentence that names it: x and y from 0 to 1000 across the picture (0 0 is its top left), \
-      at the centre of that thing; the tag is not read aloud. At most one per sentence, none \
-      when nothing on the screen is meant. \
+      sentence that names it: x and y from 0 to 1000 across the first picture (0 0 is its top \
+      left), at the centre of that thing; the tag is not read aloud. At most one per sentence, \
+      none when nothing on the screen is meant. \
       To show more, draw, in the same 0 to 1000, right before the sentence it illustrates: \
       <circle x="…" y="…" r="…" label="…"/> round something (r in the across scale), \
       <box x1="…" y1="…" x2="…" y2="…" label="…"/>, <arrow x1="…" y1="…" x2="…" y2="…" label="…"/> \
@@ -104,4 +106,16 @@ enum AskBolttyPrompt {
 
       """
   }
+}
+
+/// The part of the screen a question is about, as written for the agent.
+struct AskBolttyRegion: Equatable, Sendable {
+  /// The whole screen at `ScreenRegionCapture.screenLongEdge`, the area
+  /// outlined: what a point's 0–1000 is measured across.
+  var screenPath: String
+  /// The area up close.
+  var areaPath: String
+  var context: String?
+  var recognizedText: String?
+  var isWholeScreen: Bool
 }

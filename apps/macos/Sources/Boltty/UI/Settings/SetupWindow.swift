@@ -27,7 +27,7 @@ enum SetupStep: Int, CaseIterable {
     switch self {
     case .agents: [("The agents already on your Mac.", true), ("\nPick the ones Boltty AI may use.", false)]
     case .mascots: [("Every agent wears its own.", true), ("\nClick one to restyle it.", false)]
-    case .keys: [("One chord opens Boltty AI.", true), ("\nHold three to ask about the screen.", false)]
+    case .keys: [("One chord opens Boltty AI.", true), ("\nThen drag across the screen to ask about it.", false)]
     case .voice: [("Boltty listens with Apple’s dictation.", true), ("\nAdd natural voices that run on this Mac.", false)]
     case .access: [("macOS asks for each once.", true), ("\nYou can change them any time.", false)]
     }
@@ -368,7 +368,6 @@ private struct SetupMascotFace: View {
 
 private struct SetupKeysVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
-  @State private var hoveredHotkey = false
 
   private var hotkeyCaps: [String] {
     let binding = model.bolttyAIHotkey
@@ -384,7 +383,6 @@ private struct SetupKeysVisual: View {
         HotkeyRecorderField(
           binding: model.bolttyAIHotkey,
           isEnabled: model.bolttyAIHotkeyEnabled,
-          isRowHovered: hoveredHotkey,
           probe: model.probeHotkey ?? { _ in .free },
           problem: $model.hotkeyProblem,
           onRecord: { model.bolttyAIHotkey = $0 },
@@ -392,27 +390,6 @@ private struct SetupKeysVisual: View {
         )
       } note: {
         if let problem = model.hotkeyProblem { SettingsNote(problem.message, color: .orange) }
-      }
-      .onHover { hoveredHotkey = $0 }
-
-      SetupKeysTile(caps: ["⌃", "⌥", "⌘"], isOn: model.askBolttyEnabled) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("Ask Boltty").font(.system(size: 14, weight: .semibold, design: .rounded))
-          Text("Hold, ask about the screen, let go.")
-            .font(.system(size: 12, design: .rounded))
-            .foregroundStyle(.secondary)
-        }
-        Spacer(minLength: 8)
-        Toggle("Ask Boltty", isOn: Binding(
-          get: { model.askBolttyEnabled }, set: { model.askBolttyEnabled = $0 }
-        ))
-        .labelsHidden()
-        .toggleStyle(.switch)
-        .accessibilityIdentifier("boltty.setup.askBoltty")
-      } note: {
-        if model.askBolttyNeedsInputMonitoring {
-          SettingsNote("It needs Input Monitoring — macOS asks for it now.", color: .orange)
-        }
       }
     }
   }

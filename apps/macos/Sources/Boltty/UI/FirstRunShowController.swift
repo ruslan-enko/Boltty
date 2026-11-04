@@ -5,15 +5,16 @@ import CoreImage.CIFilterBuiltins
 /// before the setup card, Boltty plays itself once over a sunset
 /// of its own. Night breaks into the sunset; the agents' faces gather in a
 /// pile and pull faces; then Boltty AI is played on light glass, large, in
-/// three beats each named by a caption — a question asked from anywhere and
-/// answered in the panel under the notch, where it really stands; a chart
-/// selected and asked about; and Ask Boltty answering beside the pointer in
-/// an app's window, then flying to the menu its answer names and ringing it.
+/// beats each named by a caption — a question asked of any agent and answered
+/// in the panel under the notch, where it really stands; the chat list; Ask
+/// Boltty, one movement from a region dragged out of the panel to the words
+/// heard in the orb and the answer beside the pointer, drawing on the app
+/// itself; and Settings, ending on the voices that run on this Mac.
 ///
 /// **All of it is made up.** Nothing here is the real panel: the words and
 /// the faces are set by the script, nothing is sent and nothing is asked of
 /// macOS. What can be the real thing is: the panel's glass, the selection's
-/// overlay, Ask Boltty's line and its blips.
+/// overlay, Ask Boltty's drawing and its blips.
 ///
 /// **One face from start to end** (`ShowFace`): the planned agent's face
 /// arrives first in the pile, drops into the prompt and is carried through
@@ -31,16 +32,17 @@ final class FirstRunShowController {
   static let captions = [
     "Ask any agent, from anywhere.",
     "Every chat, by agent.",
-    "Ask about what’s on your screen.",
-    "Or hold ⌃⌥⌘ and just ask.",
+    "Select anything, and ask out loud.",
     "Make each agent yours.",
+    "And voices that stay on this Mac.",
   ]
   static let prompt = "Make this launch video small enough to email"
   static let answer = "Done — launch.mp4 is 18 MB, down from 240. It’s right next to the original."
-  static let regionPrompt = "What does this chart say?"
-  static let regionAnswer = "Sign-ups grew every month but April, when the launch slipped a week."
-  static let askQuestion = "How do I export this?"
-  static let askAnswer = "Up here: File › Export, then pick MP4."
+  /// What the folded run of work says, over the answer.
+  static let worked = "Worked for 14 s  ›"
+  static let askQuestion = "What can I cut here?"
+  static let askAnswer = "This stretch is silent. You can cut it."
+  static let askDrawn = "It answers right on your screen."
 
   // MARK: - Timing
 
@@ -524,7 +526,7 @@ final class FirstRunShowController {
     guard let clock, let face else { return }
     let view = makeScene()
     // Under the panel, not at the screen's foot: beside what it names.
-    say(Self.captions[0], middle: Self.panelTop + 410)
+    say(Self.captions[0], middle: Self.panelTop + 470)
     let prompt = keep(ShowPrompt(in: view, space: space, clock: clock,
                                  frame: space.rect(683, Self.panelTop, 434, 92),
                                  placeholder: "Ask \(planned.shortDisplayName)"))
@@ -593,11 +595,17 @@ final class FirstRunShowController {
         self?.sound(.whoosh, 3)
       }
       // No "Thinking": the answer as the question lands, to keep it brisk.
+      prompt.becomeComposer()
       self.after(0.85) {
         face.view.poke(.wink)
         card.answer()
       }
-      self.after(3.4) { [weak self] in self?.sceneList(card: card, prompt: prompt) }
+      // Auto, on for this chat: the word goes white.
+      self.after(2.1) { [weak self] in
+        prompt.lightAuto()
+        self?.sound(.tap, 2)
+      }
+      self.after(3.6) { [weak self] in self?.sceneList(card: card, prompt: prompt) }
     }
   }
 
@@ -641,206 +649,164 @@ final class FirstRunShowController {
       face.view.poke(.wink)
       self?.sound(.tap, 1)
     }
-    after(3.9) { [weak self] in self?.sceneRegion() }
+    after(3.9) { [weak self] in self?.sceneAsk() }
   }
 
-  // MARK: - Scene two: ask about the screen
+  // MARK: - Scene two: Ask Boltty
 
-  /// Slides 10–15: the chat leaves up; a chart window rises; the face, as
-  /// the pointer, drags a selection over it — the screen dims, the border
-  /// is the agent's light, as Boltty draws one; the window steps aside, the
-  /// prompt opens beside it, the face drops in, and it is answered.
-  private func sceneRegion() {
+  /// As it really goes, one movement: an app's window; the panel out of
+  /// the notch, and "Drag to ask about an area" beside the pointer; dragged,
+  /// the panel goes and the real selection dims the screen; let go, the shell
+  /// is the orb on the region's corner with the face in it, and it listens;
+  /// the words arrive out of a blur under the face; sent, it closes round the
+  /// face, which flies to the pointer; its bubble comes out of it, it flies
+  /// on to what its answer names, and as the words arrive it draws there, on
+  /// the app itself: drawing is the point of the scene, so nothing stands
+  /// between the strokes and the thing they mean.
+  private func sceneAsk() {
     guard let clock, let old = scene, let face else { return }
     undock()
     leave(old)
+    say(nil)
     let view = makeScene()
-    let window = keep(ShowChartWindow(in: view, space: space, clock: clock, frame: space.rect(526, 346, 749, 477)))
-    window.rise(from: space.v(-217))
+    let window = keep(ShowAppWindow(in: view, space: space, clock: clock, frame: space.rect(368, 263, 1064, 642)))
+    window.rise(from: space.v(-177))
+    // The app's menus: this is a Mac's whole screen, not a window in a slide.
+    let menus = ShowMenuBar(in: view, space: space, app: "Clips")
+    menus.appear()
     sound(.run, 1)
     after(0.4) { [weak self] in self?.say(Self.captions[2]) }
 
-    // The real selection's overlay: the dim, the border's light, the
-    // handles — over the window, under the prompt and the chat.
     let overlay = ScreenSelectionOverlay(frame: view.bounds)
     overlay.palette = MascotLook.face(for: planned).palette.light(atLeast: AgentPaletteMetrics.screenSelectionLightness)
     view.addSubview(overlay)
-    let margin = space.v(8)
-    window.onFrame = { frame in
-      if overlay.selection != nil, overlay.showsHandles { overlay.selection = frame.insetBy(dx: -margin, dy: -margin) }
+    let ask = keep(ShowAsk(in: view, face: face, agent: planned, space: space, clock: clock,
+                           blips: makesBlips ? AskBolttyBlips() : nil, answer: Self.askAnswer))
+    self.ask = ask
+
+    let prompt = keep(ShowPrompt(in: view, space: space, clock: clock, frame: space.rect(683, Self.panelTop, 434, 92),
+                                 placeholder: "Ask \(planned.shortDisplayName)"))
+    after(0.2) { [weak self] in
+      guard let self else { return }
+      prompt.appear(from: self.space.rect(820, -40, 160, 40))
+      face.view.emotion = .curious
+      face.fly(to: prompt.faceSlot, response: 0.6, bounce: 0.08)
+      prompt.face = face
     }
 
-    // The face leaves the old prompt for the chart's corner, as the pointer,
-    // and drags the selection open from there.
-    let size = space.v(64)
-    let corner = CGPoint(x: window.frame.minX - margin, y: window.frame.maxY + margin)
-    func pointer(at point: CGPoint) -> CGRect {
-      CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
-    }
-    after(0.15) { [weak self] in
-      face.fly(to: pointer(at: corner), response: 0.7, bounce: 0.1)
-      face.view.emotion = .curious
-      self?.sound(.whoosh, 4)
-    }
-    after(0.95) { [weak self] in
+    // Along the timeline, top left to foot right.
+    let from = space.point(598, 725)
+    let to = space.point(1408, 879)
+    after(1.0) { ask.pointer(at: from, hint: "Drag to ask about an area") }
+    let shell = keep(ShowAskShell(in: view, space: space, clock: clock, face: face, words: Self.askQuestion,
+                                  leftOf: to.x + space.v(14), top: to.y + space.v(63)))
+    after(1.9) { [weak self] in
       guard let self else { return }
-      face.view.emotion = .focused
-      overlay.selection = CGRect(origin: CGPoint(x: corner.x, y: corner.y - 1), size: CGSize(width: 1, height: 1))
+      ask.hideHint()
+      prompt.face = nil
+      prompt.vanish()
+      ShowClock.fade(face.holder, to: 0, duration: 0.15)
+      overlay.selection = CGRect(origin: CGPoint(x: from.x, y: from.y - 1), size: CGSize(width: 1, height: 1))
       overlay.isDimmed = true
-      self.zoom(to: 1.08, at: self.centre(window.frame), duration: 1.5)
-      let full = window.frame.insetBy(dx: -margin, dy: -margin)
-      clock.tween(0.9, curve: CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1), key: "drag") { t in
-        let reach = CGPoint(x: ShowClock.mix(corner.x, full.maxX, t), y: ShowClock.mix(corner.y, full.minY, t))
-        overlay.selection = CGRect(x: corner.x, y: reach.y, width: max(1, reach.x - corner.x),
-                                   height: max(1, corner.y - reach.y))
-        // A stiff spring, not a jump: it takes over whatever the face was
-        // still doing.
-        face.fly(to: pointer(at: reach), response: 0.1)
+      clock.tween(1.0, curve: CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1), key: "drag") { t in
+        let tip = ShowClock.mix(from, to, t)
+        overlay.selection = CGRect(x: from.x, y: tip.y, width: max(1, tip.x - from.x), height: max(1, from.y - tip.y))
+        ask.pointer(at: tip)
       } done: {
         overlay.showsHandles = true
       }
       self.sound(.whoosh, 1)
     }
-    // Selected: the window steps left, the prompt opens beside it and the
-    // face drops in.
-    let promptAt = space.rect(986, 436, 603, 112)
-    let prompt = keep(ShowPrompt(in: view, space: space, clock: clock, frame: promptAt, placeholder: "Ask anything"))
-    after(2.0) { [weak self] in
-      guard let self else { return }
-      self.zoom(to: 1, at: self.centre(window.frame), duration: 1.2)
-      window.move(to: self.space.rect(211, 344, 749, 477))
-    }
-    after(2.15) {
-      prompt.appear()
-      prompt.showCaret()
-    }
-    after(2.3) { [weak self] in
-      face.fly(to: prompt.faceSlot, response: 0.55, bounce: 0.15)
-      face.view.emotion = .curious
-      prompt.face = face
-      self?.prompt = prompt
-    }
-    after(2.6) { [weak self] in
-      guard let self else { return }
-      self.zoom(to: 1.1, at: self.centre(promptAt), duration: 1.8)
-    }
-    let typing = 2.8
-    typeOut(Self.regionPrompt, into: prompt, from: typing, maxWidth: promptAt.width)
-    after(typing + Self.typing(Self.regionPrompt) + 0.35) { [weak self] in
-      guard let self else { return }
-      self.onSend?()
-      self.zoom(to: 1, at: self.centre(self.space.rect(211, 344, 1378, 418)), duration: 1.2)
-      // Slide 15: the prompt drops under the chat that grows above it.
-      let under = self.space.rect(986, 650, 603, 112)
-      prompt.slide(to: under)
-      let card = self.keep(ShowChatCard(
-        in: view, space: self.space, clock: clock, question: Self.regionPrompt, answer: Self.regionAnswer,
-        x: under.minX, bottom: under.maxY + self.space.v(Self.cardGap), width: under.width))
-      card.grow(from: promptAt)
-      self.after(0.12) { [weak self] in
-        card.ask(from: prompt.textFrame, size: prompt.fontSize)
-        prompt.clear(placeholder: "Ask anything")
-        self?.sound(.whoosh, 3)
-      }
-      self.after(0.85) {
-        card.answer()
-        face.view.poke(.spinHop)
-      }
-      self.after(3.7) { [weak self] in self?.sceneAsk() }
-    }
-  }
-
-  // MARK: - Scene three: Ask Boltty
-
-  /// Slides 16–22, as Ask Boltty really draws itself: an app's window
-  /// rises; the arrow comes, the face rides
-  /// beside it; the chord is held — Listening — and the pointer circles the
-  /// video, leaving the real line, soft and gone a moment later; the words
-  /// heard; let go, the answer types itself out beside the face.
-  private func sceneAsk() {
-    guard let clock, let old = scene, let face else { return }
-    undock()
-    leave(old)
-    let view = makeScene()
-    let window = keep(ShowAppWindow(in: view, space: space, clock: clock, frame: space.rect(368, 263, 1064, 642)))
-    window.rise(from: space.v(-177))
-    // The app's menus, where the answer points.
-    let menus = ShowMenuBar(in: view, space: space, app: "Clips")
-    menus.appear()
-    sound(.run, 2)
-    after(0.4) { [weak self] in self?.say(Self.captions[3]) }
-
-    let ask = keep(ShowAsk(in: view, face: face, agent: planned, space: space, clock: clock,
-                           blips: makesBlips ? AskBolttyBlips() : nil))
-    self.ask = ask
-    // Round the video: a hand's loop, a little past once, closing in.
-    let middle = space.point(1003, 509)
-    let reach = CGSize(width: space.v(350), height: space.v(165))
-    let loop = { (u: CGFloat) -> CGPoint in
-      let angle = CGFloat.pi * 0.8 + u * 2.15 * .pi
-      let shrink = 1 - 0.18 * u
-      let wobble = 1 + 0.05 * sin(u * 9)
-      return CGPoint(x: middle.x + reach.width * shrink * wobble * cos(angle),
-                     y: middle.y + reach.height * shrink * sin(angle))
-    }
-    after(0.15) { [weak self] in
-      ask.appear(at: loop(0))
+    // Let go: the orb on the corner, the face in it, listening.
+    after(3.0) { [weak self] in
+      face.view.emotion = .listening
+      shell.grow()
       self?.sound(.whoosh, 4)
     }
-    after(0.85) { ask.listen() }
-    after(1.05) { [weak self] in
+    let heard = 3.65
+    let count = Self.askQuestion.split(separator: " ").count
+    after(heard) { shell.open() }
+    for index in 0..<count {
+      after(heard + 0.1 + 0.3 * Double(index)) { shell.hear(index) }
+    }
+    // Sent: closed round the face, the dim gone, off to the pointer.
+    let sent = heard + 0.3 * Double(count) + 0.65
+    after(sent) { [weak self] in
+      self?.onSend?()
+      shell.close()
+      overlay.showsHandles = false
+      ShowClock.fade(overlay, to: 0, duration: 0.26)
+    }
+    after(sent + 0.3) { [weak self] in
+      shell.vanish()
+      ask.arrive(beside: to)
+      self?.sound(.whoosh, 3)
+    }
+    after(sent + 1.0) { ask.think() }
+    // Beside what it names, under the window so it hides none of it; the
+    // words, and the strokes as they reach it.
+    after(sent + 1.65) { [weak self] in
       guard let self else { return }
-      self.zoom(to: 1.06, at: middle, duration: 1.8)
-      ask.trace(duration: 1.75, along: loop)
+      ask.land(at: self.space.point(975, 958))
+      self.sound(.whoosh, 1)
     }
-    let words = Self.askQuestion.split(separator: " ")
-    for count in 1...words.count {
-      after(1.35 + 0.3 * Double(count - 1)) {
-        ask.heard(words.prefix(count).joined(separator: " "))
-      }
-    }
-    // Let go: the answer, typed out; the camera steps back and the face
-    // flies to File, which a ring marks.
-    let answerAt = 3.35
-    after(answerAt) { [weak self] in
-      guard let self else { return }
-      ask.answer(Self.askAnswer)
-      self.zoom(to: 1, at: middle, duration: 0.9)
-    }
+    let answerAt = sent + 2.2
+    after(answerAt) { ask.speak() }
     after(answerAt + 0.45) { [weak self] in
-      ask.point(at: menus.file)
-      self?.sound(.whoosh, 1)
-    }
-    // And a board beside the answer, drawn as an answer draws one: the
-    // menu, Export in it, an arrow to MP4.
-    let boardAt = answerAt + 1.3
-    after(boardAt) { ask.board(Self.boardShapes) }
-    let typed = answerAt + Double(Self.askAnswer.count) / AskBolttyOverlayController.typingSpeed / Self.pace
-    // Held long enough to read and follow, then on to Settings.
-    after(max(typed + 2.6, boardAt + 4.6)) { [weak self] in
       guard let self else { return }
-      self.zoom(to: 1, at: self.space.point(900, 584), duration: 0.9)
+      ask.draw(self.quietStretch(on: ask))
+      self.sound(.whoosh, 4)
+    }
+    after(answerAt + 1.5) { [weak self] in self?.say(Self.askDrawn) }
+    after(answerAt + 5.2) { [weak self] in
       ask.end()
-      self.sceneSettings()
+      self?.sceneSettings()
     }
   }
 
-  /// What the answer draws on its board, in its 0–1000.
-  static let boardShapes: [AskBolttyShape] = [
-    AskBolttyShape(kind: .box(CGRect(x: 70, y: 230, width: 440, height: 540)), label: nil),
-    AskBolttyShape(kind: .label(at: CGPoint(x: 290, y: 370)), label: "Open…"),
-    AskBolttyShape(kind: .label(at: CGPoint(x: 290, y: 630)), label: "Export"),
-    AskBolttyShape(kind: .arrow(from: CGPoint(x: 540, y: 630), to: CGPoint(x: 740, y: 630)), label: nil),
-    AskBolttyShape(kind: .label(at: CGPoint(x: 850, y: 630)), label: "MP4"),
-    AskBolttyShape(kind: .circle(center: CGPoint(x: 850, y: 630), radius: 125), label: nil),
-  ]
+  /// What the answer draws on the app: a loop round the timeline's quiet
+  /// stretch, as a hand rings something (it overshoots where it began, and
+  /// is not an ellipse), and an arrow from outside the window, so it is seen
+  /// to be on the screen and not in the app.
+  private func quietStretch(on ask: ShowAsk) -> [AskBolttyShape] {
+    let centre = CGPoint(x: 1097, y: 803)
+    let (rx, ry): (CGFloat, CGFloat) = (112, 74)
+    func at(_ dx: CGFloat, _ dy: CGFloat) -> CGPoint { ask.mark(space.point(centre.x + dx, centre.y + dy)) }
+    let loop: [AskBolttyShape.Segment] = [
+      .move(at(-20, -ry - 4)),
+      .curve(at(rx + 4, -2), control1: at(45, -ry - 10), control2: at(rx + 6, -ry * 0.6)),
+      .curve(at(6, ry + 3), control1: at(rx + 2, ry * 0.6), control2: at(rx * 0.55, ry + 4)),
+      .curve(at(-rx - 3, 4), control1: at(-rx * 0.55, ry + 2), control2: at(-rx - 4, ry * 0.55)),
+      .curve(at(14, -ry - 8), control1: at(-rx - 2, -ry * 0.6), control2: at(-rx * 0.5, -ry - 1)),
+    ]
+    let tail = CGPoint(x: 1565, y: 640)
+    let bend = CGPoint(x: 1440, y: 640)
+    let head = CGPoint(x: 1217, y: 768)
+    let angle = atan2(head.y - bend.y, head.x - bend.x)
+    func barb(_ turn: CGFloat) -> CGPoint {
+      ask.mark(space.point(head.x - 30 * cos(angle + turn), head.y - 30 * sin(angle + turn)))
+    }
+    let arrow: [AskBolttyShape.Segment] = [
+      .move(ask.mark(space.point(tail.x, tail.y))),
+      .quad(ask.mark(space.point(head.x, head.y)), control: ask.mark(space.point(bend.x, bend.y))),
+      .move(barb(.pi / 7)),
+      .line(ask.mark(space.point(head.x, head.y))),
+      .line(barb(-.pi / 7)),
+    ]
+    return [
+      AskBolttyShape(kind: .path(loop), label: nil),
+      AskBolttyShape(kind: .path(arrow), label: nil),
+      AskBolttyShape(kind: .label(at: ask.mark(space.point(tail.x + 20, tail.y - 34))), label: "12 s of silence"),
+    ]
+  }
 
   // MARK: - Scene four: each agent yours
 
   /// Settings as its pages stand: the face flies into its agent's page and
   /// tries two shapes before its own; the chat's backdrop goes to Sky, live
-  /// over a mock chat; then Usage, each plan's window filling in its
-  /// agent's own gradient. Then out, and the setup card follows.
+  /// in its round window; then Usage, each plan's window filling in the
+  /// accent colour; then Voice, what runs on this Mac. Then out, and the
+  /// setup card follows.
   private func sceneSettings() {
     guard let clock, let old = scene, let face else { return }
     leave(old)
@@ -853,7 +819,7 @@ final class FirstRunShowController {
       face.view.emotion = .curious
       face.fly(to: window.faceSlot, response: 0.7, bounce: 0.1)
     }
-    after(0.4) { [weak self] in self?.say(Self.captions[4]) }
+    after(0.4) { [weak self] in self?.say(Self.captions[3]) }
     let own = MascotLook.face(for: planned)
     for (index, shape) in window.tries.enumerated() {
       after(1.4 + 0.6 * Double(index)) { [weak self] in
@@ -874,7 +840,20 @@ final class FirstRunShowController {
       face.fly(to: window.usageFaceSlot, response: 0.6, bounce: 0.1)
       self.sound(.whoosh, 1)
     }
-    after(sky + 4.3) { [weak self] in
+    after(sky + 3.7) { [weak self] in
+      guard let self else { return }
+      window.showVoice()
+      face.view.emotion = .listening
+      face.fly(to: window.voiceFaceSlot, response: 0.6, bounce: 0.1)
+      self.say(Self.captions[4])
+      self.sound(.whoosh, 4)
+    }
+    after(sky + 4.9) { [weak self] in
+      window.pickVoice()
+      face.view.nod()
+      self?.sound(.tap, 3)
+    }
+    after(sky + 6.7) { [weak self] in
       guard let self else { return }
       self.leave(view)
       face.leave(by: self.space.v(120))
@@ -1548,6 +1527,20 @@ final class ShowPrompt {
   private let text: NSTextField
   private let hint: NSTextField
   private let caret = CAGradientLayer()
+  /// The first screen's folder and microphone at the right end; in a chat
+  /// the composer's Auto, microphone and Send. Inside the glass, laid out
+  /// from its right edge on every frame, so they ride as the capsule widens:
+  /// the glass's content has no size yet when these are made, so a resizing
+  /// mask would carry them off the far end.
+  private let folder: NSImageView
+  private let microphone: NSImageView
+  private let auto: NSTextField
+  private let send = NSView()
+  /// How far the microphone's middle stands from the right edge, in slide
+  /// units: moves over when Send comes.
+  private var microphoneCentre: CGFloat = 44
+  /// What the controls take at the right end, in slide units.
+  private static let controlsWidth: CGFloat = 120
   private var typed = ""
   private var typing = 0
   private(set) var frame: CGRect
@@ -1582,6 +1575,40 @@ final class ShowPrompt {
     hint.alphaValue = 0
     parent.addSubview(hint)
     parent.addSubview(text)
+    let inside = glass.content
+    func control(_ symbol: String) -> NSImageView {
+      let configuration = NSImage.SymbolConfiguration(pointSize: space.v(24), weight: .regular)
+        .applying(.init(paletteColors: [NSColor.white.withAlphaComponent(0.8)]))
+      let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+        .withSymbolConfiguration(configuration)
+      let view = NSImageView(frame: .zero)
+      view.image = image
+      let size = image?.size ?? .zero
+      view.frame.size = size
+      inside.addSubview(view)
+      return view
+    }
+    folder = control("folder")
+    microphone = control("mic")
+    auto = ShowText.label("Auto", size: space.v(22), weight: .medium)
+    auto.sizeToFit()
+    auto.alphaValue = 0
+    glass.content.addSubview(auto)
+    let disc = space.v(64)
+    send.frame.size = CGSize(width: disc, height: disc)
+    send.wantsLayer = true
+    send.layer?.backgroundColor = CGColor(gray: 1, alpha: 1)
+    send.layer?.cornerRadius = disc / 2
+    send.alphaValue = 0
+    if let image = NSImage(systemSymbolName: "return", accessibilityDescription: nil)?
+      .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: space.v(24), weight: .semibold)
+        .applying(.init(paletteColors: [.black]))) {
+      let glyph = NSImageView(image: image)
+      glyph.frame = CGRect(x: (disc - image.size.width) / 2, y: (disc - image.size.height) / 2,
+                           width: image.size.width, height: image.size.height).integral
+      send.addSubview(glyph)
+    }
+    glass.content.addSubview(send)
     caret.colors = [HexColor.nsColor("#7fb2ff").cgColor, CGColor(gray: 1, alpha: 1),
                     HexColor.nsColor("#ffc24f").cgColor]
     caret.cornerRadius = space.v(1.5)
@@ -1589,6 +1616,7 @@ final class ShowPrompt {
     parent.layer?.addSublayer(caret)
     shown = frame
     layoutText(in: frame)
+    layoutControls(in: frame)
   }
 
   /// Out of a blur, a little small — or, given `start`, out of there: the
@@ -1632,7 +1660,7 @@ final class ShowPrompt {
       self.blink()
     }
     text.sizeToFit()
-    let needed = textLeading + text.frame.width + space.v(44)
+    let needed = textLeading + text.frame.width + space.v(44 + Self.controlsWidth)
     let width = min(maxWidth, max(frame.width, needed))
     if width > frame.width + 0.5 {
       frame = CGRect(x: frame.midX - width / 2, y: frame.minY, width: width, height: frame.height)
@@ -1649,7 +1677,7 @@ final class ShowPrompt {
     clock.tween(0.9, key: ObjectIdentifier(self)) { [weak self] _ in
       guard let self else { return }
       let now = Motion.now
-      let step = 1 - exp(-(now - last) / 0.07)
+      let step = 1 - exp(-(now - last) / 0.04)
       last = now
       self.setFrame(ShowClock.mix(self.shown, self.frame, CGFloat(step)))
     } done: { [weak self] in
@@ -1664,7 +1692,25 @@ final class ShowPrompt {
     layoutText(in: shown)
   }
 
-  /// Gone into what comes next: the list.
+  /// Sent: it is a chat's composer now — Auto and Send come, the microphone
+  /// makes room, the folder goes.
+  func becomeComposer() {
+    ShowClock.fade(folder, to: 0, duration: 0.2)
+    ShowClock.fade(auto, to: 0.5, duration: 0.3)
+    ShowClock.fade(send, to: 1, duration: 0.25)
+    clock.spring(0.4, bounce: 0.05, key: ObjectIdentifier(microphone)) { [weak self] t in
+      guard let self else { return }
+      self.microphoneCentre = 44 + 62 * t
+      self.layoutControls(in: self.shown)
+    }
+  }
+
+  /// Auto switched on for this chat: the word goes white.
+  func lightAuto() {
+    ShowClock.fade(auto, to: 1, duration: 0.2)
+  }
+
+  /// Gone into what comes next.
   func vanish() {
     ShowClock.fade(glass, to: 0, duration: 0.25)
     ShowClock.fade(text, to: 0, duration: 0.2)
@@ -1695,6 +1741,18 @@ final class ShowPrompt {
     glass.radius = rect.height / 2
     face?.hold(slot(in: rect))
     layoutText(in: rect)
+    layoutControls(in: rect)
+  }
+
+  private func layoutControls(in rect: CGRect) {
+    func stand(_ view: NSView, right: CGFloat) {
+      view.frame.origin = CGPoint(x: (rect.width - right - view.frame.width).rounded(),
+                                  y: ((rect.height - view.frame.height) / 2).rounded())
+    }
+    stand(folder, right: space.v(92) - folder.frame.width / 2)
+    stand(microphone, right: space.v(microphoneCentre) - microphone.frame.width / 2)
+    stand(auto, right: space.v(150))
+    stand(send, right: space.v(14))
   }
 
   private func layoutText(in rect: CGRect) {
@@ -1734,6 +1792,8 @@ final class ShowChatCard {
   private static let questionSize: CGFloat = 24
   private static let answerSize: CGFloat = 26
   private static let lineHeight: CGFloat = 35
+  /// The folded run of work, over the answer.
+  private static let workedHeight: CGFloat = 34
 
   /// A card `width` wide standing on `bottom`, its left edge at `x`.
   init(in parent: NSView, space: ShowSpace, clock: ShowClock, question: String, answer: String,
@@ -1755,7 +1815,7 @@ final class ShowChatCard {
     let lines = ShowText.lines(answer, width: width - space.v(inset * 2), size: space.v(answerSize)).count
     let bubble = ShowText.height(size: space.v(questionSize)) + space.v(bubblePadding.height * 2)
     let words = CGFloat(lines - 1) * space.v(lineHeight) + ShowText.height(size: space.v(answerSize))
-    return space.v(inset * 2 + gap) + bubble + words
+    return space.v(inset * 2 + gap + workedHeight) + bubble + words
   }
 
   func grow(from rect: CGRect) {
@@ -1837,7 +1897,16 @@ final class ShowChatCard {
   func answer() {
     let inset = space.v(Self.inset)
     let inside = glass.content
-    let origin = inside.convert(CGPoint(x: frame.minX + inset, y: bubbleBottom - space.v(Self.gap)), from: parent)
+    let top = inside.convert(CGPoint(x: frame.minX + inset, y: bubbleBottom - space.v(Self.gap)), from: parent)
+    let worked = ShowText.label(FirstRunShowController.worked, size: space.v(19),
+                                ink: NSColor.white.withAlphaComponent(0.6))
+    worked.sizeToFit()
+    worked.frame.origin = CGPoint(x: top.x, y: top.y - worked.frame.height)
+    worked.autoresizingMask = [.maxXMargin, .minYMargin]
+    worked.alphaValue = 0
+    inside.addSubview(worked)
+    ShowClock.fade(worked, to: 1, duration: 0.3)
+    let origin = CGPoint(x: top.x, y: top.y - space.v(Self.workedHeight))
     ShowText.stream(reply, into: inside, at: origin, width: frame.width - inset * 2, size: space.v(Self.answerSize),
                     clock: clock, lineHeight: space.v(Self.lineHeight), pinned: [.maxXMargin, .minYMargin])
   }
@@ -1865,18 +1934,6 @@ struct ShowSketch {
     layer.backgroundColor = ink ?? CGColor(gray: 1, alpha: alpha)
     view.layer?.addSublayer(layer)
     return layer
-  }
-
-  /// A bar of a chart: brighter at its top, as light falls on it.
-  func bar(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) {
-    let layer = CAGradientLayer()
-    layer.frame = frame(x, y, w, h)
-    layer.cornerRadius = space.v(14)
-    layer.cornerCurve = .continuous
-    layer.colors = [CGColor(gray: 1, alpha: 0.6), CGColor(gray: 1, alpha: 0.22)]
-    layer.startPoint = CGPoint(x: 0.5, y: 1)
-    layer.endPoint = CGPoint(x: 0.5, y: 0)
-    view.layer?.addSublayer(layer)
   }
 
   /// Words whose middle stands on `y`, from x — or centred in `width` from x.
@@ -1930,79 +1987,6 @@ struct ShowSketch {
   }
 }
 
-/// A window of some app, on the slides' glass, with a chart in it whose
-/// fourth bar is short. One inset round everything in it.
-@MainActor
-final class ShowChartWindow {
-  private let clock: ShowClock
-  private let glass: ShowGlass
-  private(set) var frame: CGRect
-  /// Told the window's frame every frame it moves — the selection round it
-  /// follows.
-  var onFrame: ((CGRect) -> Void)?
-
-  init(in parent: NSView, space: ShowSpace, clock: ShowClock, frame: CGRect) {
-    self.clock = clock
-    self.frame = frame
-    glass = ShowGlass(frame: frame, radius: space.v(52))
-    glass.alphaValue = 0
-    parent.addSubview(glass, positioned: .below, relativeTo: nil)
-    // A sign-ups chart, drawn as a dashboard draws one: its title and the
-    // range, a Week/Month switch, the grid, six months of bars — April's
-    // the short one — their names under them and the best one's value.
-    // 749 × 477, 44 in from every edge.
-    let sketch = ShowSketch(view: glass.content, space: space, size: frame.size)
-    let inset: CGFloat = 44
-    let wide = 749 - inset * 2
-    sketch.text("Sign-ups", at: inset, middle: 58, size: 26, alpha: 0.95, weight: .semibold)
-    sketch.text("Last 6 months  ·  +18%", at: inset, middle: 92, size: 16, alpha: 0.6)
-    let switchX = 749 - inset - 152
-    sketch.block(switchX, 39, 152, 38, alpha: 0.16, radius: 19)
-    // Month chosen: the bars are months.
-    sketch.block(switchX + 76, 43, 72, 30, alpha: 0.34, radius: 15)
-    sketch.text("Week", at: switchX + 4, middle: 58, size: 14, alpha: 0.6, width: 72)
-    sketch.text("Month", at: switchX + 76, middle: 58, size: 14, alpha: 0.9, weight: .medium, width: 72)
-    let foot: CGFloat = 403
-    for y: CGFloat in [163, 243, 323] { sketch.block(inset, y, wide, 1.5, alpha: 0.14, radius: 0) }
-    let bars: [(height: CGFloat, month: String)] = [
-      (118, "Jan"), (150, "Feb"), (184, "Mar"), (72, "Apr"), (198, "May"), (232, "Jun"),
-    ]
-    let barWidth: CGFloat = 92
-    let step = (wide - barWidth) / CGFloat(bars.count - 1)
-    for (index, bar) in bars.enumerated() {
-      let x = inset + step * CGFloat(index)
-      sketch.bar(x, foot - bar.height, barWidth, bar.height)
-      sketch.text(bar.month, at: x, middle: foot + 17, size: 14, alpha: 0.6, width: barWidth)
-    }
-    let best = inset + step * CGFloat(bars.count - 1) + (barWidth - 80) / 2
-    let top = foot - bars[bars.count - 1].height - 12 - 30
-    sketch.block(best, top, 80, 30, alpha: 0.9, radius: 15)
-    sketch.text("4.2k", at: best, middle: top + 15, size: 15, ink: .black, alpha: 0.85, weight: .semibold, width: 80)
-  }
-
-  func rise(from distance: CGFloat) {
-    let end = frame
-    let start = end.offsetBy(dx: 0, dy: distance)
-    ShowClock.fade(glass, to: 1, duration: 0.25)
-    clock.spring(0.7, bounce: 0.05, key: ObjectIdentifier(self)) { [weak self] t in
-      self?.place(ShowClock.mix(start, end, t))
-    }
-  }
-
-  func move(to rect: CGRect) {
-    let from = glass.frame
-    frame = rect
-    clock.spring(0.6, bounce: 0.05, key: ObjectIdentifier(self)) { [weak self] t in
-      self?.place(ShowClock.mix(from, rect, t))
-    }
-  }
-
-  private func place(_ rect: CGRect) {
-    glass.frame = rect
-    onFrame?(rect)
-  }
-}
-
 /// An app's window on the slides' glass: a video editor — the clips down
 /// its side, the one open playing in the middle, its timeline under it,
 /// the app the question is asked in. 36 in from every edge, 16 between
@@ -2020,6 +2004,10 @@ final class ShowAppWindow {
     glass.alphaValue = 0
     parent.addSubview(glass, positioned: .below, relativeTo: nil)
     let sketch = ShowSketch(view: glass.content, space: space, size: frame.size)
+    // Dark, as a video editor is: on bare glass it was a pale ghost of a
+    // window, and the answer's strokes had nothing to stand out from.
+    sketch.block(0, 0, frame.size.width / space.v(1), frame.size.height / space.v(1),
+                 ink: CGColor(gray: 0, alpha: 0.58), radius: 64)
     sketch.text("launch.mov — Clips", at: 0, middle: 38, size: 17, alpha: 0.85, weight: .medium, width: 1064)
     // The library, each clip with its kind's symbol.
     sketch.block(36, 76, 190, 530, alpha: 0.2, radius: 28)
@@ -2050,15 +2038,16 @@ final class ShowAppWindow {
     sketch.block(384, 429, 624, 3, alpha: 0.2, radius: 1.5)
     sketch.block(384, 429, 192, 3, alpha: 0.8, radius: 1.5)
     // The timeline: the clip's frames, its sound under them, the playhead
-    // on the third.
+    // on the third, and a stretch of nothing, which is what is asked about.
     sketch.block(242, 472, 786, 134, alpha: 0.14, radius: 28)
+    let quietFrames = 4...5
     for index in 0..<8 {
       sketch.gradient(260 + CGFloat(index) * 94.5, 494, 84, 52, colours: Self.wallpaper,
-                      opacity: index == 2 ? 0.95 : 0.6, radius: 10)
+                      opacity: index == 2 ? 0.95 : quietFrames.contains(index) ? 0.22 : 0.6, radius: 10)
     }
     for index in 0..<106 {
       let level = 0.35 + 0.65 * abs(sin(CGFloat(index) * 0.37) * cos(CGFloat(index) * 0.11))
-      let height = 4 + 24 * level
+      let height = (54..<80).contains(index) ? 3 : 4 + 24 * level
       sketch.block(262 + CGFloat(index) * 7, 574 - height / 2, 3, height, alpha: 0.32, radius: 1.5)
     }
     sketch.block(478, 486, 2.5, 106, alpha: 0.95, radius: 1)
@@ -2081,12 +2070,10 @@ final class ShowAppWindow {
 
 /// The menu bar of the app the question is asked in, across the top of
 /// the screen as the Mac draws it: the Apple menu, the app's name, its
-/// menus, the clock. Where the answer points.
+/// menus, the clock.
 @MainActor
 final class ShowMenuBar {
   private var labels: [NSView] = []
-  /// The File menu's title, where the answer points.
-  private(set) var file: CGRect = .zero
 
   init(in view: NSView, space: ShowSpace, app: String) {
     let size: CGFloat = 20
@@ -2108,7 +2095,6 @@ final class ShowMenuBar {
       label.frame.origin = CGPoint(x: x.rounded(), y: (middle - label.frame.height / 2).rounded())
       view.addSubview(label)
       labels.append(label)
-      if title == "File" { file = label.frame }
       x = label.frame.maxX + space.v(30)
     }
     let clock = ShowText.label("Fri 9:41", size: space.v(size), weight: .medium)
@@ -2126,9 +2112,8 @@ final class ShowMenuBar {
 }
 
 /// Ask Boltty as the screen draws it (`AskBolttyOverlayController`), at the
-/// show's size: the arrow, the face riding just past it, the line the
-/// pointer leaves — the real one, `AskBolttyTrailLayer`, soft and gone a
-/// moment after it is drawn — and the bubble beside the face: dark glass
+/// show's size: the arrow, the face landing just past it, and the bubble
+/// beside the face: dark glass
 /// under the same shade, its words a step up, the answer typed out a
 /// letter at a time with a blip every other one while the face bobs.
 @MainActor
@@ -2143,14 +2128,8 @@ final class ShowAsk {
   private let agent: AgentId
   private let arrow = CALayer()
   private let hotSpot: CGPoint
-  private let trail = AskBolttyTrailLayer()
-  /// The real answer's drawing, for the ring round what it points at.
+  /// The real answer's drawing, across the whole screen.
   private let drawing = AskBolttyDrawingLayer()
-  /// The answer's board and what it draws on it.
-  private let boardDrawing = AskBolttyDrawingLayer()
-  /// Smaller than the overlay's 320: at the show's size the board stood
-  /// over most of the app's window.
-  static let boardSide: CGFloat = 240
   static let drawingLightness = 0.88
   private let bubble: PaletteGlassHost
   private let shade = NSView()
@@ -2158,6 +2137,10 @@ final class ShowAsk {
   private let font: NSFont
   private let lineHeight: CGFloat
   private let blips: AskBolttyBlips?
+  private let answer: String
+  /// "Drag to ask about an area", beside the pointer.
+  private let hint: NSTextField
+  private let hintBack = NSView()
   private var text = ""
   /// The bubble's size now, chasing the size its words need.
   private var shownSize: CGSize = .zero
@@ -2165,33 +2148,27 @@ final class ShowAsk {
   /// `points` of the overlay, here.
   private func pt(_ points: CGFloat) -> CGFloat { space.v(points * Self.size) }
 
-  init(in view: NSView, face: ShowFace, agent: AgentId, space: ShowSpace, clock: ShowClock, blips: AskBolttyBlips?) {
+  init(in view: NSView, face: ShowFace, agent: AgentId, space: ShowSpace, clock: ShowClock, blips: AskBolttyBlips?,
+       answer: String) {
     self.space = space
     self.clock = clock
     self.face = face
     self.agent = agent
     self.blips = blips
+    self.answer = answer
     let backing = view.window?.backingScaleFactor ?? 2
     let scale = space.v(Self.size)
 
-    trail.frame = view.bounds
-    trail.contentsScale = backing
-    trail.colours = MascotLook.face(for: agent).palette.light(atLeast: AgentPaletteMetrics.screenSelectionLightness)
-    trail.lineScale = scale
-    trail.zPosition = 300
-    view.layer?.addSublayer(trail)
-    // Lighter than the trail, and over a soft dark shadow: the gradient's
+    // Lighter than the face, and over a soft dark shadow: the gradient's
     // blue top read as nothing on the dark sky at the screen's top.
     let ink = MascotLook.face(for: agent).palette.light(atLeast: Self.drawingLightness)
-    for layer in [drawing, boardDrawing] {
-      layer.contentsScale = backing
-      layer.colours = ink
-      layer.scale = scale
-      layer.shadowColor = NSColor.black.cgColor
-      layer.shadowOpacity = 0.45
-      layer.shadowRadius = 3 * scale
-      layer.shadowOffset = .zero
-    }
+    drawing.contentsScale = backing
+    drawing.colours = ink
+    drawing.scale = scale
+    drawing.shadowColor = NSColor.black.cgColor
+    drawing.shadowOpacity = 0.45
+    drawing.shadowRadius = 3 * scale
+    drawing.shadowOffset = .zero
     drawing.frame = view.bounds
     drawing.zPosition = 290
     view.layer?.addSublayer(drawing)
@@ -2226,6 +2203,15 @@ final class ShowAsk {
     view.addSubview(bubble)
     bubble.layer?.zPosition = 350
 
+    hint = ShowText.label("", size: space.v(19), weight: .medium)
+    hintBack.wantsLayer = true
+    hintBack.layer?.backgroundColor = CGColor(gray: 0.1, alpha: 0.85)
+    hintBack.layer?.cornerCurve = .continuous
+    hintBack.alphaValue = 0
+    hintBack.addSubview(hint)
+    view.addSubview(hintBack)
+    hintBack.layer?.zPosition = 390
+
     let cursor = NSCursor.arrow
     let image = cursor.image
     hotSpot = cursor.hotSpot
@@ -2253,133 +2239,86 @@ final class ShowAsk {
     CATransaction.commit()
   }
 
-  /// The arrow comes, and the face flies to its side.
-  func appear(at tip: CGPoint) {
+  /// The arrow, there; with `hint`, the help tag comes beside it.
+  func pointer(at tip: CGPoint, hint words: String? = nil) {
     point(to: tip)
-    ShowClock.fade(arrow, to: 1, duration: 0.2)
-    face.fly(to: beside(tip), response: 0.65, bounce: 0.1)
+    if arrow.opacity == 0 { ShowClock.fade(arrow, to: 1, duration: 0.2) }
+    guard let words else { return }
+    hint.stringValue = words
+    hint.sizeToFit()
+    let padding = CGSize(width: space.v(16), height: space.v(8))
+    hintBack.frame = CGRect(x: tip.x + space.v(26), y: tip.y - space.v(44) - hint.frame.height - padding.height * 2,
+                            width: hint.frame.width + padding.width * 2, height: hint.frame.height + padding.height * 2)
+    hintBack.layer?.cornerRadius = space.v(12)
+    hint.frame.origin = CGPoint(x: padding.width, y: padding.height)
+    ShowClock.fade(hintBack, to: 1, duration: Motion.quick)
   }
 
-  /// The chord is held.
-  func listen() {
+  func hideHint() {
+    ShowClock.fade(hintBack, to: 0, duration: Motion.quick)
+  }
+
+  /// Out of the closed orb and on to the pointer, at its own size, the
+  /// bubble riding beside it from here on.
+  func arrive(beside tip: CGPoint) {
     face.onMove = { [weak self] rect in self?.layoutBubble(beside: rect) }
-    face.view.emotion = .listening
-    say("Listening…", quiet: true, lines: 1)
+    face.view.emotion = .focused
+    face.fly(to: beside(tip), response: 0.75, bounce: 0.1)
+  }
+
+  /// The bubble comes out of the face, waiting.
+  func think() {
+    say("Thinking…", quiet: true, lines: 1)
     ShowClock.fade(bubble, to: 1, duration: Motion.quick)
   }
 
-  /// The words heard so far.
-  func heard(_ words: String) {
-    say(words, quiet: false, lines: 1)
-  }
-
-  /// The pointer along `path` (0 to 1) over `duration`, the line behind it,
-  /// the face after it.
-  func trace(duration: CFTimeInterval, along path: @escaping (CGFloat) -> CGPoint) {
-    var last: CGFloat = 0
-    clock.tween(duration, curve: CAMediaTimingFunction(controlPoints: 0.42, 0, 0.45, 1), key: "boltty.show.trace") {
-      [weak self] t in
-      guard let self else { return }
-      // A few points a frame, as a hand's samples come.
-      for part in 1...4 { self.trail.extend(to: path(last + (t - last) * CGFloat(part) / 4)) }
-      last = t
-      let tip = path(t)
-      self.point(to: tip)
-      self.face.fly(to: self.beside(tip), response: 0.18)
-    } done: { [weak self] in
-      guard let self else { return }
-      self.trail.finish()
-      self.clock.drive(key: "boltty.show.trail") { [weak self] _ in
-        guard let self else { return false }
-        self.trail.sweep()
-        return !self.trail.isEmpty
-      }
-    }
-  }
-
-  /// Let go: the answer, typed out with its blips, the face bobbing.
-  func answer(_ answer: String) {
-    face.view.emotion = .focused
+  /// The answer, word by word out of a blur, each with its blip; the face
+  /// bobs and the words hold still.
+  func speak() {
     say(answer, quiet: false, lines: AskBolttyOverlayController.bubbleMaxLines)
     label.stringValue = ""
-    var typed: Double = 0
-    var lastBlip = 0
+    let padding = AskBolttyOverlayController.bubblePadding
+    let words = ShowWords(answer, size: font.pointSize, weight: .medium, width: pt(AskBolttyOverlayController.bubbleMaxTextWidth),
+                          lineHeight: lineHeight, centred: false, clock: clock)
+    words.view.frame.origin = CGPoint(x: pt(padding.width), y: shade.bounds.height - pt(padding.height) - words.size.height)
+    words.view.autoresizingMask = [.maxXMargin, .minYMargin]
+    shade.addSubview(words.view)
     let pitch = AskBolttyOverlayController.basePitch(for: agent)
-    clock.drive(key: "boltty.show.typing") { [weak self] elapsed in
-      guard let self else { return false }
-      typed = min(Double(answer.count), typed + elapsed * AskBolttyOverlayController.typingSpeed)
-      let shown = Int(typed)
-      self.label.stringValue = String(answer.prefix(shown))
-      if shown - lastBlip >= 2 {
-        lastBlip = shown
-        let letter = answer[answer.index(answer.startIndex, offsetBy: shown - 1)]
-        if letter.isLetter || letter.isNumber { self.blips?.blip(pitch: pitch * Double.random(in: 0.88...1.14)) }
+    for index in 0..<words.count {
+      DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.1 * Double(index))) { [weak self] in
+        words.reveal(index)
+        self?.blips?.blip(pitch: pitch * Double.random(in: 0.88...1.14))
       }
-      let speaking = shown < answer.count
+    }
+    let until = Motion.now + Motion.scaled(0.1 * Double(words.count))
+    clock.drive(key: "boltty.show.typing") { [weak self] _ in
+      guard let self else { return false }
+      let speaking = Motion.now < until
       self.face.lift = speaking
         ? self.pt(AskBolttyOverlayController.bobHeight) * CGFloat(abs(sin(Motion.now * 18))) : 0
       return speaking
     }
   }
 
-  /// The answer points at `spot`: the face flies there and lands beside it,
-  /// as the overlay's does, and a ring marks it once it has landed.
-  func point(at spot: CGRect) {
-    let target = CGPoint(x: spot.midX, y: spot.midY)
-    let offset = AskBolttyOverlayController.landingOffset
+  /// The answer names something: the face flies there, its bubble with it.
+  func land(at middle: CGPoint) {
     let side = pt(AskBolttyOverlayController.faceSide)
     face.view.emotion = .curious
-    face.fly(to: CGRect(x: target.x + pt(offset.dx) - side / 2, y: target.y + pt(offset.dy) - side / 2,
-                        width: side, height: side), response: 0.6, bounce: 0.12)
-    let bounds = drawing.bounds
-    guard bounds.width > 0, bounds.height > 0 else { return }
-    let radius = max(spot.width, spot.height) / 2 + pt(8)
-    let ring = AskBolttyShape(kind: .circle(
-      center: CGPoint(x: (target.x - bounds.minX) / bounds.width * 1000,
-                      y: (bounds.maxY - target.y) / bounds.height * 1000),
-      radius: radius / bounds.width * 1000), label: nil)
-    DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.45)) { [weak self] in
-      self?.drawing.draw(ring, in: bounds)
-    }
+    face.fly(to: CGRect(x: middle.x - side / 2, y: middle.y - side / 2, width: side, height: side),
+             response: 0.6, bounce: 0.12)
   }
 
-  /// The board beside the bubble, as the overlay puts one up, and `shapes`
-  /// drawn on it one after another.
-  func board(_ shapes: [AskBolttyShape]) {
-    guard let parent = bubble.superview else { return }
-    let side = pt(Self.boardSide)
-    let gap = pt(AskBolttyOverlayController.boardGap)
-    let margin = pt(AskBolttyOverlayController.edgeMargin)
-    let anchor = bubble.frame
-    var x = anchor.maxX + gap
-    if x + side > parent.bounds.maxX - margin { x = anchor.minX - gap - side }
-    let y = min(max(anchor.midY - side / 2, margin), parent.bounds.maxY - margin - side)
-    let corner = pt(AskBolttyOverlayController.boardCornerRadius)
-    let content = NSView()
-    content.wantsLayer = true
-    content.layer?.backgroundColor = AskBolttyOverlayController.bubbleShade.cgColor
-    content.layer?.cornerRadius = corner
-    content.layer?.cornerCurve = .continuous
-    content.layer?.addSublayer(boardDrawing)
-    let host = PaletteGlassHost(content: content, cornerRadius: corner, style: .bolttyAI)
-    host.appearance = NSAppearance(named: .darkAqua)
-    host.translatesAutoresizingMaskIntoConstraints = true
-    host.frame = CGRect(x: x, y: y, width: side, height: side)
-    // A glass host takes its corner when it is set: again, now it has a size.
-    host.cornerRadius = corner
-    host.alphaValue = 0
-    parent.addSubview(host)
-    host.layer?.zPosition = 340
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    boardDrawing.frame = CGRect(origin: .zero, size: host.frame.size)
-    CATransaction.commit()
-    ShowClock.fade(host, to: 1, duration: Motion.standard)
-    let inset = pt(AskBolttyOverlayController.boardInset)
-    let surface = boardDrawing.bounds.insetBy(dx: inset, dy: inset)
-    DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.3)) { [weak self] in
-      for shape in shapes { self?.boardDrawing.draw(shape, in: surface) }
-    }
+  /// A point of the view, in the 0–1000 the drawing is told in.
+  func mark(_ point: CGPoint) -> CGPoint {
+    let bounds = drawing.bounds
+    return CGPoint(x: (point.x - bounds.minX) / bounds.width * 1000, y: (bounds.maxY - point.y) / bounds.height * 1000)
+  }
+
+  /// Stroked on one after another, on the screen itself.
+  func draw(_ shapes: [AskBolttyShape]) {
+    let bounds = drawing.bounds
+    guard bounds.width > 0, bounds.height > 0 else { return }
+    for shape in shapes { drawing.draw(shape, in: bounds) }
   }
 
   func end() {
@@ -2463,6 +2402,173 @@ enum ShowStill {
       view.image = NSImage(cgImage: image, size: rect.size)
     }
     return view
+  }
+}
+
+/// Words set out once and revealed one at a time, each rising out of a blur:
+/// where each will stand is known from the start, so none moves when the next
+/// arrives.
+@MainActor
+final class ShowWords {
+  let view = NSView()
+  let size: CGSize
+  private let clock: ShowClock
+  private var labels: [NSTextField] = []
+  private var ends: [CGPoint] = []
+
+  var count: Int { labels.count }
+
+  init(_ text: String, size type: CGFloat, weight: NSFont.Weight, width: CGFloat, lineHeight: CGFloat, centred: Bool,
+       clock: ShowClock) {
+    self.clock = clock
+    let font = roundedAppFont(size: type.rounded(), weight: weight)
+    func wide(_ words: String) -> CGFloat { ceil((words as NSString).size(withAttributes: [.font: font]).width) }
+    let gap = wide(" ")
+    var lines: [[Substring]] = [[]]
+    var used: CGFloat = 0
+    for word in text.split(separator: " ") {
+      if used > 0, used + wide(String(word)) > width {
+        lines.append([])
+        used = 0
+      }
+      lines[lines.count - 1].append(word)
+      used += wide(String(word)) + gap
+    }
+    let widths = lines.map { line in
+      line.reduce(CGFloat(0)) { $0 + wide(String($1)) } + gap * CGFloat(max(0, line.count - 1))
+    }
+    let widest = widths.max() ?? 0
+    self.size = CGSize(width: widest, height: lineHeight * CGFloat(lines.count))
+    view.frame = CGRect(origin: .zero, size: self.size)
+    view.wantsLayer = true
+    for (row, line) in lines.enumerated() {
+      var x = centred ? (widest - widths[row]) / 2 : 0
+      for word in line {
+        let label = ShowText.label(String(word), size: type, weight: weight)
+        label.sizeToFit()
+        let end = CGPoint(x: x.rounded(),
+                          y: (self.size.height - CGFloat(row + 1) * lineHeight + (lineHeight - label.frame.height) / 2).rounded())
+        label.frame.origin = CGPoint(x: end.x, y: end.y - type / 3)
+        label.alphaValue = 0
+        view.addSubview(label)
+        labels.append(label)
+        ends.append(end)
+        x += wide(String(word)) + gap
+      }
+    }
+  }
+
+  func reveal(_ index: Int) {
+    guard labels.indices.contains(index) else { return }
+    let label = labels[index]
+    let start = label.frame.origin
+    let end = ends[index]
+    ShowBlur.set(label, radius: 12)
+    ShowBlur.set(label, radius: 0, duration: 0.45)
+    ShowClock.fade(label, to: 1, duration: 0.25)
+    clock.spring(0.32, key: ObjectIdentifier(label)) { t in label.frame.origin = ShowClock.mix(start, end, t) }
+  }
+
+  func hide() {
+    ShowClock.fade(view, to: 0, duration: 0.15)
+  }
+}
+
+/// Ask Boltty's shell, as the region's corner has it: the panel's own glass
+/// under its black ramp, an orb out of a speck with the face in it; a capsule
+/// once words are heard, the face at its top and the words under it, its left
+/// edge and top holding; sent, closed round the face. No shadow: on the orb
+/// the shell's read as a dark rim.
+@MainActor
+final class ShowAskShell {
+  /// The overlay's points at the show's size (`ShowAsk.size`).
+  private let space: ShowSpace
+  private let clock: ShowClock
+  private let face: ShowFace
+  private let host: PaletteGlassHost
+  private let words: ShowWords
+  private let orb: CGRect
+  private let capsule: CGRect
+  private let speck: CGRect
+  private let orbFace: CGRect
+  private let capsuleFace: CGRect
+
+  init(in view: NSView, space: ShowSpace, clock: ShowClock, face: ShowFace, words text: String,
+       leftOf left: CGFloat, top: CGFloat) {
+    self.space = space
+    self.clock = clock
+    self.face = face
+    let scale = ShowAsk.size
+    func pt(_ points: CGFloat) -> CGFloat { space.v(points * scale) }
+    let diameter = pt(AgentPaletteMetrics.listeningOrbDiameter)
+    let side = pt(AgentPaletteMetrics.listeningFaceSize)
+    let lineHeight = pt(AgentPaletteMetrics.listeningWordsFontSize * AgentPaletteMetrics.listeningWordsLineSpacing)
+    words = ShowWords(text, size: pt(AgentPaletteMetrics.listeningWordsFontSize), weight: .medium,
+                      width: pt(AgentPaletteMetrics.listeningMaxWidth - AgentPaletteMetrics.listeningWordsInset * 2),
+                      lineHeight: lineHeight, centred: true, clock: clock)
+    let inset = pt(AgentPaletteMetrics.listeningWordsInset)
+    let faceTop = pt(AgentPaletteMetrics.listeningFaceTopInset)
+    let height = faceTop + side + pt(AgentPaletteMetrics.listeningFaceWordsGap) + words.size.height
+      + pt(AgentPaletteMetrics.listeningWordsBottomInset)
+    orb = CGRect(x: left, y: top - diameter, width: diameter, height: diameter)
+    capsule = CGRect(x: left, y: top - height, width: max(diameter, words.size.width + inset * 2), height: height)
+    speck = CGRect(x: left, y: top - diameter / 2 - pt(4), width: pt(8), height: pt(8))
+    // A face draws its body inside its box with room to hop.
+    let box = side * 1.18
+    orbFace = CGRect(x: orb.midX - box / 2, y: orb.midY - box / 2, width: box, height: box)
+    capsuleFace = CGRect(x: capsule.midX - box / 2, y: top - faceTop - side / 2 - box / 2, width: box, height: box)
+    let content = NSView()
+    host = PaletteGlassHost(content: content, cornerRadius: diameter / 2, style: .bolttyAIPrompt)
+    host.appearance = NSAppearance(named: .darkAqua)
+    host.translatesAutoresizingMaskIntoConstraints = true
+    host.frame = speck
+    host.alphaValue = 0
+    view.addSubview(host)
+    host.layer?.zPosition = 200
+    words.view.frame.origin = CGPoint(x: capsule.minX + inset, y: capsule.minY + pt(AgentPaletteMetrics.listeningWordsBottomInset))
+    view.addSubview(words.view)
+    words.view.layer?.zPosition = 210
+  }
+
+  private func spring(to rect: CGRect, response: Double, bounce: Double = 0) {
+    let from = host.frame
+    let corner = orb.height / 2
+    clock.spring(response, bounce: bounce, key: ObjectIdentifier(self)) { [host] t in
+      let frame = ShowClock.mix(from, rect, t)
+      host.frame = frame
+      host.cornerRadius = min(corner, frame.height / 2)
+    }
+  }
+
+  /// Out of a speck on the region's edge, the face in it from the first.
+  func grow() {
+    ShowClock.fade(host, to: 1, duration: 0.12)
+    face.place(at: speck)
+    ShowClock.fade(face.holder, to: 1, duration: 0.12)
+    face.fly(to: orbFace, response: 0.4, bounce: 0.1)
+    spring(to: orb, response: 0.4, bounce: 0.1)
+  }
+
+  /// Words are coming: a capsule, the face rising to its top.
+  func open() {
+    spring(to: capsule, response: 0.35, bounce: 0.05)
+    face.fly(to: capsuleFace, response: 0.35, bounce: 0.05)
+  }
+
+  func hear(_ index: Int) {
+    words.reveal(index)
+    face.view.nod()
+  }
+
+  /// Sent: closed into the orb round the face.
+  func close() {
+    words.hide()
+    spring(to: orb, response: 0.26)
+    face.fly(to: orbFace, response: 0.26)
+  }
+
+  func vanish() {
+    ShowClock.fade(host, to: 0, duration: 0.2)
   }
 }
 
@@ -2722,9 +2828,10 @@ final class ShowChatList {
 }
 
 /// Settings, as its Agents and Usage pages stand: the sidebar of pages;
-/// the agent's page with its face, the six shapes and the chat backdrops
-/// beside a mock chat that wears the chosen one, live; then Usage, a meter
-/// per agent in its own gradient.
+/// the agent's page with its face, the six shapes, the chat backdrops as
+/// round windows, the chosen one live, and its model and Auto Mode; then
+/// Usage, a meter per agent, flat in the accent colour; then Voice, what runs
+/// on this Mac and the voices as plain circles in the mascots' gradients.
 @MainActor
 final class ShowSettingsWindow {
   private static let pages: [(symbol: String, title: String)] = [
@@ -2744,11 +2851,22 @@ final class ShowSettingsWindow {
   private let sidebarPill = NSView()
   private let agentsPage = NSView()
   private let usagePage = NSView()
+  private let voicePage = NSView()
   private let shapePill = NSView()
-  private let backdropPill = NSView()
+  private let backdropRing = NSView()
+  private let voiceRing = NSView()
+  private var voiceCells: [CGRect] = []
+  /// Each voice's circle, in the order of `SupertonicSynthesizer.presets`,
+  /// as `VoiceSwatch` draws it (a layer's y runs up).
+  private static let voiceLooks: [(palette: String, start: CGPoint, end: CGPoint)] = [
+    ("ember", CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 0)), ("candy", CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)),
+    ("citrus", CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 0)), ("daybreak", CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)),
+    ("slate", CGPoint(x: 1, y: 1), CGPoint(x: 0, y: 0)), ("lagoon", CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)),
+    ("citrus", CGPoint(x: 1, y: 0), CGPoint(x: 0, y: 1)), ("slate", CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)),
+    ("daybreak", CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)), ("candy", CGPoint(x: 1, y: 0), CGPoint(x: 0, y: 1)),
+  ]
   private var shapeCells: [MascotShape: CGRect] = [:]
   private var backdropCells: [ChatBackdrop: CGRect] = [:]
-  private let preview = NSView()
   private let backdrop: AgentBackdropView
   private var meters: [(fill: CAGradientLayer, track: CGRect, left: CGFloat)] = []
   /// The shapes the face tries, its own last.
@@ -2756,6 +2874,7 @@ final class ShowSettingsWindow {
   /// Where the live face stands on each page, in the parent's space.
   private(set) var faceSlot: CGRect = .zero
   private(set) var usageFaceSlot: CGRect = .zero
+  private(set) var voiceFaceSlot: CGRect = .zero
 
   /// In the window, y from its top.
   private func box(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
@@ -2779,6 +2898,22 @@ final class ShowSettingsWindow {
     label.frame.origin = CGPoint(x: space.v(x).rounded(),
                                  y: (frame.height - space.v(middle) - label.frame.height / 2).rounded())
     view.addSubview(label)
+  }
+
+  /// A chosen choice's accent ring, standing off the circle: filled, as
+  /// block borders are.
+  private func ring(_ view: NSView, side: CGFloat) {
+    view.frame = CGRect(x: 0, y: 0, width: side, height: side)
+    view.wantsLayer = true
+    let shape = CAShapeLayer()
+    shape.frame = view.bounds
+    shape.fillRule = .evenOdd
+    shape.fillColor = NSColor.controlAccentColor.cgColor
+    let path = CGMutablePath()
+    path.addEllipse(in: view.bounds)
+    path.addEllipse(in: view.bounds.insetBy(dx: space.v(4), dy: space.v(4)))
+    shape.path = path
+    view.layer?.addSublayer(shape)
   }
 
   init(in parent: NSView, space: ShowSpace, clock: ShowClock, agents: [AgentId], planned: AgentId, frame: CGRect) {
@@ -2834,7 +2969,7 @@ final class ShowSettingsWindow {
     fill(shapePill, alpha: 0.22, radius: space.v(18))
     agentsPage.addSubview(shapePill)
     for (index, shape) in shapes.enumerated() {
-      let cell = box(300 + CGFloat(index) * 80, 200, 70, 70)
+      let cell = box(300 + CGFloat(index) * 132, 196, 70, 70)
       shapeCells[shape] = cell
       let side = space.v(54)
       agentsPage.addSubview(ShowStill.face(MascotLook(shape: shape, palette: own.palette, finish: own.finish),
@@ -2843,42 +2978,115 @@ final class ShowSettingsWindow {
     }
     shapePill.frame = shapeCells[own.shape] ?? .zero
 
-    label("Chat", size: 15, alpha: 0.55, weight: .semibold, x: 304, middle: 304, in: agentsPage)
-    fill(backdropPill, alpha: 0.3, radius: space.v(22))
-    agentsPage.addSubview(backdropPill)
-    for (index, scene) in Self.backdrops.enumerated() {
-      let x = 300 + CGFloat(index) * 118
-      let cell = box(x, 322, 108, 108)
-      backdropCells[scene] = cell.insetBy(dx: -space.v(5), dy: -space.v(5))
-      let tile = NSImageView(frame: cell.insetBy(dx: space.v(4), dy: space.v(4)))
-      fill(tile, alpha: 0.12, radius: space.v(18))
-      tile.layer?.masksToBounds = true
-      tile.imageScaling = .scaleAxesIndependently
-      if let still = AgentBackdropRenderer.still(of: scene, palette: own.palette, scene: 200, pixels: tile.frame.width * 2) {
-        tile.image = NSImage(cgImage: still, size: tile.frame.size)
+    label("Chat", size: 15, alpha: 0.55, weight: .semibold, x: 304, middle: 298, in: agentsPage)
+    let diameter: CGFloat = 104
+    let scene: CGFloat = 260
+    ring(backdropRing, side: space.v(diameter + 18))
+    for (index, choice) in Self.backdrops.enumerated() {
+      let x = 312 + CGFloat(index) * 150
+      let cell = box(x, 322, diameter, diameter)
+      backdropCells[choice] = cell.insetBy(dx: -space.v(9), dy: -space.v(9))
+      let window = NSImageView(frame: cell)
+      fill(window, alpha: 0.45, radius: cell.width / 2)
+      window.layer?.backgroundColor = CGColor(gray: 0.5, alpha: 0.45)
+      window.layer?.masksToBounds = true
+      window.imageScaling = .scaleAxesIndependently
+      if let still = AgentBackdropRenderer.still(of: choice, palette: own.palette, scene: scene, pixels: cell.width * 2) {
+        window.image = NSImage(cgImage: still, size: cell.size)
+      } else {
+        // Standard has no scene: it is the shell's glass under its ramp.
+        let ramp = CAGradientLayer()
+        ramp.frame = window.bounds
+        ramp.colors = [CGColor(gray: 0, alpha: 0), CGColor(gray: 0, alpha: 0.85)]
+        window.layer?.addSublayer(ramp)
       }
-      agentsPage.addSubview(tile)
-      label(scene.title, size: 14, alpha: 0.7, x: x + 4, middle: 450, in: agentsPage)
+      agentsPage.addSubview(window)
+      if choice == .sky {
+        backdrop.frame = cell
+        backdrop.sceneScale = diameter / scene
+        agentsPage.addSubview(backdrop)
+        backdrop.layOut(in: cell, corner: cell.width / 2, curve: .circular)
+      }
+      let title = ShowText.label(choice.title, size: space.v(14), ink: NSColor.white.withAlphaComponent(0.75))
+      title.sizeToFit()
+      title.frame.origin = CGPoint(x: (cell.midX - title.frame.width / 2).rounded(),
+                                   y: (cell.minY - space.v(20) - title.frame.height / 2).rounded())
+      agentsPage.addSubview(title)
     }
-    backdropPill.frame = backdropCells[.standard] ?? .zero
+    backdropRing.frame = backdropCells[.standard] ?? .zero
+    agentsPage.addSubview(backdropRing)
 
-    // The mock chat that wears the choice.
-    preview.frame = box(800, 182, 290, 290)
-    fill(preview, alpha: 0.1, radius: space.v(30))
-    agentsPage.addSubview(preview)
-    preview.addSubview(backdrop)
-    backdrop.layOut(in: preview.bounds, corner: space.v(30), curve: .continuous)
-    let height = preview.frame.height
-    func block(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat, alpha: CGFloat) {
-      let view = NSView(frame: CGRect(x: space.v(x), y: height - space.v(y + h), width: space.v(w), height: space.v(h)))
-      fill(view, alpha: alpha, radius: view.frame.height / 2)
-      preview.addSubview(view)
+    // What a new chat uses, and Auto Mode.
+    let card = NSView(frame: box(790, 308, 296, 150))
+    fill(card, alpha: 0.12, radius: space.v(24))
+    agentsPage.addSubview(card)
+    for (index, row) in ["Model", "Reasoning", "Auto Mode"].enumerated() {
+      let middle = 308 + 26 + CGFloat(index) * 49
+      label(row, size: 16, x: 812, middle: middle, in: agentsPage)
+      if index < 2 {
+        let value = NSView(frame: box(index == 0 ? 958 : 1000, middle - 4, index == 0 ? 106 : 64, 8))
+        fill(value, alpha: 0.28, radius: value.frame.height / 2)
+        agentsPage.addSubview(value)
+      } else {
+        let track = NSView(frame: box(1016, middle - 13, 48, 26))
+        track.wantsLayer = true
+        track.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        track.layer?.cornerRadius = track.frame.height / 2
+        agentsPage.addSubview(track)
+        let knob = NSView(frame: box(1040, middle - 11, 22, 22))
+        fill(knob, alpha: 1, radius: knob.frame.height / 2)
+        agentsPage.addSubview(knob)
+      }
     }
-    block(130, 26, 140, 30, alpha: 0.95)
-    for (index, width) in [230, 200, 240, 120].enumerated() {
-      block(20, 80 + CGFloat(index) * 22, CGFloat(width), 9, alpha: 0.7)
+
+    // Voice.
+    voicePage.frame = CGRect(origin: .zero, size: frame.size)
+    voicePage.wantsLayer = true
+    voicePage.alphaValue = 0
+    content.addSubview(voicePage)
+    label("Voice", size: 28, weight: .semibold, x: 304, middle: 66, in: voicePage)
+    voiceFaceSlot = self.parent(box(1006, 26, 84, 84))
+    let rows = NSView(frame: box(300, 112, 790, 148))
+    fill(rows, alpha: 0.12, radius: space.v(24))
+    voicePage.addSubview(rows)
+    let divider = NSView(frame: box(322, 186, 746, 1.5))
+    fill(divider, alpha: 0.14, radius: 0)
+    voicePage.addSubview(divider)
+    for (index, row) in [("Dictation", "Parakeet, on this Mac"), ("Read answers aloud", "When I asked by voice")].enumerated() {
+      let middle = 149 + CGFloat(index) * 74
+      label(row.0, size: 17, x: 324, middle: middle, in: voicePage)
+      let value = ShowText.label(row.1, size: space.v(16), ink: NSColor.white.withAlphaComponent(0.7))
+      value.sizeToFit()
+      value.frame.origin = CGPoint(x: (space.v(1066) - value.frame.width).rounded(),
+                                   y: (frame.height - space.v(middle) - value.frame.height / 2).rounded())
+      voicePage.addSubview(value)
     }
-    block(14, 234, 262, 42, alpha: 0.22)
+    label("Supertonic", size: 15, alpha: 0.55, weight: .semibold, x: 304, middle: 296, in: voicePage)
+    let swatch: CGFloat = 60
+    ring(voiceRing, side: space.v(swatch + 16))
+    for (index, voice) in BolttyAISettingsModel.localVoices.prefix(Self.voiceLooks.count).enumerated() {
+      let x = 308 + CGFloat(index) * 78.5
+      let cell = box(x, 322, swatch, swatch)
+      voiceCells.append(cell.insetBy(dx: -space.v(8), dy: -space.v(8)))
+      let look = Self.voiceLooks[index]
+      let circle = CAGradientLayer()
+      circle.frame = cell
+      circle.cornerRadius = cell.width / 2
+      let colours = (MascotPalette.palette(withID: look.palette) ?? .standard)
+      circle.colors = colours.colors.map(\.cgColor)
+      circle.locations = colours.stopPlaces.map { NSNumber(value: Double($0)) }
+      circle.startPoint = look.start
+      circle.endPoint = look.end
+      voicePage.layer?.addSublayer(circle)
+      let title = ShowText.label(voice.title, size: space.v(13), ink: NSColor.white.withAlphaComponent(0.75))
+      title.sizeToFit()
+      title.frame.origin = CGPoint(x: (cell.midX - title.frame.width / 2).rounded(),
+                                   y: (cell.minY - space.v(20) - title.frame.height / 2).rounded())
+      voicePage.addSubview(title)
+    }
+    // M3, Boltty's default.
+    voiceRing.frame = voiceCells.indices.contains(7) ? voiceCells[7] : .zero
+    voicePage.addSubview(voiceRing)
 
     // Usage.
     usagePage.frame = CGRect(origin: .zero, size: frame.size)
@@ -2898,7 +3106,7 @@ final class ShowSettingsWindow {
       label(agent.displayName, size: 19, weight: .semibold, x: 384, middle: top + 18, in: usagePage)
       label(Self.usage[index].words, size: 14, alpha: 0.6, x: 384, middle: top + 46, in: usagePage)
       // A dark track, a thick meter: on light glass a light track and a
-      // thin bar left the agent's gradient nothing to stand against.
+      // thin bar left the accent colour nothing to stand against.
       let track = box(384, top + 68, 690, 20)
       let trackView = NSView(frame: track)
       trackView.wantsLayer = true
@@ -2907,7 +3115,8 @@ final class ShowSettingsWindow {
       trackView.layer?.cornerCurve = .continuous
       usagePage.addSubview(trackView)
       let meter = CAGradientLayer()
-      meter.colors = MascotPalette.face(for: agent).meterInk.map(\.cgColor)
+      let tint = NSColor.controlAccentColor.cgColor
+      meter.colors = [tint, tint]
       meter.startPoint = CGPoint(x: 0, y: 0.5)
       meter.endPoint = CGPoint(x: 1, y: 0.5)
       meter.cornerRadius = track.height / 2
@@ -2931,7 +3140,7 @@ final class ShowSettingsWindow {
 
   func pick(backdrop scene: ChatBackdrop) {
     guard let cell = backdropCells[scene] else { return }
-    slide(backdropPill, to: cell)
+    slide(backdropRing, to: cell)
     backdrop.show(scene, palette: palette)
   }
 
@@ -2953,6 +3162,19 @@ final class ShowSettingsWindow {
         }
       }
     }
+  }
+
+  /// The sidebar to Voice: the meters give way to what runs on this Mac.
+  func showVoice() {
+    slide(sidebarPill, to: box(32, 34 + 150, 226, 40))
+    ShowClock.fade(usagePage, to: 0, duration: 0.25)
+    ShowClock.fade(voicePage, to: 1, duration: 0.3)
+  }
+
+  /// A press on another voice: F2, its ring going there.
+  func pickVoice() {
+    guard voiceCells.indices.contains(1) else { return }
+    slide(voiceRing, to: voiceCells[1])
   }
 
   private func slide(_ view: NSView, to rect: CGRect) {

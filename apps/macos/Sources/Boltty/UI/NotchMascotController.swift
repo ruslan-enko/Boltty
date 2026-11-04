@@ -400,9 +400,8 @@ private final class NotchMascotView: NSView {
 
   private struct Seat {
     let mascot: MascotNSView
-    let rim: NSView
     let badge: NSView
-    let count: NSTextField
+    let count: NotchBadgeCount
   }
   private var seats: [Seat] = []
   private var order: [(conversationID: UUID, agentKey: String, seat: Int)] = []
@@ -435,25 +434,18 @@ private final class NotchMascotView: NSView {
       let mascot = MascotNSView(conversationID: UUID(), look: MascotLook.face(for: nil))
       mascot.isHidden = true
       addSubview(mascot)
-      let rim = NSView()
-      rim.wantsLayer = true
-      rim.layer?.backgroundColor = NSColor.black.cgColor
-      rim.isHidden = true
-      addSubview(rim)
       let badge = NSView()
       badge.wantsLayer = true
       badge.layer?.backgroundColor = NSColor.black.cgColor
       let tint = CALayer()
-      tint.backgroundColor = PaletteInk.selectedFill.cgColor
+      tint.backgroundColor = AgentPaletteMetrics.resultsUnreadDotFill.cgColor
       badge.layer?.addSublayer(tint)
       badge.layer?.zPosition = 50
       badge.isHidden = true
-      let count = NSTextField(labelWithString: "")
-      count.alignment = .center
-      count.textColor = PaletteInk.primary
+      let count = NotchBadgeCount()
       badge.addSubview(count)
       addSubview(badge)
-      seats.append(Seat(mascot: mascot, rim: rim, badge: badge, count: count))
+      seats.append(Seat(mascot: mascot, badge: badge, count: count))
     }
     for label in [lineLabel, leavingLabel] {
       label.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta, weight: .medium)
@@ -501,24 +493,20 @@ private final class NotchMascotView: NSView {
       let seat = seats[entry.seat]
       let slot = slots[index].offsetBy(dx: dockOrigin, dy: 0)
       seat.mascot.frame = slot
-      seat.mascot.layer?.zPosition = CGFloat(index * 2 + 1)
+      seat.mascot.layer?.zPosition = CGFloat(index)
       seat.mascot.layoutSubtreeIfNeeded()
-      seat.rim.frame = slot
-      seat.rim.layer?.cornerRadius = slot.height / 2
-      seat.rim.layer?.zPosition = CGFloat(index * 2)
-      seat.rim.isHidden = index == 0
       let side = max(10, (slot.height * 0.46).rounded())
-      seat.badge.frame = CGRect(x: slot.maxX - side * 0.75, y: slot.minY - side * 0.15,
-                                width: side, height: side)
+      seat.badge.frame = backingAlignedRect(
+        CGRect(x: slot.maxX - side * 0.75, y: slot.minY - side * 0.15, width: side, height: side),
+        options: .alignAllEdgesNearest)
       seat.badge.layer?.cornerRadius = side / 2
       if let tint = seat.badge.layer?.sublayers?.first(where: { !($0.delegate is NSView) }) {
         let ring = max(1, side * 0.12)
         tint.frame = seat.badge.bounds.insetBy(dx: ring, dy: ring)
         tint.cornerRadius = tint.frame.height / 2
       }
-      seat.count.font = roundedAppFont(size: (side * 0.68).rounded(), weight: .bold)
-      let height = ceil(seat.count.intrinsicContentSize.height)
-      seat.count.frame = CGRect(x: 0, y: (side - height) / 2, width: side, height: height)
+      seat.count.font = roundedAppFont(size: (side * 0.62).rounded(), weight: .bold)
+      seat.count.frame = seat.badge.bounds
     }
   }
 
@@ -538,13 +526,12 @@ private final class NotchMascotView: NSView {
       parts.mascot.emotion = face.emotion
       parts.mascot.reduceMotion = MotionPreferences.reduceMotion
       parts.badge.isHidden = face.chats < 2
-      parts.count.stringValue = "\(face.chats)"
+      parts.count.text = "\(face.chats)"
     }
     let arriving = Set(next.map(\.seat)).subtracting(order.map(\.seat))
     order = next
     for (index, seat) in seats.enumerated() where !next.contains(where: { $0.seat == index }) {
       seat.mascot.isHidden = true
-      seat.rim.isHidden = true
       seat.badge.isHidden = true
     }
     for entry in next {
@@ -559,8 +546,7 @@ private final class NotchMascotView: NSView {
   }
 
   private func fadeIn(_ seat: Seat) {
-    for layer in [seat.mascot.layer, seat.rim.layer] {
-      guard let layer else { continue }
+    if let layer = seat.mascot.layer {
       let fade = CABasicAnimation(keyPath: "opacity")
       fade.fromValue = 0
       fade.toValue = 1
@@ -627,7 +613,7 @@ private final class NotchMascotView: NSView {
   private var slidingLayers: [CALayer] {
     order.flatMap { entry -> [CALayer] in
       let seat = seats[entry.seat]
-      return [seat.mascot.layer, seat.rim.layer, seat.badge.layer].compactMap { $0 }
+      return [seat.mascot.layer, seat.badge.layer].compactMap { $0 }
     }
   }
 
@@ -786,11 +772,8 @@ private final class NotchMascotView: NSView {
       cornerWidth: geometry.cornerRadius, cornerHeight: geometry.cornerRadius, transform: nil))
     context.setFillColor(NSColor.black.cgColor)
     context.fillPath()
-    for (index, entry) in order.enumerated() {
+    for entry in order {
       let mascot = seats[entry.seat].mascot
-      if index > 0 {
-        context.fillEllipse(in: mascot.frame)
-      }
       let reduceMotion = mascot.reduceMotion
       mascot.reduceMotion = true
       mascot.render()
@@ -839,4 +822,38 @@ private final class NotchMascotView: NSView {
     if bounds.contains(point) { onOpen?(face(at: point)) }
   }
   override func accessibilityPerformPress() -> Bool { onOpen?(nil); return true }
+}
+
+/// The badge's number, centred on the outline of its digits and filled as a
+/// path: a label centres its line box, and text drawing snaps the baseline to a
+/// pixel, which leaves a digit half a pixel off in a disc this small.
+@MainActor
+private final class NotchBadgeCount: NSView {
+  var text = "" { didSet { if text != oldValue { needsDisplay = true } } }
+  var font = roundedAppFont(size: 9, weight: .bold) { didSet { needsDisplay = true } }
+
+  override func draw(_ dirtyRect: NSRect) {
+    guard let context = NSGraphicsContext.current?.cgContext else { return }
+    let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font]))
+    let outline = CGMutablePath()
+    for run in CTLineGetGlyphRuns(line) as? [CTRun] ?? [] {
+      let count = CTRunGetGlyphCount(run)
+      var glyphs = [CGGlyph](repeating: 0, count: count)
+      var positions = [CGPoint](repeating: .zero, count: count)
+      CTRunGetGlyphs(run, CFRange(location: 0, length: count), &glyphs)
+      CTRunGetPositions(run, CFRange(location: 0, length: count), &positions)
+      let attributes = CTRunGetAttributes(run) as NSDictionary
+      let runFont = attributes[kCTFontAttributeName] as! CTFont
+      for (glyph, position) in zip(glyphs, positions) {
+        guard let path = CTFontCreatePathForGlyph(runFont, glyph, nil) else { continue }
+        outline.addPath(path, transform: CGAffineTransform(translationX: position.x, y: position.y))
+      }
+    }
+    let ink = outline.boundingBoxOfPath
+    guard !ink.isEmpty else { return }
+    context.translateBy(x: bounds.midX - ink.midX, y: bounds.midY - ink.midY)
+    context.addPath(outline)
+    context.setFillColor(PaletteInk.primary.cgColor)
+    context.fillPath()
+  }
 }

@@ -104,7 +104,9 @@ class PaletteIconButton: NSButton {
     trackingArea = area
   }
 
-  override func mouseEntered(with event: NSEvent) {
+  override func mouseEntered(with event: NSEvent) { beginHover() }
+
+  private func beginHover() {
     guard !isOutOfSight else { return }
     isHovered = true
     if let helpText {
@@ -114,6 +116,24 @@ class PaletteIconButton: NSButton {
   }
 
   override func mouseExited(with event: NSEvent) {
+    isHovered = false
+    PaletteHelpPresenter.shared.dismiss(for: self)
+  }
+
+  // A button shown under a pointer that is already there gets no
+  // mouseEntered: a reveal on hover would otherwise answer only a pointer
+  // that came in from outside it.
+  override func viewDidUnhide() {
+    super.viewDidUnhide()
+    guard let window, window.isKeyWindow else { return }
+    let location = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+    guard bounds.contains(location), !isHovered else { return }
+    beginHover()
+  }
+
+  override func viewDidHide() {
+    super.viewDidHide()
+    guard isHovered else { return }
     isHovered = false
     PaletteHelpPresenter.shared.dismiss(for: self)
   }
@@ -238,6 +258,12 @@ extension NSView {
   }
 }
 
+/// A view that tells help tags where its glass is, in its own coordinates.
+@MainActor
+protocol PaletteHelpRoomProviding: AnyObject {
+  var helpRoom: NSRect? { get }
+}
+
 @MainActor
 final class PaletteHelpPresenter {
   static let shared = PaletteHelpPresenter()
@@ -285,7 +311,7 @@ final class PaletteHelpPresenter {
     tag.frame = Self.frame(
       of: tag.fittingSize,
       for: host.convert(view.bounds, from: view),
-      in: Self.room(in: host),
+      in: Self.room(in: host, for: view),
       flipped: host.isFlipped)
     tag.isInteractive = pinned
     host.addSubview(tag, positioned: .above, relativeTo: nil)
@@ -345,6 +371,23 @@ final class PaletteHelpPresenter {
     return NSRect(x: x, y: y, width: size.width, height: size.height)
   }
 
+  /// The screen's room inside the host, cut to the glass the control stands
+  /// on: the panel's window is wider than its shell, and a tag hanging off
+  /// the glass reads as dropped.
+  static func room(in host: NSView, for view: NSView) -> NSRect {
+    var room = room(in: host)
+    var ancestor = view.superview
+    while let current = ancestor {
+      if let provider = current as? PaletteHelpRoomProviding, let glass = provider.helpRoom {
+        let cut = room.intersection(host.convert(glass, from: current))
+        if !cut.isEmpty { room = cut }
+        break
+      }
+      ancestor = current.superview
+    }
+    return room
+  }
+
   static func room(in host: NSView) -> NSRect {
     guard let window = host.window, let screen = window.screen else { return host.bounds }
     let top = min(screen.visibleFrame.maxY, screen.frame.maxY - screen.safeAreaInsets.top)
@@ -395,6 +438,51 @@ final class PaletteHelpPresenter {
   }
 }
 
+/// What every help tag stands on: the system's glass, with density over it and
+/// never in its tint. The glass brings its own edge and shadow. It takes no
+/// clicks, so a press on a pinned tag still reaches the tag.
+final class PaletteHelpBackdrop: NSView {
+  private let glass = NSGlassEffectView()
+  private let density = NSView()
+
+  /// Goes in first, so everything the tag adds later stands above it.
+  static func install(in tag: NSView) {
+    let backdrop = PaletteHelpBackdrop()
+    backdrop.translatesAutoresizingMaskIntoConstraints = false
+    tag.addSubview(backdrop, positioned: .below, relativeTo: nil)
+    NSLayoutConstraint.activate([
+      backdrop.leadingAnchor.constraint(equalTo: tag.leadingAnchor),
+      backdrop.trailingAnchor.constraint(equalTo: tag.trailingAnchor),
+      backdrop.topAnchor.constraint(equalTo: tag.topAnchor),
+      backdrop.bottomAnchor.constraint(equalTo: tag.bottomAnchor),
+    ])
+  }
+
+  private init() {
+    super.init(frame: .zero)
+    glass.style = .regular
+    glass.contentView = NSView()
+    density.wantsLayer = true
+    density.layer?.backgroundColor = AgentPaletteMetrics.helpDensity.cgColor
+    addSubview(glass)
+    addSubview(density)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+  override func layout() {
+    super.layout()
+    glass.frame = bounds
+    density.frame = bounds
+    // A glass view loses its corner when its size changes.
+    glass.cornerRadius = AgentPaletteMetrics.helpCornerRadius
+    density.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpCornerRadius)
+  }
+}
+
 private final class PaletteHelpTag: NSView {
   var isInteractive = false
   private var action: (() -> Void)?
@@ -403,13 +491,7 @@ private final class PaletteHelpTag: NSView {
     self.action = action
     super.init(frame: .zero)
     wantsLayer = true
-    layer?.backgroundColor = AgentPaletteMetrics.helpFill.cgColor
-    layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpCornerRadius)
-    layer?.borderColor = AgentPaletteMetrics.helpEdge.cgColor
-    layer?.shadowColor = NSColor.black.cgColor
-    layer?.shadowOpacity = 0.35
-    layer?.shadowRadius = 10
-    layer?.shadowOffset = CGSize(width: 0, height: -3)
+    PaletteHelpBackdrop.install(in: self)
 
     let lines = text.components(separatedBy: "\n")
     let maxWidth = AgentPaletteMetrics.helpTextMaxWidth
@@ -425,6 +507,10 @@ private final class PaletteHelpTag: NSView {
       let keys = NSStackView(views: caps)
       keys.orientation = .horizontal
       keys.spacing = AgentPaletteMetrics.helpKeycapSpacing
+      // A second line wider than the title widens the row; the room goes
+      // between title and keys, never into a keycap.
+      keys.setHuggingPriority(.required, for: .horizontal)
+      title.setContentHuggingPriority(.defaultLow, for: .horizontal)
       titleRow.setViews([keys], in: .trailing)
     }
     let column = NSStackView(views: [titleRow])
@@ -474,7 +560,6 @@ private final class PaletteHelpTag: NSView {
 
   private func applyHairlines() {
     let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-    layer?.borderWidth = 1 / scale
     for cap in keycaps { cap.layer?.borderWidth = 1 / scale }
   }
 
@@ -533,6 +618,13 @@ private final class PaletteKeycapView: NSView {
     centring += [
       heightAnchor.constraint(equalToConstant: size),
       widthAnchor.constraint(greaterThanOrEqualToConstant: size),
+      // A plain view has no width of its own: without this a stack hands it
+      // whatever room is left over.
+      {
+        let snug = widthAnchor.constraint(equalToConstant: size)
+        snug.priority = .defaultHigh
+        return snug
+      }(),
       mark.centerXAnchor.constraint(equalTo: centerXAnchor),
       mark.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 4),
       mark.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),

@@ -60,13 +60,18 @@ final class AskBolttyConfigurationTests: XCTestCase {
   }
 
   func testThePromptSaysWhatIsOnScreenAndHowToAnswer() {
-    let text = AskBolttyPrompt.text(
-      question: "що це?", context: "Preview — “Anatomy.png”", screenshotPath: "/tmp/s.png", readOnly: true)
+    let region = AskBolttyRegion(
+      screenPath: "/tmp/s.png", areaPath: "/tmp/a.png", context: "Preview — “Anatomy.png”",
+      recognizedText: "Deltoid", isWholeScreen: false)
+    let text = AskBolttyPrompt.text(question: "що це?", region: region, readOnly: true)
     XCTAssertTrue(text.hasSuffix("що це?"))
     XCTAssertTrue(text.contains("in Preview — “Anatomy.png”"))
-    XCTAssertTrue(text.contains("red ring"))
+    XCTAssertTrue(text.contains("red outline"))
     XCTAssertTrue(text.contains("/tmp/s.png"))
+    XCTAssertTrue(text.contains("/tmp/a.png"))
+    XCTAssertTrue(text.contains("<screen-text>\nDeltoid\n</screen-text>"))
     XCTAssertTrue(text.contains("do not run commands"))
+    XCTAssertTrue(text.contains("search the web"))
   }
 
   /// Ask Boltty was once called Talk, and what was stored under that

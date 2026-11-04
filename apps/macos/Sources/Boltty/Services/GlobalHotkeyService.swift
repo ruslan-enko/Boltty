@@ -35,12 +35,19 @@ enum HotkeyAvailability: Equatable, Sendable {
 final class GlobalHotkeyService: @unchecked Sendable {
   private final class ToggleBox {
     let run: @Sendable () -> Void
-    init(_ run: @escaping @Sendable () -> Void) { self.run = run }
+    let number: UInt32
+    init(number: UInt32, _ run: @escaping @Sendable () -> Void) {
+      self.number = number
+      self.run = run
+    }
   }
 
   private var hotKeyRef: EventHotKeyRef?
   private var handlerRef: EventHandlerRef?
   private let onToggle: @Sendable () -> Void
+  /// Which of Boltty's hotkeys this one is: every handler hears every press,
+  /// and the first to hear one would otherwise take it for its own.
+  private let number: UInt32
   private var toggleBox: ToggleBox?
   private(set) var isRunning = false
   private lazy var modifierMonitor = ModifierHotkeyMonitor(onToggle: onToggle)
@@ -52,7 +59,8 @@ final class GlobalHotkeyService: @unchecked Sendable {
 
   private static let probeHotKeyID = EventHotKeyID(signature: hotKeySignature, id: 0xFFFF)
 
-  init(onToggle: @escaping @Sendable () -> Void) {
+  init(number: UInt32 = 1, onToggle: @escaping @Sendable () -> Void) {
+    self.number = number
     self.onToggle = onToggle
   }
 
@@ -96,7 +104,7 @@ final class GlobalHotkeyService: @unchecked Sendable {
     let status = RegisterEventHotKey(
       hotkey.keyCode,
       hotkey.carbonModifiers,
-      EventHotKeyID(signature: Self.hotKeySignature, id: 1),
+      EventHotKeyID(signature: Self.hotKeySignature, id: number),
       GetApplicationEventTarget(),
       0,
       &reference
@@ -169,14 +177,16 @@ final class GlobalHotkeyService: @unchecked Sendable {
         nil,
         &hotKeyID
       )
-      guard err == noErr, hotKeyID.signature == GlobalHotkeyService.hotKeySignature else {
-        return noErr
+      guard err == noErr, hotKeyID.signature == GlobalHotkeyService.hotKeySignature,
+            hotKeyID.id == box.number
+      else {
+        return OSStatus(eventNotHandledErr)
       }
       DispatchQueue.main.async(execute: box.run)
       return noErr
     }
 
-    let box = ToggleBox(onToggle)
+    let box = ToggleBox(number: number, onToggle)
     guard InstallEventHandler(
       GetApplicationEventTarget(),
       callback,

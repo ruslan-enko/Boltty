@@ -93,23 +93,7 @@ struct BolttyAISettingsView: View {
   }
 }
 
-// MARK: - The two kinds of page
-
-struct SettingsColumnsPage<Content: View>: View {
-  @ViewBuilder var content: Content
-
-  var body: some View {
-    ScrollView {
-      Form { content }
-        .formStyle(.columns)
-        .toggleStyle(.checkbox)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 24)
-        .padding(.top, 28)
-        .padding(.bottom, 20)
-    }
-  }
-}
+// MARK: - Pages
 
 extension View {
   func settingsGroupedPage() -> some View {

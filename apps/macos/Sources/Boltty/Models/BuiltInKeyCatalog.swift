@@ -20,17 +20,13 @@ struct BuiltInKeySection: Identifiable, Equatable {
 /// Every key the product answers besides the menu's (`KeyboardShortcutCatalog`),
 /// written down from where the panel handles them
 /// (`AgentPaletteView.textView(_:doCommandBy:)`, `PromptTextView`,
-/// `ModifierHoldMonitor`, Settings' toolbar). Settings › Shortcuts lists them
+/// Settings' toolbar). Settings › Shortcuts lists them
 /// so a key that exists is a key that can be found; a key added to the panel
 /// is added here in the same change.
 enum BuiltInKeyCatalog {
   /// `launchChord` is the key that opens Boltty AI from anywhere (`nil`: it is
-  /// switched off); `askBolttyChord` the keys held to ask about the screen.
-  static func sections(
-    launchChord: String?,
-    askBolttyChord: String,
-    askBolttyIsOn: Bool
-  ) -> [BuiltInKeySection] {
+  /// switched off).
+  static func sections(launchChord: String?) -> [BuiltInKeySection] {
     [
       BuiltInKeySection(title: "Boltty AI", keys: [
         BuiltInKey(
@@ -48,6 +44,8 @@ enum BuiltInKeyCatalog {
           detail: "Space presses the one chosen; a letter goes back to the words"
         ),
         BuiltInKey(id: "list", title: "Open the chat list", keys: "↓", detail: nil),
+        BuiltInKey(id: "dictate", title: "Dictate", keys: "⌘D", detail: nil),
+        BuiltInKey(id: "folder", title: "Choose the folder", keys: "⌘O", detail: nil),
         BuiltInKey(
           id: "finishDictation", title: "Finish dictating", keys: "↩",
           detail: "While the microphone is listening"
@@ -87,6 +85,10 @@ enum BuiltInKeyCatalog {
         ),
         BuiltInKey(id: "stop", title: "Stop the running turn", keys: "⌘.", detail: nil),
         BuiltInKey(id: "chatNewline", title: "New line", keys: "⇧↩ or ⌥↩", detail: nil),
+        BuiltInKey(
+          id: "attach", title: "Attach a file", keys: "⇧⌘A",
+          detail: "Where the agent reads files"
+        ),
         BuiltInKey(id: "chatBack", title: "Back to the chat list", keys: "Esc", detail: nil),
       ]),
       BuiltInKeySection(title: "Questions and approvals", keys: [
@@ -103,18 +105,25 @@ enum BuiltInKeyCatalog {
       ]),
       BuiltInKeySection(title: "Ask Boltty", keys: [
         BuiltInKey(
-          id: "ask", title: "Ask about the screen", keys: "Hold \(askBolttyChord)",
-          detail: askBolttyIsOn
-            ? "Speak, then let go"
-            : "Off — switch it on under Ask Boltty"
+          id: "ask", title: "Ask about the screen", keys: "Drag",
+          detail: launchChord.map { "Open Boltty AI with \($0), drag across an area, and speak" }
+            ?? "Open Boltty AI, drag across an area, and speak"
         ),
         BuiltInKey(
-          id: "askCancel", title: "Cancel", keys: "Any other key",
-          detail: "Pressed while the keys are held"
+          id: "askAgain", title: "Ask about the same area again", keys: launchChord ?? "Off",
+          detail: "While the face is still beside the pointer"
         ),
         BuiltInKey(
-          id: "askStop", title: "Stop the answer", keys: "Esc",
-          detail: "While it thinks or answers; it also takes its drawings away"
+          id: "askSend", title: "Send the question", keys: "Return",
+          detail: "Or stop speaking"
+        ),
+        BuiltInKey(
+          id: "askCancel", title: "Close the question", keys: "Esc",
+          detail: "Before the question is sent"
+        ),
+        BuiltInKey(
+          id: "askStop", title: "Stop the answer and put the face away", keys: "Esc",
+          detail: "Also just after it answers; it takes the drawings too"
         ),
       ]),
       BuiltInKeySection(title: "Settings", keys: [

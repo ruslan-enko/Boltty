@@ -87,45 +87,6 @@ enum ScreenRegionCapture {
     }
   }
 
-  // MARK: - The whole screen, for Ask Boltty
-
-  /// Radius of the ring Ask Boltty draws where the pointer is, in the sent picture's pixels.
-  static let pointerRingRadius: CGFloat = 18
-
-  /// The frozen screen as Ask Boltty sends it: the long edge at `screenLongEdge` (the
-  /// size phase 0 measured pointing on), a red ring where the pointer was —
-  /// "what is this?" points at something — the line the pointer traced while
-  /// the chord was held, in the same red, and the window under the pointer.
-  /// `pointer` and `trail` are in AppKit's global coordinates.
-  static func wholeScreen(
-    _ frozen: FrozenScreen, pointer: CGPoint?, trail: [CGPoint] = [], primaryScreenHeight: CGFloat
-  ) -> (png: Data, size: CGSize, context: String?)? {
-    let image = frozen.image
-    let imageSize = CGSize(width: image.width, height: image.height)
-    func cgPoint(_ point: CGPoint) -> CGPoint {
-      flipped(CGRect(origin: point, size: .zero), primaryScreenHeight: primaryScreenHeight).origin
-    }
-    /// Unclipped: a trail may leave the screen and come back.
-    func pixel(of point: CGPoint) -> CGPoint {
-      let frame = frozen.displayFrame
-      guard frame.width > 0, frame.height > 0 else { return .zero }
-      return CGPoint(x: (point.x - frame.minX) * imageSize.width / frame.width,
-                     y: (point.y - frame.minY) * imageSize.height / frame.height)
-    }
-    let flippedPointer = pointer.map(cgPoint)
-    let ring = flippedPointer.flatMap { point -> CGPoint? in
-      frozen.displayFrame.contains(point) ? pixel(of: point) : nil
-    }
-    let line = trail.map { pixel(of: cgPoint($0)) }
-    guard let scaled = scaled(image, longEdge: screenLongEdge, outlining: nil, ringAt: ring,
-                              trail: line),
-          let data = png(scaled)
-    else { return nil }
-    let context = flippedPointer.flatMap { frozen.context(at: $0) } ?? frozen.windows.first
-      .flatMap { contextLine(app: $0.app, window: $0.title) }
-    return (data, CGSize(width: scaled.width, height: scaled.height), context)
-  }
-
   // MARK: - Capture
 
   private static func captureDisplay(_ displayID: CGDirectDisplayID) async throws -> (CGImage, CGRect) {
@@ -179,8 +140,7 @@ enum ScreenRegionCapture {
   // MARK: - Pictures
 
   private static func scaled(
-    _ image: CGImage, longEdge: CGFloat, outlining: CGRect?, ringAt pointer: CGPoint? = nil,
-    trail: [CGPoint] = []
+    _ image: CGImage, longEdge: CGFloat, outlining: CGRect?
   ) -> CGImage? {
     let source = CGSize(width: image.width, height: image.height)
     let scale = min(1, longEdge / max(source.width, source.height, 1))
@@ -188,7 +148,7 @@ enum ScreenRegionCapture {
       width: max(1, (source.width * scale).rounded()),
       height: max(1, (source.height * scale).rounded())
     )
-    guard outlining != nil || pointer != nil || trail.count > 1 || scale < 1 else { return image }
+    guard outlining != nil || scale < 1 else { return image }
     guard
       let space = CGColorSpace(name: CGColorSpace.sRGB),
       let context = CGContext(
@@ -213,23 +173,6 @@ enum ScreenRegionCapture {
       context.setStrokeColor(HexColor.nsColor(outlineColor).cgColor)
       context.setLineWidth(outlineWidth)
       context.stroke(box)
-    }
-    if let pointer {
-      let center = CGPoint(x: pointer.x * scale, y: size.height - pointer.y * scale)
-      let ring = CGRect(x: center.x - pointerRingRadius, y: center.y - pointerRingRadius,
-                        width: pointerRingRadius * 2, height: pointerRingRadius * 2)
-      context.setStrokeColor(HexColor.nsColor(outlineColor).cgColor)
-      context.setLineWidth(outlineWidth)
-      context.strokeEllipse(in: ring)
-    }
-    if trail.count > 1 {
-      context.setStrokeColor(HexColor.nsColor(outlineColor).cgColor)
-      context.setLineWidth(outlineWidth)
-      context.setLineCap(.round)
-      context.setLineJoin(.round)
-      context.addPath(SmoothLine.path(
-        through: trail.map { CGPoint(x: $0.x * scale, y: size.height - $0.y * scale) }))
-      context.strokePath()
     }
     return context.makeImage()
   }

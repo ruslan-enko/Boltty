@@ -240,8 +240,8 @@ final class KeyboardShortcutCatalogTests: XCTestCase {
 }
 
 final class BuiltInKeyCatalogTests: XCTestCase {
-  private func sections(launch: String? = "⌥Space", askIsOn: Bool = true) -> [BuiltInKeySection] {
-    BuiltInKeyCatalog.sections(launchChord: launch, askBolttyChord: "⌃⌥⌘", askBolttyIsOn: askIsOn)
+  private func sections(launch: String? = "⌥Space") -> [BuiltInKeySection] {
+    BuiltInKeyCatalog.sections(launchChord: launch)
   }
 
   func testEveryKeyHasANameAndKeysAndAUniqueID() {
@@ -261,13 +261,13 @@ final class BuiltInKeyCatalogTests: XCTestCase {
     XCTAssertEqual(open(sections(launch: nil))?.keys, "Off")
   }
 
-  func testAskBolttySaysWhetherItIsOn() {
+  func testAskBolttyIsReachedThroughTheLaunchChord() {
     func ask(_ sections: [BuiltInKeySection]) -> BuiltInKey? {
       sections.flatMap(\.keys).first { $0.id == "ask" }
     }
-    XCTAssertEqual(ask(sections(askIsOn: true))?.keys, "Hold ⌃⌥⌘")
-    XCTAssertEqual(ask(sections(askIsOn: true))?.detail, "Speak, then let go")
-    XCTAssertTrue(ask(sections(askIsOn: false))?.detail?.hasPrefix("Off") == true)
+    XCTAssertEqual(ask(sections())?.keys, "Drag")
+    XCTAssertTrue(ask(sections(launch: "⌃⌥K"))?.detail?.contains("⌃⌥K") == true)
+    XCTAssertFalse(ask(sections(launch: nil))?.detail?.isEmpty ?? true)
   }
 
   func testNoBuiltInKeyRepeatsAMenuCommandsTitle() {

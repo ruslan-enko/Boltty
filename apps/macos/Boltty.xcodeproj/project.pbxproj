@@ -117,7 +117,6 @@
 		51914BE74EE11700FBB721A0 /* OpenCodeSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8486C95603280076D40033 /* OpenCodeSessionStore.swift */; };
 		51C646423DF88453F8D3B3CE /* ConversationPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B488946E72434D43AA6ED7E6 /* ConversationPersistence.swift */; };
 		532F00370C47CE58067F5E6B /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0CA90061272728A6E15925 /* ConversationStore.swift */; };
-		53E67EBE18CE23C7883E7EF6 /* SmoothLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36CCCE19145EE3B330E90C3 /* SmoothLine.swift */; };
 		553EF153A9D823B97D482890 /* AgentUsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B3F3C67107DC67362F0E92 /* AgentUsageTests.swift */; };
 		557CA9A1DA5AD33FAD8A7A6D /* AgentIconProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC783473CC48062E37C126C /* AgentIconProviderTests.swift */; };
 		55B88168257378C332809FAB /* run-4.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4525A6BE7A99D634522D6764 /* run-4.wav */; };
@@ -132,8 +131,8 @@
 		5B2FF9D053F369A5B32F0969 /* MascotPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E6CE8FCF46B26A25BFFEEC8 /* MascotPickerView.swift */; };
 		5B7344279E667A4E8C39B1CA /* JSONLineProcess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D545E1F60C181C3DC305082 /* JSONLineProcess.swift */; };
 		5CB6CD1183321DB21E54E8E1 /* SettingsPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74892E151D851D467D5FFC4D /* SettingsPages.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* NotchStatesOnScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* NotchStatesOnScreen.swift */; };
 		5D769BD2E860E821CCBAA4D0 /* NotchRowContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51652F32D2261C47F0A5E07 /* NotchRowContactSheet.swift */; };
-		5E2869331609806FF60E6EA1 /* AskBolttyTrailLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AEAD3F4A3B784F67FA6391 /* AskBolttyTrailLayer.swift */; };
 		5EA7F129F0A5C8D1B86FF496 /* ChatBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015093B9A9DA564E415717BD /* ChatBackdrop.swift */; };
 		5EE3E22D9C4712510E57EA58 /* WorkingDirectoryChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5738DE8A849C0A21AE992D98 /* WorkingDirectoryChipView.swift */; };
 		5F47B4ED75367E35A211729C /* GlobalHotkeyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CAF40AE412ED92E35DB5EAF /* GlobalHotkeyServiceTests.swift */; };
@@ -247,7 +246,6 @@
 		B56C595B8C6FE0F58C820422 /* AccessPermissionsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9849CD3540344DBE272DAD0 /* AccessPermissionsWindow.swift */; };
 		B59E0801E14B2A2956E45A24 /* ModifierHotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14100488D233FA342B0CDF0A /* ModifierHotkeyMonitor.swift */; };
 		B73F6E1B730A5E0F1131AA5D /* PendingInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F13619807292ADCBA64E14 /* PendingInteraction.swift */; };
-		B79F49F9CDE1EC16B984481C /* ModifierHoldMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC55A934722D23060BE22D3 /* ModifierHoldMonitorTests.swift */; };
 		B7EB967CA083892D3AFCA439 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 9031AEEB7B83368A06CB5BA7 /* AppIcon.icon */; };
 		B91695BE2ED8A68D51F6FFB6 /* PaletteEffectShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = D86DE02654E768427DBE5C8B /* PaletteEffectShaders.metal */; };
 		B93FCBBA54363F938C743472 /* AskBolttyPointTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC636F3A5CE177349962A68F /* AskBolttyPointTests.swift */; };
@@ -419,7 +417,6 @@
 		2E4DEB206C8959E487FD2707 /* SpokenText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpokenText.swift; sourceTree = "<group>"; };
 		2F785EE57760EE2F5CF97DE4 /* ScreenSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSelection.swift; sourceTree = "<group>"; };
 		2FBCD670829C710C1F74A04C /* TestDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDefaults.swift; sourceTree = "<group>"; };
-		2FC55A934722D23060BE22D3 /* ModifierHoldMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierHoldMonitorTests.swift; sourceTree = "<group>"; };
 		317A1099D2B45618DBA3E25D /* OpenCodeMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeMapper.swift; sourceTree = "<group>"; };
 		31B4139B5166C92763B41E41 /* PaletteGlassHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteGlassHost.swift; sourceTree = "<group>"; };
 		32B39312A8A7FA2039914B4A /* MotionPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionPreferences.swift; sourceTree = "<group>"; };
@@ -495,7 +492,6 @@
 		6721DADB2FE23D7D622297CD /* ScreenRegionCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRegionCapture.swift; sourceTree = "<group>"; };
 		673A3E77CB3A086DB9CA328F /* AppUpdaterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdaterTests.swift; sourceTree = "<group>"; };
 		68950834D335C64E328BB07D /* SupertonicText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupertonicText.swift; sourceTree = "<group>"; };
-		68AEAD3F4A3B784F67FA6391 /* AskBolttyTrailLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskBolttyTrailLayer.swift; sourceTree = "<group>"; };
 		6911EAB2D1501439122B20D6 /* WorkingDirectoryResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryResolver.swift; sourceTree = "<group>"; };
 		6A51DFB27B3CE7E98623BC7F /* AgentCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentCapabilities.swift; sourceTree = "<group>"; };
 		6A929A8BC8B78AB97BD8B676 /* LocalModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelStore.swift; sourceTree = "<group>"; };
@@ -676,7 +672,7 @@
 		EEF7563E3D54F24804BE22E5 /* AgentPaletteGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteGeometryTests.swift; sourceTree = "<group>"; };
 		EF9B92CDFD3B88C5DFBB85C3 /* ConversationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngine.swift; sourceTree = "<group>"; };
 		F0AADE1A4011BCA2EA625831 /* FinderSelectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSelectionService.swift; sourceTree = "<group>"; };
-		F36CCCE19145EE3B330E90C3 /* SmoothLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmoothLine.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5061728394A5B6C /* NotchStatesOnScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchStatesOnScreen.swift; sourceTree = "<group>"; };
 		F51652F32D2261C47F0A5E07 /* NotchRowContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchRowContactSheet.swift; sourceTree = "<group>"; };
 		F6906F4A20354BB8B1003130 /* SupertonicSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupertonicSpeaker.swift; sourceTree = "<group>"; };
 		F74D9A4C3F74819F91FBD107 /* BolttyAIAnnouncement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAIAnnouncement.swift; sourceTree = "<group>"; };
@@ -884,12 +880,12 @@
 				D168C9012FB83500121E12E9 /* MascotRosterTests.swift */,
 				AE5D761A363AB33E7DA402E9 /* MascotSettingsTests.swift */,
 				384C85E8B2EC689CCF6B5C6A /* MascotShapeContactSheet.swift */,
-				2FC55A934722D23060BE22D3 /* ModifierHoldMonitorTests.swift */,
 				2750C26E76391941FC4254BE /* MotionPreferencesTests.swift */,
 				D0737A5E2AFF27484EA36809 /* NativeSessionStoreTests.swift */,
 				AB114971B8943B080783AC29 /* NativeTranscriptSweep.swift */,
 				24861A2C50E4E42892F9C31C /* NotchMascotTests.swift */,
 				F51652F32D2261C47F0A5E07 /* NotchRowContactSheet.swift */,
+				B1C2D3E4F5061728394A5B6C /* NotchStatesOnScreen.swift */,
 				1BD07F0B7F23C3598F6D2273 /* OneShotCommandTests.swift */,
 				1599C745AB53D2A18F781CA0 /* OpenCodeFreeModelLiveTests.swift */,
 				F84AE288F8591AA4C16C57CF /* OpenCodeServerReaperTests.swift */,
@@ -1047,7 +1043,6 @@
 				8F4B62BE9BC6246C2FDED10C /* RecentFolders.swift */,
 				2F785EE57760EE2F5CF97DE4 /* ScreenSelection.swift */,
 				6AF66C6E3BDDC29927D19BDB /* ShortcutBinding.swift */,
-				F36CCCE19145EE3B330E90C3 /* SmoothLine.swift */,
 				2E4DEB206C8959E487FD2707 /* SpokenText.swift */,
 				49CEFC2CF6FD53D0463FF5F9 /* StatusBarSnapshot.swift */,
 				FD1CBA5C4695D3EC2A71C5F9 /* SystemAttentionNotification.swift */,
@@ -1223,7 +1218,6 @@
 				0759A99CAA6A433378692370 /* AgentPaletteView.swift */,
 				251F4713090134D888CDA0D9 /* AskBolttyDrawingLayer.swift */,
 				7B36AC2FEA558A790A39F4ED /* AskBolttyOverlayController.swift */,
-				68AEAD3F4A3B784F67FA6391 /* AskBolttyTrailLayer.swift */,
 				0FF49DD1264E0CC0F88FED84 /* BolttyAIFailureCard.swift */,
 				82577870613B7647999E3EBB /* BolttyAIOptionRow.swift */,
 				EB24E8710B83A1EE9C01C810 /* BolttyAIPreviewCard.swift */,
@@ -1508,7 +1502,6 @@
 				50FC49237ECEFCDD19CCCC24 /* AskBolttyPoint.swift in Sources */,
 				6D73F2A30C1C73C3C5A3C3C7 /* AskBolttySession.swift in Sources */,
 				57B5D20721E5FD26D48907A6 /* AskBolttySettings.swift in Sources */,
-				5E2869331609806FF60E6EA1 /* AskBolttyTrailLayer.swift in Sources */,
 				2CA8C0F4E91D10780ABD3855 /* BackgroundActivityAssertion.swift in Sources */,
 				D5F6FC929C9A323F21461D84 /* BilingualDictationEngine.swift in Sources */,
 				0CC50F08F9E55160505E3555 /* BilingualTranscript.swift in Sources */,
@@ -1628,7 +1621,6 @@
 				E13AE36996ED5A206D0BF1F3 /* ShortcutBinding.swift in Sources */,
 				B9978DEEEDEC8D141ECA03E4 /* ShortcutBindingStore.swift in Sources */,
 				7427CB8CBE716A862417EFF7 /* ShortcutRecorderCapsule.swift in Sources */,
-				53E67EBE18CE23C7883E7EF6 /* SmoothLine.swift in Sources */,
 				788C1E2883F17738D11397C8 /* SpeechAnalyzerDictationEngine.swift in Sources */,
 				41FF2400022B1CD1B7845EDB /* SpeechOutput.swift in Sources */,
 				3FFEF380D1341DADB37A98BB /* SpokenText.swift in Sources */,
@@ -1732,12 +1724,12 @@
 				58CA2E9574D930966F7BA061 /* MascotRosterTests.swift in Sources */,
 				3750D14C66F2118550DE8F95 /* MascotSettingsTests.swift in Sources */,
 				CFD495345608443D417A4159 /* MascotShapeContactSheet.swift in Sources */,
-				B79F49F9CDE1EC16B984481C /* ModifierHoldMonitorTests.swift in Sources */,
 				D75F83BC05C6169A59BF1C32 /* MotionPreferencesTests.swift in Sources */,
 				791DA4C0B755928F369EBBCA /* NativeSessionStoreTests.swift in Sources */,
 				D465421C1F2C4793290D3DD3 /* NativeTranscriptSweep.swift in Sources */,
 				762B8DF56519F152CB9A9010 /* NotchMascotTests.swift in Sources */,
 				5D769BD2E860E821CCBAA4D0 /* NotchRowContactSheet.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* NotchStatesOnScreen.swift in Sources */,
 				D7AE32A05B6BE13374566949 /* OneShotCommandTests.swift in Sources */,
 				90C980AEAAFE5A04403A433A /* OpenCodeFreeModelLiveTests.swift in Sources */,
 				297D7322190AB8BDFAC86C37 /* OpenCodeServerReaperTests.swift in Sources */,

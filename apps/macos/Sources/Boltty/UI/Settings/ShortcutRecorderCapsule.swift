@@ -13,6 +13,9 @@ struct ShortcutRecorderCapsule: View {
   var accessibilityIdentifier: String?
   var isConflicting = false
   var isRowHovered = false
+  /// Shown at rest, disabled while the default is in place. For a recorder
+  /// that stands alone, where a slot shown only on hover read as an indent.
+  var restoreAlwaysShown = false
   var canClear = false
   var isInline = false
   let onEvent: (NSEvent) -> Bool
@@ -71,7 +74,9 @@ struct ShortcutRecorderCapsule: View {
   // The slot is always laid out and only fades: inserting the button on hover
   // shoved the capsule sideways under the pointer.
   private var restoreButton: some View {
-    let isShown = onRestoreDefault != nil && (isRowHovered || isRecording)
+    let isShown = restoreAlwaysShown
+      || (onRestoreDefault != nil && (isRowHovered || isRecording))
+    let canRestore = isShown && onRestoreDefault != nil && isEnabled
     return Button {
       isRecording = false
       onRestoreDefault?()
@@ -80,9 +85,9 @@ struct ShortcutRecorderCapsule: View {
     }
     .buttonStyle(SettingsPressStyle())
     .foregroundStyle(isRestoreHovered ? .primary : .secondary)
-    .onHover { isRestoreHovered = $0 && isShown }
-    .disabled(!isEnabled || !isShown)
-    .opacity(isShown ? 1 : 0)
+    .onHover { isRestoreHovered = $0 && canRestore }
+    .disabled(!canRestore)
+    .opacity(isShown ? (canRestore ? 1 : 0.45) : 0)
     .allowsHitTesting(isShown)
     .accessibilityHidden(!isShown)
     .help("Restore the default shortcut")

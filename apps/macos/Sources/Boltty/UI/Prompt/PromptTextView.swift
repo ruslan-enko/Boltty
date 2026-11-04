@@ -1,10 +1,44 @@
 import AppKit
 
+/// A composer button's own key, shown on its help tag.
+enum ComposerChord: CaseIterable {
+  case dictate, folder, attach
+
+  init?(key: String, modifiers: NSEvent.ModifierFlags) {
+    guard let chord = Self.allCases.first(where: {
+      $0.key == key && $0.modifiers == modifiers
+    }) else { return nil }
+    self = chord
+  }
+
+  var key: String {
+    switch self {
+    case .dictate: "d"
+    case .folder: "o"
+    case .attach: "a"
+    }
+  }
+
+  var modifiers: NSEvent.ModifierFlags {
+    self == .attach ? [.command, .shift] : [.command]
+  }
+
+  var display: String {
+    switch self {
+    case .dictate: "⌘D"
+    case .folder: "⌘O"
+    case .attach: "⇧⌘A"
+    }
+  }
+}
+
 final class PromptTextView: NSTextView {
   var onPaste: ((Bool) -> Void)?
   var onCommandPeriod: (() -> Bool)?
   var onCommandReturn: (() -> Bool)?
   var onCommandN: (() -> Bool)?
+  /// ⌘D, ⌘O and ⇧⌘A: the composer's buttons, pressed from the keys.
+  var onComposerChord: ((ComposerChord) -> Bool)?
   var onMouseDown: (() -> Void)?
 
   var trailingHint: [PromptKeyHint] = [] {
@@ -825,6 +859,10 @@ final class PromptTextView: NSTextView {
       return true
     }
     if key == "n", modifiers == [.command], onCommandN?() == true {
+      return true
+    }
+    if let key, let chord = ComposerChord(key: key, modifiers: modifiers),
+       onComposerChord?(chord) == true {
       return true
     }
     if event.keyCode == 36 || event.keyCode == 76, modifiers == [.command],

@@ -25,7 +25,6 @@ struct AppSettings: Equatable, Sendable {
   /// When a finished turn's reply is read aloud (`AnswerReading`); empty is never.
   var speechReadAnswers: String
   /// Ask Boltty: hold the chord, ask about the screen out loud, hear the answer.
-  var askBolttyEnabled: Bool
   /// `nil` is automatic: Claude Code where it is ready (the fastest measured).
   var askBolttyProviderID: String?
   var askBolttyModelID: String?
@@ -34,6 +33,8 @@ struct AppSettings: Equatable, Sendable {
   /// Ask Boltty says its answer aloud as well as typing it out.
   var askBolttySpeaksAloud: Bool
   var playsSounds: Bool
+  /// Opening the panel over Finder attaches the files selected there.
+  var attachesFinderSelection: Bool
   var checksForUpdates: Bool
 
   static let agentPresetKey = "boltty.agentPreset"
@@ -55,13 +56,13 @@ struct AppSettings: Equatable, Sendable {
   private static let speechRateKey = "boltty.speech.rate"
   private static let speechLocalVoiceKey = "boltty.speech.localVoice"
   private static let speechReadAnswersKey = "boltty.speech.readAnswers"
-  private static let askBolttyEnabledKey = "boltty.talk.enabled"
   private static let askBolttyProviderIDKey = "boltty.talk.agent"
   private static let askBolttyModelIDKey = "boltty.talk.model"
   private static let askBolttyReadOnlyKey = "boltty.talk.readOnly"
   private static let askBolttySpeaksAloudKey = "boltty.talk.speaksAloud"
   private static let playsSoundsKey = "boltty.sounds.enabled"
   private static let checksForUpdatesKey = "boltty.updates.automaticChecks"
+  private static let attachesFinderSelectionKey = "boltty.finderSelection.enabled"
 
   static var allAdapterProviderIDs: Set<String> {
     Set(AgentId.adapterCases.map(\.rawValue))
@@ -83,12 +84,12 @@ struct AppSettings: Equatable, Sendable {
     speechRate: Double = 1,
     speechLocalVoice: String = "",
     speechReadAnswers: String = "",
-    askBolttyEnabled: Bool = false,
     askBolttyProviderID: String? = nil,
     askBolttyModelID: String? = nil,
     askBolttyReadOnly: Bool = true,
     askBolttySpeaksAloud: Bool = false,
     playsSounds: Bool = true,
+    attachesFinderSelection: Bool = true,
     checksForUpdates: Bool = true
   ) {
     self.bolttyAIHotkey = bolttyAIHotkey
@@ -106,12 +107,12 @@ struct AppSettings: Equatable, Sendable {
     self.speechRate = speechRate
     self.speechLocalVoice = speechLocalVoice
     self.speechReadAnswers = speechReadAnswers
-    self.askBolttyEnabled = askBolttyEnabled
     self.askBolttyProviderID = askBolttyProviderID
     self.askBolttyModelID = askBolttyModelID
     self.askBolttyReadOnly = askBolttyReadOnly
     self.askBolttySpeaksAloud = askBolttySpeaksAloud
     self.playsSounds = playsSounds
+    self.attachesFinderSelection = attachesFinderSelection
     self.checksForUpdates = checksForUpdates
   }
 
@@ -134,6 +135,8 @@ struct AppSettings: Equatable, Sendable {
       .map { _ in defaults.bool(forKey: Self.playsSoundsKey) } ?? true
     let checksForUpdates = defaults.object(forKey: Self.checksForUpdatesKey)
       .map { _ in defaults.bool(forKey: Self.checksForUpdatesKey) } ?? true
+    let attachesFinderSelection = defaults.object(forKey: Self.attachesFinderSelectionKey)
+      .map { _ in defaults.bool(forKey: Self.attachesFinderSelectionKey) } ?? true
 
     let preset = defaults.string(forKey: Self.agentPresetKey)
       .flatMap { AgentId(rawValue: $0) }
@@ -176,12 +179,12 @@ struct AppSettings: Equatable, Sendable {
       speechRate: speechRate,
       speechLocalVoice: defaults.string(forKey: Self.speechLocalVoiceKey) ?? "",
       speechReadAnswers: defaults.string(forKey: Self.speechReadAnswersKey) ?? "",
-      askBolttyEnabled: defaults.bool(forKey: Self.askBolttyEnabledKey),
       askBolttyProviderID: defaults.string(forKey: Self.askBolttyProviderIDKey),
       askBolttyModelID: defaults.string(forKey: Self.askBolttyModelIDKey),
       askBolttyReadOnly: askBolttyReadOnly,
       askBolttySpeaksAloud: defaults.bool(forKey: Self.askBolttySpeaksAloudKey),
       playsSounds: playsSounds,
+      attachesFinderSelection: attachesFinderSelection,
       checksForUpdates: checksForUpdates
     )
   }
@@ -231,12 +234,12 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(speechRate, forKey: Self.speechRateKey)
     defaults.set(speechLocalVoice, forKey: Self.speechLocalVoiceKey)
     defaults.set(speechReadAnswers, forKey: Self.speechReadAnswersKey)
-    defaults.set(askBolttyEnabled, forKey: Self.askBolttyEnabledKey)
     defaults.set(askBolttyProviderID, forKey: Self.askBolttyProviderIDKey)
     defaults.set(askBolttyModelID, forKey: Self.askBolttyModelIDKey)
     defaults.set(askBolttyReadOnly, forKey: Self.askBolttyReadOnlyKey)
     defaults.set(askBolttySpeaksAloud, forKey: Self.askBolttySpeaksAloudKey)
     defaults.set(playsSounds, forKey: Self.playsSoundsKey)
+    defaults.set(attachesFinderSelection, forKey: Self.attachesFinderSelectionKey)
     defaults.set(checksForUpdates, forKey: Self.checksForUpdatesKey)
   }
 

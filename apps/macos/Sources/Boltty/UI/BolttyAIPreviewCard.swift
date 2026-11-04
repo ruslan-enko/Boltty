@@ -237,6 +237,10 @@ final class BolttyAIPreviewCard: NSView {
     cancelQueuedButton.button.action = #selector(cancelQueued(_:))
     cancelQueuedButton.setAccessibilityIdentifier("boltty.ask.chat.cancelQueued")
     cancelQueuedButton.button.setContentHuggingPriority(.required, for: .horizontal)
+    // Sized to the 13-point note beside it, as the help tag's action is.
+    cancelQueuedButton.button.controlSize = .regular
+    cancelQueuedButton.button.titleFontSize = AgentPaletteMetrics.typeMeta
+    cancelQueuedButton.button.height = AgentPaletteMetrics.helpActionHeight
     let queuedNote = NSTextField(labelWithString: "Sends after this turn finishes.")
     queuedNote.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
     queuedNote.textColor = PaletteInk.secondary
@@ -989,6 +993,22 @@ final class BolttyAIPreviewCard: NSView {
     }
   }
 
+  /// The questions the agent has said something after.
+  private static func answeredQuestions(in items: [PaletteTranscriptItem]) -> Set<String> {
+    var answered = Set<String>()
+    var waiting: [String] = []
+    for item in items {
+      guard case let .message(message, _) = item else { continue }
+      if message.role == .user {
+        waiting.append(message.id)
+      } else {
+        answered.formUnion(waiting)
+        waiting = []
+      }
+    }
+    return answered
+  }
+
   private static func copyOffers(in items: [PaletteTranscriptItem], isBusy: Bool) -> Set<String> {
     let messages = items.compactMap { item -> ConversationMessage? in
       if case let .message(message, _) = item { return message }
@@ -1009,6 +1029,7 @@ final class BolttyAIPreviewCard: NSView {
   ) {
     let items = transcriptItems(for: preview)
     let copies = Self.copyOffers(in: items, isBusy: preview.isBusy)
+    let answered = Self.answeredQuestions(in: items)
     var arrived: [PaletteChatMessageView] = []
     var wanted: [NSView] = []
     var liveRows = Set<String>()
@@ -1033,6 +1054,7 @@ final class BolttyAIPreviewCard: NSView {
         view.setExpandedActivities(expandedActivities)
         view.apply(message, folded: folded, offersCopy: copies.contains(message.id))
         view.isSpeaking = message.id == speakingMessageID
+        view.isAnswered = answered.contains(message.id)
         view.revealsNewContent = message.id != streamedMessageID
         wanted.append(view)
       case let .turnHeader(header):
@@ -1489,9 +1511,11 @@ final class PaletteChatMessageView: NSView {
       userMaxWidth = limit
     }
     let bubbleTop = bubble.topAnchor.constraint(equalTo: topAnchor)
+    bubbleBottom = bubble.bottomAnchor.constraint(
+      equalTo: bottomAnchor, constant: -Self.questionMetaHeight(for: message))
     NSLayoutConstraint.activate([
       bubbleTop,
-      bubble.bottomAnchor.constraint(equalTo: bottomAnchor),
+      bubbleBottom,
       userMaxWidth ?? bubble.widthAnchor.constraint(equalTo: widthAnchor),
       user ? bubble.trailingAnchor.constraint(equalTo: trailingAnchor) : bubble.leadingAnchor.constraint(equalTo: leadingAnchor),
       bodyStack.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: side),
@@ -1526,7 +1550,6 @@ final class PaletteChatMessageView: NSView {
 
   private func setUpCopyButton(user: Bool) {
     copyButton.isHidden = true
-    guard !user else { return }
     copyButton.translatesAutoresizingMaskIntoConstraints = false
     copyButton.isBordered = false
     copyButton.title = ""
@@ -1541,6 +1564,7 @@ final class PaletteChatMessageView: NSView {
     copyButton.setAccessibilityIdentifier("boltty.ask.chat.message.copy")
     copyButton.setAccessibilityLabel("Copy this answer")
     applyCopyGlyph("doc.on.doc")
+    if user { return setUpQuestionMeta() }
     bubble.addSubview(copyButton)
     speakButton.isHidden = true
     speakButton.translatesAutoresizingMaskIntoConstraints = false
@@ -1574,9 +1598,119 @@ final class PaletteChatMessageView: NSView {
     ))
   }
 
+  /// Under a question, at its trailing edge: whether the agent has taken it
+  /// up, when it was sent, and Copy. The row stands in the gap to the answer,
+  /// so it moves nothing; it shows only while the pointer is on the question.
+  private func setUpQuestionMeta() {
+    copyButton.toolTip = "Copy this message"
+    copyButton.setAccessibilityLabel("Copy this message")
+    copyButton.setAccessibilityIdentifier("boltty.ask.chat.message.copyQuestion")
+    questionStatus.contentTintColor = ComposerControlGroup.restingInk
+    questionStatus.imageScaling = .scaleNone
+    questionTime.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
+    questionTime.textColor = ComposerControlGroup.restingInk
+    questionTime.isSelectable = false
+    questionTime.stringValue = Self.sentTime(message.createdAt)
+    applyQuestionStatus()
+    questionMeta.translatesAutoresizingMaskIntoConstraints = false
+    questionMeta.orientation = .horizontal
+    questionMeta.alignment = .centerY
+    questionMeta.spacing = AgentPaletteMetrics.previewQuestionMetaSpacing
+    questionMeta.setViews([questionStatus, questionTime, copyButton], in: .leading)
+    questionMeta.setCustomSpacing(0, after: questionTime)
+    questionMeta.isHidden = true
+    addSubview(questionMeta)
+    let glyph = Self.copyImage("doc.on.doc")?.size.width ?? AgentPaletteMetrics.previewFileGlyphPointSize
+    let inkInset = (AgentPaletteMetrics.previewCopyButtonSize - glyph) / 2
+    NSLayoutConstraint.activate([
+      copyButton.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewCopyButtonSize),
+      copyButton.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewQuestionMetaRowHeight),
+      questionMeta.topAnchor.constraint(equalTo: bubble.bottomAnchor),
+      questionMeta.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewQuestionMetaRowHeight),
+      questionMeta.trailingAnchor.constraint(
+        equalTo: bubble.trailingAnchor,
+        constant: inkInset - AgentPaletteMetrics.previewUserBubbleHorizontalPadding),
+    ])
+    addTrackingArea(NSTrackingArea(
+      rect: .zero,
+      options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+      owner: self
+    ))
+  }
+
+  private let questionMeta = NSStackView()
+  private let questionStatus = NSImageView()
+  private let questionTime = NSTextField(labelWithString: "")
+  private var bubbleBottom: NSLayoutConstraint!
+
+  /// The agent has said something since this question: ✓✓ rather than ✓.
+  var isAnswered = false {
+    didSet { if isAnswered != oldValue { applyQuestionStatus() } }
+  }
+
+  var isQuestionMetaVisibleForTesting: Bool { !questionMeta.isHidden }
+
+  private func applyQuestionStatus() {
+    let label = isAnswered ? "Taken up by the agent" : "Sent"
+    questionStatus.image = Self.statusImage(answered: isAnswered)
+    questionStatus.setAccessibilityLabel(label)
+  }
+
+  static func questionMetaHeight(for message: ConversationMessage) -> CGFloat {
+    message.role == .user && !message.copyableText.isEmpty
+      ? AgentPaletteMetrics.previewQuestionMetaRowHeight : 0
+  }
+
+  /// One tick when sent, two once the agent answers; the second overlaps the
+  /// first as messengers draw it.
+  private static func statusImage(answered: Bool) -> NSImage? {
+    guard let mark = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)?
+      .withSymbolConfiguration(.init(pointSize: AgentPaletteMetrics.typeMeta - 2, weight: .semibold))
+    else { return nil }
+    guard answered else { return mark }
+    let offset = (mark.size.width * 0.42).rounded()
+    let image = NSImage(
+      size: NSSize(width: mark.size.width + offset, height: mark.size.height), flipped: false
+    ) { _ in
+      mark.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 1)
+      mark.draw(at: NSPoint(x: offset, y: 0), from: .zero, operation: .sourceOver, fraction: 1)
+      return true
+    }
+    image.isTemplate = true
+    return image
+  }
+
+  /// When a question was sent: the time today, "Yesterday" and the time,
+  /// else the day. A clock time stays true without a timer, as "5 min ago"
+  /// would not.
+  static func sentTime(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+    if calendar.isDate(date, inSameDayAs: now) { return clockFormatter.string(from: date) }
+    if calendar.isDateInYesterday(date) { return "Yesterday, " + clockFormatter.string(from: date) }
+    let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
+    return (sameYear ? dayFormatter : yearFormatter).string(from: date)
+  }
+
+  private static let clockFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.setLocalizedDateFormatFromTemplate("jmm")
+    return formatter
+  }()
+
+  private static let dayFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.setLocalizedDateFormatFromTemplate("d MMM jmm")
+    return formatter
+  }()
+
+  private static let yearFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.setLocalizedDateFormatFromTemplate("d MMM y")
+    return formatter
+  }()
+
   private func pinCopyButton() {
     NSLayoutConstraint.deactivate(copyConstraints)
-    guard copyButton.superview != nil else { return copyConstraints = [] }
+    guard copyButton.superview === bubble else { return copyConstraints = [] }
     let glyph = Self.copyImage("doc.on.doc")?.size.width ?? AgentPaletteMetrics.previewFileGlyphPointSize
     let inkInset = (AgentPaletteMetrics.previewCopyButtonSize - glyph) / 2
     copyConstraints = [
@@ -1605,6 +1739,11 @@ final class PaletteChatMessageView: NSView {
 
   private func setCopyRevealed(_ revealed: Bool) {
     isHovered = revealed
+    if message.role == .user {
+      questionMeta.isHidden = Self.questionMetaHeight(for: message) == 0 || !revealed
+      copyButton.isHidden = questionMeta.isHidden
+      return
+    }
     guard copyButton.superview != nil else { return }
     let offered = offersCopy && !message.copyableText.isEmpty
     copyButton.isHidden = !revealed || !offered
@@ -1625,10 +1764,11 @@ final class PaletteChatMessageView: NSView {
 
   private var spokenAnswer: (words: String, speaks: Bool)?
 
+  /// The speaker stays the speaker; while it reads it is lit white.
   private func applySpeakGlyph() {
-    let name = isSpeaking ? "stop.fill" : "speaker.wave.2"
     let label = isSpeaking ? "Stop reading aloud" : "Read this answer aloud"
-    speakButton.image = NSImage(systemSymbolName: name, accessibilityDescription: label)?
+    speakButton.restingTint = isSpeaking ? .white : ComposerControlGroup.restingInk
+    speakButton.image = NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: label)?
       .withSymbolConfiguration(.init(
         pointSize: AgentPaletteMetrics.previewFileGlyphPointSize, weight: .medium))
     speakButton.toolTip = label
@@ -1661,7 +1801,12 @@ final class PaletteChatMessageView: NSView {
     self.offersCopy = offersCopy
     syncSegments(value)
     syncFileRows(value)
-    if !copyButton.isHidden, !offersCopy || value.copyableText.isEmpty { copyButton.isHidden = true }
+    if value.role == .user {
+      let meta = Self.questionMetaHeight(for: value)
+      if bubbleBottom.constant != -meta { bubbleBottom.constant = -meta }
+      questionTime.stringValue = Self.sentTime(value.createdAt)
+      setCopyRevealed(isHovered)
+    } else if !copyButton.isHidden, !offersCopy || value.copyableText.isEmpty { copyButton.isHidden = true }
     if !speakButton.isHidden, !offersCopy || value.copyableText.isEmpty { speakButton.isHidden = true }
     needsLayout = true
   }
@@ -1996,7 +2141,7 @@ final class PaletteChatMessageView: NSView {
     }
     let bubble = units(of: message, folded: folded).isEmpty && !message.resultFiles.isEmpty
       ? 0 : body + AgentPaletteMetrics.previewUserBubbleVerticalPadding * 2
-    return userBubbleOffset(for: message) + bubble
+    return userBubbleOffset(for: message) + bubble + questionMetaHeight(for: message)
   }
 
   static func userBubbleOffset(for message: ConversationMessage) -> CGFloat {
@@ -2012,6 +2157,9 @@ final class PaletteChatMessageView: NSView {
     after message: ConversationMessage, before next: ConversationMessage?, offersCopy: Bool
   ) -> CGFloat {
     if message.role == .agent, next?.role == .agent { return AgentPaletteMetrics.previewAgentMessageSpacing }
+    if message.role == .user {
+      return max(0, AgentPaletteMetrics.previewMessageSpacing - questionMetaHeight(for: message))
+    }
     guard message.role == .agent, offersCopy, !message.copyableText.isEmpty else {
       return AgentPaletteMetrics.previewMessageSpacing
     }

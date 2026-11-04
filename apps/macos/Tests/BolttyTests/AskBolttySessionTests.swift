@@ -4,17 +4,6 @@ import XCTest
 
 @MainActor
 final class AskBolttySessionTests: XCTestCase {
-  private final class Ears: AskBolttyListening {
-    var onText: ((String) -> Void)?
-    var onFailure: ((String) -> Void)?
-    var words = ""
-    var started = 0
-    var cancelled = 0
-    func start() { started += 1 }
-    func finish() async -> String { words }
-    func cancel() { cancelled += 1 }
-  }
-
   private final class Voice: AskBolttySpeaking {
     var said: [String] = []
     var saying: String?
@@ -36,7 +25,6 @@ final class AskBolttySessionTests: XCTestCase {
   private var client: FakeAgentClient!
   private var engine: ConversationEngine!
   private var coordinator: ChatWorkspaceCoordinator!
-  private var ears: Ears!
   private var voice: Voice!
   private var askBoltty: AskBolttySession!
   private var directory: URL!
@@ -54,15 +42,9 @@ final class AskBolttySessionTests: XCTestCase {
     engine.start()
     for _ in 0..<200 where !client.isStreaming { await Task.yield() }
     coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
-    ears = Ears()
     voice = Voice()
-    askBoltty = AskBolttySession(coordinator: coordinator, listener: ears, speech: voice) {
-      AskBolttyTarget(providerID: AgentId.claude.rawValue, model: nil, effort: nil, readOnly: true)
-    }
-    askBoltty.pointer = { CGPoint(x: 10, y: 10) }
-    askBoltty.freeze = { _ in Self.frozenScreen() }
+    askBoltty = AskBolttySession(coordinator: coordinator, speech: voice)
     askBoltty.pictureDirectory = directory.appendingPathComponent("pictures")
-    askBoltty.speaksAloud = true
     askBoltty.reader.schedule = { _, work in DispatchQueue.main.async { MainActor.assumeIsolated(work) } }
   }
 
@@ -83,6 +65,26 @@ final class AskBolttySessionTests: XCTestCase {
                                     app: "Preview", title: "Anatomy.png")])
   }
 
+  private let target = AskBolttyTarget(
+    providerID: AgentId.claude.rawValue, model: nil, effort: nil, readOnly: true)
+  /// The frozen display is 40 × 20 at the top left of the primary screen.
+  private var top: CGFloat { NSScreen.screens.first?.frame.height ?? 20 }
+  private var displayFrame: CGRect { CGRect(x: 0, y: top - 20, width: 40, height: 20) }
+
+  /// The left half of the frozen display, as the panel cuts it.
+  private func selection(whole: Bool = false) throws -> ScreenSelection {
+    let frame = whole ? displayFrame
+      : CGRect(x: displayFrame.minX, y: displayFrame.minY, width: 20, height: 20)
+    return try ScreenRegionCapture.selection(frame, in: Self.frozenScreen(), primaryScreenHeight: top)
+  }
+
+  /// A region drawn, then `words` said about it.
+  private func ask(_ words: String, whole: Bool = false) throws {
+    askBoltty.warmUp(target)
+    askBoltty.ask(words, about: try selection(whole: whole), on: displayFrame, target: target,
+                  speaksAloud: true)
+  }
+
   private func waitFor(_ what: String, _ condition: () -> Bool) async throws {
     for _ in 0..<2_000 where !condition() {
       try await Task.sleep(nanoseconds: 1_000_000)
@@ -90,33 +92,45 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertTrue(condition(), "timed out waiting for \(what)")
   }
 
-  func testHoldingStartsTheAgentWhileThePersonSpeaksAndLettingGoAsksWithTheScreen() async throws {
-    askBoltty.begin()
-    XCTAssertEqual(askBoltty.phase, .listening)
-    XCTAssertEqual(ears.started, 1)
+  func testDrawingARegionStartsTheAgentAndTheQuestionGoesWithTheScreenAndTheArea() async throws {
+    askBoltty.warmUp(target)
     let id = try XCTUnwrap(askBoltty.conversationID)
     XCTAssertEqual(store.conversation(id: id)?.readOnly, true)
-    try await waitFor("the session to start while listening") { !self.client.createdSessions.isEmpty }
+    try await waitFor("the session to start while the person speaks") { !self.client.createdSessions.isEmpty }
 
-    ears.words = "what is this muscle called?"
-    askBoltty.end()
+    askBoltty.ask("what is this muscle called?", about: try selection(), on: displayFrame,
+                  target: target, speaksAloud: true)
+    XCTAssertEqual(askBoltty.phase, .thinking)
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
 
     let sent = try XCTUnwrap(client.sentMessages.first?.text)
     XCTAssertTrue(sent.hasSuffix("what is this muscle called?"))
-    XCTAssertTrue(sent.contains("Preview — “Anatomy.png”"), "the window under the pointer is named")
-    XCTAssertTrue(sent.contains("do not run commands"), "a read-only Ask Boltty says so")
+    XCTAssertTrue(sent.contains("Preview — “Anatomy.png”"), "the window under the region is named")
+    XCTAssertTrue(sent.contains("red outline"), "the area is said to be outlined")
+    XCTAssertTrue(sent.contains("do not run commands"), "a read-only question says so")
     XCTAssertEqual(client.createdSessions.count, 1, "the warm session is the one asked")
-    XCTAssertEqual(store.transcript(id: id).messages.first?.parts.contains { part in
+    XCTAssertEqual(askBoltty.conversationID, id)
+    let pictures = store.transcript(id: id).messages.first?.parts.filter { part in
       if case let .attachment(file) = part { return file.mimeType == "image/png" }
       return false
-    }, true, "the screen goes as a picture")
+    }
+    XCTAssertEqual(pictures?.count, 2, "the screen and the area go as pictures")
+  }
+
+  func testTheWholeScreenGoesAsOnePicture() async throws {
+    try ask("what is on my screen?", whole: true)
+    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
+    let sent = try XCTUnwrap(client.sentMessages.first?.text)
+    XCTAssertTrue(sent.contains("about the whole screen"))
+    let id = try XCTUnwrap(askBoltty.conversationID)
+    XCTAssertEqual(store.transcript(id: id).messages.first?.parts.filter { part in
+      if case .attachment = part { return true }
+      return false
+    }.count, 1)
   }
 
   func testTheAnswerIsSaidASentenceAtATimeAsItArrives() async throws {
-    askBoltty.begin()
-    ears.words = "how do I share this?"
-    askBoltty.end()
+    try ask("how do I share this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
 
@@ -136,61 +150,51 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertEqual(askBoltty.phase, .idle)
   }
 
-  func testLettingGoWithoutAWordLeavesNoChat() async throws {
-    askBoltty.begin()
-    let id = try XCTUnwrap(askBoltty.conversationID)
-    ears.words = "   "
-    askBoltty.end()
-    try await waitFor("the Ask Boltty to settle") { self.askBoltty.phase == .idle }
-    XCTAssertNil(store.conversation(id: id))
-    XCTAssertTrue(client.sentMessages.isEmpty)
-  }
-
-  func testAKeyWhileHoldingCancelsAndLeavesNoChat() throws {
-    askBoltty.begin()
+  func testARegionLetGoOfWithoutAQuestionLeavesNoChat() throws {
+    askBoltty.warmUp(target)
     let id = try XCTUnwrap(askBoltty.conversationID)
     askBoltty.cancel()
     XCTAssertEqual(askBoltty.phase, .idle)
-    XCTAssertEqual(ears.cancelled, 1)
     XCTAssertNil(store.conversation(id: id))
   }
 
+  func testNoWordsAskNothing() throws {
+    askBoltty.warmUp(target)
+    askBoltty.ask("   ", about: try selection(), on: displayFrame, target: target, speaksAloud: true)
+    XCTAssertEqual(askBoltty.phase, .idle)
+    XCTAssertTrue(client.sentMessages.isEmpty)
+  }
+
   func testAQuestionSoonAfterTheAnswerContinuesTheSameChat() async throws {
-    askBoltty.begin()
-    ears.words = "what is this?"
-    askBoltty.end()
+    try ask("what is this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let first = try XCTUnwrap(askBoltty.conversationID)
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
     client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
     try await waitFor("the answer") { !self.voice.said.isEmpty }
 
-    askBoltty.begin()
+    askBoltty.warmUp(target)
     XCTAssertEqual(askBoltty.conversationID, first)
-    XCTAssertNil(voice.saying, "asking again stops the voice")
+    XCTAssertNil(voice.saying, "drawing again stops the voice")
   }
 
-  func testASecondHoldBargesInOnTheVoice() async throws {
-    askBoltty.begin()
-    ears.words = "what is this?"
-    askBoltty.end()
+  func testANewRegionBargesInOnTheVoice() async throws {
+    try ask("what is this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
     client.streamReply(sessionID: remote, messageID: "a1", chunks: ["It is long. And it goes on"], finish: false)
     try await waitFor("the voice") { self.voice.saying != nil }
 
-    askBoltty.begin()
+    askBoltty.warmUp(target)
     XCTAssertNil(voice.saying)
-    XCTAssertEqual(askBoltty.phase, .listening)
+    XCTAssertEqual(askBoltty.phase, .idle)
   }
 
-  // MARK: - Pointing, the trace, and staying quiet
+  // MARK: - Pointing, and staying quiet
 
   func testTheMascotPointsWhenTheVoiceReachesTheSentenceThatNamesIt() async throws {
     voice.holds = true
-    askBoltty.begin()
-    ears.words = "where do I share this?"
-    askBoltty.end()
+    try ask("where do I share this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
     client.streamReply(
@@ -205,48 +209,20 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertNil(askBoltty.pointing)
     voice.held[1]()
     let pointing = try XCTUnwrap(askBoltty.pointing)
-    // The frozen display is 40 × 20 at the top left of the primary screen.
-    let top = NSScreen.screens.first?.frame.height ?? 20
     XCTAssertEqual(pointing.location.x, 20, accuracy: 0.01)
     XCTAssertEqual(pointing.location.y, top - 5, accuracy: 0.01)
     XCTAssertEqual(pointing.label, "Share")
 
-    askBoltty.begin()
-    XCTAssertNil(askBoltty.pointing, "asking again calls the mascot back")
-  }
-
-  func testALineTracedWhileHoldingIsToldToTheAgent() async throws {
-    askBoltty.begin()
-    for x in stride(from: 10, through: 40, by: 5) { askBoltty.trace(CGPoint(x: CGFloat(x), y: 10)) }
-    XCTAssertTrue(askBoltty.hasTrail)
-    ears.words = "what is this?"
-    askBoltty.end()
-    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
-    XCTAssertTrue(try XCTUnwrap(client.sentMessages.first?.text).contains("traced around with the pointer"))
-  }
-
-  func testAHandAtRestTracesNoLine() async throws {
-    askBoltty.begin()
-    askBoltty.trace(CGPoint(x: 11, y: 10))
-    askBoltty.trace(CGPoint(x: 14, y: 12))
-    XCTAssertFalse(askBoltty.hasTrail)
-    ears.words = "what is this?"
-    askBoltty.end()
-    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
-    XCTAssertTrue(try XCTUnwrap(client.sentMessages.first?.text).contains("the red ring is where their pointer is"))
-    askBoltty.cancel()
-    askBoltty.trace(CGPoint(x: 90, y: 90))
-    XCTAssertTrue(askBoltty.trail.isEmpty, "nothing is traced once the chord is let go")
+    askBoltty.warmUp(target)
+    XCTAssertNil(askBoltty.pointing, "a new region calls the mascot back")
   }
 
   func testAnAskBolttyAnswerRaisesNoBannerAndLeavesNothingUnread() async throws {
     var banners: [SystemAttentionNotification] = []
     coordinator.notificationDelivery = { banners.append($0) }
 
-    askBoltty.begin()
+    try ask("what is this?")
     let id = try XCTUnwrap(askBoltty.conversationID)
-    ears.words = "what is this?"
-    askBoltty.end()
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
     client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
@@ -267,28 +243,21 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertTrue(store.conversation(id: other.id)?.hasUnread ?? false)
   }
 
-  func testTheCardShowsTheQuestionAndThePictureNotTheBracket() async throws {
-    askBoltty.begin()
+  func testTheCardShowsTheQuestionAndTheAreaNotTheBracket() async throws {
+    try ask("what is this?")
     let id = try XCTUnwrap(askBoltty.conversationID)
-    ears.words = "what is this?"
-    askBoltty.end()
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let asked = try XCTUnwrap(store.transcript(id: id).messages.first { $0.role == .user })
     let lifted = SentFile.lift(asked, files: store.conversation(id: id)?.sentFiles ?? [])
     XCTAssertEqual(lifted.copyableText, "what is this?")
-    XCTAssertEqual(lifted.parts.filter { part in
-      if case .attachment = part { return true }
-      return false
-    }.count, 1, "the screen is one card")
+    XCTAssertEqual(store.conversation(id: id)?.sentFiles.map(\.name), ["Area.png"])
   }
 
   // MARK: - Shown, not said; and gone when done
 
   func testAnAnswerInALanguageBolttyDoesNotSpeakIsShownWhole() async throws {
     voice.speaks = false
-    askBoltty.begin()
-    ears.words = "що це за кнопка?"
-    askBoltty.end()
+    try ask("що це за кнопка?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
     client.streamReply(
@@ -302,9 +271,7 @@ final class AskBolttySessionTests: XCTestCase {
   }
 
   func testAFinishedAskBolttyIsForgottenWhenTheNextOneBegins() async throws {
-    askBoltty.begin()
-    ears.words = "what is this?"
-    askBoltty.end()
+    try ask("what is this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let first = try XCTUnwrap(askBoltty.conversationID)
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
@@ -317,7 +284,7 @@ final class AskBolttySessionTests: XCTestCase {
       "an Ask Boltty is never a row")
 
     askBoltty.now = { Date().addingTimeInterval(AskBolttySession.followUpWindow + 1) }
-    askBoltty.begin()
+    askBoltty.warmUp(target)
     XCTAssertNotEqual(askBoltty.conversationID, first)
     XCTAssertNil(store.conversation(id: first), "its record goes at once")
     try await waitFor("its process to be let go") { self.client.released == [remote] }
@@ -337,9 +304,7 @@ final class AskBolttySessionTests: XCTestCase {
 
   func testTheCaptionIsTheSentenceBeingSaidAndTheAnswerStopsAtTwo() async throws {
     voice.holds = true
-    askBoltty.begin()
-    ears.words = "how do I share this?"
-    askBoltty.end()
+    try ask("how do I share this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
     client.streamReply(

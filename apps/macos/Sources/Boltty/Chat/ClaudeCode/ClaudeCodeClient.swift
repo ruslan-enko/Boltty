@@ -109,8 +109,12 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   /// A read-only chat's tools: measured on 2.1.296, asked to write
-  /// a file and run `touch`, it had neither tool and did neither.
-  static let readOnlyTools = "Read,Glob,Grep"
+  /// a file and run `touch`, it had neither tool and did neither. The web
+  /// reads nothing of the person's and writes nothing, so it goes without
+  /// asking (`readOnlyAllowedTools`): a read-only chat refuses every ask,
+  /// and "find where this news is" needs a search.
+  static let readOnlyTools = "Read,Glob,Grep,WebSearch,WebFetch"
+  static let readOnlyAllowedTools = "WebSearch,WebFetch"
 
   static func sessionArguments(id: String, options: AgentSessionOptions, resuming: Bool) -> [String] {
     var arguments = [
@@ -123,16 +127,24 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "--permission-prompt-tool", "stdio",
       "--permission-mode", permissionMode(autoApprove: options.autoApprove)
     ]
-    // `--tools` takes several values: a flag must follow it, never the prompt.
-    if options.readOnly { arguments += ["--tools", readOnlyTools] }
+    // `--tools` and `--allowedTools` take several values: a flag must follow
+    // them, never the prompt.
+    if options.readOnly {
+      arguments += ["--tools", readOnlyTools, "--allowedTools", readOnlyAllowedTools]
+    }
     arguments += resuming ? ["--resume", id] : ["--session-id", id]
     if let model = options.model { arguments += ["--model", model.modelID] }
     arguments += effortArguments(options.effort)
     return arguments
   }
 
+  /// Auto is Claude Code's own `auto` mode: its classifier lets through what
+  /// the person asked for, edits and commands alike, and asks about the rest
+  /// (2.1.296: `ls`, `rm -rf ./junk` and `git push --force`, each asked for,
+  /// ran without a `can_use_tool`). `acceptEdits` still asked about every
+  /// command, which read as Auto not working.
   static func permissionMode(autoApprove: Bool) -> String {
-    autoApprove ? "acceptEdits" : "default"
+    autoApprove ? "auto" : "default"
   }
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {

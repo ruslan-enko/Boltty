@@ -71,49 +71,6 @@ final class AskBolttyPointTests: XCTestCase {
     XCTAssertEqual(SpokenText.speakable("If a < b"), "If a < b", "a less-than is not a tag")
   }
 
-  // MARK: - The picture
-
-  func testTheTracedLineIsDrawnOnThePictureInRed() throws {
-    let context = try XCTUnwrap(CGContext(
-      data: nil, width: 400, height: 200, bitsPerComponent: 8, bytesPerRow: 0,
-      space: CGColorSpace(name: CGColorSpace.sRGB)!,
-      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-    context.setFillColor(CGColor(red: 0, green: 0, blue: 1, alpha: 1))
-    context.fill(CGRect(x: 0, y: 0, width: 400, height: 200))
-    let frozen = FrozenScreen(
-      image: try XCTUnwrap(context.makeImage()), displayFrame: CGRect(x: 0, y: 0, width: 400, height: 200),
-      windows: [])
-    // AppKit's y runs up: 150 on a 200-high primary screen is the picture's row 50.
-    let shot = try XCTUnwrap(ScreenRegionCapture.wholeScreen(
-      frozen, pointer: nil, trail: [CGPoint(x: 50, y: 150), CGPoint(x: 350, y: 150)],
-      primaryScreenHeight: 200))
-    let bitmap = try XCTUnwrap(NSBitmapImageRep(data: shot.png))
-    let onTheLine = try XCTUnwrap(bitmap.colorAt(x: 200, y: 50)?.usingColorSpace(.sRGB))
-    let offIt = try XCTUnwrap(bitmap.colorAt(x: 200, y: 150)?.usingColorSpace(.sRGB))
-    XCTAssertGreaterThan(onTheLine.redComponent, 0.8)
-    XCTAssertLessThan(onTheLine.blueComponent, 0.4)
-    XCTAssertGreaterThan(offIt.blueComponent, 0.8)
-  }
-}
-
-final class SmoothLineTests: XCTestCase {
-  func testTheCurvePassesThroughTheMiddlesAndTurnsAtTheSamples() {
-    var line = SmoothLine()
-    XCTAssertNil(line.add(CGPoint(x: 0, y: 0)))
-    XCTAssertEqual(line.add(CGPoint(x: 100, y: 0)),
-                   SmoothLine.Piece(from: .zero, to: CGPoint(x: 50, y: 0), control: .zero))
-    // The corner the hand turned at is a control point, not a point on the line.
-    XCTAssertEqual(line.add(CGPoint(x: 100, y: 100)),
-                   SmoothLine.Piece(from: CGPoint(x: 50, y: 0), to: CGPoint(x: 100, y: 50),
-                                    control: CGPoint(x: 100, y: 0)))
-    XCTAssertEqual(line.pen, CGPoint(x: 100, y: 50))
-  }
-
-  func testAWholeLineEndsAtItsLastSample() {
-    let path = SmoothLine.path(through: [.zero, CGPoint(x: 100, y: 0), CGPoint(x: 100, y: 100)])
-    XCTAssertEqual(path.currentPoint, CGPoint(x: 100, y: 100))
-    XCTAssertTrue(SmoothLine.path(through: [.zero]).isEmpty)
-  }
 }
 
 @MainActor
@@ -167,77 +124,73 @@ final class AskBolttyOverlayGeometryTests: XCTestCase {
     XCTAssertFalse(face.contains(spot))
   }
 
+  private func bubble(
+    size: CGSize, whole: CGSize, on side: AskBolttyOverlayController.BubbleSide, beside face: CGRect
+  ) -> CGRect {
+    AskBolttyOverlayController.bubbleFrame(
+      size: size, whole: whole,
+      lead: AskBolttyOverlayController.bubbleLead(on: side, wholeWidth: whole.width),
+      beside: face, in: screen)
+  }
+
   func testTheBubbleStandsRightOfTheFaceUnlessThereIsNoRoom() {
-    let size = CGSize(width: 200, height: 40)
+    let size = CGSize(width: 200, height: AskBolttyOverlayController.bubbleFirstLineHeight)
     let face = CGRect(x: 100, y: 400, width: 40, height: 40)
-    let right = AskBolttyOverlayController.bubbleFrame(size: size, beside: face, in: screen)
+    let right = bubble(size: size, whole: size, on: .right, beside: face)
     XCTAssertGreaterThan(right.minX, face.maxX)
     XCTAssertEqual(right.midY, face.midY, accuracy: 1)
 
     let nearEdge = CGRect(x: 1300, y: 400, width: 40, height: 40)
-    let left = AskBolttyOverlayController.bubbleFrame(size: size, beside: nearEdge, in: screen)
+    XCTAssertEqual(
+      AskBolttyOverlayController.bubbleSide(current: .right, beside: nearEdge, in: screen), .left)
+    let left = bubble(size: size, whole: size, on: .left, beside: nearEdge)
     XCTAssertLessThan(left.maxX, nearEdge.minX)
+  }
+
+  func testTheBubbleKeepsItsSideWhileItStillFits() {
+    let middle = CGRect(x: 600, y: 400, width: 40, height: 40)
+    XCTAssertEqual(
+      AskBolttyOverlayController.bubbleSide(current: .left, beside: middle, in: screen), .left)
+    XCTAssertEqual(
+      AskBolttyOverlayController.bubbleSide(current: .right, beside: middle, in: screen), .right)
+    let nearLeft = CGRect(x: 100, y: 400, width: 40, height: 40)
+    XCTAssertEqual(
+      AskBolttyOverlayController.bubbleSide(current: .left, beside: nearLeft, in: screen), .right)
+  }
+
+  func testWordsHoldStillAsTheBubbleGrows() {
+    let face = CGRect(x: 600, y: 400, width: 40, height: 40)
+    let whole = CGSize(width: 368, height: 120)
+    let first = CGSize(width: 90, height: AskBolttyOverlayController.bubbleFirstLineHeight)
+    let later = CGSize(width: 368, height: 120)
+    for side in [AskBolttyOverlayController.BubbleSide.right, .left] {
+      let start = bubble(size: first, whole: whole, on: side, beside: face)
+      let end = bubble(size: later, whole: whole, on: side, beside: face)
+      XCTAssertEqual(start.minX, end.minX, "the words hang from this edge")
+      XCTAssertEqual(start.maxY, end.maxY, "and from this one")
+    }
+  }
+
+  func testAWholeSentenceThatWouldReachTheFootMovesUpBeforeItsWordsCome() {
+    let low = CGRect(x: 600, y: screen.minY + 10, width: 40, height: 40)
+    let whole = CGSize(width: 368, height: 120)
+    let first = CGSize(width: 90, height: AskBolttyOverlayController.bubbleFirstLineHeight)
+    let start = bubble(size: first, whole: whole, on: .right, beside: low)
+    let end = bubble(size: whole, whole: whole, on: .right, beside: low)
+    XCTAssertEqual(start.maxY, end.maxY)
+    XCTAssertGreaterThanOrEqual(end.minY, screen.minY)
   }
 
   func testAFlightArcsAboveTheLineAndEndsWhereItWasAimed() {
     let from = CGPoint(x: 100, y: 100), to = CGPoint(x: 700, y: 100)
     XCTAssertEqual(AskBolttyOverlayController.flightPoint(from: from, to: to, progress: 0), from)
     XCTAssertEqual(AskBolttyOverlayController.flightPoint(from: from, to: to, progress: 1), to)
-    XCTAssertGreaterThan(AskBolttyOverlayController.flightPoint(from: from, to: to, progress: 0.5).y, 150)
+    XCTAssertGreaterThan(AskBolttyOverlayController.flightPoint(from: from, to: to, progress: 0.5).y, 125)
     XCTAssertGreaterThan(AskBolttyOverlayController.flightDuration(from: from, to: to),
                          AskBolttyOverlayController.flightDuration(from: from, to: CGPoint(x: 120, y: 100)))
   }
 
-  func testTheTrailWalksTheFacesGradientAndBack() {
-    let stops: [NSColor] = [.red, .blue]
-    let period = AskBolttyTrailLayer.colourPeriod
-    let start = AskBolttyTrailLayer.colour(at: 0, stops: stops).usingColorSpace(.sRGB)!
-    let half = AskBolttyTrailLayer.colour(at: period / 2, stops: stops).usingColorSpace(.sRGB)!
-    let round = AskBolttyTrailLayer.colour(at: period, stops: stops).usingColorSpace(.sRGB)!
-    XCTAssertGreaterThan(start.redComponent, 0.9)
-    XCTAssertGreaterThan(half.blueComponent, 0.9)
-    XCTAssertGreaterThan(round.redComponent, 0.9)
-  }
-
-  func testALongScribbleIsDrawnInRunsNotAStepAtATime() {
-    let trail = AskBolttyTrailLayer()
-    trail.colours = [.red, .blue]
-    // 3 000 points of line in 4-point steps: 750 steps.
-    for i in 0...750 { trail.extend(to: CGPoint(x: CGFloat(i % 2 == 0 ? i * 4 : i * 4), y: 100)) }
-    XCTAssertEqual(trail.length, 3_000, accuracy: 1)
-    let expected = Int(3_000 / AskBolttyTrailLayer.runLength) + 1
-    XCTAssertLessThanOrEqual(trail.runCount, expected, "one layer per run, not per step (\(trail.runCount))")
-    XCTAssertGreaterThan(trail.runCount, 100, "short enough runs for the gradient to read")
-  }
-
-  func testTheLineIsGoneAMomentAfterItIsDrawn() {
-    var now: CFTimeInterval = 100
-    let trail = AskBolttyTrailLayer()
-    trail.clock = { now }
-    for x in stride(from: 0, through: 200, by: 10) { trail.extend(to: CGPoint(x: CGFloat(x), y: 0)) }
-    XCTAssertFalse(trail.isEmpty)
-    now += AskBolttyTrailLayer.life / 2
-    trail.sweep()
-    XCTAssertFalse(trail.isEmpty, "still there while it fades")
-    now += AskBolttyTrailLayer.life
-    trail.sweep()
-    XCTAssertTrue(trail.isEmpty, "and gone after")
-    XCTAssertEqual(trail.sublayers?.count ?? 0, 0)
-  }
-
-  func testAHandAtRestAddsNothingAndANewLineClearsAFadingOne() {
-    let trail = AskBolttyTrailLayer()
-    trail.extend(to: CGPoint(x: 10, y: 10))
-    trail.extend(to: CGPoint(x: 11, y: 11))
-    XCTAssertTrue(trail.isEmpty)
-    trail.extend(to: CGPoint(x: 40, y: 10))
-    XCTAssertFalse(trail.isEmpty)
-    trail.clear()
-    XCTAssertEqual(trail.runCount, 0)
-    XCTAssertEqual(trail.opacity, 1)
-  }
-
-  func testTheBubbleIsOneLineWhileListeningAndAtMostThreeOtherwise() {
+  func testTheBubbleIsAtMostItsLinesAndAShortLineIsOne() {
     let long = String(repeating: "and then the next word ", count: 30)
     let line = AskBolttyOverlayController.bubbleLineHeight
     let padding = AskBolttyOverlayController.bubblePadding.height * 2

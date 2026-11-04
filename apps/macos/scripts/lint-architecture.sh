@@ -186,7 +186,7 @@ hits=$(code_only $(swift_files "$SRC") | grep -E '"--last"|"--continue"' || true
   "Тільки --resume <збережений id>. --last бере чужу сесію, яку ніхто не вибирав." "$hits"
 
 # ── 7 · Жодного повного bypass дозволів ───────────────────────────────────
-# Claude Code дістає acceptEdits. Аудит: bypassPermissions зустрічається рівно
+# Claude Code дістає свій режим auto (класифікатор), не bypass. Аудит: bypassPermissions зустрічається рівно
 # один раз і саме в коментарі, який пояснює, чому його не використовують.
 #
 # `--dangerously-skip-permissions` — рівно в одному місці:
@@ -203,7 +203,7 @@ if [[ -f "$GATED" ]] && grep -q -- '--dangerously-skip-permissions' "$GATED" \
   hits+=$'\n'"$GATED: прапор без шлюзу"
 fi
 [[ -n "$hits" ]] && report "повний bypass дозволів" \
-  "acceptEdits — не те саме. Auto-approve дозволений тільки до рівня редагувань." "$hits"
+  "Auto-approve — це acceptEdits або auto Claude Code, ніколи повний bypass." "$hits"
 
 # ── 8 · Інтерполяція в оболонку — тільки в одному відомому місці ──────────
 # Пункт G плану міграції: `sh -lc "command -v \(program)"`. Сьогодні безпечно —

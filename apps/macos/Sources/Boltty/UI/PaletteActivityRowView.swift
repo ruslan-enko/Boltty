@@ -10,6 +10,7 @@ final class PaletteActivityRowView: NSView {
   private let headline = NSTextField(labelWithString: "")
   private let chevron = NSImageView()
   private let detail = NSTextField(wrappingLabelWithString: "")
+  private let well = NSView()
   private let steps = NSStackView()
   private let button = PaletteDisclosureButton()
   private var rowHeight: NSLayoutConstraint!
@@ -47,6 +48,9 @@ final class PaletteActivityRowView: NSView {
     detail.lineBreakMode = .byWordWrapping
     detail.isSelectable = true
     detail.allowsEditingTextAttributes = true
+    well.translatesAutoresizingMaskIntoConstraints = false
+    well.wantsLayer = true
+    well.layer?.backgroundColor = AgentPaletteMetrics.previewActivityDetailWellFill.cgColor
 
     button.translatesAutoresizingMaskIntoConstraints = false
     button.isBordered = false
@@ -65,6 +69,7 @@ final class PaletteActivityRowView: NSView {
     steps.alignment = .leading
     steps.spacing = 0
     addSubview(head)
+    addSubview(well)
     addSubview(detail)
     addSubview(steps)
     addSubview(button)
@@ -86,13 +91,20 @@ final class PaletteActivityRowView: NSView {
       button.topAnchor.constraint(equalTo: topAnchor),
       button.heightAnchor.constraint(
         equalToConstant: AgentPaletteMetrics.previewActivityRowHeight),
-      detail.leadingAnchor.constraint(
+      well.leadingAnchor.constraint(
         equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewActivityDetailIndent),
-      detail.trailingAnchor.constraint(equalTo: trailingAnchor),
-      detail.topAnchor.constraint(
+      well.trailingAnchor.constraint(equalTo: trailingAnchor),
+      well.topAnchor.constraint(
         equalTo: head.bottomAnchor,
         constant: AgentPaletteMetrics.previewActivityDetailTopMargin),
-      detail.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor),
+      well.bottomAnchor.constraint(
+        equalTo: detail.bottomAnchor, constant: AgentPaletteMetrics.previewActivityDetailWellInset),
+      detail.leadingAnchor.constraint(
+        equalTo: well.leadingAnchor, constant: AgentPaletteMetrics.previewActivityDetailWellInset),
+      detail.trailingAnchor.constraint(
+        equalTo: well.trailingAnchor, constant: -AgentPaletteMetrics.previewActivityDetailWellInset),
+      detail.topAnchor.constraint(
+        equalTo: well.topAnchor, constant: AgentPaletteMetrics.previewActivityDetailWellInset),
       steps.leadingAnchor.constraint(
         equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewActivityDetailIndent),
       steps.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -112,6 +124,11 @@ final class PaletteActivityRowView: NSView {
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func layout() {
+    super.layout()
+    well.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewActivityDetailWellCornerRadius)
+  }
 
   private func applyInk() {
     let lit = button.isHovered
@@ -173,6 +190,7 @@ final class PaletteActivityRowView: NSView {
       for step in value.plan ?? [] { steps.addArrangedSubview(Self.stepRow(step)) }
     }
     detail.isHidden = value.plan != nil || !(opens && expanded)
+    well.isHidden = detail.isHidden
     detail.attributedStringValue = detail.isHidden
       ? NSAttributedString()
       : Self.detailText(value.detail ?? "")
@@ -182,7 +200,7 @@ final class PaletteActivityRowView: NSView {
   }
 
   func setWidth(_ width: CGFloat, height: CGFloat) {
-    detail.preferredMaxLayoutWidth = width - AgentPaletteMetrics.previewActivityDetailIndent
+    detail.preferredMaxLayoutWidth = Self.detailWidth(in: width)
     guard abs(rowHeight.constant - height) > 0.5 else { return }
     rowHeight.constant = height
     needsLayout = true
@@ -266,6 +284,11 @@ final class PaletteActivityRowView: NSView {
     return row
   }
 
+  private static func detailWidth(in width: CGFloat) -> CGFloat {
+    max(width - AgentPaletteMetrics.previewActivityDetailIndent
+      - AgentPaletteMetrics.previewActivityDetailWellInset * 2, 1)
+  }
+
   static func height(for activity: AgentActivity, width: CGFloat, isExpanded: Bool) -> CGFloat {
     let head = AgentPaletteMetrics.previewActivityRowHeight
     if showsSteps(activity, isExpanded: isExpanded) {
@@ -273,12 +296,12 @@ final class PaletteActivityRowView: NSView {
         + CGFloat(activity.plan?.count ?? 0) * AgentPaletteMetrics.previewActivityRowHeight
     }
     guard isExpanded, opens(activity) else { return head }
-    let inner = max(width - AgentPaletteMetrics.previewActivityDetailIndent, 1)
     let measured = ceil(detailText(activity.detail ?? "").boundingRect(
-      with: NSSize(width: inner, height: .greatestFiniteMagnitude),
+      with: NSSize(width: detailWidth(in: width), height: .greatestFiniteMagnitude),
       options: [.usesLineFragmentOrigin, .usesFontLeading]
     ).height)
-    return head + AgentPaletteMetrics.previewActivityDetailTopMargin * 2 + measured
+    return head + AgentPaletteMetrics.previewActivityDetailTopMargin * 2
+      + AgentPaletteMetrics.previewActivityDetailWellInset * 2 + measured
   }
 }
 
@@ -294,6 +317,7 @@ final class PaletteActivityGroupView: NSView {
   private let headline = NSTextField(labelWithString: "")
   private let button = PaletteDisclosureButton()
   private let list = NSStackView()
+  private let thread = NSView()
   private var rowHeight: NSLayoutConstraint!
   private var headlineLeading: NSLayoutConstraint!
 
@@ -306,11 +330,13 @@ final class PaletteActivityGroupView: NSView {
     self.activities = activities
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
-    wantsLayer = true
-    layer?.backgroundColor = AgentPaletteMetrics.previewWorkPillFill.cgColor
+
+    thread.translatesAutoresizingMaskIntoConstraints = false
+    thread.wantsLayer = true
+    thread.layer?.backgroundColor = AgentPaletteMetrics.previewWorkThreadFill.cgColor
 
     headline.translatesAutoresizingMaskIntoConstraints = false
-    let font = roundedAppFont(size: AgentPaletteMetrics.previewBodyFontSize)
+    let font = roundedAppFont(size: AgentPaletteMetrics.previewActivityNameFontSize)
     headline.font = font
     headline.lineBreakMode = .byTruncatingTail
     headline.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -336,13 +362,15 @@ final class PaletteActivityGroupView: NSView {
     list.alignment = .leading
     list.spacing = AgentPaletteMetrics.previewActivityRowSpacing
 
-    for view in [chevron, warning, headline, list, button] as [NSView] { addSubview(view) }
+    for view in [thread, chevron, warning, headline, list, button] as [NSView] { addSubview(view) }
     let middle = AgentPaletteMetrics.previewWorkPillHeight / 2
     headlineLeading = headline.leadingAnchor.constraint(
       equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewWorkPillTextInset)
     NSLayoutConstraint.activate([
-      chevron.centerXAnchor.constraint(
-        equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewWorkPillChevronCenter),
+      chevron.leadingAnchor.constraint(
+        equalTo: headline.trailingAnchor, constant: AgentPaletteMetrics.previewWorkPillChevronGap),
+      chevron.trailingAnchor.constraint(
+        lessThanOrEqualTo: trailingAnchor, constant: -AgentPaletteMetrics.previewWorkPillTrailingInset),
       chevron.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewWorkPillChevronWidth),
       chevron.centerYAnchor.constraint(equalTo: topAnchor, constant: middle),
       warning.leadingAnchor.constraint(
@@ -350,16 +378,19 @@ final class PaletteActivityGroupView: NSView {
       warning.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewActivityGlyphSize),
       warning.centerYAnchor.constraint(equalTo: chevron.centerYAnchor),
       headlineLeading,
-      headline.trailingAnchor.constraint(
-        lessThanOrEqualTo: trailingAnchor, constant: -AgentPaletteMetrics.previewWorkPillTrailingInset),
       headline.firstBaselineAnchor.constraint(
         equalTo: topAnchor, constant: middle + font.capHeight / 2),
       button.leadingAnchor.constraint(equalTo: leadingAnchor),
-      button.trailingAnchor.constraint(equalTo: trailingAnchor),
+      button.trailingAnchor.constraint(equalTo: chevron.trailingAnchor),
       button.topAnchor.constraint(equalTo: topAnchor),
       button.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewWorkPillHeight),
+      thread.leadingAnchor.constraint(
+        equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewWorkThreadX),
+      thread.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewWorkThreadWidth),
+      thread.topAnchor.constraint(equalTo: list.topAnchor),
+      thread.bottomAnchor.constraint(equalTo: bottomAnchor),
       list.leadingAnchor.constraint(
-        equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewWorkPillTextInset),
+        equalTo: leadingAnchor, constant: AgentPaletteMetrics.previewWorkListInset),
       list.trailingAnchor.constraint(
         equalTo: trailingAnchor, constant: -AgentPaletteMetrics.previewWorkPillTrailingInset),
       list.topAnchor.constraint(equalTo: topAnchor, constant: AgentPaletteMetrics.previewWorkPillListTop),
@@ -376,15 +407,10 @@ final class PaletteActivityGroupView: NSView {
 
   @objc private func didPress() { onToggle?(groupID) }
 
-  override func layout() {
-    super.layout()
-    layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewWorkPillCornerRadius)
-  }
-
   private func applyInk() {
-    let ink = button.isHovered ? PaletteInk.primary : PaletteInk.secondary
-    headline.textColor = ink
-    chevron.contentTintColor = ink
+    let lit = button.isHovered
+    headline.textColor = lit ? PaletteInk.primary : PaletteInk.secondary
+    chevron.contentTintColor = lit ? PaletteInk.secondary : PaletteInk.tertiary
   }
 
   func apply(_ value: [AgentActivity], expanded: Set<String>) {
@@ -398,10 +424,10 @@ final class PaletteActivityGroupView: NSView {
     headline.stringValue = AgentActivityGroup.summary(of: value)
     headline.toolTip = value.filter { !$0.isThought }.map(\.headline).joined(separator: "\n")
     chevron.image = NSImage(
-      systemSymbolName: isExpanded ? "chevron.down" : "chevron.right",
+      systemSymbolName: isExpanded ? "chevron.up" : "chevron.down",
       accessibilityDescription: isExpanded ? "Hide steps" : "Show steps"
     )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewWorkPillChevronPointSize, weight: .regular
+      pointSize: AgentPaletteMetrics.previewWorkPillChevronPointSize, weight: .semibold
     ))
     applyInk()
 
@@ -419,6 +445,7 @@ final class PaletteActivityGroupView: NSView {
       row.apply(activity, isExpanded: expanded.contains(activity.id))
     }
     list.isHidden = !isExpanded
+    thread.isHidden = !isExpanded
     setAccessibilityLabel(headline.stringValue)
     setAccessibilityValue(isExpanded ? "expanded" : "collapsed")
     needsLayout = true
@@ -436,7 +463,7 @@ final class PaletteActivityGroupView: NSView {
   }
 
   private static func listWidth(in width: CGFloat) -> CGFloat {
-    width - AgentPaletteMetrics.previewWorkPillTextInset - AgentPaletteMetrics.previewWorkPillTrailingInset
+    width - AgentPaletteMetrics.previewWorkListInset - AgentPaletteMetrics.previewWorkPillTrailingInset
   }
 
   static func height(for activities: [AgentActivity], width: CGFloat, expanded: Set<String>) -> CGFloat {

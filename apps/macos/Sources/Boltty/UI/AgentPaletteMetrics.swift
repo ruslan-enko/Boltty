@@ -145,12 +145,12 @@ enum AgentPaletteMetrics {
   static let chatComposerPadding: CGFloat = chatComposerInkInset - 3.5
   /// After Return's ink and under the icons' ink.
   static let chatComposerControlsPadding: CGFloat = chatComposerInkInset
-  /// Between the words' line and the icon row. 10, not less: the folder
-  /// pill is 26 tall, taller than the 16 glyph the box is stacked from, and
-  /// a smaller gap put the descenders over it. Sizes the box and the grown
+  /// Between the words' line and the icon row. The folder pill is 26 tall,
+  /// taller than the 16 glyph the box is stacked from, so at 10 the words
+  /// sat right on it; 16 lets the text breathe. Sizes the box and the grown
   /// controls band only — the words' own top and inset below stay at a gap
   /// of 5, which is what keeps their ink where the test pins it.
-  static let chatComposerGap: CGFloat = 10
+  static let chatComposerGap: CGFloat = 16
   /// A grown draft's scroll document carries half the gap above and below
   /// its lines, so a line scrolled up still travels to the fading edge; the
   /// scroll view stands the rest of the padding in from the top.
@@ -167,7 +167,7 @@ enum AgentPaletteMetrics {
   /// stacks them.
   static let chatComposerGrownControlsBand: CGFloat =
     chatComposerGap - chatComposerGrownTextInset + ComposerControlGroup.glyph + chatComposerControlsPadding
-  /// The composer's placeholder ink, *Do anything*: white at 50%, the
+  /// The composer's placeholder ink: white at 50%, the
   /// control group's resting ink.
   static let chatComposerPlaceholderInk = ComposerControlGroup.restingInk
   /// A composer glyph's hit target — folder, ring, clip, microphone, send —
@@ -268,6 +268,10 @@ enum AgentPaletteMetrics {
   /// **85 tall, Spotlight's proportion** — macOS 27's Spotlight field at
   /// the same width. Only the height: the walls keep `promptPaddingGrowth`.
   static let promptSize = CGSize(width: 540, height: 85)
+  /// The first screen once its draft wraps: the controls beside the words —
+  /// ring, a named folder pill, microphone — left a long request a column
+  /// of about 240 at 540. It widens about the locked centre, then grows down.
+  static let promptGrownWidth: CGFloat = 680
   /// The capsule the mock draws, `fromMock(56)` on the half-point grid.
   static let promptMockHeight: CGFloat = (fromMock(56) * 2).rounded() / 2
   /// How much more air the first screen has than the mock: above and below
@@ -514,6 +518,12 @@ enum AgentPaletteMetrics {
   static let screenSelectionMinimumSide: CGFloat = 12
   static let screenSelectionLineWidth: CGFloat = 2.5
   static let screenSelectionCornerRadius: CGFloat = 8
+  /// The words beside the pointer on the empty glass (`ScreenSelectionPointerHint`):
+  /// down and to the right of the arrow's tip, clear of the arrow itself,
+  /// after the same rest a help tag waits for.
+  static let screenSelectionHintText = "Drag to ask about an area"
+  static let screenSelectionHintOffset = CGSize(width: 14, height: 24)
+  static let screenSelectionHintDelay: TimeInterval = helpTagDelay
   /// The faint wider stroke of the same gradient round the border, where
   /// there is no Metal to draw the glow (`ScreenSelectionGlowView`).
   static let screenSelectionGlowWidth: CGFloat = 10
@@ -543,6 +553,14 @@ enum AgentPaletteMetrics {
   /// Between the region and the shell that stands beside it, and between the
   /// shell and the screen's edge.
   static let screenSelectionShellGap: CGFloat = 16
+  /// What the shell grows out of beside a region just drawn.
+  static let regionSeedSide: CGFloat = 12
+  /// How long the shell stays the orb waiting for a microphone that may not
+  /// start (a refusal, a permission being asked).
+  static let regionVoiceWait: TimeInterval = 2
+  /// The shell closing round the face once a question has gone: most of the
+  /// way on its spring (`surfaceResponse`).
+  static let regionHandOverDuration: CFTimeInterval = 0.26
   static let chipPreviewImageCornerRadius: CGFloat = 8
   static let chipPreviewImageInset: CGFloat = 8
   static let chipPreviewTextInset: CGFloat = 12
@@ -825,6 +843,10 @@ enum AgentPaletteMetrics {
   /// prompt at the same moment, and the two should read as one event finishing
   /// rather than as a light being switched off beside some text appearing.
   static let voiceGlowCompletedFadeDuration: TimeInterval = 0.55
+  /// The orb leaving as the shell turns from it into the chat or the prompt:
+  /// about the shell's own spring. The orb is opaque on the glass, so at the
+  /// 0.55 above it lay stretched over the chat growing under it.
+  static let voiceGlowOrbReleaseDuration: TimeInterval = 0.3
   /// Leaving because the take was discarded, or because dictation failed.
   ///
   /// Short, but deliberately not zero: a light that vanishes between two frames
@@ -1506,33 +1528,34 @@ enum AgentPaletteMetrics {
   /// answer, as far as a reader can tell.
   static let previewAgentMessageSpacing: CGFloat = answerParagraphSpacing
 
-  /// The work between an answer's words, as one pill (`PaletteActivityGroupView`),
-  /// as Claude's app draws it: the column's width, white at 5% over the
-  /// ground, a chevron at its leading end and the words after it at the
-  /// answer's size in a grey of their own.
-  static let previewWorkPillHeight: CGFloat = 44.5
-  static let previewWorkPillCornerRadius: CGFloat = 9
-  static let previewWorkPillFill = PaletteInk.tertiaryFill
-  /// The chevron's middle. The point size is the largest at which
-  /// `chevron.down` (14 wide at 12.5) still fits the box: any larger and it
-  /// is scaled down to fit while `chevron.right` is not, so the open group's
-  /// chevron draws smaller than the shut one's.
-  static let previewWorkPillChevronCenter: CGFloat = 21
-  static let previewWorkPillChevronWidth: CGFloat = 14
-  static let previewWorkPillChevronPointSize: CGFloat = 12.5
-  static let previewWorkPillTextInset: CGFloat = 40
-  static let previewWorkPillTrailingInset: CGFloat = 17
-  /// Opened, the calls stand under the words, from where the words' line
-  /// ends, with a little air at the foot.
-  static let previewWorkPillListTop: CGFloat = 35.5
-  static let previewWorkPillListBottomInset: CGFloat = 10
-  /// From the line above to the pill, and from the pill to the line under
-  /// it: the reference stands the pill 32 under the last line's baseline and
-  /// 31 over the next line's capitals, the same air either side of the
-  /// glyphs. The two numbers differ because a line's leading stands over
-  /// its glyphs, not around them.
-  static let previewWorkPillSpacingAbove: CGFloat = 26.5
-  static let previewWorkPillSpacingBelow: CGFloat = 20
+  /// The work between an answer's words (`PaletteActivityGroupView`), as a
+  /// thread rather than a box: one line of what was done in the answer's
+  /// grey with a small chevron after its last word, and, opened, the calls
+  /// hung off a hairline at the column's leading edge. No fill and no
+  /// corner: a slab read as a form on the glass and fenced the answer in.
+  static let previewWorkPillHeight: CGFloat = 28
+  /// After the words, not before them: the line reads as a sentence that
+  /// opens, the way Claude's own transcript says "Ran 5 commands ▾".
+  static let previewWorkPillChevronGap: CGFloat = 5
+  static let previewWorkPillChevronWidth: CGFloat = 12
+  static let previewWorkPillChevronPointSize: CGFloat = 10
+  static let previewWorkPillTextInset: CGFloat = 0
+  static let previewWorkPillTrailingInset: CGFloat = 0
+  /// The thread: a hairline under the first glyph, the calls standing a
+  /// step to its right. Filled, never stroked.
+  static let previewWorkThreadX: CGFloat = 5
+  static let previewWorkThreadWidth: CGFloat = 1.5
+  static let previewWorkThreadFill = PaletteInk.secondaryFill
+  static let previewWorkListInset: CGFloat = 18
+  /// Opened, the calls start under the words' line, with a little air at
+  /// the foot so the thread ends below the last row's glyphs.
+  static let previewWorkPillListTop: CGFloat = previewWorkPillHeight + 2
+  static let previewWorkPillListBottomInset: CGFloat = 4
+  /// From the line above to the work, and from the work to the line under
+  /// it. Without a box there is no edge to keep clear of, so the gaps are
+  /// a paragraph's, a little more above where the leading sits.
+  static let previewWorkPillSpacingAbove: CGFloat = 14
+  static let previewWorkPillSpacingBelow: CGFloat = 10
 
   /// File result cards under a message: a picture, the name over its kind
   /// and size, and the actions only while the pointer is on the card.
@@ -1588,6 +1611,11 @@ enum AgentPaletteMetrics {
   /// row it was measured into. Fixing the line height makes the two arithmetic.
   static let previewActivityDetailLineHeight: CGFloat = 14
   static let previewActivityDetailTopMargin: CGFloat = 4
+  /// A call's output stands in a well, as code does in the answer: a
+  /// filled slab, the text inset from its rim.
+  static let previewActivityDetailWellInset: CGFloat = 8
+  static let previewActivityDetailWellCornerRadius: CGFloat = 8
+  static let previewActivityDetailWellFill = PaletteInk.tertiaryFill
   /// The output lines up under the name, not under the glyph.
   static let previewActivityDetailIndent: CGFloat = previewActivityGlyphSize + previewActivityRowSpacing * 2
   /// A tool's output runs to megabytes; the transcript is not a log viewer.
@@ -1630,9 +1658,14 @@ enum AgentPaletteMetrics {
   /// (`PaletteChatMessageView.spacing(after:)`). Only the turn's last answer
   /// carries one: between two messages of one turn it would be a hole in the
   /// middle of a reply.
-  static let previewCopyButtonSize: CGFloat = previewFileButtonSize
+  /// Wider than the glyph by half again: the pointer finds it without aiming.
+  static let previewCopyButtonSize: CGFloat = 30
   /// The row: the button and the air over it.
   static let previewCopyRowHeight: CGFloat = previewCopyButtonSize + 6
+  /// The row under a question (✓ · time · Copy). It stands in the gap to
+  /// the answer, which it about fills.
+  static let previewQuestionMetaRowHeight: CGFloat = 28
+  static let previewQuestionMetaSpacing: CGFloat = 6
 
   /// How far past a floating control's edge the transcript keeps dissolving
   /// (`BolttyAIPreviewCard.scrollEdge`). Half the card's vertical padding,
@@ -1848,10 +1881,10 @@ enum AgentPaletteMetrics {
     ceil(font.ascender - font.descender + font.leading)
   }
   /// **A help tag is drawn as a Mac menu row**: text at the menu's 13
-  /// (`typeMeta`), a hairline edge, a corner of 10, the padding a menu row
-  /// has, and each key of a shortcut in its own outlined cap at 11.
-  static let helpFill = HexColor.nsColor("#202020")
-  static let helpEdge = PaletteInk.fill
+  /// (`typeMeta`), a corner of 10, the padding a menu row has, and each key of
+  /// a shortcut in its own outlined cap at 11. It wears the system's glass with
+  /// `helpDensity` over it: bare glass let the words beneath read through 13 pt.
+  static let helpDensity = NSColor.black.withAlphaComponent(0.55)
   static let helpCornerRadius: CGFloat = 10
   static let helpHorizontalPadding: CGFloat = 10
   static let helpVerticalPadding: CGFloat = 6
