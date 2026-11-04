@@ -13,6 +13,46 @@
     {
       "layers" : [
         {
+          "blend-mode-specializations" : [
+            {
+              "value" : "plus-lighter"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "darken"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "value" : "automatic"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "system-dark"
+            }
+          ],
+          "image-name" : "Group 1437252673.png",
+          "name" : "Group 1437252673",
+          "position" : {
+            "scale" : 0.7,
+            "translation-in-points" : [
+              0,
+              -52
+            ]
+          }
+        },
+        {
+          "image-name" : "Frame 1437252704.png",
+          "name" : "Frame 1437252704",
+          "position" : {
+            "scale" : 0.7,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
           "image-name" : "Icon.png",
           "name" : "Icon",
           "position" : {
