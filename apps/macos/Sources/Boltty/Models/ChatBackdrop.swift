@@ -40,7 +40,11 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
     "boltty.chatBackdrop.\(agent.rawValue)"
   }
 
+  /// The README's pictures show what a new install has, whatever this Mac chose.
+  nonisolated(unsafe) static var chosenForTesting: ChatBackdrop?
+
   static func chosen(for agent: AgentId?, defaults: UserDefaults = .standard) -> ChatBackdrop {
+    if let chosenForTesting { return chosenForTesting }
     guard let agent else { return .standard }
     return defaults.string(forKey: storageKey(for: agent)).flatMap(ChatBackdrop.init(rawValue:)) ?? .standard
   }

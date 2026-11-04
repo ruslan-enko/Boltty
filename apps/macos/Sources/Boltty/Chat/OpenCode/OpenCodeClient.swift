@@ -1035,6 +1035,13 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     await ownServer.stop()
   }
 
+  /// Only Boltty's own servers: `stop` has nothing to end on the person's
+  /// service. The event loops reconnect, which starts them again as they are now.
+  func restartIdleProcess() async {
+    await server.stop()
+    await ownServer.stop()
+  }
+
   // MARK: - HTTP
 
   private struct EmptyBody: Encodable {}

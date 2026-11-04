@@ -740,22 +740,22 @@ final class AgentPaletteViewTests: XCTestCase {
   }
 
   func testAnAgentThatReadsNoFilesMovesNothingOnTheRight() {
-    func layout(attachments: Bool) -> (text: CGFloat, folder: CGFloat) {
+    func layout(attachments: Bool) -> (text: CGFloat, microphone: CGFloat) {
       let view = makeScreenSizedView()
       view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
       view.setAcceptsAttachments(attachments)
       view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
                                  state: .finished, body: "A reply."))
       view.layoutSubtreeIfNeeded()
-      let folder = view.workingDirectoryChipForTesting
-      return (view.promptTextFrameForTesting.width, view.convert(folder.bounds, from: folder).minX)
+      let microphone = view.micButtonForTesting
+      return (view.promptTextFrameForTesting.width, view.convert(microphone.bounds, from: microphone).minX)
     }
     let with = layout(attachments: true)
     let without = layout(attachments: false)
     XCTAssertEqual(without.text, with.text, accuracy: 0.6, "the words have the box's width either way")
     XCTAssertEqual(
-      without.folder, with.folder, accuracy: 0.6,
-      "the + is not in the group on the right, so the group stays put without it"
+      without.microphone, with.microphone, accuracy: 0.6,
+      "the + is in the group on the left, so the group on the right stays put without it"
     )
   }
 
@@ -771,8 +771,8 @@ final class AgentPaletteViewTests: XCTestCase {
     view.cancelAllAnimationsAndSettle()
     let grown = view.unifiedSurfaceFrameForTesting
     XCTAssertEqual(grown.maxY, resting.maxY, accuracy: 0.5, "the top is the anchor")
-    XCTAssertEqual(grown.minX, resting.minX, accuracy: 0.5)
-    XCTAssertEqual(grown.width, resting.width, accuracy: 0.5)
+    XCTAssertEqual(grown.midX, resting.midX, accuracy: 0.5, "it widens about the centre")
+    XCTAssertEqual(grown.width, AgentPaletteMetrics.promptGrownWidth, accuracy: 0.5)
     XCTAssertEqual(grown.height, AgentPaletteMetrics.promptGrownMaximumHeight, accuracy: 0.5)
     XCTAssertEqual(view.unifiedSurfaceCornerForTesting, resting.height / 2, accuracy: 0.5)
 
@@ -1349,7 +1349,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertNil(view.addressedPreviewForTesting)
   }
 
-  func testBolttyAISurfacesWearTheRampExceptWhileListening() {
+  func testBolttyAISurfacesWearTheRampInEveryState() {
     let view = makeScreenSizedView()
     XCTAssertTrue(view.surfaceUsesDirectionalGlassOverlayForTesting, "the first screen")
     XCTAssertFalse(view.usesDirectionalGlassOverlayForTesting, "not the composer")
@@ -1372,8 +1372,7 @@ final class AgentPaletteViewTests: XCTestCase {
     listening.setVoiceListening(true)
     listening.layoutSubtreeIfNeeded()
     XCTAssertTrue(listening.isCompactListeningForTesting, "precondition: the listening orb")
-    XCTAssertTrue(listening.usesSharedSurfaceStyleForTesting,
-                  "the listening orb is the bare shared glass")
+    XCTAssertTrue(listening.surfaceUsesDirectionalGlassOverlayForTesting, "the listening orb")
     listening.setVoiceListening(false)
   }
 
@@ -2167,9 +2166,11 @@ final class AgentPaletteViewTests: XCTestCase {
     view.setSessions([.row("claude", .claude)], activeSessionID: nil)
     view.openSwitcher()
 
-    XCTAssertFalse(view.textView(view.field, doCommandBy: #selector(NSResponder.insertTab(_:))))
-    XCTAssertFalse(view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:))))
+    // Taken and dropped: left to the field, a Tab typed itself and turned the list into a search.
+    XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertTab(_:))))
+    XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:))))
     XCTAssertEqual(view.agentForNewPrompt, .claude)
+    XCTAssertEqual(view.field.string, "")
   }
 
   // MARK: - Prompt typography
@@ -3179,7 +3180,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertFalse(usage.isHidden, "the plan rides in the chat's row")
     XCTAssertEqual(usage.titleForTesting, "Weekly 25%")
     XCTAssertEqual(plan.midY, chip.midY, accuracy: 0.5)
-    XCTAssertLessThanOrEqual(plan.maxX, chip.minX + 0.5, "the ring before the folder")
+    XCTAssertGreaterThanOrEqual(plan.minX, chip.maxX - 0.5, "the folder on the left, the ring on the right")
     XCTAssertTrue(composer.contains(chip))
     XCTAssertTrue(composer.contains(plan))
 
@@ -3490,6 +3491,43 @@ final class AgentPaletteViewTests: XCTestCase {
       [nil] + AgentHistory.tabOrder.map { Optional($0) },
       "the strip is Latest and the same four wherever the history came from"
     )
+  }
+
+  func testWithOneAgentListedTheStripIsThatAgentAloneAndOthersChatsAreGone() throws {
+    let view = makeScreenSizedView()
+    view.setSessions([
+      .row("mine", .claude, updatedAt: Date()),
+      .row("not listed", .codex, updatedAt: Date()),
+    ], activeSessionID: nil)
+    view.setListedAgents([.claude])
+
+    openHistory(view)
+    view.layoutSubtreeIfNeeded()
+
+    let strip = view.historyTabsForTesting
+    XCTAssertEqual(strip.tabsForTesting.map(\.agent), [.claude], "no All, no others")
+    XCTAssertEqual(view.activeHistoryAgent, .claude)
+    XCTAssertEqual(view.resultItemsForTesting.map(\.title), ["mine"])
+
+    let only = try XCTUnwrap(strip.tabsForTesting.first)
+    XCTAssertEqual(only.frame.midX, strip.bounds.midX, accuracy: 1, "alone it stands in the middle")
+    XCTAssertLessThan(only.frame.width, strip.bounds.width / 2, "and at its own size")
+  }
+
+  func testASecondAgentSwitchedOnBringsAllAndItsChatsBack() {
+    let view = makeScreenSizedView()
+    view.setSessions([
+      .row("mine", .claude, updatedAt: Date()),
+      .row("other", .codex, updatedAt: Date()),
+    ], activeSessionID: nil)
+    view.setListedAgents([.claude])
+    openHistory(view)
+
+    view.setListedAgents([.claude, .codex])
+
+    XCTAssertEqual(view.historyTabsForTesting.tabsForTesting.map(\.agent), [nil, .claude, .codex])
+    view.historyTabsForTesting.onSelect?(nil)
+    XCTAssertEqual(Set(view.resultItemsForTesting.map(\.title)), ["mine", "other"])
   }
 
   func testTheHistoryOpensOnLatest() {
@@ -4085,7 +4123,7 @@ extension AgentPaletteViewTests {
       "the orb grows into a capsule round the words being said"
     )
     XCTAssertLessThanOrEqual(capsule.width, AgentPaletteMetrics.listeningMaxWidth + 0.5)
-    XCTAssertEqual(capsule.height, AgentPaletteMetrics.listeningOrbDiameter, accuracy: 0.5)
+    XCTAssertGreaterThan(capsule.height, AgentPaletteMetrics.listeningOrbDiameter, "the face over its line")
     XCTAssertEqual(
       view.listeningWordsForTesting, "fix the failing test",
       "the words of this take, not the draft typed before it"
@@ -4096,9 +4134,9 @@ extension AgentPaletteViewTests {
     view.layoutSubtreeIfNeeded()
     view.cancelAllAnimationsAndSettle()
     view.layoutSubtreeIfNeeded()
-    XCTAssertEqual(
-      view.unifiedSurfaceFrameForTesting.width, AgentPaletteMetrics.listeningMaxWidth, accuracy: 0.5,
-      "no longer than the prompt the words land in"
+    XCTAssertLessThanOrEqual(
+      view.unifiedSurfaceFrameForTesting.width, AgentPaletteMetrics.listeningMaxWidth + 0.5,
+      "however many words, they run down in lines"
     )
     XCTAssertEqual(
       view.voiceGlowForTesting.paletteIDForTesting, view.mascotPaletteIDForTesting,

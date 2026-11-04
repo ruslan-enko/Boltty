@@ -124,6 +124,34 @@ final class AskBolttyOverlayGeometryTests: XCTestCase {
     XCTAssertFalse(face.contains(spot))
   }
 
+  func testAFaceAtRestShowsWhatCanBeDone() async throws {
+    let overlay = AskBolttyOverlayController()
+    defer { overlay.hide() }
+    overlay.restHint = { "⌥Space to ask more · Esc to close" }
+    overlay.pointer = { CGPoint(x: 400, y: 400) }
+    overlay.show(.speaking, caption: "Hello there.", agent: .claude)
+    try await Task.sleep(for: .seconds(0.6))
+    overlay.show(.idle, caption: "", agent: .claude)
+    // The answer's linger, its words going back into the face, the line growing.
+    try await Task.sleep(for: .seconds(2))
+
+    let bubble = overlay.bubbleForTesting
+    XCTAssertEqual(overlay.textForTesting, "⌥Space to ask more · Esc to close")
+    XCTAssertFalse(bubble.isHidden)
+    XCTAssertEqual(bubble.alpha, 1)
+    XCTAssertEqual(bubble.wordsAlpha, 1)
+    XCTAssertGreaterThan(bubble.frame.width, 100)
+  }
+
+  func testThePointerMarksTailLiesTowardTheFaceWhicheverSideItLanded() {
+    XCTAssertEqual(
+      AskBolttyOverlayController.pointerTurn(reach: AskBolttyOverlayController.landingOffset), 0,
+      accuracy: 0.001, "beside the spot as usual it needs no turn")
+    XCTAssertEqual(
+      AskBolttyOverlayController.pointerTurn(reach: CGVector(dx: -30, dy: -30)), -.pi / 2,
+      accuracy: 0.001, "the face to the left at a right edge")
+  }
+
   private func bubble(
     size: CGSize, whole: CGSize, on side: AskBolttyOverlayController.BubbleSide, beside face: CGRect
   ) -> CGRect {

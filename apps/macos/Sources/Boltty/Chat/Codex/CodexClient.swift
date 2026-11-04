@@ -442,6 +442,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     running?.terminate()
   }
 
+  /// The same ending as a quit, which leaves nothing that a new server cannot
+  /// pick up: threads are resumed on it as they are next used (`ensureThread`).
+  func restartIdleProcess() async { await shutdown() }
+
   // MARK: - The server
 
   private func locate() -> String? {

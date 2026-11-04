@@ -18,6 +18,8 @@ protocol BolttyAIConversations: AnyObject {
 
   func launchableProviderIDs() -> [String]
 
+  func listedProviderIDs() -> [String]
+
   func defaultWorkingDirectory() -> String
 
   func setWorkingDirectory(_ path: String, for id: UUID)
@@ -58,6 +60,8 @@ protocol BolttyAIConversations: AnyObject {
 
   func setAddressedConversation(_ id: UUID?)
 
+  func keepChat(_ id: UUID)
+
   func preview(for id: UUID) -> BolttyAISessionPreview?
 
   func observePreview(of id: UUID, _ handler: (@Sendable () -> Void)?)
@@ -72,6 +76,7 @@ protocol BolttyAIConversations: AnyObject {
 
   func usage(providerID: String) -> AgentUsage?
   func refreshUsage()
+  func refreshModelsIfStale()
   func contextUsage(for id: UUID) -> AgentContextUsage?
   func canCompact(_ id: UUID) -> Bool
   func refreshContext(for id: UUID)
@@ -89,9 +94,14 @@ extension BolttyAIConversations {
   func refreshContext(for id: UUID) {}
   func compact(_ id: UUID) {}
   func refreshUsage() {}
+  func refreshModelsIfStale() {}
   var usageChanged: AnyPublisher<Void, Never> { Empty().eraseToAnyPublisher() }
 
   func sessionTranscripts() -> [UUID: ConversationTranscript] { [:] }
+
+  func listedProviderIDs() -> [String] { [] }
+
+  func keepChat(_ id: UUID) {}
 
   func recentWorkingDirectories() -> [String] { [] }
 
@@ -161,6 +171,10 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     store.select(id)
   }
 
+  func keepChat(_ id: UUID) {
+    engine.keepAskBolttyChat(id: id)
+  }
+
   func startConversation(
     prompt: String, id: UUID, workingDirectory: String, providerID requested: String?,
     pictures: [ConversationAttachment]
@@ -210,6 +224,10 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
 
   func usage(providerID: String) -> AgentUsage? { engine.usageByProvider[providerID] }
 
+  func refreshModelsIfStale() {
+    engine.refreshModelsIfStale()
+  }
+
   func refreshUsage() {
     Task { @MainActor [engine] in await engine.refreshUsage() }
   }
@@ -242,6 +260,15 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       .merge(with: engine.$contextByConversation.map { _ in () })
       .receive(on: RunLoop.main)
       .eraseToAnyPublisher()
+  }
+
+  /// Signed out still counts: it is on this Mac, and its chats are the person's.
+  func listedProviderIDs() -> [String] {
+    let enabled = Set(AgentHistory.tabOrder.map(\.rawValue).filter(isProviderEnabled))
+    let installed = engine.hasProbed
+      ? Set(engine.registry.installations.filter(\.availability.isInstalled).map(\.provider.rawValue))
+      : nil
+    return AgentHistory.listed(enabled: enabled, installed: installed).map(\.rawValue)
   }
 
   func launchableProviderIDs() -> [String] {

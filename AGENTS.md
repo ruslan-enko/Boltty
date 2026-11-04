@@ -37,6 +37,16 @@ conversation `.db`, OpenCode's database through the server. The process is for
 *doing* things: starting a turn, answering a permission. Never ask a process to
 replay history.
 
+**Model lists are read from each CLI, never written down**: at launch, as Settings
+opens, on Scan for Agents, and as the panel opens once an hour has passed
+(`refreshModelsIfStale`, in the background). A list that did not come leaves the
+last one standing. A chosen model the list no longer has gives way to the agent's
+default for new chats, and Settings says so; the stored choice stays, in case it
+comes back. A chat already started keeps its model, and what the CLI says about it
+is a failure on that turn. A CLI updated under a process kept running (Codex's
+app-server, Grok's stdio, Boltty's own OpenCode server) restarts it once nothing of
+its is running or waiting (`restartOutdatedProcesses`, by `--version`).
+
 **What each agent can do is declared, not assumed.** `AgentCapabilities` is
 what the UI reads. A model menu, a permission card, an attach button and a stop
 button each appear only where the adapter can carry the action out. A control
@@ -98,7 +108,7 @@ no adapter; never offer a toggle for them.
 | Return in the panel | Starts a conversation **in the background**: no window raised, no `NSApp.activate`. An empty Return starts nothing and plays the system alert |
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing (the preferred agent). Fixed once the conversation has a session. A chosen agent that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon |
-| Working folder | New chats start in `$HOME`. Chosen with the folder chip until the session exists, then fixed |
+| Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip until the session exists, then fixed |
 | Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open cards expired |
 | One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so. It starts no session or turn (`ConversationEngine.secondCopyRefusal`) and never stores a fallback chord |
 | Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline, waiting for each turn's stop (3 s timer), not the first to answer |
@@ -546,6 +556,12 @@ The loop that must keep working:
   wide-line renderer, which can hand Metal a zero-instance draw). A Debug build
   stopped on a Metal assertion is paused, not hung — `sample <pid>` it.
 - Sizes are arithmetic: the same function measures and draws.
+- **The card stands in the panel at its width before it measures a chat**
+  (`enterAddressing`). Measured with no width, the words wrapped narrow, the floor
+  stayed that tall, and the first long chat since launch opened on the blank under
+  its end. A new width wraps the words in a pass after the card's own, so the
+  floor and the place at the end are worked out again once it has
+  (`scheduleReflowSettle`).
 
 ### The permission card
 
@@ -570,8 +586,18 @@ The loop that must keep working:
 ### The chat list
 
 - Boltty's conversations only, grouped by day, with tabs: **All** (stored and
-  coded as Latest) then one per adapter in `AgentHistory.tabOrder`, always all
-  present. All wears the faces of enabled agents, arranged like die pips.
+  coded as Latest) then one per agent that is switched on and on this Mac
+  (`AgentHistory.listed`; signed out still counts). With one there is no All, and
+  its tab stands alone at its own size in the middle. An agent not listed is gone
+  from the tabs, the rows and the search, and from Usage, until it is switched on
+  again; its chats stay on disk, and one still working is reached from the tray
+  and the notch. Settings › Agents lists every agent, since that is where one is
+  switched on. All wears the faces of enabled agents, arranged like die pips.
+- **Nothing offers a choice with nothing to choose among.** With one agent there is
+  no All, no agent menu on Usage, no ⇧Tab or ←/→ in Settings › Shortcuts and none
+  suggested when it is not ready, no Preferred in Settings › Agents, and the first
+  run's list and its walk do the same. Any number from two to five is All and that
+  many tabs, sharing the strip.
 - Only the chosen tab's face is alive; the live face wakes out of, and returns
   to, the still picture (`handOver`, `awake`) so switching never jumps.
 - Rows are built lazily near the viewport (`ResultsListView`); a filtered row is
@@ -612,8 +638,11 @@ outside dims to 40%, the border is light in the agent's gradient
 (`ScreenSelectionGlowView`), and the shell stands beside the region. The
 pointer stays an arrow; only handles show resize cursors. While a drag
 would select, the pointer resting on the empty glass gets "Drag to ask about
-an area" beside it (`ScreenSelectionPointerHint`, help-tag style, after the
-help tag's rest), following it until it reaches the shell or presses.
+an area" beside it ("Drag to add an area" over a chat;
+`ScreenSelectionPointerHint`, help-tag style, after the help tag's rest),
+following it until it reaches the shell or presses. Three regions drawn
+(`boltty.selection.regionsDrawn`) and it has done its work: shown for good, it
+stood over the page each time the panel opened.
 
 Once a region is drawn the shell is the face, the words and the microphone:
 no folder chip or usage ring, and ↓ ↑ Tab do nothing (↓ used to open the
@@ -638,6 +667,9 @@ pass), growing out of a speck on the region's edge on the shell's spring
 was never seen. The edge by the region and the shell's top hold as it grows
 with the words. Sent, the turn starts at once and the shell closes into the orb
 round the face while the words and the dim fade (`collapseToFace`, 0.26 s).
+Said rather than typed, the shell stays round the words while the region is cut
+(`holdWordsForQuestion`): let go of as the take ended, they went out and the
+prompt stood there for that moment, which read as the words vanishing.
 Then the panel goes at once, and the face beside the pointer takes up from
 where the orb's stood, at its size (`handRegionOver` →
 `AskBolttyOverlayController.arrive`). It flies on a low arc (0.55–1.1 s by
@@ -697,18 +729,43 @@ heard.
   were removed: a region says what is meant exactly.
 - A region drawn warms up the chat and its session (`warmUp`); let go of
   unasked, a chat made for it goes (`cancel`).
-- Sent: the whole screen at 1568 px with the region outlined (what 0–1000
-  measures across) and the region up close — one picture when the whole
-  screen was asked about — the window under the region, Vision's text in
-  `<screen-text>`, and `AskBolttyPrompt.bracket` (answer in one or two
+- Sent: the screen at 1568 px with the region outlined (what 0–1000 measures
+  across) and the region up close, the window under the region, Vision's text
+  in `<screen-text>`, and `AskBolttyPrompt.bracket` (answer in one or two
   sentences, in the asker's language, a link as it is, point and draw with
   tags). Nothing said is nothing sent.
+- **The picture holds only what the question is about** (`FrozenScreen.layers`):
+  the windows the region shows, what they have open over them (a menu, a
+  popover: the same owner above layer 0), the menu bar ("where is Export?") and
+  the region. The rest is painted out where it stands, so the coordinates hold
+  and a window or another app's banner lying over a shown one stays hidden; the
+  prompt says it is hidden on purpose. A window above layer 0 as big as the screen
+  is ignored: some are clear (the system's Screenshot keeps one at the menu bar's
+  level). The whole screen selected, the whole screen goes. A region's chip
+  in a chat goes the same way. People read "this area" as what is sent, and the
+  picture is something Boltty makes (*Boltty is a wrapper*), so README and
+  Settings › Ask Boltty say so.
+- Over a Finder window or the desktop the prompt names the folder and what is
+  selected in it (`ScreenSelection.finderSpot`, `FinderSelectionService.place`,
+  on a 1.5 s timer; Settings › General's Finder switch), so "organise this" has a
+  "here". The window is told by its name and a point in it, from what Finder
+  lists (`parsePlace`), never by a guess: Recents, a search, a refusal or no
+  answer name no folder and the prompt says to ask. The chat works in that folder:
+  a session cannot move, so one warmed up elsewhere, or going on from another
+  folder, gives way to one started there (`reopen`).
 - Tags: `<point x y label/>`, `<circle>`, `<box>`, `<arrow>`, `<line>`,
   `<path d>`, `<label>`, `<board>…</board>`, coordinates 0–1000 of the picture.
   Each is shown when the reading reaches its sentence; drawings stay until the
-  next question, a click or Escape. The chat card strips the tags.
+  next question, a click or Escape. The chat card strips the tags. A `<point>`
+  is shown by the face flying beside the spot with a small pointer of its own
+  (`AskBolttyPointerMark`, the face's colours under a white edge; a ring was
+  tried and refused): its tip lands on the spot, its tail lies toward the face
+  (`pointerTurn`), and it travels with the face.
 - At most two sentences of an answer are said, one at a time: a new sentence
-  takes the last one's place (`captionSentences`, `answerSentences`).
+  takes the last one's place (`captionSentences`, `answerSentences`). The answer
+  ends when the voice falls silent; `$speakingID` tells before the value changes,
+  so it is read on the next turn of the run loop (asked at once, the voice was
+  still saying it, and nothing ended the answer until the store moved).
 - The answer comes beside the face word by word, each arriving out of the blur
   the listening words have (`ListeningWordsView`, `isCentred` off), the bubble
   growing to fit what has come (`revealWords`, `growBubble`); a new sentence
@@ -724,7 +781,10 @@ heard.
   read into `AskBolttySession.speaksAloud` as a question is sent. Said aloud,
   the words still type out, without blips over the voice.
 - **The face waits after the answer** (`AskBolttyOverlayController.rest`): its
-  words go once said, it returns to the pointer, and goes by itself after 12 s.
+  words go once said, a line says what can be done ("⌥Space to ask more · Esc to
+  close", `restHint`, gone after 5 s, since a bubble riding with the pointer gets
+  in the way), and it goes by itself after 12 s. It returns to the pointer unless
+  it pointed at something: then the place is the answer and it stays on it.
   **While it is there the launch key goes on with the question**
   (`AskBolttyController.questionToContinue` → `AgentPaletteController.askAgain`):
   no panel to pass through, the same region, the same agent, listening; the
@@ -738,20 +798,32 @@ heard.
   words; under Reduce Motion they stay plain.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
-- Ask Boltty chats raise no banner, unread mark or notch line, are never listed,
-  and are forgotten (record, screenshots, session released via
-  `AgentClient.release`) ten minutes after the last answer unless working or
-  waiting; a question within those ten minutes continues the chat. A chat
-  waiting on the person opens the panel on it.
+- Ask Boltty chats raise no banner, unread mark or notch line, and are forgotten
+  (record, screenshots, session released via `AgentClient.release`) ten minutes
+  after the last answer unless working, waiting or open in the panel; a question
+  within those ten minutes continues the chat. Until then one that was asked in
+  is a row in the chat list, the only way back to words that have gone from
+  beside the pointer. Gone on with in the panel it is the person's own chat
+  (`keepChat`): no longer read-only, its process let go before the next send, and
+  a new region starts a chat of its own. A chat waiting on the person opens the
+  panel on it, every time it waits; while it is open there, nothing about it shows
+  beside the pointer.
 - Read-only by default (`Conversation.readOnly`): the engine refuses every
-  permission, and Claude Code and Codex start without write tools. Claude
+  permission (what the agent asks the person still reaches them), Claude Code and
+  Codex start without write tools, and asked to change something it says where the
+  switch is. With "Can make changes" on it does what it is clearly asked, told not
+  to narrate, and the words beside the face follow the turn's step
+  (`AskBolttySession.step`) in place of "Thinking…". Back at work after saying
+  something it returns to the step, and what it says when done has its own two
+  sentences. Claude
   Code's read-only tools include WebSearch and WebFetch, let through without
   asking (`readOnlyAllowedTools`): "find where this news is" needs a search.
-- Who answers: the chosen agent and model if ready, else Claude Code on Haiku,
-  else the first ready agent that takes pictures. Chosen in Settings › Ask
-  Boltty as a strip of bare faces, no circle or ring, the chosen one told by
-  its name (`AskBolttyAgentPicker`, on `RingedChoice` with `isRinged` off),
-  Automatic wearing the face it would pick; "Can make
+- Who answers: the chosen agent and model if ready, else the preferred agent in
+  its default model, else the first ready agent that takes pictures. No model is
+  hunted for by name: an "Automatic" that meant Claude Code on Haiku was tried and
+  removed. Chosen in Settings › Ask Boltty as a strip of bare faces, no circle or
+  ring, the chosen one told by its name in the accent colour
+  (`AskBolttyAgentPicker`, on `RingedChoice` with `isRinged` off); "Can make
   changes" is the one switch for access. Always at the model's lowest
   effort, never the effort the agent's chats use and never stored
   (`boltty.talk.effort` is retired, inert), `low` before `minimal`
@@ -772,8 +844,9 @@ heard.
 ## Other surfaces
 
 - **Notch face** (`NotchMascotController`): a black circle beside the camera
-  housing, one face per agent with something to say (up to four, most urgent
-  nearest the notch). It speaks a line ("Needs your approval · Claude",
+  housing, or in the middle of the menu bar on a Mac with no notch
+  (`NotchMascotGeometry(topEdgeOf:)`), one face per agent with something to say
+  (up to four, most urgent nearest the notch). It speaks a line ("Needs your approval · Claude",
   "Done · <chat>"); approvals and questions hold their line, others fold after
   6 s. No circle when there is nothing to say. Never key, never activates.
 - **Permissions window**: four rows (Microphone + Speech, Screen Recording,
@@ -802,16 +875,10 @@ heard.
   `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The
   sidebar highlight is its own `@State`; the window is sized after its view
   controller is set; the sidebar width modifier is last on its column.
-- **App icon** (`AppIconChoice`, Settings › General, `boltty.appIcon`): Default,
-  Citrus, Pastel, Sunset, on a strip of the icons (`AppIconPicker`). macOS has no
-  alternate icons, so it is `applicationIconImage` on the running app, set again
-  whenever the Dock tile comes back (`AppPresence`): the Dock and Boltty's own
-  windows change; Finder, a Dock tile of a Boltty not running, and banners keep
-  the bundle's. Never `NSWorkspace.setIcon` on the bundle: it breaks the
-  signature. An alternate `.icon` compiled into `Assets.car` cannot be loaded by
-  name (and takes it from 3.8 to 13.7 MB), so they are 512 px PNGs in
-  `Resources/AppIcons`, rendered by `scripts/render-app-icons.sh`; `AppIcon
-  C/P/R.icon` are their sources and are not in the target.
+- **App icon**: one, `AppIcon.icon` (Icon Composer); `.github/icon.png` is it
+  rendered with Xcode's `ictool`. A choice of four was tried and removed: macOS has
+  no alternate icons, so it only ever showed while a Boltty window was open.
+  `boltty.appIcon` is a retired key, inert on disk.
 - **Settings › Agents** is a list, one row per agent: face, name, a "Preferred"
   tag, one line of what a new chat would use (or why it can't), its switch.
   A row opens the agent's own page (`SettingsLocation`, in the back/forward
@@ -948,7 +1015,9 @@ heard.
   `flow` so speed changes never jump. Nothing in it has an edge. Reduce
   Transparency puts it over the shell. Never `presentsWithTransaction` (it
   starved the run loop).
-- The listening orb is the shell's glass and draws no light of its own.
+- The listening orb is the shell's glass and draws no light of its own: the
+  glow view clears once and draws no more frames while `fillsShell`; its clock
+  still times the take.
 - **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
   its transcript, chosen per agent in Settings › Agents › Chat
   (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
@@ -999,8 +1068,8 @@ heard.
   box), and its stroke grows with the box. A small round mark is solid:
   stroked, it reads as a ring round a pinhole. `NSImage` draws the files as
   template images, so they are black, not `currentColor`, and **it blurs an
-  SVG mask**: a solid with marks cut out is one plain path. Refresh turns by a
-  rotation of its own, since `symbolEffect` works only on a symbol.
+  SVG mask**: a solid with marks cut out is one plain path. Refresh shows the system's spinner while a press is at work: an arrow turned by
+  hand could stop at any angle.
 - **Glass is the system's**, in five kinds: the shell (`PaletteGlassHost`, bare
   regular glass under a black ramp), controls (the same
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,
@@ -1111,9 +1180,10 @@ heard.
 - `LICENSE` and `THIRD_PARTY_NOTICES.md` ship in every copy.
 - The README's pictures (`.github/readme/`) are the real panel and overlay over
   Boltty's own sunset, taken by `ReadmeShotsOnScreen`
-  (`TEST_RUNNER_BOLTTY_README_SHOTS=<dir>`; it takes the screen for about
-  40 s). The recordings become animated WebP with `magick` (GIFs of the sunset
-  run to 20 MB).
+  (`TEST_RUNNER_BOLTTY_README_SHOTS=<dir>`; it takes the screen for about a
+  minute, and shows the Standard backdrop whatever this Mac chose). The recordings
+  become animated WebP: frames at 15 fps from `ffmpeg`, then `img2webp -lossy -q 72`
+  (GIFs of the sunset run to 20 MB).
 - **Updates** (`AppUpdater`): `GET api.github.com/repos/ruslan-enko/boltty/releases/latest`
   at launch and hourly when a day has passed, switchable in Settings. A newer
   version turns *Check for Updates…* into *Install Boltty X…*; nothing is
@@ -1136,7 +1206,10 @@ heard.
 3. **Run no tests until the maintainer asks.** Build to check it compiles,
    install with `release.sh --local`, and stop; the maintainer judges by eye. When tests are
    asked for, `apps/macos/scripts/test.sh` picks the suites that name the changed
-   types; `--all` once at the end. UI tests only when named.
+   types; `--all` once at the end. UI tests only when named. CI runs the unit
+   tests on every push, so a red test is heard of without taking anyone's Mac.
+   A test holds behaviour: a number kept twice (a proportion, a height) only
+   breaks when the eye has already judged.
 4. Commit when asked. "Push" means commit on `main` and push. Other sessions
    may be editing the same checkout: check before committing, and commit only
    your own files.
@@ -1163,8 +1236,8 @@ heard.
 
 - One DerivedData: `apps/macos/.derivedData` (Xcode is pointed at it too).
 - The root `Makefile` wraps the scripts (`make run`, `install`, `dmg`, `test`,
-  `lint`). CI (`.github/workflows/ci.yml`) runs both linters and a Debug build
-  on GitHub's `xcode-27` image, unsigned; its jobs are skipped while the
+  `lint`). CI (`.github/workflows/ci.yml`) runs both linters, a Debug build and
+  the unit tests on GitHub's `xcode-27` image; its jobs are skipped while the
   repository is private.
 - `project.yml` is the source of truth; `xcodegen generate` (2.46) reproduces the
   checked-in Xcode 27 project except `LICENSE`'s `lastKnownFileType` (keep

@@ -30,6 +30,8 @@ final class AskBolttySession: ObservableObject {
   @Published private(set) var phase: Phase = .idle
   /// The sentence the voice was last handed.
   @Published private(set) var caption = ""
+  /// What a turn that can make changes is doing while it has nothing to say.
+  @Published private(set) var step: String?
   /// The answer's agent, for the face that shows it.
   @Published private(set) var providerID: String?
   @Published private(set) var conversationID: UUID?
@@ -81,6 +83,11 @@ final class AskBolttySession: ObservableObject {
   private var storeWatch: AnyCancellable?
   /// Lets the chat go once the follow-up window has passed with no question.
   private var expiry: Timer?
+  private var followIsScheduled = false
+  /// The answer as last read: nothing else in it to work out while it is the same.
+  private var answerSoFar = ""
+  /// The folder a region over Finder or the desktop shows, if it can be known.
+  var findPlace: (@MainActor (FinderSpot) async -> FinderPlace?)?
 
   init(
     coordinator: ChatWorkspaceCoordinator,
@@ -125,6 +132,7 @@ final class AskBolttySession: ObservableObject {
     pointing = nil
     drawn = []
     caption = ""
+    step = nil
     readsAloud = true
     phase = .thinking
     sendTask = Task { [weak self] in
@@ -150,8 +158,10 @@ final class AskBolttySession: ObservableObject {
   /// Stops the agent's turn in Ask Boltty's chat, if one is running: a new
   /// question or an Escape is not a reason for it to go on spending.
   private func stopTurn() {
+    // One gone on with in the panel is the person's: its turn is not ours to stop.
     guard let id = conversationID,
-          coordinator.store.conversation(id: id)?.lastKnownState.blocksSending == true
+          let conversation = coordinator.store.conversation(id: id), conversation.isAskBoltty,
+          conversation.lastKnownState.blocksSending
     else { return }
     let engine = coordinator.engine
     Task { await engine.stop(conversationID: id) }
@@ -162,6 +172,7 @@ final class AskBolttySession: ObservableObject {
   private func choosePlace(for target: AskBolttyTarget) {
     if let id = conversationID,
        let conversation = coordinator.store.conversation(id: id),
+       conversation.isAskBoltty,
        conversation.providerID == target.providerID,
        conversation.readOnly == target.readOnly,
        !conversation.lastKnownState.blocksSending,
@@ -184,7 +195,7 @@ final class AskBolttySession: ObservableObject {
   }
 
   private func send(_ words: String, about selection: ScreenSelection, on displayFrame: CGRect) async {
-    guard let id = conversationID else { return }
+    guard var id = conversationID else { return }
     let directory = pictureDirectory
     // Two PNGs of a 5K screen are tens of milliseconds: off the main thread.
     let urls = await Task.detached(priority: .userInitiated) {
@@ -195,10 +206,16 @@ final class AskBolttySession: ObservableObject {
     guard let screenURL = urls.0, let areaURL = urls.1 else {
       return fail("Boltty could not keep a picture of the screen.")
     }
+    // "Organise this": what the picture shows as a window is a folder on disk.
+    var place: FinderPlace?
+    if let spot = selection.finderSpot { place = await findPlace?(spot) }
+    guard !Task.isCancelled, phase == .thinking else { return }
+    if let place, let moved = reopen(id, in: URL(fileURLWithPath: place.folder).path) { id = moved }
     let wholeScreen = selection.frame.insetBy(dx: -1, dy: -1).contains(displayFrame)
     let region = AskBolttyRegion(
       screenPath: screenURL.path, areaPath: areaURL.path, context: selection.context,
-      recognizedText: selection.recognizedText, isWholeScreen: wholeScreen)
+      recognizedText: selection.recognizedText, isWholeScreen: wholeScreen, finderPlace: place,
+      isOverUnreadFinder: selection.finderSpot != nil && place == nil)
     let readOnly = coordinator.store.conversation(id: id)?.readOnly ?? true
     let bracket = AskBolttyPrompt.bracket(region: region, readOnly: readOnly)
     func picture(_ url: URL, _ name: String, _ data: Data) -> ConversationAttachment {
@@ -223,6 +240,7 @@ final class AskBolttySession: ObservableObject {
     language = SpeechOutput.language(of: words)
     decidedVoice = false
     baseline = coordinator.store.transcript(id: id).messages.count
+    answerSoFar = ""
     spokenText = ""
     turnBegan = false
     chunker = SentenceChunker()
@@ -232,6 +250,23 @@ final class AskBolttySession: ObservableObject {
     }
     isNewConversation = false
     watch(id)
+  }
+
+  /// "Here" is where the agent should work, and a session cannot move: a chat
+  /// warmed up elsewhere, or one going on from another folder, gives way to one
+  /// started there. It is also what lets OpenCode into Downloads or the Desktop
+  /// (`OpenCodeClient.isPrivacyProtected` goes by the session's folder).
+  private func reopen(_ id: UUID, in folder: String) -> UUID? {
+    guard let old = coordinator.store.conversation(id: id), old.workingDirectory != folder else { return nil }
+    discardIfNew()
+    coordinator.forgetAskBolttyChats()
+    let new = coordinator.prepareAskBolttyConversation(
+      providerID: old.providerID, model: old.model, effort: old.reasoningEffort,
+      readOnly: old.readOnly, workingDirectory: folder)
+    conversationID = new.id
+    providerID = new.providerID
+    isNewConversation = true
+    return new.id
   }
 
   nonisolated private static func writePicture(_ data: Data, in directory: URL) -> URL? {
@@ -247,10 +282,19 @@ final class AskBolttySession: ObservableObject {
 
   // MARK: - The answer
 
+  /// Once a turn of the run loop however much changed: the store changes per
+  /// token of every chat, not only this one's.
   private func watch(_ id: UUID) {
     storeWatch = coordinator.store.objectWillChange
-      .receive(on: RunLoop.main)
-      .sink { [weak self] _ in self?.follow(id) }
+      .sink { [weak self] _ in
+        guard let self, !self.followIsScheduled else { return }
+        self.followIsScheduled = true
+        DispatchQueue.main.async { [weak self] in
+          guard let self else { return }
+          self.followIsScheduled = false
+          if self.storeWatch != nil { self.follow(id) }
+        }
+      }
     follow(id)
   }
 
@@ -272,11 +316,14 @@ final class AskBolttySession: ObservableObject {
       }
       .filter { !$0.isEmpty }
       .joined(separator: "\n\n")
-    marks = AskBolttyMark.all(in: answer)
-    let spoken = SpokenText.speakable(answer, keepingPoints: true)
-    if spoken.hasPrefix(spokenText), spoken.count > spokenText.count {
-      feed(String(spoken.dropFirst(spokenText.count)), id: speechID)
-      spokenText = spoken
+    if answer != answerSoFar {
+      answerSoFar = answer
+      marks = AskBolttyMark.all(in: answer)
+      let spoken = SpokenText.speakable(answer, keepingPoints: true)
+      if spoken.hasPrefix(spokenText), spoken.count > spokenText.count {
+        feed(String(spoken.dropFirst(spokenText.count)), id: speechID)
+        spokenText = spoken
+      }
     }
 
     // The send is on its way until the coordinator lets go of it; the turn
@@ -290,11 +337,27 @@ final class AskBolttySession: ObservableObject {
 
     switch conversation.lastKnownState {
     case .working:
-      return
-    case .waiting where conversation.readOnly:
-      // The engine refuses a read-only chat's every ask itself: nothing to call the person for.
+      // Answered: it is at work again, and the next thing it asks must open the
+      // panel again, or a turn with many steps waits unseen on its second.
+      if case .needsYou = phase { phase = .thinking }
+      let live = BolttyAISessionList.liveStep(in: coordinator.store.transcript(id: id))
+      // What it said has been said and it is at work again: back to the step,
+      // and what it says when it is done has its two sentences of its own.
+      if phase == .speaking, live != nil, !voice.isSaying(speechID) {
+        phase = .thinking
+        caption = ""
+        sentencesSaid = 0
+      }
+      // A question that only looks stays "Thinking…": its steps would be the
+      // reading of its own screenshot.
+      let shown = phase == .thinking && !conversation.readOnly ? live : nil
+      if shown != step { step = shown }
       return
     case .waiting:
+      // The engine refuses a read-only chat's permissions itself: nothing to
+      // call the person for. What it asks them is theirs to answer.
+      if conversation.readOnly,
+         case .permission? = coordinator.store.transcript(id: id).openInteraction?.kind { return }
       phase = .needsYou("\(name(of: conversation)) needs your answer in Boltty.")
       return
     case .failed, .rateLimited:
@@ -362,7 +425,7 @@ final class AskBolttySession: ObservableObject {
     }
   }
 
-  /// What says this answer: the Mac's voice, or the reader.
+  /// What says this answer: Supertonic, or the reader.
   private var voice: AskBolttySpeaking { readsAloud ? speech : reader }
 
   private func point(at target: AskBolttyPoint) {
@@ -383,6 +446,7 @@ final class AskBolttySession: ObservableObject {
 
   private func finish() {
     storeWatch = nil
+    step = nil
     phase = .idle
   }
 
@@ -401,6 +465,11 @@ final class AskBolttySession: ObservableObject {
     switch phase {
     case .thinking, .speaking, .needsYou: return
     case .idle, .failed: break
+    }
+    // One open in the panel is being read: looked at again a window later.
+    if let id = conversationID, coordinator.store.selectedConversationID == id {
+      scheduleExpiry()
+      return
     }
     coordinator.forgetAskBolttyChats()
     conversationID = nil

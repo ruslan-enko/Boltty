@@ -1,8 +1,7 @@
 import Foundation
 
-/// Which agent Ask Boltty asks, in which model: what Settings chose where it can
-/// still be had, otherwise the fastest that phase 0 measured (Claude Code ·
-/// Haiku, ~1.5 s to the first word from a warm process) — at its fastest effort.
+/// Which agent Ask Boltty asks, in which model: what Settings chose, else the
+/// preferred agent in its default model, at the model's fastest effort.
 struct AskBolttyTarget: Equatable, Sendable {
   var providerID: String
   var model: ModelSelection?
@@ -11,9 +10,6 @@ struct AskBolttyTarget: Equatable, Sendable {
 }
 
 enum AskBolttyConfiguration {
-  static let preferredProvider = AgentId.claude
-  static let preferredModelHint = "haiku"
-
   /// An answer is one or two spoken sentences, so it thinks as little as the
   /// model allows short of switching thinking off: a CLI's own default is its
   /// highest (Antigravity's Flash took 14 s at high, 7 s at low, 1.4.12).
@@ -36,23 +32,14 @@ enum AskBolttyConfiguration {
     candidates: [String],
     models: [String: [AgentModelOption]]
   ) -> AskBolttyTarget? {
-    let chosen = settings.askBolttyProviderID.flatMap { candidates.contains($0) ? $0 : nil }
-    guard let providerID = chosen
-      ?? (candidates.contains(preferredProvider.rawValue) ? preferredProvider.rawValue : nil)
+    let ready: (String?) -> String? = { id in id.flatMap { candidates.contains($0) ? $0 : nil } }
+    guard let providerID = ready(settings.askBolttyProviderID)
+      ?? ready(settings.agentPreset?.rawValue)
       ?? candidates.first
     else { return nil }
-
     let options = models[providerID] ?? []
-    let model: AgentModelOption?
-    if chosen != nil, let id = settings.askBolttyModelID {
-      model = options.first { $0.selection.modelID == id }
-    } else if providerID == preferredProvider.rawValue {
-      model = options.first { option in
-        option.selection.modelID.lowercased().contains(preferredModelHint)
-          || option.selection.displayName.lowercased().contains(preferredModelHint)
-      }
-    } else {
-      model = nil
+    let model = settings.askBolttyModelID.flatMap { id in
+      options.first { $0.selection.modelID == id }
     }
     let effort = fastestEffort(model?.effortOptions ?? [])
     return AskBolttyTarget(
@@ -70,10 +57,11 @@ enum AskBolttyPrompt {
   /// Everything before the question, the blank line after it included — what
   /// the chat card lifts back to the region's picture (`SentFile.expansion`).
   static func bracket(region: AskBolttyRegion, readOnly: Bool) -> String {
-    let screen = region.context.map { "their whole screen, in \($0)" } ?? "their whole screen"
+    let what = region.isWholeScreen ? "their whole screen" : "their screen"
+    let screen = region.context.map { "\(what), in \($0)" } ?? what
     let area = region.isWholeScreen
       ? "They asked about the whole screen."
-      : "The red outline on it is the area they selected to ask about; the second picture is that area up close."
+      : "The red outline on it is the area they selected to ask about; the second picture is that area up close. Only the window under the area and the menu bar are shown: the rest is hidden on purpose, so do not guess at it."
     let pictures = region.isWholeScreen
       ? "Screenshot: \(region.screenPath)."
       : "Screenshots: \(region.screenPath) (the screen), \(region.areaPath) (the area)."
@@ -81,11 +69,18 @@ enum AskBolttyPrompt {
       " The text read off the area:\n<screen-text>\n\($0)\n</screen-text>\n"
     } ?? " "
     let tools = readOnly
-      ? "Answer from what you see: do not run commands or change anything. You may search the web when the question needs it, and give the link. If the pictures did not come with this message, open the screenshot files to look at them; those reads are allowed."
-      : "Answer from what you see — if the pictures did not come with this message, open the screenshot files first; search the web when the question needs it; run commands or change files only if they clearly ask you to."
+      ? "Answer from what you see: do not run commands or change anything. If they ask you to change something, say in one sentence that for now you can only look, and that “Can make changes” in Settings › Ask Boltty lets you. You may search the web when the question needs it, and give the link. If the pictures did not come with this message, open the screenshot files to look at them; those reads are allowed."
+      : "Answer from what you see — if the pictures did not come with this message, open the screenshot files first; search the web when the question needs it. When they clearly ask you to do something, do it without saying what you are about to do: run the commands or change the files, then say in one sentence what you did. Otherwise change nothing."
+    let place = region.finderPlace.map { place in
+      let selected = place.selected.isEmpty
+        ? "" : " Selected in it: \(place.selected.joined(separator: ", "))."
+      return "The area is over the Finder folder \(place.folder), which is what “here” means.\(selected) "
+    } ?? (region.isOverUnreadFinder
+      ? "The area is over Finder, but which folder it shows could not be read: ask them rather than guess. "
+      : "")
     return """
       [Talk: the person asked this about their screen. The first picture is \(screen); \
-      \(area) \(pictures)\(text)\
+      \(area) \(pictures)\(text)\(place)\
       Your answer is shown beside them, and may be read aloud: one or two short sentences, \
       never more, in the language they asked in, no markdown, no lists, no code, one step at \
       a time; a link goes in as it is. \
@@ -110,12 +105,15 @@ enum AskBolttyPrompt {
 
 /// The part of the screen a question is about, as written for the agent.
 struct AskBolttyRegion: Equatable, Sendable {
-  /// The whole screen at `ScreenRegionCapture.screenLongEdge`, the area
-  /// outlined: what a point's 0–1000 is measured across.
+  /// The screen at `ScreenRegionCapture.screenLongEdge`, the area outlined and
+  /// all but its window hidden: what a point's 0–1000 is measured across.
   var screenPath: String
   /// The area up close.
   var areaPath: String
   var context: String?
   var recognizedText: String?
   var isWholeScreen: Bool
+  var finderPlace: FinderPlace? = nil
+  /// Over Finder, with no folder to name: refused, too slow, or Recents.
+  var isOverUnreadFinder = false
 }

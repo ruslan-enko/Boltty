@@ -96,6 +96,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private var observingPreviewID: UUID?
   private var newPromptDraft = PromptDraft()
   private var pendingWorkingDirectory: String?
+  /// The folder of the Finder window the panel opened over; a folder chosen
+  /// with the chip comes before it.
+  private var finderFolder: String?
   var directoryPicker: (@MainActor (_ current: String) -> String?)?
   var attachmentPicker: (@MainActor (_ current: String) -> [URL])?
   var finderSelection = FinderSelectionService()
@@ -366,6 +369,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     guard let work = pendingVoiceSubmit else { return }
     work.cancel()
     pendingVoiceSubmit = nil
+    if panelView.screenSelectionFrame != nil, !panelView.currentDraft.isEffectivelyEmpty {
+      panelView.holdWordsForQuestion()
+    }
     panelView.setVoiceGlowPhase(.completed)
     guard isShowing else { return }
     voiceDictation.cancel()
@@ -391,6 +397,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     let launchable = conversations?.launchableProviderIDs().compactMap(AgentId.init(rawValue:)) ?? []
     let planned = conversations?.plannedProviderID().flatMap(AgentId.init(rawValue:))
     panelView.setAgentChoices(launchable, planned: planned)
+    panelView.setListedAgents(conversations?.listedProviderIDs().compactMap(AgentId.init(rawValue:)) ?? [])
   }
 
   private func syncSessionsToPanel() {
@@ -500,6 +507,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     syncWorkingDirectoryToPanel()
     syncUsageToPanel()
     conversations?.refreshUsage()
+    conversations?.refreshModelsIfStale()
     panelView.hideRoutingFallback()
     startVoiceScreenshotPreviewIfRequested()
     let resumed = resumableChat()
@@ -812,6 +820,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       return conversation.workingDirectory
     }
     return pendingWorkingDirectory
+      ?? finderFolder
       ?? conversations?.defaultWorkingDirectory()
       ?? WorkingDirectoryResolver.homeDirectoryPath
   }
@@ -865,16 +874,28 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     )
   }
 
+  /// Opened over Finder, the panel is about what Finder shows: a new chat works
+  /// in that folder, and the files selected there go in an empty prompt.
   private func adoptFinderSelectionIfAppropriate(generation: Int) {
+    if finderFolder != nil {
+      finderFolder = nil
+      syncWorkingDirectoryToPanel()
+    }
     guard model.settings.attachesFinderSelection else { return }
     let frontmost = frontmostBundleIDForTesting
       ?? previouslyActiveApplication?.bundleIdentifier
     guard frontmost == FinderSelectionService.finderBundleID else { return }
-    guard panelView.addressedSessionID == nil,
-          panelView.currentDraft.isEffectivelyEmpty
-    else { return }
+    guard panelView.addressedSessionID == nil else { return }
+    let takesFiles = panelView.currentDraft.isEffectivelyEmpty
     let service = finderSelection
     Task { @MainActor [weak self] in
+      let folder = await service.frontFolder()
+      if let self, let folder, self.visibilityGeneration == generation, self.isShowing,
+         self.panelView.addressedSessionID == nil {
+        self.finderFolder = folder
+        self.syncWorkingDirectoryToPanel()
+      }
+      guard takesFiles else { return }
       let urls = await service.selection()
       guard let self, !urls.isEmpty,
             self.visibilityGeneration == generation,
@@ -1253,16 +1274,21 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       // Let go of while it was being cut: nothing is sent.
       guard let self, !self.isHandingRegionOver else { return }
       self.isSubmitting = false
-      guard self.isShowing, self.panelView.screenSelectionFrame == region else { return }
+      guard self.isShowing, self.panelView.screenSelectionFrame == region else {
+        self.panelView.releaseQuestionWords()
+        return
+      }
       let primaryHeight = NSScreen.screens.first?.frame.height ?? region.maxY
       guard let selection,
             let displayFrame = self.frozenScreen?.displayFrameInAppKit(primaryScreenHeight: primaryHeight)
       else {
+        self.panelView.releaseQuestionWords()
         self.panelView.showError("Could not capture that part of the screen.")
         return
       }
       guard self.onAskAboutRegion?(words, selection, displayFrame, self.panelView.agentForNewPrompt) == true
       else {
+        self.panelView.releaseQuestionWords()
         self.panelView.showError(
           "No agent that can see the screen is ready. Turn one on in Settings › Agents.")
         return
@@ -1386,8 +1412,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         pictures: files.compactMap(\.file.picture)
       ) else {
         isSubmitting = false
+        let others = !conversations.launchableProviderIDs().isEmpty
         panelView.showError(chosen.map {
-          "\($0.displayName) is not ready. Press Shift-Tab for another agent."
+          "\($0.displayName) is not ready. "
+            + (others ? "Press Shift-Tab for another agent." : "Check Agents in Settings.")
         } ?? "No enabled agent is available. Check Agents in Settings.")
         _ = panelView.focusField()
         return
@@ -1403,6 +1431,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         panelView.hideRoutingFallback()
       }
       pendingWorkingDirectory = nil
+      finderFolder = nil
       beginAddressing(conversationID)
 
     } catch {
@@ -1493,6 +1522,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       _ = panelView.focusField()
       return
     }
+    conversations?.keepChat(sessionID)
     if !files.isEmpty { conversations?.recordSentFiles(files.map(\.file), in: sessionID) }
     if let preview, preview.isBusy, let conversations {
       isSubmitting = false

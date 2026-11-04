@@ -177,6 +177,25 @@ extension AgentHistoryTests {
     XCTAssertEqual(AgentHistory.tabOrder.count, AgentId.adapterCases.count)
   }
 
+  func testOnlyAgentsSwitchedOnAndInstalledAreListed() {
+    XCTAssertEqual(
+      AgentHistory.listed(enabled: ["claude", "codex"], installed: ["codex", "grok"]), [.codex])
+    XCTAssertEqual(
+      AgentHistory.listed(enabled: ["claude", "codex"], installed: nil), [.claude, .codex],
+      "before the first scan, what is switched on")
+    XCTAssertEqual(
+      AgentHistory.listed(enabled: [], installed: ["codex"]), AgentHistory.tabOrder,
+      "with none to show there is nothing to narrow to")
+  }
+
+  func testOneAgentHasNoAllAndNoNeighbours() {
+    XCTAssertEqual(AgentHistory.stops(for: [.codex]), [.codex])
+    XCTAssertEqual(AgentHistory.stops(for: [.claude, .codex]), [nil, .claude, .codex])
+    XCTAssertEqual(AgentHistory.adjacentTab(to: .codex, by: 1, among: [.codex]), .codex)
+    XCTAssertEqual(AgentHistory.adjacentTab(to: .codex, by: -1, among: [.codex]), .codex)
+    XCTAssertEqual(AgentHistory.adjacentTab(to: .claude, by: 1, among: [.claude, .grok]), .grok)
+  }
+
   func testAdjacentTabTreatsEveryAgentAsTheStopBeforeTheFirst() {
     let order = AgentHistory.tabOrder
     XCTAssertEqual(AgentHistory.adjacentTab(to: nil, by: 1), order.first)

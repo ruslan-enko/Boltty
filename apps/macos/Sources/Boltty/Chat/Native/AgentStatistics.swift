@@ -77,9 +77,12 @@ struct AgentStatisticsSummary: Equatable, Sendable {
     _ statistics: AgentStatistics,
     range: AgentStatisticsRange,
     agent: AgentId? = nil,
+    among agents: [AgentId] = AgentHistory.tabOrder,
     now: Date = Date(),
     calendar: Calendar = .current
   ) {
+    // A CLI that is off leaves "All Agents" as it leaves everything else.
+    let hidden = Set(AgentHistory.tabOrder.map(\.rawValue)).subtracting(agents.map(\.rawValue))
     let firstHour = range.start(now: now, calendar: calendar)
       .map { Int(($0.timeIntervalSince1970 / 3600).rounded(.down)) } ?? .min
     var hours = [Int](repeating: 0, count: 24)
@@ -87,7 +90,8 @@ struct AgentStatisticsSummary: Equatable, Sendable {
     var dayCache: [Int: Date] = [:]
 
     for session in statistics.sessions {
-      guard agent == nil || session.agent == agent?.rawValue else { continue }
+      guard !hidden.contains(session.agent), agent == nil || session.agent == agent?.rawValue
+      else { continue }
       var counted = false
       var modelsHere: Set<String> = []
       for sample in session.samples where sample.hour >= firstHour {

@@ -26,7 +26,17 @@ struct BuiltInKeySection: Identifiable, Equatable {
 enum BuiltInKeyCatalog {
   /// `launchChord` is the key that opens Boltty AI from anywhere (`nil`: it is
   /// switched off).
-  static func sections(launchChord: String?) -> [BuiltInKeySection] {
+  /// With one `agents` listed, the keys that choose among them are not there to list.
+  static func sections(launchChord: String?, agents: Int = AgentHistory.tabOrder.count) -> [BuiltInKeySection] {
+    let choices = agents > 1
+    return everySection(launchChord: launchChord).map { section in
+      BuiltInKeySection(
+        title: section.title,
+        keys: section.keys.filter { choices || !["agent", "listAgent"].contains($0.id) })
+    }
+  }
+
+  private static func everySection(launchChord: String?) -> [BuiltInKeySection] {
     [
       BuiltInKeySection(title: "Boltty AI", keys: [
         BuiltInKey(
@@ -110,8 +120,8 @@ enum BuiltInKeyCatalog {
             ?? "Open Boltty AI, drag across an area, and speak"
         ),
         BuiltInKey(
-          id: "askAgain", title: "Ask about the same area again", keys: launchChord ?? "Off",
-          detail: "While the face is still beside the pointer"
+          id: "askAgain", title: "Ask more", keys: launchChord ?? "Off",
+          detail: "While the face is still there. Drag to choose another area"
         ),
         BuiltInKey(
           id: "askSend", title: "Send the question", keys: "↩",

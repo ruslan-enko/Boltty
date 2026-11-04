@@ -51,6 +51,16 @@ struct NotchMascotGeometry: Equatable {
               left: screen.auxiliaryTopLeftArea, right: screen.auxiliaryTopRightArea)
   }
 
+  /// A screen with no notch: the face stands in the menu bar at its middle, as
+  /// though a notch of no width were there; its line runs to the left as ever.
+  @MainActor init(topEdgeOf screen: NSScreen) {
+    let height = max(Self.menuBarFloor, screen.frame.maxY - screen.visibleFrame.maxY)
+    notch = CGRect(x: screen.frame.midX, y: screen.frame.maxY - height, width: 0, height: height)
+  }
+
+  /// Where the menu bar hides itself, its height when it comes down.
+  static let menuBarFloor: CGFloat = 24
+
   @MainActor static func notch(on screen: NSScreen) -> CGRect? {
     NotchMascotGeometry(screen: screen)?.notch
   }
@@ -330,6 +340,7 @@ final class NotchMascotController {
         return lhs == preferredScreenNumber && rhs != preferredScreenNumber
       }
       base = screens.compactMap { NotchMascotGeometry(screen: $0) }.first
+        ?? screens.first.map { NotchMascotGeometry(topEdgeOf: $0) }
     }
     return base?.withFaces(status.faces.count)
   }

@@ -39,3 +39,22 @@ jobs:
             -derivedDataPath .derivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+  test:
+    name: Unit tests
+    if: ${{ !github.event.repository.private }}
+    runs-on: xcode-27
+    # A failing XCTest can look like a hang.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        working-directory: apps/macos
+        # Signed to run locally, with the hardened runtime off: the test host
+        # loads the debug dylib, which library validation would refuse.
+        run: |
+          xcodebuild test -project Boltty.xcodeproj -scheme Boltty \
+            -destination 'platform=macOS' \
+            -derivedDataPath .derivedData \
+            -only-testing:BolttyTests \
+            CODE_SIGN_IDENTITY=- ENABLE_HARDENED_RUNTIME=NO

@@ -515,6 +515,10 @@ enum AgentPaletteMetrics {
   /// down and to the right of the arrow's tip, clear of the arrow itself,
   /// after the same rest a help tag waits for.
   static let screenSelectionHintText = "Drag to ask about an area"
+  static let screenSelectionChatHintText = "Drag to add an area"
+  /// Regions drawn before the hint has done its work.
+  static let regionHintUses = 3
+  static let regionsDrawnKey = "boltty.selection.regionsDrawn"
   static let screenSelectionHintOffset = CGSize(width: 14, height: 24)
   static let screenSelectionHintDelay: TimeInterval = helpTagDelay
   /// The faint wider stroke of the same gradient round the border, where

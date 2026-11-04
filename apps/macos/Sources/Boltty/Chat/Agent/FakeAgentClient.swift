@@ -67,6 +67,9 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
 
   func probe() async -> AgentAvailability { availability }
 
+  private(set) var processRestarts = 0
+  func restartIdleProcess() async { lock.withLock { processRestarts += 1 } }
+
   func availableModels() async throws -> [AgentModelOption] {
     await withCheckedContinuation { continuation in
       let held = lock.withLock { () -> Bool in

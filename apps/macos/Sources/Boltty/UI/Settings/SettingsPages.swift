@@ -46,20 +46,12 @@ struct GeneralSettingsPage: View {
       }
 
       Section {
-        AppIconPicker()
-      } header: {
-        SettingsSectionHeader("App Icon")
-      } footer: {
-        SettingsNote("Shown in the Dock and in Boltty's own windows. Finder and banners keep the standard icon.")
-      }
-
-      Section {
         Toggle(isOn: Binding(
           get: { model.attachesFinderSelection },
           set: { model.attachesFinderSelection = $0 }
         )) {
-          Text("Attach selected files")
-          Text("Opening Boltty AI over Finder puts the files selected there into the prompt.")
+          Text("Use what's open in Finder")
+          Text("Opening Boltty AI over Finder starts the chat in that folder, with the files selected there in the prompt.")
         }
         .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
 
@@ -245,7 +237,8 @@ struct AgentsSettingsPage: View {
   }
 
   private var list: some View {
-    let preferred = model.enabledAdapters.isEmpty ? nil : model.defaultAgent
+    // Preferred over whom? With one agent on, the words have nothing to say.
+    let preferred = model.enabledAdapters.count > 1 ? model.defaultAgent : nil
     return Form {
       Section {
         ForEach(model.adapterRows) { row in
@@ -254,7 +247,9 @@ struct AgentsSettingsPage: View {
           }
         }
       } footer: {
-        SettingsNote("New chats go to the preferred agent, or to the next enabled one while it isn't ready.")
+        if model.enabledAdapters.count > 1 {
+          SettingsNote("New chats go to the preferred agent, or to the next enabled one while it isn't ready.")
+        }
       }
     }
     .settingsGroupedPage()
@@ -370,7 +365,7 @@ private struct AgentSettingsDetail: View {
 
       if row.enabled {
         Section {
-          preferred
+          if model.enabledAdapters.count > 1 { preferred }
           if row.isReady, row.offersModels { modelRows }
           if row.isReady, row.offersAutoApproval { permissions }
         } footer: {
@@ -458,9 +453,8 @@ private struct AgentSettingsDetail: View {
       }
     } else {
       Picker(
-        "Model",
         selection: Binding(
-          get: { row.selectedModelID ?? "" },
+          get: { row.shownModelID },
           set: { model.setDefaultModel($0.isEmpty ? nil : $0, for: row.agent) }
         )
       ) {
@@ -468,6 +462,11 @@ private struct AgentSettingsDetail: View {
           .tag("")
         ForEach(row.models) { option in
           Text(option.selection.displayName).tag(option.selection.modelID)
+        }
+      } label: {
+        Text("Model")
+        if let gone = row.modelNoLongerOffered {
+          Text("\(gone) is no longer offered, so new chats use the default.")
         }
       }
       .pickerStyle(.menu)
@@ -571,7 +570,7 @@ struct UsageSettingsPage: View {
             BolttyIconView(icon: SettingsPage.usage.icon, size: 40)
           }
         } description: {
-          Text("Nothing any agent wrote down yet. Claude Code, Codex and Grok report their plan limits here, and every chat with any of them is counted.")
+          Text("Nothing any agent wrote down yet. Plan limits show here where an agent reports them, and every chat is counted.")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       } else {
@@ -1200,7 +1199,7 @@ struct RingedChoice<Picture: View>: View {
   var help: String?
   var diameter: CGFloat = 52
   /// False for a picture that stands on its own: no circle, no ring, no
-  /// shadow, and the chosen one is told by its name alone.
+  /// shadow, and the chosen one is told by its name.
   var isRinged = true
   let action: () -> Void
   @ViewBuilder let picture: (_ presses: Int) -> Picture
@@ -1235,7 +1234,7 @@ struct RingedChoice<Picture: View>: View {
           .animation(.spring(duration: 0.3, bounce: 0.4), value: isHovered)
         Text(title)
           .font(BolttyInterfaceTypography.callout.weight(isChosen ? .semibold : .regular))
-          .foregroundStyle(isChosen ? .primary : .secondary)
+          .foregroundStyle(isChosen ? Color.accentColor : Color.secondary)
           .fixedSize()
       }
       .contentShape(Rectangle())

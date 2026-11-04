@@ -129,7 +129,7 @@ enum PromptExpansion {
     let screen = try store.screenFileURL(for: attachment).path
     let place = selection.context.map { " in \($0)" } ?? ""
     var text = "[Selected on screen\(place): \(quotedIfNeeded(region)). "
-      + "The whole screen, the selection outlined: \(quotedIfNeeded(screen))"
+      + "The screen, the selection outlined and all but its window hidden: \(quotedIfNeeded(screen))"
     if let read = selection.recognizedText {
       text += ". Text read from the selection: \(screenTextOpenTag)\(read)\(screenTextCloseTag)"
     }

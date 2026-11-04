@@ -1776,8 +1776,8 @@ final class PaletteSentFilesTests: XCTestCase {
     XCTAssertEqual(
       row.frame.height,
       AgentPaletteMetrics.previewFileRowHeight + AgentPaletteMetrics.previewSentFilesGap
-        + bubble.height,
-      accuracy: 0.5)
+        + bubble.height + PaletteChatMessageView.questionMetaHeight(for: message),
+      accuracy: 0.5, "with the room its ticks, time and copy take under the pointer")
   }
 
   func testARequestOfOnlyFilesIsItsCards() throws {
@@ -1963,6 +1963,9 @@ final class PaletteAnswerCopyTests: XCTestCase {
   }
 
   func testReadAloudSitsBesideCopyAndStaysUpWhileItSpeaks() throws {
+    // Only once Supertonic is here is there anything to read with.
+    SpeechOutput.setLanguagesForTesting(["en"])
+    addTeardownBlock { await MainActor.run { SpeechOutput.setLanguagesForTesting([]) } }
     let card = BolttyAIPreviewCard()
     card.frame = NSRect(x: 0, y: 0, width: AgentPaletteMetrics.promptSize.width, height: 320)
     var spoken: [String] = []
@@ -2042,7 +2045,7 @@ final class PaletteAnswerCopyTests: XCTestCase {
       accuracy: 0.5, "the row is the gap to the next question, not added to it")
   }
 
-  func testAUserMessageIsNotOfferedBackToThePersonWhoWroteIt() throws {
+  func testARequestOffersItsCopyOnlyUnderThePointer() throws {
     let card = BolttyAIPreviewCard()
     card.frame = NSRect(x: 0, y: 0, width: AgentPaletteMetrics.promptSize.width, height: 320)
     card.apply(BolttyAISessionPreview(
@@ -2052,7 +2055,10 @@ final class PaletteAnswerCopyTests: XCTestCase {
     card.layoutSubtreeIfNeeded()
 
     let row = try XCTUnwrap(card.messageRowForTesting("u"))
+    XCTAssertFalse(row.isCopyVisibleForTesting)
     row.hoverForTesting(true)
+    XCTAssertTrue(row.isCopyVisibleForTesting)
+    row.hoverForTesting(false)
     XCTAssertFalse(row.isCopyVisibleForTesting)
   }
 }

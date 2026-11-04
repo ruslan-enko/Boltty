@@ -81,6 +81,56 @@ final class MascotDetailContactSheet: XCTestCase {
   }
 }
 
+/// Each agent's chosen face alone on a transparent canvas, for artwork such as
+/// the app icon. `BOLTTY_MASCOT_STILLS=<dir>`; `BOLTTY_MASCOT_STILLS_FINISH`
+/// overrides the stored finish (fur by default), `…_SIDE` the face's pixels.
+@MainActor
+final class MascotStillsRender: XCTestCase {
+  func testRenderEveryChosenFace() throws {
+    let environment = ProcessInfo.processInfo.environment
+    guard let dir = environment["BOLTTY_MASCOT_STILLS"] else {
+      throw XCTSkip("set BOLTTY_MASCOT_STILLS to render")
+    }
+    let directory = URL(fileURLWithPath: dir)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let renderer = try XCTUnwrap(MascotRenderer.shared)
+    let finish = MascotFinish(rawValue: environment["BOLTTY_MASCOT_STILLS_FINISH"] ?? "fur") ?? .fur
+    let side = CGFloat(Double(environment["BOLTTY_MASCOT_STILLS_SIDE"] ?? "") ?? 1600)
+    // The real app's choices, read only: the test host's own defaults may be isolated.
+    let stored = UserDefaults.standard.persistentDomain(forName: "com.boltty.app")?[MascotRoster.storageKey] as? Data
+    let selections = try stored.map { try JSONDecoder().decode([String: MascotSelection].self, from: $0) } ?? [:]
+    let looks = MascotRoster(selections: selections).looks()
+
+    for agent in AgentId.adapterCases {
+      let look = try XCTUnwrap(looks[agent])
+      let view = MascotNSView(
+        conversationID: UUID(uuidString: "00000000-0000-0000-0000-000000000042")!,
+        palette: look.palette, shape: look.shape)
+      view.frame = CGRect(x: 0, y: 0, width: side, height: side)
+      view.reduceMotion = true
+      view.layoutSubtreeIfNeeded()
+      var frame = try XCTUnwrap(view.lastFrame)
+      frame.size = CGSize(width: side, height: side)
+      frame.overscan = MascotNSView.overscan
+      frame.finish = finish
+      // Twice the pixels, then halved, on top of the shader's four rays.
+      let large = try XCTUnwrap(renderer.image(of: MascotRenderer.uniforms(for: frame, rays: 4), scale: 2))
+      let width = large.width / 2, height = large.height / 2
+      let context = try XCTUnwrap(CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+      context.interpolationQuality = .high
+      context.draw(large, in: CGRect(x: 0, y: 0, width: width, height: height))
+      let picture = try XCTUnwrap(context.makeImage())
+      let png = try XCTUnwrap(NSBitmapImageRep(cgImage: picture).representation(using: .png, properties: [:]))
+      let name = "\(agent.rawValue)-\(look.shape.rawValue)-\(look.palette.id)-\(finish.rawValue).png"
+      try png.write(to: directory.appendingPathComponent(name))
+      print("BOLTTY_MASCOT_STILL \(name) \(width)x\(height) GPU \(renderer.lastImageGPUTime)s")
+    }
+  }
+}
+
 /// The five agents in a pile on black, like a poster of plush faces, each
 /// going through its emotions. 2000 × 2000.
 /// `BOLTTY_POSTER=<dir>`; `BOLTTY_POSTER_STILLS=0,6.5` writes stills at

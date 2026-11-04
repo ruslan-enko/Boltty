@@ -14,19 +14,28 @@ final class AskBolttyConfigurationTests: XCTestCase {
     ],
   ]
 
-  func testAutomaticIsClaudeInHaikuReadOnly() {
-    let target = AskBolttyConfiguration.resolve(
-      settings: AppSettings(), candidates: ["codex", "claude"], models: models)
-    XCTAssertEqual(target?.providerID, "claude")
-    XCTAssertEqual(target?.model?.modelID, "haiku")
+  func testUntilChosenThePreferredAgentAnswersInItsDefaultReadOnly() {
+    var settings = AppSettings()
+    settings.agentPreset = .codex
+    let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["claude", "codex"], models: models)
+    XCTAssertEqual(target?.providerID, "codex")
+    XCTAssertNil(target?.model)
     XCTAssertEqual(target?.readOnly, true)
   }
 
-  func testWithoutClaudeTheFirstAgentThatSeesAnswersInItsDefault() {
-    let target = AskBolttyConfiguration.resolve(
-      settings: AppSettings(), candidates: ["codex"], models: models)
+  func testNoModelIsPickedByNameForAnAgentNobodyChose() {
+    var settings = AppSettings()
+    settings.agentPreset = .claude
+    let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["claude"], models: models)
+    XCTAssertEqual(target?.providerID, "claude")
+    XCTAssertNil(target?.model, "the list has a Haiku; nobody chose it")
+  }
+
+  func testWithThePreferredAgentNotReadyTheFirstThatSeesAnswers() {
+    var settings = AppSettings()
+    settings.agentPreset = .grok
+    let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["codex", "claude"], models: models)
     XCTAssertEqual(target?.providerID, "codex")
-    XCTAssertNil(target?.model)
   }
 
   func testAChosenAgentAndModelAreKeptWhileTheyExist() {
@@ -46,7 +55,16 @@ final class AskBolttyConfigurationTests: XCTestCase {
     settings.askBolttyModelID = "grok-4.7"
     let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["claude"], models: models)
     XCTAssertEqual(target?.providerID, "claude")
-    XCTAssertEqual(target?.model?.modelID, "haiku")
+    XCTAssertNil(target?.model)
+  }
+
+  func testAChosenModelTheAgentNoLongerOffersIsItsDefault() {
+    var settings = AppSettings()
+    settings.askBolttyProviderID = "claude"
+    settings.askBolttyModelID = "retired"
+    let target = AskBolttyConfiguration.resolve(settings: settings, candidates: ["claude"], models: models)
+    XCTAssertEqual(target?.providerID, "claude")
+    XCTAssertNil(target?.model)
   }
 
   func testNoAgentThatSeesIsNoAskBoltty() {
@@ -99,5 +117,43 @@ final class AskBolttyConfigurationTests: XCTestCase {
     XCTAssertEqual(AskBolttyConfiguration.fastestEffort(options), "low")
     XCTAssertEqual(AskBolttyConfiguration.fastestEffort([AgentEffortOption(value: "high")]), "high")
     XCTAssertNil(AskBolttyConfiguration.fastestEffort([]))
+  }
+
+  private func region(wholeScreen: Bool = false, place: FinderPlace? = nil) -> AskBolttyRegion {
+    AskBolttyRegion(
+      screenPath: "/s.png", areaPath: "/a.png", context: nil, recognizedText: nil,
+      isWholeScreen: wholeScreen, finderPlace: place)
+  }
+
+  func testThePromptSaysTheRestOfTheScreenIsHiddenUnlessAllOfItWasAsked() {
+    XCTAssertTrue(AskBolttyPrompt.bracket(region: region(), readOnly: true).contains("hidden on purpose"))
+    XCTAssertFalse(
+      AskBolttyPrompt.bracket(region: region(wholeScreen: true), readOnly: true).contains("hidden on purpose"))
+  }
+
+  func testAQuestionOverFinderIsToldWhatHereMeans() {
+    let place = FinderPlace(folder: "/Users/me/Downloads/", selected: ["a.pdf", "b.png"])
+    let bracket = AskBolttyPrompt.bracket(region: region(place: place), readOnly: false)
+    XCTAssertTrue(bracket.contains("/Users/me/Downloads/"))
+    XCTAssertTrue(bracket.contains("a.pdf, b.png"))
+    XCTAssertFalse(AskBolttyPrompt.bracket(region: region(), readOnly: false).contains("Finder folder"))
+  }
+
+  func testOverFinderWithNoFolderItIsToldToAskRatherThanGuess() {
+    var unread = region()
+    unread.isOverUnreadFinder = true
+    XCTAssertTrue(AskBolttyPrompt.bracket(region: unread, readOnly: false).contains("rather than guess"))
+    XCTAssertFalse(AskBolttyPrompt.bracket(region: region(), readOnly: false).contains("rather than guess"))
+  }
+
+  func testOnlyLookingItSaysWhereTheSwitchIs() {
+    XCTAssertTrue(AskBolttyPrompt.bracket(region: region(), readOnly: true).contains("Can make changes"))
+    XCTAssertFalse(AskBolttyPrompt.bracket(region: region(), readOnly: false).contains("Can make changes"))
+  }
+
+  @MainActor
+  func testTheFaceAtRestNamesTheKeyThatGoesOn() {
+    XCTAssertEqual(AskBolttyController.restHint(launchKey: "⌥Space"), "⌥Space to ask more · Esc to close")
+    XCTAssertEqual(AskBolttyController.restHint(launchKey: nil), "Esc to close")
   }
 }

@@ -57,12 +57,15 @@ final class ChatWorkspaceCoordinator {
 
   func resolvedDefaultModel(for providerID: String) -> ModelSelection? {
     guard let modelID = defaultModelID(providerID), !modelID.isEmpty else { return nil }
-    if let option = engine.modelsByProvider[providerID]?.first(where: {
-      $0.selection.modelID == modelID
-    }) {
+    let listed = engine.modelsByProvider[providerID] ?? []
+    if let option = listed.first(where: { $0.selection.modelID == modelID }) {
       return option.selection
     }
-    return ModelSelection(providerID: providerID, modelID: modelID)
+    // Listed without it, the agent no longer offers it: asked for it the CLI
+    // would refuse, so the chat goes to the agent's own default. With no list
+    // yet there is nothing to say it has gone. The stored choice stays, in case
+    // it comes back (OpenCode's models follow its providers).
+    return listed.isEmpty ? ModelSelection(providerID: providerID, modelID: modelID) : nil
   }
 
   func resolvedDefaultEffort(for providerID: String, model: ModelSelection?) -> String? {
@@ -109,12 +112,13 @@ final class ChatWorkspaceCoordinator {
   /// Ask Boltty's chat is made the moment the region is drawn, and its session
   /// started then, so the agent is up by the time the person stops speaking.
   func prepareAskBolttyConversation(
-    providerID: String, model: ModelSelection?, effort: String?, readOnly: Bool
+    providerID: String, model: ModelSelection?, effort: String?, readOnly: Bool,
+    workingDirectory: String? = nil
   ) -> Conversation {
     let model = model ?? resolvedDefaultModel(for: providerID)
     let conversation = store.createConversation(
       title: ConversationEngine.untitled,
-      workingDirectory: store.defaultWorkingDirectory(),
+      workingDirectory: workingDirectory ?? store.defaultWorkingDirectory(),
       providerID: providerID,
       model: model,
       // An answer is a sentence or two: as little thinking as the model

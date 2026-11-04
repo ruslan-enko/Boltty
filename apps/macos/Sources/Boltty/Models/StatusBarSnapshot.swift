@@ -50,8 +50,12 @@ enum BolttyAISessionList {
     selectedID: UUID?,
     query: String = ""
   ) -> [BolttyAISessionItem] {
-    // Ask Boltty keeps no history: its chats are never rows.
-    let rows = conversations.filter { !$0.isAskBoltty }.map { conversation in
+    // Ask Boltty keeps no history, but what it said is gone from beside the
+    // pointer in seconds: a chat asked in is a row, to be read and copied from,
+    // for as long as it lives. One only warmed up for a question is not.
+    let rows = conversations.filter {
+      !$0.isAskBoltty || transcripts[$0.id]?.messages.isEmpty == false
+    }.map { conversation in
       let agent = AgentId(rawValue: conversation.providerID) ?? .custom
       let transcript = transcripts[conversation.id] ?? ConversationTranscript()
       return BolttyAISessionItem(
@@ -89,6 +93,11 @@ enum BolttyAISessionList {
     case .interrupted: return "Interrupted when Boltty quit"
     case .rateLimited: return "Rate limited"
     case .idle: break
+    }
+    if conversation.isAskBoltty {
+      // Its question is filed with the bracket; its answer with the tags.
+      let answer = transcript.messages.last { $0.role == .agent && !$0.plainText.isEmpty }
+      return plainPreview(AskBolttyMark.stripped(answer?.plainText ?? ""), limit: previewLimit)
     }
     guard let message = transcript.messages.last(where: { !$0.plainText.isEmpty }) else {
       return conversation.draft.isEmpty ? "No messages yet" : conversation.draft

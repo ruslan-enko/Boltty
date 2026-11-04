@@ -4,24 +4,52 @@ What changed from release to release. The newest is at the top.
 
 ## Unreleased
 
-**Boltty AI**
-- Boltty wears its own softer, thinner icons everywhere: the panel, the tray
-  and Settings.
-
-**Settings**
-- Choose Boltty's icon in General: Default, Citrus, Pastel or Sunset. It shows
-  in the Dock and in Boltty's own windows.
-
 **Ask Boltty**
-- ⇧Tab changes the agent while you speak about a region; asking again stays
-  with the same agent.
-- Opening the panel no longer erases what Ask Boltty drew.
-- Files in the prompt wait while you ask about a region and come back after it,
-  and the microphone opens as usual.
-- Dragging across the screen over an open chat puts that area in its composer.
-- Escape while the region is being cut calls the question off.
-- A chat waiting on you is no longer forgotten, and one called off or failed no
-  longer stays behind.
+- The agent now sees only the window under the area you select and the menu bar.
+  The rest of the screen is hidden, unless you select all of it.
+- It can do what you ask. Turn on "Can make changes", drag across a Finder window
+  and say "organise this". It knows the folder, shows the step it's on, and opens
+  the panel when it needs your yes.
+- When it shows you something, it points with a small pointer of its own and stays
+  there after the answer.
+- Once the answer is said, the words go and a line beside the face says what you
+  can do: ⌥Space to ask more, Esc to close.
+- The chat stays in the list under ↓ for ten minutes, so you can read or copy the
+  answer. Go on with it there and it's a normal chat.
+- Who answers is simply your choice of agent and model in Settings. Until you
+  choose, it's your preferred agent, no longer a hidden pick of Claude on Haiku.
+- ⇧Tab changes the agent while you speak about an area.
+- Opening the panel no longer erases what it drew.
+- Files in the prompt wait while you ask and come back after.
+- Dragging over an open chat puts that area in its composer.
+- Escape calls the question off while the area is being cut.
+
+**Agents**
+- A model an agent stops offering no longer breaks new chats: they use the agent's
+  default, and Settings tells you.
+- New models show up on their own: the list is read again once an hour when you
+  open the panel. When a CLI updates, Boltty restarts it as soon as it's idle.
+
+**Boltty AI**
+- The chat list and Usage show only the agents you have switched on and installed.
+  With just one there's no All and no other tabs, and nothing offers to switch
+  agents. Switch another on and its chats are back.
+- A new app icon.
+- Boltty has its own softer, thinner icons everywhere.
+- Opened over Finder, a new chat works in that folder.
+
+**Fixes**
+- The first chat you open after launch no longer comes up blank when it's long,
+  and neither does a long chat you make wider.
+- An answer said aloud now ends when the voice stops. It could stay up until
+  something else happened in Boltty.
+- What you say stays beside the face until the question goes, with no flash of the
+  prompt.
+- A link at the very start of the prompt no longer turns the sentence blue.
+- Under Reduce Motion the voice's light stands in the middle.
+- The face by the notch also shows on a Mac without one, in the menu bar.
+- "Drag to ask about an area" stops showing once you've done it a few times.
+- VoiceOver reads Ask Boltty's answers.
 
 ## 0.3.0
 

@@ -22,7 +22,6 @@
 		0821AECDBA23EC8D5E64EF0F /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C0F92311D62750D24F18B5 /* StatusBarController.swift */; };
 		089BC85C71C8EE1C89B1A0FC /* CodexMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 486718AA44760A0C50F3ABBF /* CodexMapper.swift */; };
 		0B224491546142805CB32E0F /* PromptTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EDAE366DDCB699868FBD328 /* PromptTextView.swift */; };
-		0B24B816732B3E051B7BAE16 /* AppIcons in Resources */ = {isa = PBXBuildFile; fileRef = C4A92FA5D0FE0A354844534E /* AppIcons */; };
 		0CA2E0D0E65FA0C6D1C3168E /* SpokenTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5F02A3E94F719F02F6B6795 /* SpokenTextTests.swift */; };
 		0CC50F08F9E55160505E3555 /* BilingualTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8342FE0B6C10909A74ADF6FB /* BilingualTranscript.swift */; };
 		0D78722EECC7E541398D3E4A /* UITestKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7642D0B88111A3C78F2C18B /* UITestKeyboard.swift */; };
@@ -64,7 +63,6 @@
 		297D7322190AB8BDFAC86C37 /* OpenCodeServerReaperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84AE288F8591AA4C16C57CF /* OpenCodeServerReaperTests.swift */; };
 		299F5842CFA3C61DD26ECF60 /* AntigravityPermissionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1776A8068E5B7FC52BB5B19A /* AntigravityPermissionGate.swift */; };
 		2A645AC9EEB84BD087156F13 /* KeyablePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF0B04B7E2F1122C29A2E7A /* KeyablePanel.swift */; };
-		2B37856CE5A25067A9470908 /* AppIconPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67AC4E49CA6FB96153127621 /* AppIconPicker.swift */; };
 		2CA6283857B511A301DC637F /* PaletteGlassHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B4139B5166C92763B41E41 /* PaletteGlassHost.swift */; };
 		2CA8C0F4E91D10780ABD3855 /* BackgroundActivityAssertion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D046611EC0834C88DC3E05 /* BackgroundActivityAssertion.swift */; };
 		2E717E61D1EE61CABDDE3D39 /* whoosh-2.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8A06939E457509BA0C62DE11 /* whoosh-2.wav */; };
@@ -247,7 +245,6 @@
 		B313D6F2860C2FF0D9B411BB /* AgentStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3046681B49E34EDA66E94E /* AgentStatistics.swift */; };
 		B3A702D34AAB6B2DC5AA2E2C /* AppPresenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C09834F7D58DE7A7F5DE453D /* AppPresenceTests.swift */; };
 		B3FDFA71B9C647BEFB8E84A2 /* ISO8601StampTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B682D4D25113F5E2A737A5 /* ISO8601StampTests.swift */; };
-		B4B9C13874BA1D62E77E4385 /* AppIconChoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 405EACA5F1C27C2A26FBA450 /* AppIconChoiceTests.swift */; };
 		B56C595B8C6FE0F58C820422 /* AccessPermissionsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9849CD3540344DBE272DAD0 /* AccessPermissionsWindow.swift */; };
 		B59E0801E14B2A2956E45A24 /* ModifierHotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14100488D233FA342B0CDF0A /* ModifierHotkeyMonitor.swift */; };
 		B73F6E1B730A5E0F1131AA5D /* PendingInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F13619807292ADCBA64E14 /* PendingInteraction.swift */; };
@@ -257,7 +254,6 @@
 		B9978DEEEDEC8D141ECA03E4 /* ShortcutBindingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45BD1F525E454E09F112799 /* ShortcutBindingStore.swift */; };
 		BA24E0EF23F5027CF0354D28 /* OpenCodeTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618F1C84AB4A26914BE9E308 /* OpenCodeTransportTests.swift */; };
 		BA9DAAB3DB9912C0737D66BD /* ParakeetTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C050D28D03F204E227436FE9 /* ParakeetTranscriber.swift */; };
-		BAC8D9B5BA082E15291B3270 /* AppIconChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36198B72BDC4CF095387C491 /* AppIconChoice.swift */; };
 		BB228AB293EAB173936FC111 /* MascotShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D6ADE090D4AF8C188208C9 /* MascotShape.swift */; };
 		BC2EFAB5F33BA6352D859000 /* NotchMascotController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B5A46902FC1B2C9FEC926E /* NotchMascotController.swift */; };
 		BD42E1882B6FA9BAFD2F2407 /* BolttyAISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */; };
@@ -433,7 +429,6 @@
 		34599F4861836B4D26BCDEF2 /* whoosh-5.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "whoosh-5.wav"; sourceTree = "<group>"; };
 		347B09186FFA870E875236C5 /* AgentPaletteMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteMetricsTests.swift; sourceTree = "<group>"; };
 		3528B9AD49405B290EA785E3 /* SettingsNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsNavigationTests.swift; sourceTree = "<group>"; };
-		36198B72BDC4CF095387C491 /* AppIconChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconChoice.swift; sourceTree = "<group>"; };
 		36239129D1893F7643859251 /* VoiceEdgeGlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEdgeGlow.swift; sourceTree = "<group>"; };
 		3683073E836756574F681566 /* PromptAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptAttachment.swift; sourceTree = "<group>"; };
 		36BF5880C3E66564A58DC28E /* AskBolttySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskBolttySession.swift; sourceTree = "<group>"; };
@@ -453,7 +448,6 @@
 		3CAF40AE412ED92E35DB5EAF /* GlobalHotkeyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyServiceTests.swift; sourceTree = "<group>"; };
 		3E6CE8FCF46B26A25BFFEEC8 /* MascotPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotPickerView.swift; sourceTree = "<group>"; };
 		3F37401FC4BDADB023EFF8F9 /* AppPresence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresence.swift; sourceTree = "<group>"; };
-		405EACA5F1C27C2A26FBA450 /* AppIconChoiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconChoiceTests.swift; sourceTree = "<group>"; };
 		4352A75AF91BCAE69E82E60F /* DictationLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguage.swift; sourceTree = "<group>"; };
 		4525A6BE7A99D634522D6764 /* run-4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "run-4.wav"; sourceTree = "<group>"; };
 		453CE9624DF49865DD80F707 /* BolttyAISettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAISettingsModel.swift; sourceTree = "<group>"; };
@@ -500,7 +494,6 @@
 		66FC94BE90F53DCAC344AD9D /* BolttyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BolttyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6721DADB2FE23D7D622297CD /* ScreenRegionCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRegionCapture.swift; sourceTree = "<group>"; };
 		673A3E77CB3A086DB9CA328F /* AppUpdaterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdaterTests.swift; sourceTree = "<group>"; };
-		67AC4E49CA6FB96153127621 /* AppIconPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconPicker.swift; sourceTree = "<group>"; };
 		68950834D335C64E328BB07D /* SupertonicText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupertonicText.swift; sourceTree = "<group>"; };
 		6911EAB2D1501439122B20D6 /* WorkingDirectoryResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryResolver.swift; sourceTree = "<group>"; };
 		6A51DFB27B3CE7E98623BC7F /* AgentCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentCapabilities.swift; sourceTree = "<group>"; };
@@ -628,7 +621,6 @@
 		C09834F7D58DE7A7F5DE453D /* AppPresenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresenceTests.swift; sourceTree = "<group>"; };
 		C0DC676CFC8F17C526B963FB /* GitRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitRepository.swift; sourceTree = "<group>"; };
 		C1568DBB1B355BCE021C87E2 /* BolttyShortcutRouter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BolttyShortcutRouter.m; sourceTree = "<group>"; };
-		C4A92FA5D0FE0A354844534E /* AppIcons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppIcons; path = Resources/AppIcons; sourceTree = SOURCE_ROOT; };
 		C4B173D9F2280D017ACC3F0A /* StatusBarIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarIconRenderer.swift; sourceTree = "<group>"; };
 		C4D142DE3586A12D05719764 /* run-2.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "run-2.wav"; sourceTree = "<group>"; };
 		C504CC00C75BF69BA78B4124 /* PaletteEffectsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteEffectsTests.swift; sourceTree = "<group>"; };
@@ -856,7 +848,6 @@
 				4D8AEA719AFE93CF8E30415A /* AntigravityClientTests.swift */,
 				8F2E86A8A7369DF2D83796D2 /* AntigravityLiveTests.swift */,
 				8A299DF79ADD19AAC14F19AB /* AntigravityPermissionGateTests.swift */,
-				405EACA5F1C27C2A26FBA450 /* AppIconChoiceTests.swift */,
 				C09834F7D58DE7A7F5DE453D /* AppPresenceTests.swift */,
 				49A60299B044905D026D52FE /* AppSettingsTests.swift */,
 				673A3E77CB3A086DB9CA328F /* AppUpdaterTests.swift */,
@@ -1037,7 +1028,6 @@
 				4A4CFC1A5ECB33FCBAF4C67A /* AgentQuestion.swift */,
 				D649BF997C3A20692101B70F /* AgentRoutingFallback.swift */,
 				B480B69DC62146AB64331781 /* AnswerReading.swift */,
-				36198B72BDC4CF095387C491 /* AppIconChoice.swift */,
 				5115B25E92F854FAF9E90026 /* AppSettings.swift */,
 				8342FE0B6C10909A74ADF6FB /* BilingualTranscript.swift */,
 				F74D9A4C3F74819F91FBD107 /* BolttyAIAnnouncement.swift */,
@@ -1130,7 +1120,6 @@
 			isa = PBXGroup;
 			children = (
 				E9849CD3540344DBE272DAD0 /* AccessPermissionsWindow.swift */,
-				67AC4E49CA6FB96153127621 /* AppIconPicker.swift */,
 				7B3DF727888637BF7A2BDC30 /* AskBolttySettings.swift */,
 				453CE9624DF49865DD80F707 /* BolttyAISettingsModel.swift */,
 				4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */,
@@ -1212,7 +1201,6 @@
 			children = (
 				057CFE34A8C6159254C0271D /* Sounds */,
 				24568FB2D3EA339880D65CBF /* AgentIcons */,
-				C4A92FA5D0FE0A354844534E /* AppIcons */,
 				721223C7C17BB8CF63B684F2 /* ChipGlass */,
 				C1A7E0B24D5F4E6A9B3C7D11 /* Icons */,
 			);
@@ -1441,7 +1429,6 @@
 			files = (
 				BD5D3A29EC272D56AAC43E3D /* AgentIcons in Resources */,
 				B7EB967CA083892D3AFCA439 /* AppIcon.icon in Resources */,
-				0B24B816732B3E051B7BAE16 /* AppIcons in Resources */,
 				A457BB588CE225D3B034A513 /* ChipGlass in Resources */,
 				C1A7E0B24D5F4E6A9B3C7D10 /* Icons in Resources */,
 				3607A598B75CE3C90A91536F /* LICENSE in Resources */,
@@ -1514,8 +1501,6 @@
 				299F5842CFA3C61DD26ECF60 /* AntigravityPermissionGate.swift in Sources */,
 				E777A758DFA919FA1911EF09 /* AntigravityTranscript.swift in Sources */,
 				91308EFC3B97A61B6B08E4B6 /* AppDelegate.swift in Sources */,
-				BAC8D9B5BA082E15291B3270 /* AppIconChoice.swift in Sources */,
-				2B37856CE5A25067A9470908 /* AppIconPicker.swift in Sources */,
 				32A76093292305651790AA36 /* AppModel.swift in Sources */,
 				FCC7294A14D45EA825B6E062 /* AppPresence.swift in Sources */,
 				374BD9F0FA6839F92C476F42 /* AppSettings.swift in Sources */,
@@ -1713,7 +1698,6 @@
 				739F7BA94ACEA13F3DA54877 /* AntigravityClientTests.swift in Sources */,
 				77CABC084F0814F0BC53A773 /* AntigravityLiveTests.swift in Sources */,
 				42B0B922FA91D11C6F05123A /* AntigravityPermissionGateTests.swift in Sources */,
-				B4B9C13874BA1D62E77E4385 /* AppIconChoiceTests.swift in Sources */,
 				B3A702D34AAB6B2DC5AA2E2C /* AppPresenceTests.swift in Sources */,
 				644FB905F7E8CF357973FD8E /* AppSettingsTests.swift in Sources */,
 				4D646D125F13753EF1980249 /* AppUpdaterTests.swift in Sources */,

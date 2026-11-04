@@ -32,6 +32,10 @@ final class SpeechOutput: ObservableObject {
 
   /// The languages said now; empty until Supertonic is here.
   private(set) static var languages: Set<String> = []
+  static func setLanguagesForTesting(_ value: Set<String>) { languages = value }
+  /// Stands in for Supertonic: a piece is "heard" when the test says it is.
+  var holdsPiecesForTesting = false
+  func finishPiecesForTesting() { for token in pending { finished(token) } }
 
   /// What is being said: a message's id, or a preview's.
   @Published private(set) var speakingID: String?
@@ -127,6 +131,11 @@ final class SpeechOutput: ObservableObject {
   /// been heard; nil when it cannot be said.
   @discardableResult
   private func enqueue(_ text: String, language code: String) -> Int? {
+    if holdsPiecesForTesting {
+      piece += 1
+      pending.insert(piece)
+      return piece
+    }
     let prefs = preferences()
     guard let chosen = prefs.local, SupertonicText.languages.contains(code) else {
       if pending.isEmpty { speakingID = nil }

@@ -89,7 +89,7 @@ apps/macos/
 
 ## Tests
 
-The full suite takes about a minute. While working, run only the suites your
+The full suite takes about three minutes. While working, run only the suites your
 change can affect:
 
 ```bash
@@ -170,12 +170,12 @@ XcodeGen rewrites the shared scheme every time, so put it back as above.
 
 - Keep a PR to one thing. A UI change is easier to review with a screenshot or
   a short recording.
-- Commit messages are short and lowercase after a type, the way the history
-  reads: `feat(voice): …`, `fix(palette): …`, `docs: …`, `chore: …`.
+- A commit message is one plain sentence about what changed, the way the history
+  reads: "Boltty wears its own icons". Say why in the body if it isn't obvious.
 - Comments explain *why* something is the way it is. Who decided and when
   belongs in git, not in the code.
-- Run `make test-all` and `make lint` before you push. CI runs the linters
-  and a build on every pull request.
+- Run `make test-all` and `make lint` before you push. CI runs the linters, a
+  build and the unit tests on every pull request.
 
 ## Releases
 

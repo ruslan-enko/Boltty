@@ -371,17 +371,13 @@ final class MascotRendererTests: XCTestCase {
       simd_distance(chromaticity(core), chromaticity(rim)), "the rim pigment is one colour all round")
   }
 
-  func testDetailFollowsTheFacesSize() throws {
-    var large = try XCTUnwrap(stillFace(size: 60).lastFrame)
-    var small = try XCTUnwrap(stillFace(size: 26).lastFrame)
-    XCTAssertEqual(MascotRenderer.rays(for: large), 4)
+  func testALiveFaceTakesTwoRaysAtEverySizeAndAPictureFour() throws {
+    let large = try XCTUnwrap(stillFace(size: 60).lastFrame)
+    let small = try XCTUnwrap(stillFace(size: 26).lastFrame)
+    XCTAssertEqual(MascotRenderer.rays(for: large), 2)
     XCTAssertEqual(MascotRenderer.rays(for: small), 2)
     XCTAssertEqual(MascotRenderer.uniforms(for: small).finish.z, 2)
     XCTAssertEqual(MascotRenderer.uniforms(for: small, rays: 4).finish.z, 4, "a picture keeps four")
-    large.finish = .fur
-    small.finish = .fur
-    XCTAssertEqual(MascotRenderer.rays(for: large), 2)
-    XCTAssertEqual(MascotRenderer.rays(for: small), 2)
   }
 
   private func chromaticity(_ color: SIMD3<Double>) -> SIMD3<Double> {

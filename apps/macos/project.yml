@@ -28,11 +28,6 @@ targets:
       - path: Resources/AgentIcons
         type: folder
         buildPhase: resources
-      # The icons Settings can choose, rendered from AppIcon*.icon by
-      # scripts/render-app-icons.sh. See `AppIconChoice`.
-      - path: Resources/AppIcons
-        type: folder
-        buildPhase: resources
       # The prompt chips' pictures — the owner's glass, drawn in Figma, one
       # per kind. See `PromptChipCell.picture(for:)`.
       - path: Resources/ChipGlass

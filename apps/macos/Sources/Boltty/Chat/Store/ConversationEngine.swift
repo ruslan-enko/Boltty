@@ -24,6 +24,12 @@ final class ConversationEngine: ObservableObject {
   private var attached: Set<String> = []
   private var creatingSessions: [UUID: Task<String, Error>] = [:]
   private var sending: Set<UUID> = []
+  private var processesToRestart: Set<UUID> = []
+  private var modelsReadAt: Date?
+  private var modelRefresh: Task<Void, Never>?
+  /// The version each CLI was last seen at, for `restartOutdatedProcesses`.
+  private var seenVersions: [String: String] = [:]
+  static let modelListLifetime: TimeInterval = 60 * 60
 
   static let defaultModelListDeadline: TimeInterval = 30
   private let modelListDeadline: TimeInterval
@@ -123,6 +129,7 @@ final class ConversationEngine: ObservableObject {
       guard let self else { return }
       await registry.probeAll()
       hasProbed = true
+      await restartOutdatedProcesses()
       await loadModels()
       listenToInstalledAgents()
     }
@@ -157,8 +164,51 @@ final class ConversationEngine: ObservableObject {
         if options == nil {
           log.notice("\(providerID, privacy: .public) did not list its models within \(deadline, privacy: .public) s")
         }
-        modelsByProvider[providerID] = options ?? []
+        // A list that did not come is no news: the last one stands.
+        if let options, !options.isEmpty {
+          modelsByProvider[providerID] = options
+        } else if modelsByProvider[providerID] == nil {
+          modelsByProvider[providerID] = []
+        }
       }
+    }
+    modelsReadAt = Date()
+  }
+
+  /// A CLI adds and drops models while Boltty sits in the menu bar. Asked as the
+  /// panel opens, and read in the background: nothing waits for it.
+  func refreshModelsIfStale(now: Date = Date()) {
+    guard modelRefresh == nil, let modelsReadAt,
+          now.timeIntervalSince(modelsReadAt) >= Self.modelListLifetime
+    else { return }
+    modelRefresh = Task { [weak self] in
+      await self?.refreshAvailability()
+      self?.modelRefresh = nil
+    }
+  }
+
+  /// Codex's app-server, Grok's stdio and Boltty's own OpenCode server outlive an
+  /// update of their CLI, and go on answering as the old version, old models
+  /// included. One whose CLI has changed is restarted once nothing of its is
+  /// running or waiting; until then it is looked at again next time.
+  private func restartOutdatedProcesses() async {
+    for installation in registry.installations {
+      guard case let .available(version?) = installation.availability,
+            let client = registry.client(for: installation.provider)
+      else { continue }
+      let providerID = client.providerID
+      guard let seen = seenVersions[providerID], seen != version else {
+        seenVersions[providerID] = version
+        continue
+      }
+      let isBusy = store.conversations.contains {
+        $0.providerID == providerID
+          && ($0.lastKnownState.blocksSending || sending.contains($0.id) || creatingSessions[$0.id] != nil)
+      }
+      guard !isBusy else { continue }
+      log.notice("\(providerID, privacy: .public) changed to \(version, privacy: .public): restarting its process")
+      await client.restartIdleProcess()
+      seenVersions[providerID] = version
     }
   }
 
@@ -207,6 +257,7 @@ final class ConversationEngine: ObservableObject {
   func refreshAvailability() async {
     await registry.probeAll()
     hasProbed = true
+    await restartOutdatedProcesses()
     await loadModels()
     listenToInstalledAgents()
   }
@@ -457,6 +508,9 @@ final class ConversationEngine: ObservableObject {
     sending.insert(conversationID)
     defer { sending.remove(conversationID) }
 
+    if processesToRestart.remove(conversationID) != nil, let remote = conversation.remoteSessionID {
+      await registry.client(forProviderID: conversation.providerID)?.release(sessionID: remote)
+    }
     notices[conversationID] = nil
     return await deliver(
       text: trimmed,
@@ -464,6 +518,15 @@ final class ConversationEngine: ObservableObject {
       in: conversationID,
       mayStartNewSession: true
     )
+  }
+
+  /// An Ask Boltty chat the person goes on with. If it could only look, its
+  /// process was started without the tools that write: let go of before the next
+  /// send, which resumes it with all of them.
+  func keepAskBolttyChat(id: UUID) {
+    guard let conversation = store.conversation(id: id), conversation.isAskBoltty else { return }
+    store.keepAskBolttyChat(id: id)
+    if conversation.readOnly { processesToRestart.insert(id) }
   }
 
   private func deliver(

@@ -605,7 +605,9 @@ final class PromptTextView: NSTextView {
   var defaultTypingAttributes: [NSAttributedString.Key: Any] {
     [
       .font: isChatComposer ? Self.chatComposerFont : Self.promptFont,
-      .foregroundColor: textColor ?? AgentPaletteView.promptTypingTextColor,
+      // Never `textColor`, which answers with the first character's: a link
+      // opening the text would turn the sentence the link's blue.
+      .foregroundColor: AgentPaletteView.promptTypingTextColor,
     ]
   }
 

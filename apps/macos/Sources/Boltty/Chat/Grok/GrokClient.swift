@@ -445,6 +445,10 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
   }
 
+  /// The same ending as a quit: `connect` starts it again, and `ensureLoaded`
+  /// loads each session as it is next used.
+  func restartIdleProcess() async { await shutdown() }
+
   // MARK: - Transport
 
   @discardableResult

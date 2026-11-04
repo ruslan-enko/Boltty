@@ -119,6 +119,8 @@ final class BolttyAIPreviewCard: NSView {
   private var expandedTurns: Set<String> = []
   private var turnClock: Timer?
   private var pinnedFloor: NSLayoutConstraint!
+  private var reflowedWidth: CGFloat = 0
+  private var isReflowSettleScheduled = false
   private var isFlying = false
   struct FlightOrigin {
     var frameInWindow: NSRect
@@ -374,6 +376,10 @@ final class BolttyAIPreviewCard: NSView {
       pendingBottomScroll = false
       scrollToLatest()
     }
+    if abs(bounds.width - reflowedWidth) > 0.5 {
+      reflowedWidth = bounds.width
+      scheduleReflowSettle()
+    }
     let width = contentLayoutWidth
     let bodyWidth = width - (question == nil ? 0 : AgentPaletteMetrics.failureCardPadding * 2)
     guard bodyWidth > 0 else { return }
@@ -385,6 +391,21 @@ final class BolttyAIPreviewCard: NSView {
     if abs(queuedLabel.preferredMaxLayoutWidth - queuedWidth) > 0.5 {
       queuedLabel.preferredMaxLayoutWidth = queuedWidth
       queuedLabel.invalidateIntrinsicContentSize()
+    }
+  }
+
+  /// A new width wraps the words again in a pass after this one. The floor read
+  /// now is the old one, and a chat made wider stood on the blank under its end,
+  /// so the floor and the place at the end are worked out once they have.
+  private func scheduleReflowSettle() {
+    guard !isReflowSettleScheduled else { return }
+    isReflowSettleScheduled = true
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.isReflowSettleScheduled = false
+      self.layoutSubtreeIfNeeded()
+      if self.updatePinnedFloor() { self.layoutSubtreeIfNeeded() }
+      if self.followsBottom, !self.isFlying { self.scrollToLatest() }
     }
   }
 

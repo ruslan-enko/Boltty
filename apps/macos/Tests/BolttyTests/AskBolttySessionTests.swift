@@ -279,9 +279,10 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertTrue(FileManager.default.fileExists(atPath: picture))
     client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
     try await waitFor("the answer") { self.store.conversation(id: first)?.lastKnownState == .idle }
-    XCTAssertTrue(
-      BolttyAISessionList.items(conversations: store.orderedConversations, selectedID: nil).isEmpty,
-      "an Ask Boltty is never a row")
+    let rows = BolttyAISessionList.items(
+      conversations: store.orderedConversations, transcripts: store.transcripts, selectedID: nil)
+    XCTAssertEqual(rows.map(\.id), [first], "what it said can be read again while it lives")
+    XCTAssertEqual(rows.first?.subtitle, "A deltoid.")
 
     askBoltty.now = { Date().addingTimeInterval(AskBolttySession.followUpWindow + 1) }
     askBoltty.warmUp(target)
@@ -319,5 +320,71 @@ final class AskBolttySessionTests: XCTestCase {
       self.store.conversation(id: self.askBoltty.conversationID!)?.lastKnownState == .idle
     }
     XCTAssertEqual(voice.said.count, 2, "two sentences at most")
+  }
+
+  func testAChatGoneOnWithInThePanelIsNoLongerForgotten() async throws {
+    try ask("what is this?")
+    let id = try XCTUnwrap(askBoltty.conversationID)
+    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
+    let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
+    client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
+    try await waitFor("the answer") { self.store.conversation(id: id)?.lastKnownState == .idle }
+
+    XCTAssertEqual(store.conversation(id: id)?.readOnly, true)
+    engine.keepAskBolttyChat(id: id)
+    coordinator.forgetAskBolttyChats()
+
+    XCTAssertEqual(store.conversation(id: id)?.isAskBoltty, false)
+    XCTAssertEqual(store.conversation(id: id)?.readOnly, false, "it asks as any chat does")
+
+    askBoltty.warmUp(target)
+    XCTAssertNotEqual(askBoltty.conversationID, id, "a new region is not asked in it")
+  }
+
+  func testAQuestionOverAFinderFolderStartsTheChatThere() async throws {
+    askBoltty.findPlace = { _ in FinderPlace(folder: "/tmp/from-finder/") }
+    var picked = try selection()
+    picked.finderSpot = .desktop
+    askBoltty.warmUp(target)
+    let warmed = try XCTUnwrap(askBoltty.conversationID)
+    askBoltty.ask("organise this", about: picked, on: displayFrame, target: target, speaksAloud: false)
+    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
+
+    let id = try XCTUnwrap(askBoltty.conversationID)
+    XCTAssertNotEqual(id, warmed, "a session cannot move")
+    XCTAssertEqual(store.conversation(id: id)?.workingDirectory, "/tmp/from-finder")
+    XCTAssertTrue(client.sentMessages.first?.text.contains("/tmp/from-finder/") == true)
+  }
+
+  /// The voice falling silent ends the answer by itself. `$speakingID` tells its
+  /// listeners before the value changes: asked then, the voice still "was saying"
+  /// it, and the answer stayed up until something else in the store moved.
+  func testAnAnswerSaidAloudEndsWhenTheVoiceFallsSilent() async throws {
+    SpeechOutput.setLanguagesForTesting(["en"])
+    defer { SpeechOutput.setLanguagesForTesting([]) }
+    var settings = AppSettings()
+    settings.askBolttySpeaksAloud = true
+    let current = settings
+    let speech = SpeechOutput(preferences: { .init() })
+    speech.holdsPiecesForTesting = true
+    let controller = AskBolttyController(coordinator: coordinator, speech: speech, settings: { current })
+    defer { controller.shutDown() }
+    controller.session.pictureDirectory = directory.appendingPathComponent("pictures")
+    controller.overlayForTesting.pointer = { CGPoint(x: 400, y: 400) }
+    controller.warmUp(agent: .claude)
+    XCTAssertTrue(controller.ask("what is this?", about: try selection(), on: displayFrame, agent: .claude))
+    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
+    let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
+    client.streamReply(sessionID: remote, messageID: "a1", chunks: ["This is a deltoid muscle."])
+    let id = try XCTUnwrap(controller.session.conversationID)
+    try await waitFor("the turn to end") { self.store.conversation(id: id)?.lastKnownState == .idle }
+    try await waitFor("the voice to be saying it") { controller.session.phase == .speaking }
+    // Whatever was still to come from the store has come.
+    try await Task.sleep(for: .seconds(0.2))
+
+    speech.finishPiecesForTesting()
+    try await Task.sleep(for: .seconds(0.05))
+
+    XCTAssertEqual(controller.session.phase, .idle)
   }
 }

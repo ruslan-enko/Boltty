@@ -307,7 +307,7 @@ final class BolttyAISessionListTests: XCTestCase {
     let region = "/Users/me/Library/Application Support/Boltty/Pasteboard/image1-82226C17.png"
     let screen = "/Users/me/Library/Application Support/Boltty/Pasteboard/image1-82226C17-screen.png"
     let bracket = "[Selected on screen in Figma — “WORK PAGE”: \"\(region)\". "
-      + "The whole screen, the selection outlined: \"\(screen)\". "
+      + "The screen, the selection outlined and all but its window hidden: \"\(screen)\". "
       + "Text read from the selection: <screen-text>Or hold ^ and ask.</screen-text>]"
     let request = "можеш мені дати це текстом " + bracket
     var chat = conversation(.claude, title: "можеш мені дати це текстом [Selected on…")

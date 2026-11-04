@@ -75,6 +75,10 @@ protocol AgentClient: AnyObject, Sendable {
   /// starts it again. Ask Boltty lets go of every chat it is done with.
   func release(sessionID: String) async
 
+  /// Ends a process kept running across chats, with nothing running in it, so
+  /// the next request starts the CLI as it is now on disk.
+  func restartIdleProcess() async
+
   func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?)
 }
 
@@ -100,6 +104,7 @@ extension AgentClient {
   func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {}
   func missedAnything(sessionID: String) async -> Bool? { nil }
   func release(sessionID: String) async {}
+  func restartIdleProcess() async {}
 }
 
 struct AgentSessionOptions: Equatable, Sendable {

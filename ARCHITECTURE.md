@@ -109,12 +109,13 @@ replay it.
 
 Ask Boltty is one gesture: select an area of the screen, then speak. It starts
 with a drag on the panel's first screen, which freezes the screen. Once a region
-is drawn the panel listens, and the agent's session warms up. The words, the region and the whole screen go to
-`AskBolttySession` as a normal conversation, marked as an Ask Boltty chat. The
-answer is shown beside the pointer as it streams; small tags in it
-(`<point>`, `<circle>`, `<arrow>`, …) make the face fly to a spot or draw on
-the screen. These chats are read-only by default, are never listed, and are
-forgotten ten minutes after the last answer.
+is drawn the panel listens, and the agent's session warms up. The words, the
+region and a picture of the screen (only the window under the region and the menu
+bar left in) go to `AskBolttySession` as a normal conversation, marked as an Ask
+Boltty chat. The answer is shown beside the pointer as it streams; small tags in
+it (`<point>`, `<circle>`, `<arrow>`, …) make the face fly to a spot or draw on
+the screen. These chats are read-only by default, and are forgotten ten minutes
+after the last answer unless you go on with them in the panel.
 
 ## Rules that hold it together
 
@@ -144,8 +145,8 @@ forgotten ten minutes after the last answer.
   The only models it runs are the optional local voices (`Services/LocalVoice/`),
   for dictation and reading aloud, on this Mac.
 - **Sync or a server.** Everything is local. The only network request Boltty
-  makes on its own is the daily check for a new release on GitHub; a voice
-  model is downloaded from Hugging Face only when the person asks for it.
+  makes on its own is the daily check for a new release on GitHub; an update or
+  a voice model is downloaded only when the person asks for it.
 - **Third-party packages.** The app depends on nothing but Apple's frameworks.
 
 ## Where to look

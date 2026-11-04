@@ -497,10 +497,22 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// across it, then into the chat: two jumps.
   private var showsCompactListening: Bool {
     (isVoiceListening || (isVoiceProcessing && voiceGlow.fillsShell) || isHandingOver
-      || (awaitsRegionVoice && field.string.isEmpty))
+      || holdsQuestionWords || (awaitsRegionVoice && field.string.isEmpty))
       && !isResultsExpanded
       && (addressedPreview == nil || voicePrefixDraft?.isEffectivelyEmpty != false)
   }
+  /// A question about a region is on its way, said rather than typed: the shell
+  /// stays round the words while the region is cut, until it closes on the
+  /// face. Let go of sooner, the words went out and the prompt stood there for
+  /// that moment, between the capsule and the orb.
+  private var holdsQuestionWords = false {
+    didSet { if holdsQuestionWords != oldValue { needsLayout = true } }
+  }
+
+  /// Called as the take ends, while the shell is still round the words.
+  func holdWordsForQuestion() { holdsQuestionWords = showsCompactListening }
+  /// The question did not go after all: the prompt it was said into comes back.
+  func releaseQuestionWords() { holdsQuestionWords = false }
   var isCompactListeningForTesting: Bool { showsCompactListening }
   var listeningWordsForTesting: String { listeningWords.text }
   var listeningWordsShownForTesting: Bool { listeningWordsHost.alphaValue > 0 }
@@ -813,17 +825,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var voiceOrbUsesSystemGlassForTesting: Bool { micButton.usesSystemGlass }
   var previewCardForTesting: BolttyAIPreviewCard { previewCard }
   var addressedPreviewForTesting: BolttyAISessionPreview? { addressedPreview }
-  /// The shell and the composer draw the one shared glass, whatever it
-  /// currently is — only while listening; in every other state the shell
-  /// wears the black ramp (`bolttyAIPrompt`) over it.
-  ///
-  /// Deliberately not "they all use material X": the point the palette has to
-  /// keep is that the three agree, and pinning the material by name here meant
-  /// retuning the look broke a test that was never about the look.
-  var usesSharedSurfaceStyleForTesting: Bool {
-    surface.surfaceStyleForTesting == .bolttyAI
-      && promptHost.surfaceStyleForTesting == .bolttyAI
-  }
   var initialPromptChromeIsVisibleForTesting: Bool { !promptHost.isHidden }
   var shellUsesGlassForTesting: Bool { surface.isUsingGlassForTesting }
   var isResultsExpandedForTesting: Bool { isResultsExpanded }
@@ -1850,6 +1851,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     stopIsAvailable = preview.isBusy && preview.canStop
     applyStopAffordance(preview)
     syncSendButton()
+    // In the panel first, at its width. The first chat since launch was measured
+    // with the card nowhere: its words wrapped narrow, its floor stayed that
+    // tall, and a long chat opened on the blank under its end.
+    showPreview(animated: true)
+    needsLayout = true
+    layoutSubtreeIfNeeded()
     previewCard.apply(preview)
     // The card may still hold this chat, unchanged, from before the panel
     // went away and stopped its clocks; `apply` does not start them again.
@@ -1862,7 +1869,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     )
     hintLabel.stringValue = Self.composerPlaceholder(for: preview)
     hintLabel.isHidden = !field.isEmptyPrompt
-    showPreview(animated: true)
     needsLayout = true
     layoutSubtreeIfNeeded()
     // The composer becomes the chat's box.
@@ -2074,12 +2080,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let newSections: [AgentHistory.Section]
     let newItems: [BolttyAISessionItem]
     if showsHistoryChrome {
-      newSections = AgentHistory.sections(sessionItems, agent: activeHistoryAgent)
+      newSections = AgentHistory.sections(listedSessionItems, agent: activeHistoryAgent)
       newItems = newSections.flatMap(\.items)
     } else {
       newSections = []
       newItems = BolttyAISessionList.filter(
-        sessionItems,
+        listedSessionItems,
         transcripts: sessionTranscripts,
         query: resultsQuery
       )
@@ -2102,7 +2108,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       // Counted over every row, not over what the filter left — see
       // `AgentHistory.Tab`.
       historyTabs.apply(
-        tabs: AgentHistory.tabs(sessionItems), activeAgent: activeHistoryAgent,
+        tabs: AgentHistory.tabs(listedSessionItems, agents: listedAgents), activeAgent: activeHistoryAgent,
         everyone: agentChoices)
     }
 
@@ -2203,6 +2209,29 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     max(0, historySurfaceHeight - (mode == .search ? promptCapsuleHeightConstraint.constant : 0))
   }
 
+  /// The agents the list shows (`AgentHistory.listed`). Those it does not are gone
+  /// from it, tabs, rows and search alike, until they are switched on again: their
+  /// chats stay on disk, and one still working is reached from the tray and the
+  /// notch. A row of no agent Boltty knows stays under All.
+  private(set) var listedAgents = AgentHistory.tabOrder
+
+  private var listedSessionItems: [BolttyAISessionItem] {
+    guard listedAgents != AgentHistory.tabOrder else { return sessionItems }
+    let hidden = Set(AgentHistory.tabOrder).subtracting(listedAgents)
+    return sessionItems.filter { !hidden.contains($0.agent) }
+  }
+
+  func setListedAgents(_ agents: [AgentId]) {
+    let listed = agents.isEmpty ? AgentHistory.tabOrder : agents
+    guard listed != listedAgents else { return }
+    listedAgents = listed
+    // On a tab that has gone, the first that is left; alone, the only one.
+    let stops = AgentHistory.stops(for: listed)
+    if !stops.contains(activeHistoryAgent) { activeHistoryAgent = stops.first ?? nil }
+    syncHistoryNewChat()
+    if isResultsExpanded { refreshResults(keepingSelection: true) }
+  }
+
   /// A tab was chosen. `nil` is Latest — see `AgentHistoryTabStripView`.
   ///
   /// The selection is deliberately not carried across: the row you were on is
@@ -2224,7 +2253,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// but a keystroke, so a row the new list slides under a resting pointer
   /// does not take the selection from its top row (`hoverMoved`).
   private func stepHistoryTab(by delta: Int) {
-    let agent = AgentHistory.adjacentTab(to: activeHistoryAgent, by: delta)
+    let agent = AgentHistory.adjacentTab(to: activeHistoryAgent, by: delta, among: listedAgents)
     guard agent != activeHistoryAgent else { return }
     keyboardSelectionPointerAnchor = pointerLocation
     setResultHoverQuiet(true)
@@ -4376,11 +4405,16 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// then on following it until it reaches the shell, presses, or the
   /// screen stops taking a selection.
   private func syncSelectionPointerHint(at point: NSPoint?) {
-    guard let point, resizeDrag == nil, selectsOnDrag,
+    guard let point, resizeDrag == nil, selectsOnDrag, regionHintIsNeeded,
           isEmptyGlass(point), !isNearShellEdge(point) else {
       hideSelectionPointerHint()
       return
     }
+    // Over a chat a region is a chip for the composer, not a question.
+    selectionPointerHint.setText(
+      addressedPreview == nil
+        ? AgentPaletteMetrics.screenSelectionHintText
+        : AgentPaletteMetrics.screenSelectionChatHintText)
     selectionPointerHint.place(at: point, in: bounds)
     if selectionPointerHint.superview === self, subviews.last !== selectionPointerHint {
       addSubview(selectionPointerHint, positioned: .above, relativeTo: nil)
@@ -4393,6 +4427,21 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     ) { [weak self] _ in
       MainActor.assumeIsolated { self?.selectionPointerHint.show() }
     }
+  }
+
+  /// A hint is for someone who has not done it yet. Beside the pointer every
+  /// time the panel opened, it stood over the page for good.
+  private var regionHintIsNeeded: Bool {
+    UserDefaults.standard.integer(forKey: AgentPaletteMetrics.regionsDrawnKey)
+      < AgentPaletteMetrics.regionHintUses
+  }
+
+  /// Not from the test host, whose defaults are the app's own.
+  private func noteRegionDrawn() {
+    guard !AppDelegate.isHostingUnitTests else { return }
+    let drawn = UserDefaults.standard.integer(forKey: AgentPaletteMetrics.regionsDrawnKey)
+    guard drawn < AgentPaletteMetrics.regionHintUses else { return }
+    UserDefaults.standard.set(drawn + 1, forKey: AgentPaletteMetrics.regionsDrawnKey)
   }
 
   private func hideSelectionPointerHint() {
@@ -4651,10 +4700,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     screenSelectionPhase == .editing ? screenSelectionGlobal : nil
   }
 
-  /// Whether a press on the empty glass may become a region of the screen:
-  /// only on the first screen — never in an open chat — with no list, pill
-  /// or take up. Whatever the agent: one that cannot see pictures is handed
-  /// the text read off the region (`PromptExpansion`).
+  /// Whether a press on the empty glass may become a region of the screen: on
+  /// the first screen a question for Ask Boltty, over an open chat a chip in its
+  /// composer; with no list or take up. Whatever the agent: one that cannot see pictures is handed the text read
+  /// off the region (`PromptExpansion`).
   private var acceptsScreenSelection: Bool {
     onScreenSelectionBegan != nil && mode == .prompt
       && !isVoiceListening && !showsCompactListening
@@ -4752,11 +4801,13 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if addressedPreview != nil {
       // A chat keeps its card: the region becomes a chip in its composer,
       // and the screen comes back once it has (`endScreenSelection`).
+      noteRegionDrawn()
       onScreenRegionSelected?(region)
       return
     }
     let first = !regionAnnounced
     regionAnnounced = true
+    if first { noteRegionDrawn() }
     if first, field.draft.isEffectivelyEmpty {
       // The last question's words, still in the view, are not this one's.
       setListeningWords("")
@@ -4848,6 +4899,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     regionVoiceWait = nil
     awaitsRegionVoice = false
     isHandingOver = false
+    holdsQuestionWords = false
     screenOutlines.alphaValue = 1
     regionAnnounced = false
     screenSelectionPhase = .idle
@@ -4917,6 +4969,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       return
     }
     isHandingOver = true
+    holdsQuestionWords = false
     screenOutlines.showsHandles = false
     needsLayout = true
     let duration = Motion.scaled(AgentPaletteMetrics.regionHandOverDuration)

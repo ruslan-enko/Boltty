@@ -9,6 +9,7 @@ import Combine
 final class AskBolttyController {
   let session: AskBolttySession
   private let overlay = AskBolttyOverlayController()
+  var overlayForTesting: AskBolttyOverlayController { overlay }
   private let coordinator: ChatWorkspaceCoordinator
   private let settings: () -> AppSettings
   private var cancellables = Set<AnyCancellable>()
@@ -26,6 +27,10 @@ final class AskBolttyController {
   /// The answer waits on the person — a permission, a question: the panel
   /// opens on its chat.
   var onNeedsYou: ((UUID) -> Void)?
+  /// The chord that opens the panel as it stands, nil with none working.
+  var launchKeyName: (() -> String?)?
+  /// Reads the Finder folder a question is about, when it is about one.
+  var finderSelection = FinderSelectionService()
 
   init(
     coordinator: ChatWorkspaceCoordinator,
@@ -37,15 +42,27 @@ final class AskBolttyController {
     session = AskBolttySession(coordinator: coordinator, speech: speech)
 
     overlay.onVisibleChange = { [weak self] in self?.syncEscapeKey() }
+    overlay.restHint = { [weak self] in Self.restHint(launchKey: self?.launchKeyName?()) }
+    session.findPlace = { [weak self] spot in
+      guard let self, settings().attachesFinderSelection else { return nil }
+      return await self.finderSelection.place(of: spot)
+    }
 
-    Publishers.CombineLatest(session.$phase, session.$caption)
+    Publishers.CombineLatest3(session.$phase, session.$caption, session.$step)
       .receive(on: RunLoop.main)
-      .sink { [weak self] phase, caption in
+      .sink { [weak self] phase, caption, step in
         guard let self else { return }
+        // Its chat is open in the panel: the work and the words are there.
+        if phase == .thinking || phase == .speaking, let id = self.session.conversationID,
+           self.coordinator.store.selectedConversationID == id {
+          self.overlay.hide()
+          return
+        }
         self.overlay.isSaidAloud = self.session.readsAloud
         self.overlay.show(
           phase, caption: caption,
-          agent: self.session.providerID.flatMap(AgentId.init(rawValue:)))
+          agent: self.session.providerID.flatMap(AgentId.init(rawValue:)),
+          step: step)
       }
       .store(in: &cancellables)
     session.$pointing
@@ -71,17 +88,27 @@ final class AskBolttyController {
       .store(in: &cancellables)
     // What an Ask Boltty left behind when Boltty last quit is done with.
     coordinator.forgetAskBolttyChats()
+    // On the next turn of the run loop: `$speakingID` tells before the value
+    // changes, and asked then the voice is still saying what it has finished.
     speech.$speakingID
       .removeDuplicates()
       .filter { $0 == nil }
+      .receive(on: RunLoop.main)
       .sink { [weak self] _ in self?.session.speechFinished() }
       .store(in: &cancellables)
   }
 
   // MARK: - A question about a region
 
+  /// What can be done while the face waits after an answer. Going on takes the
+  /// launch key, and from there a new area can be dragged out over the last.
+  static func restHint(launchKey: String?) -> String {
+    guard let launchKey else { return "Esc to close" }
+    return "\(launchKey) to ask more · Esc to close"
+  }
+
   /// The agent a region is asked of, before ⇧Tab moves it: Settings › Ask
-  /// Boltty's choice where it is ready, else the fastest that sees.
+  /// Boltty's choice where it is ready, else the preferred agent.
   var answeringAgent: AgentId? {
     target(for: nil).flatMap { AgentId(rawValue: $0.providerID) }
   }

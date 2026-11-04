@@ -469,7 +469,7 @@ final class SentFileTests: XCTestCase {
     XCTAssertEqual(
       text,
       "What is this? [Selected on screen in Figma — “Boltty”: /tmp/boltty-stub/pasted.png. "
-        + "The whole screen, the selection outlined: /tmp/boltty-stub/pasted-screen.png. "
+        + "The screen, the selection outlined and all but its window hidden: /tmp/boltty-stub/pasted-screen.png. "
         + "Text read from the selection: <screen-text>Sessions 161</screen-text>]")
     XCTAssertEqual(files.map(\.file.path), ["/tmp/boltty-stub/pasted.png", "/tmp/boltty-stub/pasted-screen.png"])
     XCTAssertEqual(files.map(\.file.name), ["image1.png", "image1-screen.png"])
@@ -487,7 +487,7 @@ final class SentFileTests: XCTestCase {
     XCTAssertEqual(
       text,
       "[Selected on screen: /tmp/boltty-stub/pasted.png. "
-        + "The whole screen, the selection outlined: /tmp/boltty-stub/pasted-screen.png]")
+        + "The screen, the selection outlined and all but its window hidden: /tmp/boltty-stub/pasted-screen.png]")
   }
 
   func testALiftedScreenRequestReadsAsTheChipWithBothPictures() throws {

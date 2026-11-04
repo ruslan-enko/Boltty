@@ -2670,16 +2670,20 @@ final class ShowChatList {
     pill.layer?.cornerCurve = .continuous
     content.addSubview(pill)
     var x = Self.inset
-    let all = box(x, Self.tabsTop, 84, Self.tabHeight)
-    tabs[.none] = all
-    let allLabel = ShowText.label("All", size: space.v(18), weight: .semibold)
-    allLabel.sizeToFit()
-    allLabel.frame.origin = CGPoint(x: (all.midX - allLabel.frame.width / 2).rounded(),
-                                    y: (all.midY - allLabel.frame.height / 2).rounded())
-    content.addSubview(allLabel)
-    x += 84 + 6
-    // The tabs share the strip.
+    // The tabs share the strip. One agent has no All, and stands in the middle.
+    let isAlone = agents.count == 1
+    if !isAlone {
+      let all = box(x, Self.tabsTop, 84, Self.tabHeight)
+      tabs[.none] = all
+      let allLabel = ShowText.label("All", size: space.v(18), weight: .semibold)
+      allLabel.sizeToFit()
+      allLabel.frame.origin = CGPoint(x: (all.midX - allLabel.frame.width / 2).rounded(),
+                                      y: (all.midY - allLabel.frame.height / 2).rounded())
+      content.addSubview(allLabel)
+      x += 84 + 6
+    }
     let tabWidth = min(120, (Self.width - Self.inset * 2 - 90) / CGFloat(max(1, agents.count)) - 6)
+    if isAlone { x = (Self.width - tabWidth) / 2 }
     for agent in agents {
       let tab = box(x, Self.tabsTop, tabWidth, Self.tabHeight)
       tabs[agent] = tab
@@ -2695,7 +2699,7 @@ final class ShowChatList {
       }
       x += tabWidth + 6
     }
-    place(pill: all)
+    if let first = tabs[.none] ?? tabs[planned] { place(pill: first) }
 
     rowsView.frame = box(0, Self.listTop, Self.width, Self.height - Self.listTop - 14)
     rowsView.wantsLayer = true

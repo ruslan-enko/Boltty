@@ -244,6 +244,14 @@ final class BuiltInKeyCatalogTests: XCTestCase {
     BuiltInKeyCatalog.sections(launchChord: launch)
   }
 
+  func testWithOneAgentNoKeyOffersToChooseAmongThem() {
+    func ids(_ agents: Int) -> Set<String> {
+      Set(BuiltInKeyCatalog.sections(launchChord: "⌥Space", agents: agents).flatMap(\.keys).map(\.id))
+    }
+    XCTAssertTrue(ids(2).isSuperset(of: ["agent", "listAgent"]))
+    XCTAssertTrue(ids(1).isDisjoint(with: ["agent", "listAgent"]))
+  }
+
   func testEveryKeyHasANameAndKeysAndAUniqueID() {
     let keys = sections().flatMap(\.keys)
     XCTAssertEqual(Set(keys.map(\.id)).count, keys.count)

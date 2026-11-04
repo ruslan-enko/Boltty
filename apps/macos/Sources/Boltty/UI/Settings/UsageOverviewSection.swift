@@ -4,7 +4,15 @@ struct UsageOverviewSection: View {
   @ObservedObject var model: BolttyAISettingsModel
   @State private var tab: Tab = .overview
   @State private var range: AgentStatisticsRange = .all
-  @State private var agent: AgentId?
+  @State private var chosenAgent: AgentId?
+
+  /// What is counted: the one chosen while it is still shown; with one agent, that
+  /// one, and no menu to choose from.
+  private var agent: AgentId? {
+    let listed = model.listedAgents
+    if listed.count == 1 { return listed[0] }
+    return chosenAgent.flatMap { listed.contains($0) ? $0 : nil }
+  }
 
   enum Tab: String, CaseIterable, Identifiable {
     case overview, models
@@ -48,16 +56,18 @@ struct UsageOverviewSection: View {
 
       Spacer(minLength: 0)
 
-      Picker("Agent", selection: $agent) {
-        Text("All Agents").tag(AgentId?.none)
-        Divider()
-        ForEach(AgentHistory.tabOrder, id: \.self) { agent in
-          Text(agent.displayName).tag(AgentId?.some(agent))
+      if model.listedAgents.count > 1 {
+        Picker("Agent", selection: Binding(get: { agent }, set: { chosenAgent = $0 })) {
+          Text("All Agents").tag(AgentId?.none)
+          Divider()
+          ForEach(model.listedAgents, id: \.self) { agent in
+            Text(agent.displayName).tag(AgentId?.some(agent))
+          }
         }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .fixedSize()
       }
-      .pickerStyle(.menu)
-      .labelsHidden()
-      .fixedSize()
 
       Picker("Range", selection: $range) {
         ForEach(AgentStatisticsRange.allCases) { Text($0.title).tag($0) }
@@ -70,13 +80,14 @@ struct UsageOverviewSection: View {
 
   @ViewBuilder
   private func content(_ statistics: AgentStatistics) -> some View {
-    let summary = AgentStatisticsSummary(statistics, range: range, agent: agent)
+    let summary = AgentStatisticsSummary(statistics, range: range, agent: agent, among: model.listedAgents)
     switch tab {
     case .overview:
       tiles(summary)
       UsageDayGrid(
         days: summary.days,
-        firstDay: AgentStatisticsSummary(statistics, range: .all, agent: agent).days.keys.min(),
+        firstDay: AgentStatisticsSummary(statistics, range: .all, agent: agent, among: model.listedAgents)
+          .days.keys.min(),
         rangeStart: range.start(now: Date(), calendar: .current),
         tint: .accentColor
       )

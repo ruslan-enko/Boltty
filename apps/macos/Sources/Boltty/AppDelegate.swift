@@ -57,7 +57,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     guard !Self.isHostingUnitTests else { return }
 
-    AppIconChoice.stored().apply()
     setupModel()
     LaunchTrace.mark("setupModel")
 
@@ -151,6 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       appModel?.settings ?? AppSettings()
     }
     askBoltty.onNeedsYou = { [weak self] id in self?.requirePalette()?.addressConversation(id) }
+    askBoltty.launchKeyName = { [weak self] in self?.appliedHotkey?.displayName }
     self.askBoltty = askBoltty
     model?.$settings
       .sink { [weak askBoltty] in askBoltty?.apply($0) }

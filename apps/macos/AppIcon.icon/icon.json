@@ -2,7 +2,12 @@
   "color-space-for-untagged-svg-colors" : "display-p3",
   "fill-specializations" : [
     {
-      "value" : "system-light"
+      "value" : {
+        "linear-gradient" : [
+          "display-p3:1.00000,0.92157,0.00392,1.00000",
+          "display-p3:1.00000,0.64706,0.00000,1.00000"
+        ]
+      }
     },
     {
       "appearance" : "dark",
@@ -14,7 +19,45 @@
       "layers" : [
         {
           "blend-mode" : "soft-light",
-          "fill" : "automatic",
+          "fill-specializations" : [
+            {
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.85749,0.92216,0.88598,0.00000",
+                  "display-p3:1.00000,1.00000,1.00000,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.5,
+                    "y" : 1
+                  },
+                  "stop" : {
+                    "x" : 0.5,
+                    "y" : 0
+                  }
+                }
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:1.00000,0.71959,0.08371,1.00000",
+                  "display-p3:1.00000,1.00000,1.00000,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.5,
+                    "y" : 1
+                  },
+                  "stop" : {
+                    "x" : 0.5,
+                    "y" : 0
+                  }
+                }
+              }
+            }
+          ],
           "image-name" : "Icon.png",
           "name" : "Icon",
           "opacity" : 1,

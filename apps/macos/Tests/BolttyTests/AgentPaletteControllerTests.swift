@@ -66,6 +66,42 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertEqual(view.addressedPreviewForTesting?.autoMode, false, "the store's answer agrees")
   }
 
+  /// A chat is opened for the first time with the card not yet in the panel:
+  /// nothing there has a size to scroll by, and a long transcript came up blank.
+  func testTheFirstChatOpenedAfterLaunchShowsItsTranscript() throws {
+    let (_, controller, conversations) = makeController()
+    let chat = conversations.addConversation(title: "rename")
+    var messages: [ConversationMessage] = []
+    for turn in 0..<30 {
+      messages.append(ConversationMessage(
+        id: "u\(turn)", role: .user, createdAt: Date(), completedAt: Date(),
+        parts: [.text(TextPart(id: "u\(turn)t", kind: .text, text: "Question number \(turn)"))]))
+      let answer = String(repeating: "All the screenshots were renamed by the date they were taken. ", count: 6)
+      messages.append(ConversationMessage(
+        id: "a\(turn)", role: .agent, createdAt: Date(), completedAt: Date(),
+        parts: [.text(TextPart(id: "a\(turn)t", kind: .text, text: answer))]))
+    }
+    conversations.previews[chat.id] = BolttyAISessionPreview(
+      id: chat.id, title: chat.title, agent: .opencode, state: .finished, body: "", messages: messages)
+    controller.show()
+    defer { controller.hide() }
+    let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
+    controller.addressConversation(chat.id)
+    settle()
+
+    let row = try XCTUnwrap(view.previewCardForTesting.messageRowForTesting("a29"))
+    XCTAssertGreaterThan(row.visibleRect.intersection(row.bounds).height, 0, "the end of the chat is in sight")
+
+    // Resized wider, its words wrap less and the chat gets shorter.
+    var sizes = view.surfaceSizes
+    sizes.chat.width += 120
+    view.surfaceSizes = sizes
+    view.needsLayout = true
+    view.layoutSubtreeIfNeeded()
+    settle()
+    XCTAssertGreaterThan(row.visibleRect.intersection(row.bounds).height, 0, "and still after widening")
+  }
+
   // MARK: - Coming back to the chat it left
 
   private func thinkingChat(
@@ -534,8 +570,13 @@ final class AgentPaletteControllerTests: XCTestCase {
     return (controller, conversations, try XCTUnwrap(controller.window?.contentView as? AgentPaletteView))
   }
 
-  func testARegionOnTheFirstScreenPutsTheShellBesideItAndGoesWithTheWords() throws {
-    let (_, conversations, view) = try makeSelectingController()
+  func testARegionOnTheFirstScreenPutsTheShellBesideItAndIsAskedAbout() throws {
+    let (controller, conversations, view) = try makeSelectingController()
+    var asked: (words: String, selection: ScreenSelection)?
+    controller.onAskAboutRegion = { words, selection, _, _ in
+      asked = (words, selection)
+      return true
+    }
     let region = CGRect(x: 120, y: 200, width: 300, height: 180)
 
     view.selectScreenRegionForTesting(region)
@@ -551,16 +592,12 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     view.field.setDraft(PromptDraft("What is this? "))
     _ = view.textView(view.field, doCommandBy: #selector(NSResponder.insertNewline(_:)))
-    let sent = expectation(
-      for: NSPredicate { _, _ in !conversations.startedPrompts.isEmpty }, evaluatedWith: nil)
-    wait(for: [sent], timeout: 5)
+    let sent = expectation(for: NSPredicate { _, _ in asked != nil }, evaluatedWith: nil)
+    let closed = expectation(for: NSPredicate { _, _ in view.screenSelectionPhase == .idle }, evaluatedWith: nil)
+    wait(for: [sent, closed], timeout: 5)
 
-    let prompt = try XCTUnwrap(conversations.startedPrompts.first)
-    XCTAssertTrue(prompt.hasPrefix("What is this? [Selected on screen in Figma — “Boltty”: "), prompt)
-    XCTAssertEqual(
-      conversations.startedPictures.first?.map(\.displayName), ["image1.png", "image1-screen.png"],
-      "both pictures go to the agent as pictures, not only as paths")
-    XCTAssertEqual(view.screenSelectionPhase, .idle)
+    XCTAssertEqual(asked?.words, "What is this?")
+    XCTAssertTrue(conversations.startedPrompts.isEmpty, "Ask Boltty's, not a chat of the panel's")
     XCTAssertEqual(view.screenOutlinesForTesting, [])
     XCTAssertFalse(view.isScreenFrozenForTesting)
   }
@@ -902,6 +939,7 @@ final class AgentPaletteControllerTests: XCTestCase {
     let file = finderFile()
     defer { try? FileManager.default.removeItem(at: file) }
     controller.finderSelection.readSelection = { [file] }
+    controller.finderSelection.readFrontFolder = { nil }
     controller.frontmostBundleIDForTesting = FinderSelectionService.finderBundleID
     controller.show()
     defer { controller.hide() }
@@ -909,6 +947,23 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     settle()
     XCTAssertEqual(view.currentDraft.attachments.count, 1)
+  }
+
+  func testComingFromFinderStartsTheChatInItsFolder() throws {
+    let (_, controller, conversations) = makeController()
+    controller.finderSelection.readSelection = { [] }
+    controller.finderSelection.readFrontFolder = { "/tmp/from-finder" }
+    controller.frontmostBundleIDForTesting = FinderSelectionService.finderBundleID
+    controller.show()
+    defer { controller.hide() }
+    let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
+    settle()
+
+    view.field.setDraft(PromptDraft("organise this"))
+    view.confirmCurrentDraft()
+    settle()
+
+    XCTAssertEqual(conversations.startedDirectories.last, "/tmp/from-finder")
   }
 
   func testComingFromAnotherAppBringsNothing() async throws {
@@ -933,6 +988,7 @@ final class AgentPaletteControllerTests: XCTestCase {
     let file = finderFile()
     defer { try? FileManager.default.removeItem(at: file) }
     controller.finderSelection.readSelection = { [file] }
+    controller.finderSelection.readFrontFolder = { nil }
     controller.frontmostBundleIDForTesting = FinderSelectionService.finderBundleID
     controller.show()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)

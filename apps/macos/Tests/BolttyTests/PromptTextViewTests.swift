@@ -373,25 +373,9 @@ final class PromptTextViewTests: XCTestCase {
     }
   }
 
-  func testAChipDrawsAFillOfItsKindsColourAtAFifth() throws {
-    let font = PromptTextView.promptFont
-    for kind in [PromptAttachmentKind.image, .file, .text] {
-      let cell = PromptChipCell(PromptAttachment(kind: kind, payload: .text("x"), label: "\(kind.rawValue)1"))
-      cell.displayFont = font
-      let size = cell.cellSize()
-      let bitmap = try XCTUnwrap(NSBitmapImageRep(
-        bitmapDataPlanes: nil, pixelsWide: Int(size.width) * 2, pixelsHigh: Int(size.height) * 2,
-        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
-      bitmap.size = size
-      let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
-      NSGraphicsContext.saveGraphicsState()
-      NSGraphicsContext.current = context
-      cell.draw(withFrame: NSRect(origin: .zero, size: size), in: nil)
-      NSGraphicsContext.restoreGraphicsState()
-      let edge = try XCTUnwrap(bitmap.colorAt(x: 4, y: bitmap.pixelsHigh / 2))
-      XCTAssertEqual(edge.alphaComponent, AgentPaletteMetrics.chipFillAlpha, accuracy: 0.04,
-                     "\(kind): the capsule's end is the kind's colour at a fifth")
+  func testEveryKindOfChipHasItsGlassPicture() {
+    for kind in [PromptAttachmentKind.image, .file, .text, .link] {
+      XCTAssertNotNil(PromptChipCell.picture(for: kind), kind.rawValue)
     }
   }
 
@@ -447,14 +431,6 @@ final class PromptTextViewTests: XCTestCase {
         "\(attachment.displayLabel()) ink midY \(ink.labelMidY) vs capsule midY \(ink.capsuleMidY)"
       )
     }
-  }
-
-  func testTheCapsuleKeepsTheReferencesProportions() {
-    XCTAssertEqual(AgentPaletteMetrics.chipHeightPerPoint, 1.33)
-    XCTAssertEqual(AgentPaletteMetrics.chipPaddingPerPoint, 0.4)
-    XCTAssertEqual(AgentPaletteMetrics.chipSymbolPerPoint, 0.62)
-    XCTAssertEqual(AgentPaletteMetrics.chipSymbolGapPerPoint, 0.28)
-    XCTAssertEqual(AgentPaletteMetrics.chipCornerRadius, AgentPaletteMetrics.fromMock(50))
   }
 
   func testTheCapsuleIsTallerThanItsTypeAndItsLineHoldsIt() throws {

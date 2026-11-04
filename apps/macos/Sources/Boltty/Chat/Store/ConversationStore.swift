@@ -140,6 +140,18 @@ final class ConversationStore: ObservableObject {
     objectWillChange.send()
   }
 
+  /// Gone on with in the panel, an Ask Boltty chat is the person's own: it is no
+  /// longer forgotten, and it asks as any chat does.
+  func keepAskBolttyChat(id: UUID) {
+    guard let index = conversations.firstIndex(where: { $0.id == id }),
+          conversations[index].isAskBoltty
+    else { return }
+    conversations[index].isAskBoltty = false
+    conversations[index].readOnly = false
+    saveIndexNow()
+    objectWillChange.send()
+  }
+
   func deleteConversation(id: UUID) {
     conversations.removeAll { $0.id == id }
     transcripts[id] = nil

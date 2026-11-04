@@ -152,6 +152,68 @@ final class AgentRegistryTests: XCTestCase {
     XCTAssertEqual(engine.models(for: onClaude).map(\.selection.modelID), ["sonnet"])
   }
 
+  // MARK: - Models that come and go
+
+  private func model(_ id: String) -> AgentModelOption {
+    AgentModelOption(selection: ModelSelection(providerID: "claude", modelID: id), isDefault: true)
+  }
+
+  func testAChosenModelTheListNoLongerHasGivesWayToTheDefault() async {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    coordinator.defaultModelID = { _ in "retired" }
+    XCTAssertEqual(
+      coordinator.resolvedDefaultModel(for: "claude")?.modelID, "retired",
+      "with no list yet, nothing says it has gone")
+
+    claude.models = [model("sonnet")]
+    await engine.refreshAvailability()
+
+    XCTAssertNil(coordinator.resolvedDefaultModel(for: "claude"), "the CLI would refuse it")
+  }
+
+  func testAListThatDidNotComeLeavesTheLastOneStanding() async {
+    claude.models = [model("sonnet")]
+    await engine.refreshAvailability()
+    claude.models = []
+    await engine.refreshAvailability()
+    XCTAssertEqual(engine.modelsByProvider["claude"]?.map(\.selection.modelID), ["sonnet"])
+  }
+
+  func testAnOldListIsReadAgainAndAFreshOneIsLeftAlone() async throws {
+    claude.models = [model("sonnet")]
+    await engine.refreshAvailability()
+    claude.models = [model("newer")]
+
+    engine.refreshModelsIfStale()
+    try await Task.sleep(for: .seconds(0.05))
+    XCTAssertEqual(engine.modelsByProvider["claude"]?.map(\.selection.modelID), ["sonnet"])
+
+    engine.refreshModelsIfStale(now: Date().addingTimeInterval(ConversationEngine.modelListLifetime + 1))
+    for _ in 0..<200 where engine.modelsByProvider["claude"]?.first?.selection.modelID != "newer" {
+      try await Task.sleep(for: .milliseconds(5))
+    }
+    XCTAssertEqual(engine.modelsByProvider["claude"]?.map(\.selection.modelID), ["newer"])
+  }
+
+  func testAProcessRestartsWhenItsCLIChangesOnceNothingOfItsIsRunning() async {
+    claude.availability = .available(version: "1")
+    await engine.refreshAvailability()
+    await engine.refreshAvailability()
+    XCTAssertEqual(claude.processRestarts, 0, "the same version, however often it is asked")
+
+    claude.availability = .available(version: "2")
+    let chat = conversation(on: .claude)
+    store.setExecutionState(.working, for: chat)
+    await engine.refreshAvailability()
+    XCTAssertEqual(claude.processRestarts, 0, "a turn is running in it")
+
+    store.setExecutionState(.idle, for: chat)
+    await engine.refreshAvailability()
+    await engine.refreshAvailability()
+    XCTAssertEqual(claude.processRestarts, 1, "once, as soon as it is idle")
+    XCTAssertEqual(openCode.processRestarts, 0, "and only that agent's")
+  }
+
   // MARK: - The model scan
 
   func testAnAgentThatNeverListsItsModelsEndsTheScanAtTheDeadline() async {

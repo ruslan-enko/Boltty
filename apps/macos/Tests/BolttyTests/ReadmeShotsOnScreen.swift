@@ -21,6 +21,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
       throw XCTSkip("set TEST_RUNNER_BOLTTY_README_SHOTS=<dir> to take the README's pictures")
     }
     self.directory = directory
+    ChatBackdrop.chosenForTesting = .standard
     let screen = try XCTUnwrap(NSScreen.main)
     let window = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
     // Over the menu bar and the Dock, under the panel (`.popUpMenu`).
@@ -37,6 +38,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
   }
 
   override func tearDown() async throws {
+    ChatBackdrop.chosenForTesting = nil
     backdrop?.orderOut(nil)
     backdrop = nil
     try await super.tearDown()
@@ -84,6 +86,8 @@ final class ReadmeShotsOnScreen: XCTestCase {
     }
     reel.waitUntilExit()
     controller.hide()
+    // A panel still going when its test ends would stand behind the next one's.
+    try await Task.sleep(for: .seconds(1))
   }
 
   func testPhotographTheHistory() async throws {
@@ -106,6 +110,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
     view.historyTabsForTesting.onSelect?(nil)
     reel.waitUntilExit()
     controller.hide()
+    try await Task.sleep(for: .seconds(1))
   }
 
   private func makePanel() -> (AgentPaletteController, FakeBolttyAIConversations) {
@@ -204,13 +209,13 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let note = makeNote(on: screen)
     defer { note.orderOut(nil) }
     // "Trip to Lviv", the document's first line.
-    let heading = CGPoint(x: note.frame.minX + 92, y: note.frame.maxY - 60)
+    let heading = CGPoint(x: note.frame.minX + 92, y: note.frame.maxY - 80)
 
     let area = CGRect(x: note.frame.minX - 140, y: note.frame.minY - 60,
                       width: note.frame.width + 520, height: note.frame.height + 120)
     // The heading, dragged across: what the panel does with a region just drawn,
     // with the microphone's words handed in by hand.
-    let region = CGRect(x: heading.x - 40, y: heading.y - 26, width: 300, height: 56)
+    let region = CGRect(x: heading.x - 70, y: heading.y - 30, width: 300, height: 60)
     let (controller, _) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     view.onScreenRegionReady = nil
@@ -222,10 +227,11 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let overlay = AskBolttyOverlayController()
     let pointer = CGPoint(x: heading.x + 90, y: heading.y - 90)
     overlay.pointer = { pointer }
+    overlay.restHint = { AskBolttyController.restHint(launchKey: "⌥Space") }
     // The real pointer stands where the face follows it.
     let top = NSScreen.screens.first?.frame.maxY ?? pointer.y
     CGWarpMouseCursorPosition(CGPoint(x: pointer.x, y: top - pointer.y))
-    let reel = try record(area, seconds: 15, to: "ask-boltty.mov")
+    let reel = try record(area, seconds: 20, to: "ask-boltty.mov")
     try await Task.sleep(for: .seconds(0.8))
     controller.askAgain(about: region, agent: .claude)
     try await Task.sleep(for: .seconds(1))
@@ -253,6 +259,11 @@ final class ReadmeShotsOnScreen: XCTestCase {
     // Long enough for the sentence to type out in full.
     try await Task.sleep(for: .seconds(5))
     try photograph(area, to: "ask-boltty.png")
+    // Said: the words go, and the face stays on the spot with what can be done.
+    overlay.show(.idle, caption: "", agent: .claude)
+    // Asleep, not in `waitUntilExit`: its run loop would never drain the main
+    // queue, where the face's words are timed.
+    try await Task.sleep(for: .seconds(6.5))
     reel.waitUntilExit()
     overlay.hide()
   }
@@ -278,6 +289,8 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let window = NSWindow(contentRect: frame, styleMask: [.titled, .closable, .miniaturizable],
                           backing: .buffered, defer: false)
     window.title = "Trip to Lviv"
+    // Light whatever this Mac is set to: the answer's dark bubble reads on it.
+    window.appearance = NSAppearance(named: .aqua)
     window.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue - 1)
     let text = NSTextView(frame: CGRect(origin: .zero, size: size))
     text.textContainerInset = CGSize(width: 36, height: 30)

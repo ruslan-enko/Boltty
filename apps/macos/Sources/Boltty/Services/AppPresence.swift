@@ -13,11 +13,7 @@ final class AppPresence {
   private(set) var isTrayOnly = false
 
   init(
-    applyPolicy: @escaping PolicyWriter = {
-      _ = NSApp.setActivationPolicy($0)
-      // A new Dock tile starts from the bundle's icon.
-      if $0 == .regular { AppIconChoice.stored().apply() }
-    },
+    applyPolicy: @escaping PolicyWriter = { _ = NSApp.setActivationPolicy($0) },
     setActive: @escaping Activator = { active in
       if active {
         NSApp.activate(ignoringOtherApps: true)

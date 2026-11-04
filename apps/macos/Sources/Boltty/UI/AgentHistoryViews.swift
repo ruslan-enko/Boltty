@@ -492,11 +492,24 @@ final class AgentHistoryTabStripView: NSView {
 
   override var isFlipped: Bool { true }
 
-  /// `everyone` is whom All wears: the agents that can take a prompt.
+  /// `everyone` is whom All wears: the agents that can take a prompt. With one
+  /// tab there is no All, and a tab that has gone leaves the strip.
   func apply(tabs: [AgentHistory.Tab], activeAgent: AgentId?, everyone: [AgentId] = []) {
     self.activeAgent = activeAgent
     let entries: [(agent: AgentId?, title: String, isEmpty: Bool)] =
-      [(nil, "All", false)] + tabs.map { ($0.agent, $0.title, $0.isEmpty) }
+      (tabs.count == 1 ? [] : [(nil, "All", false)]) + tabs.map { ($0.agent, $0.title, $0.isEmpty) }
+    let wanted = entries.map(\.agent)
+    let kept = tabViews.filter { wanted.contains($0.agent) }
+    if kept.count != tabViews.count {
+      for view in tabViews where !wanted.contains(view.agent) { view.removeFromSuperview() }
+      tabViews = kept
+      // Fewer tabs than the last arrangement: there is nothing to slide from.
+      stopClock()
+      from = nil
+      to = nil
+      shown = nil
+      progress = 1
+    }
     for entry in entries {
       let view: AgentHistoryTabView
       if let existing = tabViews.first(where: { $0.agent == entry.agent }) {
@@ -514,6 +527,16 @@ final class AgentHistoryTabStripView: NSView {
         title: entry.title, isEmpty: entry.isEmpty,
         isActive: entry.agent == activeAgent, reacts: choiceIsAClick
       )
+    }
+    // In the order asked for: a tab that came back was added at the end.
+    let ordered = wanted.compactMap { agent in tabViews.first { $0.agent == agent } }
+    if ordered.map(\.agent) != tabViews.map(\.agent) {
+      tabViews = ordered
+      stopClock()
+      from = nil
+      to = nil
+      shown = nil
+      progress = 1
     }
     needsLayout = true
   }
@@ -554,10 +577,14 @@ final class AgentHistoryTabStripView: NSView {
       dx: AgentPaletteMetrics.historyTabTrackPadding,
       dy: AgentPaletteMetrics.historyTabTrackPadding
     )
-    let widths = Self.segmentWidths(needs: tabViews.map(\.preferredWidth), available: inner.width)
+    // Alone it is a heading, its own size in the middle: stretched from wall to
+    // wall it read as a button as wide as the panel.
+    let widths = tabViews.count == 1
+      ? [min(tabViews[0].preferredWidth, inner.width)]
+      : Self.segmentWidths(needs: tabViews.map(\.preferredWidth), available: inner.width)
     var frames: [NSRect] = []
     var glassFrame: NSRect?
-    var left = inner.minX
+    var left = tabViews.count == 1 ? inner.midX - widths[0] / 2 : inner.minX
     for (view, width) in zip(tabViews, widths) {
       let frame = backingAligned(NSRect(
         x: left, y: inner.minY, width: width, height: inner.height

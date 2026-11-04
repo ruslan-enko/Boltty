@@ -72,9 +72,9 @@ enum VoiceEdgeGlowLayout {
   ) -> CGPoint {
     let level = min(1, max(0, intensity))
     let beam = min(1, max(0, beam))
-    let t = reduceMotion ? 0 : clock
-    let sway = 0.6 * sin(t * AgentPaletteMetrics.voiceGlowSwayRate + 0.6)
-      + 0.4 * sin(t * AgentPaletteMetrics.voiceGlowSwayRate * 0.41 + 2.0)
+    // Not just a stopped clock: the waves' phases would hold it off centre.
+    let sway = reduceMotion ? 0 : 0.6 * sin(clock * AgentPaletteMetrics.voiceGlowSwayRate + 0.6)
+      + 0.4 * sin(clock * AgentPaletteMetrics.voiceGlowSwayRate * 0.41 + 2.0)
     let reach = size.width * (0.10 + 0.22 * level) * (1 - beam)
     let x = size.width / 2 + sway * reach
     let listening = size.height * (-0.40 + 0.62 * level)
@@ -105,6 +105,7 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   private var link: CADisplayLink?
   private let glowRenderer: VoiceGlowRenderer?
   private var lastUniforms = VoiceGlowUniforms()
+  private var orbIsClear = false
   var surfaceCornerRadius: CGFloat = 0 {
     didSet { needsLayout = true }
   }
@@ -366,6 +367,10 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     lastUniforms = VoiceGlowRenderer.uniforms(for: makeFrame(size: size))
     let visible = !isHidden && opacity > 0
     guard visible else { return }
+    // The orb is the glass and has no light: one clear frame takes the rays
+    // away, and the clock goes on only to time the take.
+    if fillsShell, orbIsClear { return }
+    orbIsClear = fillsShell
     draw()
   }
 

@@ -92,8 +92,17 @@ final class BolttyAISettingsModel: ObservableObject {
     var id: AgentId { agent }
   }
 
+  /// The agents Usage shows. Settings › Agents lists every one regardless: it is
+  /// where one is switched on.
+  var listedAgents: [AgentId] {
+    let installed = engine.hasProbed
+      ? Set(engine.registry.installations.filter(\.availability.isInstalled).map(\.provider.rawValue))
+      : nil
+    return AgentHistory.listed(enabled: appModel.settings.enabledProviderIDs, installed: installed)
+  }
+
   var usageRows: [UsageRow] {
-    AgentHistory.tabOrder.compactMap { agent in
+    listedAgents.compactMap { agent in
       let usage = engine.usageByProvider[agent.rawValue]
       let history = engine.historyByProvider[agent.rawValue]
       let isSignedOut = appModel.settings.isProviderEnabled(agent.rawValue)
@@ -296,7 +305,8 @@ final class BolttyAISettingsModel: ObservableObject {
   var builtInKeySections: [BuiltInKeySection] {
     let settings = appModel.settings
     return BuiltInKeyCatalog.sections(
-      launchChord: settings.bolttyAIHotkeyEnabled ? settings.bolttyAIHotkey.displayName : nil
+      launchChord: settings.bolttyAIHotkeyEnabled ? settings.bolttyAIHotkey.displayName : nil,
+      agents: listedAgents.count
     )
   }
 
@@ -579,6 +589,18 @@ struct AgentSettingsRow: Identifiable, Equatable {
   let offersModels: Bool
   let models: [AgentModelOption]
   let selectedModelID: String?
+  /// The choice as far as the menu can show it: one the agent no longer offers
+  /// is its default, which is what a new chat gets.
+  var shownModelID: String {
+    guard let selectedModelID, models.contains(where: { $0.selection.modelID == selectedModelID })
+    else { return "" }
+    return selectedModelID
+  }
+  var modelNoLongerOffered: String? {
+    guard let selectedModelID, !selectedModelID.isEmpty, !models.isEmpty, shownModelID.isEmpty
+    else { return nil }
+    return selectedModelID
+  }
   let effortOptions: [AgentEffortOption]
   let selectedEffort: String?
   var offersAutoApproval = false

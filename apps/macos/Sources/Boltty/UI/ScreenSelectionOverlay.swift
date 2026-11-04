@@ -292,6 +292,10 @@ final class ScreenSelectionPointerHint: NSView {
 
   var isShowing: Bool { !isHidden }
 
+  func setText(_ text: String) {
+    if label.stringValue != text { label.stringValue = text }
+  }
+
   /// Stands the tag down and right of `pointer`, flipped to the other side
   /// of it where `room` (the view's bounds, unflipped) runs out.
   func place(at pointer: NSPoint, in room: NSRect) {

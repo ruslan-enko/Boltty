@@ -64,21 +64,29 @@ struct SettingsRefreshButton: View {
   let identifier: String
   let action: () -> Void
 
-  /// Turning is a rotation of its own: `symbolEffect` works only on a symbol.
-  private var turns: Bool { isBusy && !MotionPreferences.reduceMotion }
+  /// The page also refreshes by itself as it comes forward, and that is no
+  /// reason for the toolbar to move: only a press gets the spinner.
+  @State private var wasPressed = false
 
   var body: some View {
-    Button(action: action) {
+    Button {
+      wasPressed = true
+      action()
+    } label: {
       Label {
         Text(isBusy ? busyTitle : title)
       } icon: {
-        BolttyIconView(icon: .reload, size: 16)
-          .rotationEffect(.degrees(turns ? 360 : 0))
-          .animation(
-            turns ? .linear(duration: 0.9).repeatForever(autoreverses: false) : nil,
-            value: turns
-          )
+        // The system's spinner in place of the arrow. An arrow turned by hand
+        // could stop anywhere, and at rest it then pointed the wrong way.
+        if isBusy, wasPressed {
+          ProgressView().controlSize(.small)
+        } else {
+          BolttyIconView(icon: .reload, size: 16)
+        }
       }
+    }
+    .onChange(of: isBusy) { _, busy in
+      if !busy { wasPressed = false }
     }
     .help(isBusy ? busyHelp : help)
     .accessibilityIdentifier(identifier)
