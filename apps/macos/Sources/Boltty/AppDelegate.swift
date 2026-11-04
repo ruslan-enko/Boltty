@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     guard !Self.isHostingUnitTests else { return }
 
+    AppIconChoice.stored().apply()
     setupModel()
     LaunchTrace.mark("setupModel")
 

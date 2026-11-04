@@ -2,6 +2,23 @@
 
 What changed from release to release. The newest is at the top.
 
+## Unreleased
+
+**Settings**
+- Choose Boltty's icon in General: Default, Citrus, Pastel or Sunset. It shows
+  in the Dock and in Boltty's own windows.
+
+**Ask Boltty**
+- ⇧Tab changes the agent while you speak about a region; asking again stays
+  with the same agent.
+- Opening the panel no longer erases what Ask Boltty drew.
+- Files in the prompt wait while you ask about a region and come back after it,
+  and the microphone opens as usual.
+- Dragging across the screen over an open chat puts that area in its composer.
+- Escape while the region is being cut calls the question off.
+- A chat waiting on you is no longer forgotten, and one called off or failed no
+  longer stays behind.
+
 ## 0.3.0
 
 **Install**

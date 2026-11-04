@@ -162,7 +162,7 @@ final class AskBolttyController {
   /// to it; one still answering stays, without Escape.
   func setPanelVisible(_ visible: Bool) {
     panelIsUp = visible
-    if visible, session.phase == .idle { overlay.hide() }
+    if visible, session.phase == .idle { overlay.giveWay() }
     syncEscapeKey()
   }
 

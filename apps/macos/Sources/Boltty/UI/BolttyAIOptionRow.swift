@@ -39,7 +39,6 @@ final class BolttyAIOptionRow: NSView {
   }
   var textScaleForTesting: CGFloat { layer?.transform.m11 ?? 1 }
   var wordsAreSelectableForTesting: Bool { text.isSelectable }
-  var wordsForTesting: NSAttributedString { text.attributedStringValue }
   var markUsesSystemControlForTesting: Bool { mark.usesSystemControl }
 
   override func updateTrackingAreas() {
@@ -81,7 +80,6 @@ final class BolttyAIOptionRow: NSView {
   private let mark: OptionMarkView
   private let text = NSTextField(wrappingLabelWithString: "")
   private let numberLabel = NSTextField(labelWithString: "")
-  var numberForTesting: String? { numberLabel.isHidden ? nil : numberLabel.stringValue }
 
   init(option: AgentQuestion.Option, multiple: Bool, number: Int? = nil) {
     self.label = option.label
@@ -308,7 +306,6 @@ final class BolttyAICommandWell: NSView {
   var stringForTesting: String {
     ([tool].compactMap { $0 } + [text.stringValue]).joined(separator: "\n")
   }
-  var isTruncatedForTesting: Bool { !showsEverything }
   var moreTitleForTesting: String? { more.isHidden ? nil : more.stringValue }
   func toggleForTesting() { toggle() }
   var showsEverything: Bool { more.isHidden || isExpanded }

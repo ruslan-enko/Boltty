@@ -1,8 +1,7 @@
 import AppKit
 
-/// What an Ask Boltty answer draws, in the answering agent's gradient and
-/// soft as its traced line is: each shape strokes
-/// itself on — a circle round, an arrow to its head — over a glow of its own,
+/// What an Ask Boltty answer draws, in the answering agent's gradient: each
+/// shape strokes itself on — a circle round, an arrow to its head — over a glow of its own,
 /// and its words fade in once it is drawn. It stays until the next question.
 ///
 /// One layer holds one surface's shapes: the screen's, or the board's. Its

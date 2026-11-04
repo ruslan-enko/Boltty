@@ -400,8 +400,6 @@ final class BolttyAISessionRowView: NSView {
     Double(UInt(bitPattern: item.id.hashValue) % 1000) / 1000
   }
 
-  var shimmerIsSweepingForTesting: Bool { shimmerBand.animation(forKey: "sweep") != nil }
-
   /// Whether the row leads with its agent's face: in Latest, and nowhere else.
   ///
   /// A still picture (`MascotSnapshotCache`), not a live face: the list holds

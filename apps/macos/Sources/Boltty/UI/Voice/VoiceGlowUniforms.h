@@ -65,17 +65,6 @@ typedef struct {
   /// the panel when a take collapses the shell, not read off its proportions:
   /// that capsule is as long as the prompt it came from.
   float orb;
-  /// Which of the two views this frame is for: 0 = the light *under* the
-  /// glass, which the glass frosts and bends; 1 = the orb *on* the glass,
-  /// opaque to the shell's edge, which the system glass would have greyed and
-  /// blurred.
-  float layer;
-  /// 0…1, the voice as it is *now*: the same reading as `intensity`, through a
-  /// quick envelope instead of a slow one, so the orb's pools can swell on a
-  /// syllable and settle in the gap after it. `intensity` stays slow — it lights
-  /// the picture, and a light that jumped with every syllable would flicker.
-  float voice;
-
   /// Where the rays start, in points from the shell's bottom-left corner.
   /// Placed on the CPU, beside everything else that decides where things are,
   /// so a screenshot and an assertion are looking at the same numbers.

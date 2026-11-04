@@ -29,9 +29,7 @@ final class VoiceGlowRenderer {
     /// How far the rays have travelled: the integral of a speed that follows
     /// the voice, kept by the view (`VoiceEdgeGlowLayout.flowSpeed`).
     var flow: CGFloat = 0
-    /// The voice on the quick envelope: how far the orb's pools swell.
-    var voice: CGFloat = 0
-    /// 0 = the rays, 1 = the orb's gradient filling the shell
+    /// 0 = the rays, 1 = the shell is the orb and no light is drawn
     /// (`VoiceEdgeGlowView.fillsShell`).
     var orb: CGFloat = 0
     var opacity: CGFloat
@@ -123,14 +121,12 @@ final class VoiceGlowRenderer {
     u.appearance = frame.isLightAppearance ? 1 : 0
     u.clock = frame.reduceMotion ? 0 : Float(frame.clock)
     u.flow = frame.reduceMotion ? 0 : Float(frame.flow)
-    u.voice = Float(min(1, max(0, frame.voice)))
 
     let origin = VoiceEdgeGlowLayout.rayOrigin(
       size: frame.size,
       intensity: intensity,
       beam: beam,
       clock: frame.clock,
-      orb: frame.orb,
       reduceMotion: frame.reduceMotion
     )
     u.origin = simd_float2(Float(origin.x), Float(origin.y))

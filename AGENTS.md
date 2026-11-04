@@ -646,7 +646,9 @@ done, the bubble draws back into the face (`rest`). A bare version, face and
 words on the dimmed screen with no glass, was tried and refused: the face hung
 in nothing.
 
-Over an open chat a dragged region is still a chip in its composer. Screen
+Files in the prompt wait out the question: taken out as the region begins, so the
+microphone opens, and back in the prompt afterwards. Over an open chat a dragged
+region is still a chip in its composer; a click outside still hides. Screen
 Recording is asked the first time; refusals are said in the panel.
 
 ### The folder chip
@@ -726,7 +728,8 @@ heard.
   (`AskBolttyController.questionToContinue` → `AgentPaletteController.askAgain`):
   no panel to pass through, the same region, the same agent, listening; the
   screen is taken afresh. A question within ten minutes, by either way, continues
-  the same chat (`choosePlace`).
+  the same chat (`choosePlace`); one that cuts off a first answer still running
+  starts a new chat, since that turn has not stopped yet.
   A click or Escape takes it sooner; the panel opening does too. What it drew
   outlasts it, until a click or Escape.
 - "Thinking…" beside the face wears the shimmer a working
@@ -798,6 +801,16 @@ heard.
   `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The
   sidebar highlight is its own `@State`; the window is sized after its view
   controller is set; the sidebar width modifier is last on its column.
+- **App icon** (`AppIconChoice`, Settings › General, `boltty.appIcon`): Default,
+  Citrus, Pastel, Sunset, on a strip of the icons (`AppIconPicker`). macOS has no
+  alternate icons, so it is `applicationIconImage` on the running app, set again
+  whenever the Dock tile comes back (`AppPresence`): the Dock and Boltty's own
+  windows change; Finder, a Dock tile of a Boltty not running, and banners keep
+  the bundle's. Never `NSWorkspace.setIcon` on the bundle: it breaks the
+  signature. An alternate `.icon` compiled into `Assets.car` cannot be loaded by
+  name (and takes it from 3.8 to 13.7 MB), so they are 512 px PNGs in
+  `Resources/AppIcons`, rendered by `scripts/render-app-icons.sh`; `AppIcon
+  C/P/R.icon` are their sources and are not in the target.
 - **Settings › Agents** is a list, one row per agent: face, name, a "Preferred"
   tag, one line of what a new chat would use (or why it can't), its switch.
   A row opens the agent's own page (`SettingsLocation`, in the back/forward
@@ -934,8 +947,7 @@ heard.
   `flow` so speed changes never jump. Nothing in it has an edge. Reduce
   Transparency puts it over the shell. Never `presentsWithTransaction` (it
   starved the run loop).
-- The listening orb is the shell's glass; the second view on top of the
-  glass draws nothing.
+- The listening orb is the shell's glass and draws no light of its own.
 - **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
   its transcript, chosen per agent in Settings › Agents › Chat
   (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
@@ -990,7 +1002,7 @@ heard.
   shell's corners (`PaletteCornerScrollIndicator`).
 - **Type**: five sizes in `AgentPaletteMetrics` — 18, 15 (`typeSecondary` and
   `typeChat`), 13, 11; the first screen's 20 is the exception (key hints
-  take the typed size). Whole points only, SF Pro Rounded everywhere, no `.kern`.
+  take the typed size), and so is the notch badge's digit at 9. Whole points only, SF Pro Rounded everywhere, no `.kern`.
 - **Colour**: `PaletteInk` — system label colours (dynamic) and fills written as
   values (they end up as `CGColor`). Pure white only for primary-action fills.
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,

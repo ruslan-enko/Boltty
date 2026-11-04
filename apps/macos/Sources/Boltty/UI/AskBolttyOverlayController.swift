@@ -141,21 +141,11 @@ final class AskBolttyOverlayController {
   private let shimmerWords = CALayer()
   private let shimmerBand = CAGradientLayer()
   private var shimmerCut: String?
-  var isShimmeringForTesting: Bool { !shimmer.isHidden && shimmerBand.animation(forKey: "sweep") != nil }
 
   var isVisible: Bool { panel?.isVisible == true }
   /// The face itself is here: not only what it drew, and not on its way out.
   var isFaceUp: Bool { isVisible && !settled && panel?.alphaValue == 1 }
   var textForTesting: String { typesOut ? answerWords.text : label.stringValue }
-  var facePositionForTesting: CGPoint? { position }
-  var bubbleSizeForTesting: CGSize { bubbleSize }
-  var faceFrameForTesting: CGRect? { face?.frame }
-  var isPointingForTesting: Bool {
-    switch mode {
-    case .following, .arriving: return false
-    case .flying, .parked: return true
-    }
-  }
 
   // MARK: - What Ask Boltty says
 
@@ -228,10 +218,6 @@ final class AskBolttyOverlayController {
   }
 
   // MARK: - What the answer draws
-
-  var drawnCountForTesting: Int { drawnCount }
-  var isSettledForTesting: Bool { settled }
-  var boardFrameForTesting: CGRect? { board?.isHidden == false ? board?.frame : nil }
 
   private var hasDrawings: Bool { drawnCount > 0 }
 
@@ -404,6 +390,14 @@ final class AskBolttyOverlayController {
   func release() {
     if case .arriving = mode {} else { mode = .following }
     hideMarker()
+  }
+
+  /// The panel came up: the face gives way to it, and what it drew stays until
+  /// a click or Escape.
+  func giveWay() {
+    hideWork?.cancel()
+    hideWork = nil
+    if hasDrawings { settle() } else { hide() }
   }
 
   func hide() {

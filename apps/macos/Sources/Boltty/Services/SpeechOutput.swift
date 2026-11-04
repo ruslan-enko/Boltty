@@ -60,9 +60,6 @@ final class SpeechOutput: ObservableObject {
     local.warm()
   }
 
-  /// Why the voice did not speak last time, if it did not.
-  var localFailure: String? { local.failure }
-
   /// Whether Boltty says text in `language` (a code or a tag).
   static func canSpeak(_ language: String?) -> Bool {
     guard let language else { return false }

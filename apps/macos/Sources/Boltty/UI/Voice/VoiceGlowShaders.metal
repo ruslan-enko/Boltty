@@ -3,7 +3,7 @@
 //  The Boltty AI voice glow: rays of the mascot's colours fanning out of one
 //  point, drawn **under the shell's glass** so the glass bends and frosts them
 //  as they move. While listening the shell is the orb, and the orb is the
-//  glass itself: nothing is drawn there (see the orb's section below).
+//  glass itself: nothing is drawn there.
 //
 //  A burst of coloured rays that keep sliding through one another: the
 //  colour of a ray is a value noise of
@@ -11,14 +11,14 @@
 //  also drifts along the radius, so each wedge streams outward from the origin
 //  as if the picture were being flown through. Three octaves turn at different
 //  rates in different directions, which is what makes the rays pass through one
-//  another rather than rotate as a disc. The orb has its own section below.
+//  another rather than rotate as a disc.
 //
 //  What the voice does is **move it**: the CPU integrates a speed that follows
 //  the level into `flow`, so a loud syllable quickens the rays and the picture
 //  does not lurch (see `VoiceGlowUniforms.flow`).
 //
 //  Under the glass this is a picture the glass looks through, drawn
-//  premultiplied; the view on it draws nothing now.
+//  premultiplied.
 
 #include <metal_stdlib>
 #include "VoiceGlowUniforms.h"
@@ -154,9 +154,7 @@ static inline float3 rayColour(
   // colour. So at rest the shell is lit by a few stops at a time and the
   // window sweeps the whole palette over seconds; the voice widens it, so a
   // loud word shows the whole palette at once.
-  // Near-whites are carried to the body colour only where words may stand on
-  // the light — not in the orb, whose band is meant to burn white.
-  return paletteLight(u, n, level, 0.8 * (1.0 - u.orb));
+  return paletteLight(u, n, level, 0.8);
 }
 
 /// A noise value 0…1 turned into the palette's light: the wandering window on
@@ -183,15 +181,6 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
   return mix(colour, u.colors[0].rgb * 0.92, whiteness * carry);
 }
 
-// MARK: - The orb
-//
-// The orb draws nothing: listening, the shell is the panel's own glass under
-// its black ramp, with the face in it and the words arriving under the face
-// in its colours (`ListeningWordsView`). A black orb on the glass, lit
-// gradients and an aurora were each tried and refused. The rays under the
-// glass fade out as the shell becomes the orb (`orb`), and the view on the
-// glass (`layer` 1) stays clear.
-
 fragment float4 voiceGlowFragment(
   Varyings in [[stage_in]],
   constant VoiceGlowUniforms &u [[buffer(VoiceGlowBufferIndexUniforms)]]
@@ -200,23 +189,21 @@ fragment float4 voiceGlowFragment(
   const float2 halfSize = u.size * 0.5;
   const float distance = shellDistance(p - halfSize, halfSize, u.cornerRadius, u.cornerIsContinuous);
   const float aa = max(u.pixelSize, 0.25);
-  const bool fills = u.orb > 0.0;
   const float level = saturate(u.intensity);
   const float grain = ditherNoise(in.position.xy) * (1.0 / 255.0);
 
-  if (u.layer > 0.5) {
-    // On the glass: nothing — the orb is the glass itself.
+  // The orb is the panel's own glass under its black ramp: no light of its own.
+  // A black orb on the glass, lit gradients and an aurora were each refused.
+  if (u.orb > 0.0) {
     return float4(0.0);
   }
 
   // Under the glass. Clipped a point inside its edge, so no fringe of colour
   // shows outside the rim the glass draws over it.
   const float clip = 1.0 - smoothstep(-aa, 0.0, distance + 1.0);
-  if (clip <= 0.0 || u.opacity <= 0.0 || (!fills && p.y >= u.reach * 1.45)) {
+  if (clip <= 0.0 || u.opacity <= 0.0 || p.y >= u.reach * 1.45) {
     return float4(0.0);
   }
-
-  // The rays across the shell, or the orb filling it.
 
   // Polar, around the origin, in true geometry: the capsule is wide and short,
   // and an angle measured in a stretched space would bend every ray.
@@ -243,9 +230,6 @@ fragment float4 voiceGlowFragment(
   const float foot = 1.0 - smoothstep(u.reach, u.reach * 1.45, p.y);
 
   float4 picture = float4(colour, 1.0) * foot;
-  if (fills) {
-    picture *= 1.0 - u.orb;
-  }
 
   // Premultiplied: this is a picture the glass looks through. Not quite opaque
   // — the glass's own depth shows at the very edge — and fading with the phase.

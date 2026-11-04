@@ -46,6 +46,14 @@ struct GeneralSettingsPage: View {
       }
 
       Section {
+        AppIconPicker()
+      } header: {
+        SettingsSectionHeader("App Icon")
+      } footer: {
+        SettingsNote("Shown in the Dock and in Boltty's own windows. Finder and banners keep the standard icon.")
+      }
+
+      Section {
         Toggle(isOn: Binding(
           get: { model.attachesFinderSelection },
           set: { model.attachesFinderSelection = $0 }

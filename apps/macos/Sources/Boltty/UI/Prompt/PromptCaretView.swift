@@ -101,9 +101,6 @@ final class PromptCaretView: NSView {
     blinkLayer.add(blink, forKey: "blink")
   }
 
-  var isBlinkingForTesting: Bool { blinkLayer.animation(forKey: "blink") != nil }
-  var barFrameForTesting: CGRect { convert(barLayer.frame, to: superview) }
-
   // MARK: The light
 
   nonisolated static let haloBlurRatio: CGFloat = 3

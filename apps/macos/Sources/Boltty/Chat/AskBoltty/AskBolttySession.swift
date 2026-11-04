@@ -140,6 +140,8 @@ final class AskBolttySession: ObservableObject {
       interruptAnswer()
       stopTurn()
       phase = .idle
+      // Called off with no answer, it still keeps no history past the window.
+      scheduleExpiry()
     case .idle, .failed:
       return
     }
@@ -397,8 +399,8 @@ final class AskBolttySession: ObservableObject {
   private func expire() {
     expiry = nil
     switch phase {
-    case .thinking, .speaking: return
-    case .idle, .needsYou, .failed: break
+    case .thinking, .speaking, .needsYou: return
+    case .idle, .failed: break
     }
     coordinator.forgetAskBolttyChats()
     conversationID = nil
@@ -424,6 +426,7 @@ final class AskBolttySession: ObservableObject {
     discardIfNew()
     storeWatch = nil
     phase = .failed(message)
+    scheduleExpiry()
   }
 
   private func name(of conversation: Conversation) -> String {

@@ -24,7 +24,7 @@ struct AppSettings: Equatable, Sendable {
   var speechLocalVoice: String
   /// When a finished turn's reply is read aloud (`AnswerReading`); empty is never.
   var speechReadAnswers: String
-  /// Ask Boltty: hold the chord, ask about the screen out loud, hear the answer.
+  /// Ask Boltty: select an area, ask about it out loud, get the answer beside the face.
   /// `nil` is automatic: Claude Code where it is ready (the fastest measured).
   var askBolttyProviderID: String?
   var askBolttyModelID: String?

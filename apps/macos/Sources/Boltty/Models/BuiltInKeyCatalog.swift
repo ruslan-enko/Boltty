@@ -114,7 +114,7 @@ enum BuiltInKeyCatalog {
           detail: "While the face is still beside the pointer"
         ),
         BuiltInKey(
-          id: "askSend", title: "Send the question", keys: "Return",
+          id: "askSend", title: "Send the question", keys: "↩",
           detail: "Or stop speaking"
         ),
         BuiltInKey(

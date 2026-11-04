@@ -60,7 +60,6 @@ final class PromptTextView: NSTextView {
   var maximumViewportHeight: CGFloat?
 
   private lazy var chipPreview = PromptChipPreview(host: self)
-  var chipPreviewForTesting: PromptChipPreview { chipPreview }
 
   func setExpandedStyle(_ expanded: Bool) {
     guard usesExpandedStyle != expanded else { return }

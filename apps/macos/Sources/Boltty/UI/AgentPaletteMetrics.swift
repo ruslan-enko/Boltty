@@ -198,13 +198,6 @@ enum AgentPaletteMetrics {
   /// dictating, or after it — where the recording cluster needs the room.
   /// At rest the glyphs' hit targets touch (`restingControlsSpacing`).
   static let chatComposerMicSpacing: CGFloat = fromMock(10)
-  /// The stop square's inset from the composer's right rim, while a turn runs.
-  static let chatComposerTrailingInset: CGFloat = fromMock(6)
-  /// How big a composer glyph draws. See `ComposerControlGroup.glyph`.
-  static let chatComposerGlyphSize: CGFloat = ComposerControlGroup.glyph
-  /// The stop square in Send's slot: the outlined SF Symbol `stop`, at the
-  /// same size as the outlines beside it.
-  static let chatComposerStopGlyphPointSize: CGFloat = restingAttachGlyphPointSize
 
 
   /// The scale every Boltty AI mock is exported at.
@@ -814,11 +807,6 @@ enum AgentPaletteMetrics {
   static let voiceGlowBreatheDuration: CGFloat = 3.4
   static let voiceGlowAttack: CGFloat = 0.325
   static let voiceGlowRelease: CGFloat = 0.86
-  /// The orb's wave follows the voice on a quicker envelope than the light
-  /// does: it rises on a syllable and falls in the gap after it, which is what
-  /// makes it read as the voice and not as a lamp turned up.
-  static let voiceGlowWaveAttack: CGFloat = 0.05
-  static let voiceGlowWaveRelease: CGFloat = 0.22
 
   /// How fast the rays travel, in the shader's units a second: silence, what a
   /// full voice adds to it, and processing, which holds one pace.
@@ -1358,7 +1346,6 @@ enum AgentPaletteMetrics {
   static let answerHeading2FontSize: CGFloat = typePrimary
   static let answerHeading2LineHeight: CGFloat = 24.5
   static let answerHeading3FontSize: CGFloat = 16
-  static let answerHeading3LineHeight: CGFloat = 24.5
   /// Under a heading: a quarter of the text under `#`, an eighth under `##`
   /// and `###`, none under the rest — a heading belongs to what it heads. Over
   /// it, the paragraph's own air, as Codex's margins collapse to.
@@ -1776,18 +1763,6 @@ enum AgentPaletteMetrics {
   static let previewMinHeight: CGFloat =
     previewHeaderHeight + previewContentVerticalPadding + previewBodyLineHeight
 
-  static func previewBodyLineCount(_ body: String, font: NSFont) -> Int {
-    guard !body.isEmpty else { return 1 }
-    let width = promptSize.width - previewContentHorizontalPadding * 2
-    let bounds = (body as NSString).boundingRect(
-      with: CGSize(width: width, height: .greatestFiniteMagnitude),
-      options: [.usesLineFragmentOrigin, .usesFontLeading],
-      attributes: [.font: font]
-    )
-    let naturalLineHeight = max(ceil(font.ascender - font.descender + font.leading), 1)
-    return max(1, Int(ceil(bounds.height / naturalLineHeight)))
-  }
-
   static func previewCardHeight(bodyLineCount: Int) -> CGFloat {
     previewHeaderHeight + previewContentVerticalPadding
       + previewBodyLineHeight * CGFloat(max(bodyLineCount, 1))
@@ -1815,8 +1790,6 @@ enum AgentPaletteMetrics {
   /// fourth thing to read before answering three.
   static let previewFooterFontSize: CGFloat = typeFootnote
   static let previewFooterTextColor = PaletteInk.secondary
-  /// The room the footer takes, gap included, when it is drawn.
-  static let previewFooterHeight: CGFloat = 26
 
   /// The failure card inside the transcript.
   ///
@@ -1918,8 +1891,6 @@ enum AgentPaletteMetrics {
   static let latestComposerSpacing: CGFloat = fromMock(6)
   static let directoryChipFontSize: CGFloat = typeSecondary
   static let directoryChipGlyphPointSize: CGFloat = 10
-  /// Real Finder folder art, not an SF outline — needs its own box.
-  static let directoryChipIconSize: CGFloat = 20
   static let directoryChipTextColor = PaletteInk.primary
   static let directoryChipWarningTint = NSColor.systemOrange
 
@@ -1971,21 +1942,6 @@ enum AgentPaletteMetrics {
     }
     let visible = min(itemCount, resultsMaxVisibleRows)
     return resultsVerticalInset * 2 + CGFloat(visible) * resultsRowHeight
-  }
-
-  /// The scrollable part of ScreenAgents: headings and rows, capped.
-  ///
-  /// The cap is the same six rows the flat list has always had, so opening ↓
-  /// does not suddenly produce a taller panel — headings spend that height
-  /// rather than adding to it, which is the honest trade: a day's heading is
-  /// worth about half a row, and you can see it is there.
-  static func historyListHeight(headerCount: Int, rowCount: Int) -> CGFloat {
-    guard headerCount > 0 else { return resultsListHeight(itemCount: rowCount) }
-    let content = resultsVerticalInset * 2
-      + CGFloat(headerCount) * historyHeaderHeight
-      + CGFloat(headerCount - 1) * historyHeaderSeparation
-      + CGFloat(rowCount) * resultsRowHeight
-    return min(content, resultsListHeight(itemCount: resultsMaxVisibleRows))
   }
 
   /// Height of the results card when its content is not a row list

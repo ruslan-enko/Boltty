@@ -62,14 +62,12 @@ enum VoiceEdgeGlowLayout {
   /// Below the bottom edge in silence — the shell is lit from under, as it
   /// always was — climbing into it as the voice rises, so a loud word puts the
   /// burst's hot centre in the shell. It sways across the width, further the
-  /// louder it is. Processing gathers it to the middle and holds still, and so
-  /// does the orb: its rays come from its centre.
+  /// louder it is. Processing gathers it to the middle and holds still.
   static func rayOrigin(
     size: CGSize,
     intensity: CGFloat,
     beam: CGFloat,
     clock: CGFloat,
-    orb: CGFloat = 0,
     reduceMotion: Bool
   ) -> CGPoint {
     let level = min(1, max(0, intensity))
@@ -81,12 +79,7 @@ enum VoiceEdgeGlowLayout {
     let x = size.width / 2 + sway * reach
     let listening = size.height * (-0.40 + 0.62 * level)
     let processing = size.height * 0.5
-    let origin = CGPoint(x: x, y: listening + (processing - listening) * beam)
-    let orb = min(1, max(0, orb))
-    return CGPoint(
-      x: origin.x + (size.width / 2 - origin.x) * orb,
-      y: origin.y + (size.height / 2 - origin.y) * orb
-    )
+    return CGPoint(x: x, y: listening + (processing - listening) * beam)
   }
 
   /// The mascot's stops, lifted so a dark one — Lilac's — still reads once
@@ -104,8 +97,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   private var clock: CGFloat = 0
   /// How far the rays have travelled; see `VoiceEdgeGlowLayout.flowSpeed`.
   private var flow: CGFloat = 0
-  /// The voice on a quick envelope, for the orb's wave (`voiceGlowWave*`).
-  private var voice: CGFloat = 0
   private var beamMorph: CGFloat = 0
   private var opacity: CGFloat = 0
   private var targetOpacity: CGFloat = 0
@@ -114,21 +105,15 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   private var link: CADisplayLink?
   private let glowRenderer: VoiceGlowRenderer?
   private var lastUniforms = VoiceGlowUniforms()
-  /// The orb's surface. A view of its own, because it stands **on** the
-  /// glass while this one stands under it; whoever lays the glass out puts it
-  /// there, over the glass at this view's frame. It draws from this view's
-  /// clock and numbers, so the two never disagree.
-  let sheen = VoiceGlowSheenView()
-
   var surfaceCornerRadius: CGFloat = 0 {
     didSet { needsLayout = true }
   }
   var surfaceCornerCurve: CALayerCornerCurve = .continuous {
     didSet { needsLayout = true }
   }
-  /// Whether the orb's gradient fills the shell (the listening orb, and the
-  /// capsule it grows into round the words) rather than the rays lighting it
-  /// from its foot. The panel decides as a take starts — whether it collapses
+  /// Whether the shell is the listening orb (or the capsule it grows into round
+  /// the words), which is its own glass and draws no light, rather than the rays
+  /// lighting it from its foot. The panel decides as a take starts — whether it collapses
   /// the shell — and leaves it while the take fades, so the light does not
   /// change its kind on its way out.
   var fillsShell = false {
@@ -141,8 +126,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   var smoothedLevelForTesting: CGFloat { envelope.level }
   var displayedLevelForTesting: CGFloat { displayedIntensity }
   var paletteIDForTesting: String { palette.id }
-  var flowForTesting: CGFloat { flow }
-  var voiceForTesting: CGFloat { voice }
   var uniformsForTesting: VoiceGlowUniforms { lastUniforms }
 
   var rayColorsForTesting: [NSColor] {
@@ -243,7 +226,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
       if !previous.isVisible {
         clock = 0
         flow = 0
-        voice = 0
         beamMorph = 0
       }
       isHidden = false
@@ -335,11 +317,9 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     targetOpacity = 0
     clock = 0
     flow = 0
-    voice = 0
     beamMorph = 0
     isHidden = true
     lastUniforms = VoiceGlowUniforms()
-    sheen.show(nil)
   }
 
   @objc private func tick() {
@@ -363,13 +343,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     )
 
     flow += dt * VoiceEdgeGlowLayout.flowSpeed(level: displayedIntensity, processing: beamMorph)
-    voice = VoiceEdgeGlowLayout.approach(
-      voice,
-      toward: phase == .listening ? envelope.gated(targetLevel) : 0,
-      dt: dt,
-      attack: AgentPaletteMetrics.voiceGlowWaveAttack,
-      release: AgentPaletteMetrics.voiceGlowWaveRelease
-    )
 
     if opacity != targetOpacity {
       let step = fadeRate * dt
@@ -392,7 +365,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     guard size.width > 1, size.height > 1 else { return }
     lastUniforms = VoiceGlowRenderer.uniforms(for: makeFrame(size: size))
     let visible = !isHidden && opacity > 0
-    sheen.show(visible ? lastUniforms : nil)
     guard visible else { return }
     draw()
   }
@@ -420,7 +392,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
       beam: beamMorph,
       clock: clock,
       flow: flow,
-      voice: voice,
       orb: fillsShell ? 1 : 0,
       opacity: shownOpacity,
       isLightAppearance: isLightAppearance,
@@ -430,8 +401,7 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   }
 
   /// The fade on a curve: the clock steps `opacity` evenly, which read as a
-  /// light switched off. In, it eases both ways; out, it drops fast, so the
-  /// opaque orb is mostly gone before the shell has grown far under it.
+  /// light switched off. In, it eases both ways; out, it drops fast.
   private var shownOpacity: CGFloat {
     let o = min(1, max(0, opacity))
     return targetOpacity > o ? o * o * (3 - 2 * o) : o * o
@@ -439,66 +409,5 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
 
   private var isLightAppearance: Bool {
     effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .aqua
-  }
-}
-
-/// The orb — the gradient and its lit rim — on top of the panel's glass,
-/// opaque to the shell's edge, where the glass cannot blur it.
-///
-/// The panel's glass, `.regular` or `.clear` alike under the Tinted
-/// setting, frosts whatever is under it into a soft wash, so a ball drawn
-/// under the glass comes out a coloured blur and, laid over it part
-/// transparent, with a soft halo at its rim. The light under the glass
-/// (`VoiceEdgeGlowView`) draws
-/// the same picture for the moment the shell is still turning into the orb.
-/// Nothing on it forces an offscreen pass, the rule for anything near the
-/// glass: no filter, no mask, no `masksToBounds`.
-final class VoiceGlowSheenView: MTKView, MTKViewDelegate {
-  private let sheenRenderer = VoiceGlowRenderer(pixelFormat: .bgra8Unorm)
-  private var uniforms = VoiceGlowUniforms()
-
-  init() {
-    super.init(frame: .zero, device: sheenRenderer?.metalDevice)
-    isPaused = true
-    enableSetNeedsDisplay = false
-    delegate = self
-    colorPixelFormat = .bgra8Unorm
-    framebufferOnly = true
-    clearColor = MTLClearColorMake(0, 0, 0, 0)
-    wantsLayer = true
-    layer?.isOpaque = false
-    layer?.masksToBounds = false
-    isHidden = true
-    setAccessibilityElement(false)
-  }
-
-  @available(*, unavailable)
-  required init(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-
-  override var allowsVibrancy: Bool { false }
-  override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-  var isShowingForTesting: Bool { !isHidden }
-
-  /// Draws the glow's frame as its surface, or hides when there is none — no
-  /// glow, or a shell that is not round.
-  func show(_ glow: VoiceGlowUniforms?) {
-    guard var next = glow, next.orb > 0.001, next.opacity > 0 else {
-      isHidden = true
-      return
-    }
-    next.layer = 1
-    uniforms = next
-    isHidden = false
-    guard bounds.width > 1, bounds.height > 1, window != nil else { return }
-    draw()
-  }
-
-  func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
-
-  func draw(in view: MTKView) {
-    sheenRenderer?.render(uniforms, in: view)
   }
 }

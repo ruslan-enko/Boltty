@@ -29,7 +29,6 @@ final class PaletteFileRowView: NSView {
 
   var isDimmedForTesting: Bool { alphaValue < 1 }
   var showsThumbnailForTesting: Bool { thumbnail.layer?.contents != nil }
-  var showsActionsForTesting: Bool { !actions.isHidden }
   var thumbnailOpacityForTesting: Float { thumbnail.layer?.opacity ?? 0 }
   var displayedNameForTesting: String { nameLabel.stringValue }
   var displayedSizeForTesting: String { sizeLabel.stringValue }

@@ -62,7 +62,7 @@ next to the cursor, and can point at things or draw on the screen while it
 explains.
 
 <p align="center">
-  <img src=".github/readme/ask-boltty.webp" width="100%" alt="Ask Boltty: the question traced with the pointer, the answer typed out beside it">
+  <img src=".github/readme/ask-boltty.webp" width="100%" alt="Ask Boltty: an area of the screen selected and asked about, the answer typed out beside the face">
 </p>
 
 **Your agents, as they are.** Each one is driven over the interface that CLI

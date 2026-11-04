@@ -611,7 +611,7 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertTrue(conversations.startedPrompts.isEmpty, "what was said goes with the region")
   }
 
-  func testAnOpenChatTakesNoRegion() throws {
+  func testARegionOverAnOpenChatIsAChipInItsComposer() throws {
     let (controller, conversations, view) = try makeSelectingController()
     let chat = conversations.addConversation(title: "Saved chat")
     conversations.previews[chat.id] = .init(
@@ -621,9 +621,14 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     view.selectScreenRegionForTesting(CGRect(x: 40, y: 60, width: 200, height: 120))
 
+    let chip = expectation(
+      for: NSPredicate { _, _ in !view.field.draft.attachments.isEmpty }, evaluatedWith: nil)
+    wait(for: [chip], timeout: 5)
+    XCTAssertEqual(view.addressedSessionIDForTesting, chat.id, "the chat stays open")
     XCTAssertEqual(view.screenSelectionPhase, .idle)
-    XCTAssertTrue(view.field.draft.attachments.isEmpty)
-    XCTAssertEqual(view.screenOutlinesForTesting, [])
+    XCTAssertEqual(
+      view.screenOutlinesForTesting, [CGRect(x: 40, y: 60, width: 200, height: 120)],
+      "its place stays outlined as long as the chip is there")
   }
 
   func testChoosingAnotherAgentRecoloursADrawnRegion() throws {

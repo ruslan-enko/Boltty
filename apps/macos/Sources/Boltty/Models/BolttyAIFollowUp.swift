@@ -103,17 +103,6 @@ struct BolttyAISessionPreview: Equatable, Sendable {
     return headline.middleTruncated(to: BolttyAISessionPreview.stepLabelLimit)
   }
 
-  var workingPhrase: String? {
-    let activities = inFlightActivities
-    if let plan = activities.last(where: { $0.plan != nil })?.plan,
-       plan.contains(where: { $0.status == .inProgress }) {
-      return currentStep
-    }
-    guard let running = activities.last(where: { $0.state == .running || $0.state == .pending })
-    else { return nil }
-    return AgentActivityGroup.kind(of: running).progressive
-  }
-
   private var inFlightActivities: [AgentActivity] {
     guard let reply = messages.last(where: { $0.role == .agent && $0.completedAt == nil })
     else { return [] }

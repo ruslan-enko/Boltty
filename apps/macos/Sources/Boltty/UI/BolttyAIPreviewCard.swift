@@ -93,7 +93,6 @@ final class BolttyAIPreviewCard: NSView {
   func cancelQueuedForTesting() { cancelQueued(cancelQueuedButton.button) }
   var optionsFooterForTesting: String? { optionsFooter.isHidden ? nil : optionsFooter.stringValue }
   var chosenRowsForTesting: [Int] { optionRows.indices.filter { optionRows[$0].isChosen } }
-  private var failureReport: AgentFailureReport?
 
   var failureCardForTesting: BolttyAIFailureCard { failureCard }
   var isFailureCardVisibleForTesting: Bool { !failureCard.isHidden }
@@ -132,7 +131,6 @@ final class BolttyAIPreviewCard: NSView {
   private(set) var fileFlightGrowsForTesting: [Bool] = []
   private(set) var fileFlightWhipsForTesting = 0
   private var isGliding = false
-  var pinnedFloorForTesting: CGFloat { pinnedFloor.constant }
   var turnHeaderTextsForTesting: [String] {
     messages.arrangedSubviews.compactMap { ($0 as? PaletteTurnHeaderView)?.textForTesting }
   }
@@ -925,7 +923,6 @@ final class BolttyAIPreviewCard: NSView {
     }
 
     let report = AgentFailureReport.make(from: preview)
-    failureReport = report
     if let report {
       failureCard.apply(report)
     }
@@ -1405,8 +1402,6 @@ final class PaletteChatMessageView: NSView {
   var onToggleActivity: ((String) -> Void)?
   var textFieldsForTesting: [NSTextField] { textViews }
   var answerViewsForTesting: [PaletteAnswerTextView] { answerViews }
-  var codeBlocksForTesting: [PaletteCodeBlockView] { codeViews }
-  var activityRowsForTesting: [PaletteActivityRowView] { activityRows }
   var activityGroupsForTesting: [PaletteActivityGroupView] { groupViews }
   private var message: ConversationMessage
   private var rowHeight: NSLayoutConstraint!
@@ -1647,8 +1642,6 @@ final class PaletteChatMessageView: NSView {
   var isAnswered = false {
     didSet { if isAnswered != oldValue { applyQuestionStatus() } }
   }
-
-  var isQuestionMetaVisibleForTesting: Bool { !questionMeta.isHidden }
 
   private func applyQuestionStatus() {
     let label = isAnswered ? "Taken up by the agent" : "Sent"
@@ -2438,8 +2431,6 @@ final class PaletteWorkingLineView: NSView {
 
   var textForTesting: String { label.stringValue }
   var showsFaceForTesting: Bool { face?.isHidden == false }
-  var lightColorsForTesting: [CGColor] { (band.colors as? [CGColor]) ?? [] }
-  var isBreathingForTesting: Bool { glow.animation(forKey: "breath") != nil }
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)

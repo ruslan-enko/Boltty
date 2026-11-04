@@ -169,13 +169,11 @@ final class VoiceGlowPipelineTests: XCTestCase {
     XCTAssertEqual(VoiceGlowRenderer.color(none, at: 3).x, 1, accuracy: 0.01, "nothing is white")
   }
 
-  func testTheVoiceAndTheFlowReachTheShader() {
+  func testTheLevelAndTheFlowReachTheShader() {
     var input = frame(intensity: 0.6, clock: 2)
     input.flow = 5
-    input.voice = 0.8
     let u = VoiceGlowRenderer.uniforms(for: input)
     XCTAssertEqual(u.intensity, 0.6, accuracy: 0.0001)
-    XCTAssertEqual(u.voice, 0.8, accuracy: 0.0001, "the quick envelope the orb answers to")
     XCTAssertEqual(u.flow, 5, accuracy: 0.0001)
     XCTAssertEqual(u.clock, 2, accuracy: 0.0001)
   }

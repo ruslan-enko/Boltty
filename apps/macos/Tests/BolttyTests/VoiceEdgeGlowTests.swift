@@ -104,34 +104,8 @@ final class VoiceEdgeGlowTests: XCTestCase {
     glow.fillsShell = true
     XCTAssertEqual(
       glow.uniformsForTesting.orb, 1,
-      "a capsule as long as the prompt is still the orb's, grown round its words"
+      "a capsule as long as the prompt is still the orb, grown round its words"
     )
-
-    let origin = VoiceEdgeGlowLayout.rayOrigin(
-      size: CGSize(width: 84, height: 84), intensity: 0.2, beam: 0, clock: 1, orb: 1, reduceMotion: false
-    )
-    XCTAssertEqual(origin.x, 42, accuracy: 0.001, "the orb's rays come from its centre")
-    XCTAssertEqual(origin.y, 42, accuracy: 0.001)
-  }
-
-  func testTheOrbsSurfaceIsDrawnOnlyForTheOrbAndTakesNoClicks() {
-    let glow = VoiceEdgeGlowView(frame: CGRect(x: 0, y: 0, width: 84, height: 84))
-    glow.surfaceCornerRadius = 42
-    glow.fillsShell = true
-    glow.setListening(true)
-    glow.layoutSubtreeIfNeeded()
-    XCTAssertEqual(glow.uniformsForTesting.orb, 1, accuracy: 0.001)
-    XCTAssertEqual(glow.uniformsForTesting.layer, 0, "the glow is the layer under the glass")
-    XCTAssertNil(glow.sheen.hitTest(NSPoint(x: 42, y: 42)))
-
-    glow.sheen.show(VoiceGlowRenderer.uniforms(for: .init(
-      size: CGSize(width: 520, height: 74.5), pixelSize: 0.5, cornerRadius: 37.25,
-      cornerIsContinuous: true, intensity: 0.5, beam: 0, clock: 0, opacity: 1,
-      isLightAppearance: false, reduceMotion: false, colors: [.white]
-    )))
-    XCTAssertFalse(glow.sheen.isShowingForTesting, "the rays have no surface of their own")
-    glow.sheen.show(nil)
-    XCTAssertFalse(glow.sheen.isShowingForTesting)
   }
 
   func testTheViewIsDecorative() {

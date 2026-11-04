@@ -461,8 +461,6 @@ final class AgentHistoryTabStripView: NSView {
   private var lastTick: CFTimeInterval = 0
   private var shown: Arrangement?
 
-  var occupiedHeight: CGFloat { isHidden ? 0 : AgentPaletteMetrics.historyTabStripHeight }
-
   var onSelect: ((AgentId?) -> Void)?
   private var choiceIsAClick = false
 

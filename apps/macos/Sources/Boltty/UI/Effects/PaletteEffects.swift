@@ -544,8 +544,6 @@ final class ScreenSelectionGlowView: MTKView, MTKViewDelegate {
   override var allowsVibrancy: Bool { false }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-  var isRunningForTesting: Bool { link != nil }
-
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
     if let occlusion { NotificationCenter.default.removeObserver(occlusion) }

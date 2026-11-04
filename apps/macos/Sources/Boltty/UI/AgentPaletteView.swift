@@ -107,9 +107,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// The folder chip was clicked. Only ever fires while the chip is editable;
   /// the panel does not own the picker, because opening one makes this window
   /// resign key and the controller is what knows not to hide on that.
-  var onChooseWorkingDirectory: (() -> Void)?
   /// The folder chip was clicked: the controller builds the folder menu
   /// (`WorkingDirectoryMenu`) and hands it to `showWorkingDirectoryMenu`.
+  var onChooseWorkingDirectory: (() -> Void)?
   var onWorkingDirectoryMenu: (() -> Void)?
   /// **The shell stands at the top of the screen, centred, and does not
   /// move**, as Siri's field stands on iPhone and iPad. It drips out of the
@@ -481,8 +481,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private var stopIsAvailable = false
   private var returnToSessionID: UUID?
   private var surfaceFrame: CGRect = .zero
-  /// Where the shell stands now, in this view's coordinates.
-  var shellFrame: CGRect { surfaceFrame }
   private var surfaceReady = false
   private lazy var surfaceMotion = PaletteSurfaceMotion { [weak self] rect in
     self?.drawSurface(at: rect)
@@ -514,14 +512,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var unifiedSurfaceCornerForTesting: CGFloat { surface.renderedCornerRadius }
   /// The shell's frame, in this view's coordinates.
   var surfaceFrameInView: CGRect { surfaceFrame }
-  /// The shell's corner as it is drawn — what the drip lands on.
-  var shellCornerRadius: CGFloat { surface.renderedCornerRadius }
-  /// Whether a point on screen falls on the shell.
-  func surfaceContainsScreenPoint(_ point: NSPoint) -> Bool {
-    guard let window, !surfaceFrame.isEmpty else { return false }
-    let inWindow = window.convertPoint(fromScreen: point)
-    return surfaceFrame.contains(convert(inWindow, from: nil))
-  }
   var composerCornerForTesting: (radius: CGFloat, height: CGFloat, curve: CALayerCornerCurve) {
     (promptHost.renderedCornerRadius, promptHost.bounds.height, promptHost.renderedCornerCurve)
   }
@@ -839,7 +829,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
   var initialPromptChromeIsVisibleForTesting: Bool { !promptHost.isHidden }
   var shellUsesGlassForTesting: Bool { surface.isUsingGlassForTesting }
-  var composerUsesGlassForTesting: Bool { promptHost.isUsingGlassForTesting }
   var isResultsExpandedForTesting: Bool { isResultsExpanded }
   var resultsCardHeightForTesting: CGFloat { resultsHeightConstraint.constant }
   /// The corner the card is actually wearing, not the one the metric asks for.
@@ -1923,14 +1912,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private var isOpenChat: Bool { addressedPreview != nil && !showsCompactListening }
 
-  /// The shell's width in the state it is in: the chat's, the list's, or the
-  /// prompt's (`promptSurfaceWidth`).
-  private var stateSurfaceWidth: CGFloat {
-    if isOpenChat { return chatSurfaceWidth }
-    if isHistoryOpen { return historySurfaceWidth }
-    return promptSurfaceWidth
-  }
-
   /// The first screen's width: the resting capsule, or wider once the draft
   /// has wrapped. Keyed on `isDraftExpanded`, which holds until the draft is
   /// emptied, so text that fits one line at the wider width does not narrow
@@ -1966,12 +1947,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       width: chatSurfaceWidth,
       height: max(1, min(surfaceSizes.chat.height, room))
     )
-  }
-
-  private var minimumChatSurfaceHeight: CGFloat {
-    AgentPaletteMetrics.previewMinHeight + AgentPaletteMetrics.surfaceStackSpacing
-      + AgentPaletteMetrics.promptSize.height + AgentPaletteMetrics.chatComposerBoxHeight
-      + AgentPaletteMetrics.shellContentInset
   }
 
   private var historySurfaceHeight: CGFloat {
@@ -3653,14 +3628,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     addSubview(surfaceContainer)
     // Over the glass, not under it: the glass would frost the sky into a wash.
     addSubview(backdrop)
-    // **And the orb on it**: the glass frosts
-    // what is under it into a wash, so the listening orb — the gradient and
-    // its lit rim — stands over the glass, crisp to its edge, drawn from the
-    // light's own clock. See `VoiceGlowSheenView`.
-    voiceGlow.sheen.translatesAutoresizingMaskIntoConstraints = true
-    addSubview(voiceGlow.sheen)
-    // The words being said stand on top of both: the glass would frost them
-    // and the orb's surface tint them.
+    // The words being said stand on top: the glass would frost them.
     listeningWordsHost.translatesAutoresizingMaskIntoConstraints = true
     listeningWordsHost.wantsLayer = true
     listeningWordsHost.layer?.masksToBounds = true
@@ -4054,7 +4022,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     surfaceContainer.frame = rect
     surface.frame = surfaceContainer.bounds
     voiceGlow.frame = rect
-    voiceGlow.sheen.frame = rect
     // Initial input, chat and history each keep their own corner.
     // Compact listening retains the pill silhouette.
     let isChat = addressedPreview != nil && !showsCompactListening
@@ -4692,7 +4659,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// or take up. Whatever the agent: one that cannot see pictures is handed
   /// the text read off the region (`PromptExpansion`).
   private var acceptsScreenSelection: Bool {
-    onScreenSelectionBegan != nil && mode == .prompt && addressedPreview == nil
+    onScreenSelectionBegan != nil && mode == .prompt
       && !isVoiceListening && !showsCompactListening
       && !isResultsExpanded
   }
@@ -5577,7 +5544,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     return inset + folder + plan + target + send + words
   }
 
-  var attachControlFrameInPaletteForTesting: CGRect { convert(attachRestDisc.bounds, from: attachRestDisc) }
   var voiceControlFrameInPaletteForTesting: CGRect { convert(micButton.bounds, from: micButton) }
 
   var isAttachVisibleForTesting: Bool { !attachRestDisc.isHidden }
@@ -5797,7 +5763,8 @@ extension AgentPaletteView: NSTextViewDelegate {
     }
     if isBacktab {
       guard isFirstScreen else { return false }
-      if composerIsUp, !isVoiceListening { cycleAgent(by: 1) }
+      // The microphone opens by itself on a region, and ⇧Tab still changes who is asked.
+      if screenSelectionFrame != nil || (composerIsUp && !isVoiceListening) { cycleAgent(by: 1) }
       return true
     }
     if commandSelector == #selector(deleteBackward(_:)) {
@@ -6219,8 +6186,6 @@ final class PaletteResizeGrabberView: NSView {
 
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
   override var allowsVibrancy: Bool { false }
-
-  var pathBoundsForTesting: CGRect { arc.path?.boundingBox ?? .null }
 
   /// The arc for a shell drawn at `rect` (unflipped, in this view's space)
   /// with `corner`: a circle's arc of the corner's radius and the outset,

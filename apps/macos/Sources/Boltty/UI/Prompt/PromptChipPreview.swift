@@ -9,8 +9,6 @@ final class PromptChipPreview {
   private var timer: Timer?
   private var lastClosedAt: TimeInterval = -.infinity
 
-  var isShownForTesting: Bool { popover?.isShown == true }
-
   init(host: NSView) {
     self.host = host
   }

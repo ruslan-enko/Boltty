@@ -206,13 +206,47 @@ final class ReadmeShotsOnScreen: XCTestCase {
     // "Trip to Lviv", the document's first line.
     let heading = CGPoint(x: note.frame.minX + 92, y: note.frame.maxY - 60)
 
-    let overlay = AskBolttyOverlayController()
-    overlay.pointer = { CGPoint(x: heading.x + 90, y: heading.y) }
     let area = CGRect(x: note.frame.minX - 140, y: note.frame.minY - 60,
                       width: note.frame.width + 520, height: note.frame.height + 120)
-    let reel = try record(area, seconds: 8, to: "ask-boltty.mov")
-    overlay.show(.thinking, caption: "", agent: .claude)
+    // The heading, dragged across: what the panel does with a region just drawn,
+    // with the microphone's words handed in by hand.
+    let region = CGRect(x: heading.x - 40, y: heading.y - 26, width: 300, height: 56)
+    let (controller, _) = makePanel()
+    let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
+    view.onScreenRegionReady = nil
+    // This scene, not the display: ScreenCaptureKit leaves out Boltty's own
+    // windows, so a real freeze would show the desktop under them.
+    let frozen = try frozenScene(on: screen)
+    controller.screenFreeze = { _ in frozen }
+
+    let overlay = AskBolttyOverlayController()
+    let pointer = CGPoint(x: heading.x + 90, y: heading.y - 90)
+    overlay.pointer = { pointer }
+    // The real pointer stands where the face follows it.
+    let top = NSScreen.screens.first?.frame.maxY ?? pointer.y
+    CGWarpMouseCursorPosition(CGPoint(x: pointer.x, y: top - pointer.y))
+    let reel = try record(area, seconds: 15, to: "ask-boltty.mov")
+    try await Task.sleep(for: .seconds(0.8))
+    controller.askAgain(about: region, agent: .claude)
+    try await Task.sleep(for: .seconds(1))
+    view.setVoiceListening(true)
+    var said = ""
+    for word in ["how", "do", "I", "make", "this", "heading", "bigger"] {
+      said += said.isEmpty ? word : " \(word)"
+      view.applyVoiceTranscript(said)
+      try await Task.sleep(for: .seconds(0.35))
+    }
     try await Task.sleep(for: .seconds(1.2))
+
+    let closed = expectation(description: "the shell closed round the face")
+    view.collapseToFace { closed.fulfill() }
+    view.setVoiceListening(false, ending: .cancelled)
+    await fulfillment(of: [closed], timeout: 2)
+    let face = view.promptFaceOnScreen
+    controller.hide()
+    overlay.show(.thinking, caption: "", agent: .claude)
+    overlay.arrive(from: face)
+    try await Task.sleep(for: .seconds(1.8))
     overlay.show(.speaking,
                  caption: "Select the heading, then press ⌘T and pick a bigger size.", agent: .claude)
     overlay.point(at: CGPoint(x: note.frame.minX + 152, y: heading.y))
@@ -221,6 +255,19 @@ final class ReadmeShotsOnScreen: XCTestCase {
     try photograph(area, to: "ask-boltty.png")
     reel.waitUntilExit()
     overlay.hide()
+  }
+
+  private func frozenScene(on screen: NSScreen) throws -> FrozenScreen {
+    let file = "\(directory)/frozen-scene.png"
+    defer { try? FileManager.default.removeItem(atPath: file) }
+    let shot = try screencapture(["-x", "-R", rect(screen.frame), file])
+    shot.waitUntilExit()
+    let source = try XCTUnwrap(CGImageSourceCreateWithURL(URL(fileURLWithPath: file) as CFURL, nil))
+    let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+    let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
+    let frame = CGRect(x: screen.frame.minX, y: top - screen.frame.maxY,
+                       width: screen.frame.width, height: screen.frame.height)
+    return FrozenScreen(image: image, displayFrame: frame, windows: [])
   }
 
   /// A plain document to ask about: nothing of anyone's own.

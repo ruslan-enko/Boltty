@@ -251,6 +251,11 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.onLetGoOfRegion = { [weak self] in self?.letGoOfRegion() }
     panelView.onScreenSelectionCancelled = { [weak self] in
       guard let self else { return }
+      // A region given up over a chat: its composer and Ask Boltty never knew.
+      guard self.panelView.addressedSessionID == nil else {
+        self.finishScreenSelection()
+        return
+      }
       self.dropRegionWords()
       self.panelView.setVoiceListening(false, ending: .cancelled)
       self.finishScreenSelection()
@@ -875,7 +880,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
             self.visibilityGeneration == generation,
             self.isShowing,
             self.panelView.addressedSessionID == nil,
-            self.panelView.currentDraft.isEffectivelyEmpty
+            self.panelView.currentDraft.isEffectivelyEmpty,
+            self.freezeTask == nil
       else { return }
       self.panelView.appendAttachments(urls)
     }
@@ -888,9 +894,14 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       ?? conversations.plannedProviderID()
   }
 
-  private func beginScreenSelection() {
-    wearRegionAgent()
-    draftBeforeRegion = panelView.currentDraft
+  private func beginScreenSelection(wearing: Bool = true) {
+    // The same agent when going on with a question, even one that is also the
+    // first screen's: Ask Boltty's own would take the question elsewhere.
+    if wearing { wearRegionAgent() }
+    // A region dragged over one already drawn: the prompt to go back to is
+    // still the first one, not the words said about the region before.
+    let isFirstRegion = frozenScreen == nil && freezeTask == nil
+    if isFirstRegion { draftBeforeRegion = panelView.currentDraft }
     guard screenRecordingAccess() else {
       panelView.cancelScreenSelection()
       panelView.showError(Self.screenRecordingNeeded)
@@ -899,6 +910,11 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     guard let window, let screen = window.screen ?? NSScreen.main, let displayID = screen.displayID else {
       panelView.cancelScreenSelection()
       return
+    }
+    // Files in the prompt wait out the question, which goes with the region
+    // alone: the microphone opens as it does on an empty prompt.
+    if isFirstRegion, panelView.addressedSessionID == nil, !draftBeforeRegion.attachments.isEmpty {
+      panelView.setChatDraft(PromptDraft(draftBeforeRegion.typedText))
     }
     isProgrammaticMove = true
     window.setFrame(screen.frame, display: true)
@@ -1170,7 +1186,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private func submit(_ draft: PromptDraft, steering: Bool = false) {
     guard isShowing, !isSubmitting else { return }
     guard panelView.addressedSessionID == nil, let region = panelView.screenSelectionFrame else {
-      send(draft, endingScreenSelection: false, steering: steering)
+      send(draft, steering: steering)
       return
     }
     ask(draft.typedText, about: region)
@@ -1196,7 +1212,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       panelView.chooseAgent(agent)
       regionChoseAgent = panelView.chosenAgent != nil
     }
-    beginScreenSelection()
+    beginScreenSelection(wearing: agent == nil)
     panelView.setChatDraft(PromptDraft())
     panelView.finishHeldRegion()
   }
@@ -1234,7 +1250,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     Task { [weak self] in
       _ = await self?.freezeTask?.value
       let selection = await self?.cutScreenSelection(region)
-      guard let self else { return }
+      // Let go of while it was being cut: nothing is sent.
+      guard let self, !self.isHandingRegionOver else { return }
       self.isSubmitting = false
       guard self.isShowing, self.panelView.screenSelectionFrame == region else { return }
       let primaryHeight = NSScreen.screens.first?.frame.height ?? region.maxY
@@ -1251,7 +1268,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         return
       }
       self.draftIsDictated = false
-      let left = self.opensForRegion ? self.draftBeforeRegion : PromptDraft()
+      // The words went with the question; files come back to the prompt.
+      let left = self.opensForRegion
+        ? self.draftBeforeRegion
+        : PromptDraft(elements: self.draftBeforeRegion.attachments.map { .attachment($0) })
       self.newPromptDraft = left
       self.panelView.setChatDraft(left)
       self.isHandingRegionOver = true
@@ -1309,7 +1329,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.setChatDraft(draftBeforeRegion)
   }
 
-  private func send(_ draft: PromptDraft, endingScreenSelection: Bool, steering: Bool = false) {
+  private func send(_ draft: PromptDraft, steering: Bool = false) {
     guard isShowing, !isSubmitting else { return }
     do {
       isSubmitting = true
@@ -1377,10 +1397,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       newPromptDraft = PromptDraft()
       panelView.setChatDraft(PromptDraft())
       isSubmitting = false
-      if endingScreenSelection {
-        panelView.endScreenSelection()
-        finishScreenSelection()
-      }
       if let fallback {
         panelView.showRoutingFallback(fallback)
       } else {

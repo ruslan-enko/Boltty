@@ -19,12 +19,6 @@ extension BolttyAISettingsModel {
     }
   }
 
-  /// What Ask Boltty would use right now, with the settings as they are.
-  var askBolttyTarget: AskBolttyTarget? {
-    AskBolttyConfiguration.resolve(
-      settings: appModel.settings, candidates: askBolttyAgents.map(\.rawValue), models: modelsByProvider)
-  }
-
   /// What Automatic would pick, whatever is chosen now. The row that names it
   /// is the widest in the Answers menu, so a title that followed the choice
   /// (the model picked below it) widened the whole pop-up with every pick.

@@ -353,15 +353,6 @@ final class MascotNSView: NSView {
 
   var canvasAvoidsOffscreenPassForTesting: Bool { canvas.avoidsOffscreenPassForTesting }
 
-  /// The frame on screen now, with its room, drawn without holding the
-  /// main thread — for a big face handing over to a picture of itself.
-  func snapshotLater(scale: CGFloat) async -> CGImage? {
-    guard let frame = lastFrame ?? (bounds.isEmpty ? nil : currentFrame()),
-          let renderer = MascotRenderer.shared
-    else { return nil }
-    return await renderer.render(MascotRenderer.uniforms(for: frame, rays: 4), scale: scale)
-  }
-
   func snapshot(scale: CGFloat = 2, overscan: Bool = false) -> CGImage? {
     guard var frame = lastFrame ?? (bounds.isEmpty ? nil : currentFrame()) else { return nil }
     if !overscan { frame.overscan = 0 }
@@ -398,18 +389,19 @@ extension MascotNSView {
   }
 
   private func pointerOffset() -> (x: Double, y: Double, strength: Double)? {
-    if let target = lookAtWindowPoint, window != nil, !bounds.isEmpty {
-      let inView = convert(target, from: nil)
+    /// In widths of the face from its centre.
+    func offset(of windowPoint: NSPoint) -> (dx: Double, dy: Double, d: Double) {
+      let inView = convert(windowPoint, from: nil)
       let dx = (inView.x - bounds.midX) / bounds.width
       let dy = (inView.y - bounds.midY) / bounds.width
-      let d = max(1, (dx * dx + dy * dy).squareRoot())
-      return (dx / d, dy / d, 1)
+      return (dx, dy, (dx * dx + dy * dy).squareRoot())
+    }
+    if let target = lookAtWindowPoint, window != nil, !bounds.isEmpty {
+      let (dx, dy, d) = offset(of: target)
+      return (dx / max(1, d), dy / max(1, d), 1)
     }
     guard let window, NSApp.isActive, !bounds.isEmpty else { return nil }
-    let inView = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-    let dx = (inView.x - bounds.midX) / bounds.width
-    let dy = (inView.y - bounds.midY) / bounds.width
-    let d = (dx * dx + dy * dy).squareRoot()
+    let (dx, dy, d) = offset(of: window.mouseLocationOutsideOfEventStream)
     let reach = MascotSpec.pointerRadiusInAvatars
     let strength = d < 1 ? 1 : d > reach ? 0 : 1 - (d - 1) / (reach - 1)
     return (dx / max(1, d), dy / max(1, d), strength)

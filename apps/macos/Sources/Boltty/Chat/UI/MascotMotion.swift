@@ -348,8 +348,7 @@ struct MascotMood: Equatable {
     case .listening:
       pitch = 0.07
       // Wide enough to be seen following what is said: the orb's face
-      // watches each word arrive under it (`lookAtWindowPoint`), and at the
-      // old 0.8 × 0.5 and a turn of 0.12 nobody noticed it look.
+      // watches each word arrive under it (`lookAtWindowPoint`).
       gazeReach = SIMD2(1.9, 1.4)
       turnReach = SIMD2(0.34, 0.2)
       glanceEvery = 1.6...3.5
