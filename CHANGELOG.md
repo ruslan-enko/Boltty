@@ -2,7 +2,7 @@
 
 What changed from release to release. The newest is at the top.
 
-## Unreleased
+## 0.4.0
 
 **Ask Boltty**
 - The agent now sees only the window under the area you select and the menu bar.
