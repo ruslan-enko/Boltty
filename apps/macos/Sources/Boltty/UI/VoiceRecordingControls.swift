@@ -29,7 +29,7 @@ final class VoiceRecordingControls: NSView {
 
     configure(
       cancelButton,
-      symbol: "xmark",
+      icon: .xmark,
       tint: AgentPaletteMetrics.voiceControlsCancelGlyphColor,
       fill: .clear,
       hoverFill: AgentPaletteMetrics.voiceControlsCancelHoverFillColor,
@@ -38,7 +38,7 @@ final class VoiceRecordingControls: NSView {
     cancelButton.hoverBackdropBlurRadius = AgentPaletteMetrics.voiceControlsCancelHoverBlurRadius
     configure(
       confirmButton,
-      symbol: "checkmark",
+      icon: .check,
       tint: AgentPaletteMetrics.voiceControlsConfirmGlyphColor,
       fill: AgentPaletteMetrics.voiceControlsConfirmFillColor,
       hoverFill: AgentPaletteMetrics.voiceControlsConfirmHoverFillColor,
@@ -119,7 +119,7 @@ final class VoiceRecordingControls: NSView {
 
   private func configure(
     _ button: PaletteIconButton,
-    symbol: String,
+    icon: BolttyIcon,
     tint: NSColor,
     fill: NSColor,
     hoverFill: NSColor,
@@ -132,14 +132,12 @@ final class VoiceRecordingControls: NSView {
     button.focusRingType = .none
     button.title = ""
     button.setButtonType(.momentaryChange)
-    button.image = NSImage(
-      systemSymbolName: symbol,
-      accessibilityDescription: symbol == "xmark" ? "Cancel dictation" : "Send dictation"
-    )?.withSymbolConfiguration(
-      .init(pointSize: AgentPaletteMetrics.voiceControlsGlyphPointSize, weight: .semibold)
+    button.image = icon.image(
+      size: AgentPaletteMetrics.voiceControlsIconSize,
+      description: icon == .xmark ? "Cancel dictation" : "Send dictation"
     )
-    button.toolTip = symbol == "xmark" ? "Cancel dictation — restore the draft" : "Confirm and send recording"
-    button.helpShortcut = symbol == "checkmark" ? "↵" : nil
+    button.toolTip = icon == .xmark ? "Cancel dictation — restore the draft" : "Confirm and send recording"
+    button.helpShortcut = icon == .check ? "↵" : nil
     button.contentTintColor = tint
     button.restingTint = tint
     button.hoverTint = tint
@@ -148,7 +146,7 @@ final class VoiceRecordingControls: NSView {
     button.target = self
     button.action = action
     button.setAccessibilityIdentifier(
-      symbol == "xmark" ? "boltty.ask.voice.cancel" : "boltty.ask.voice.confirm"
+      icon == .xmark ? "boltty.ask.voice.cancel" : "boltty.ask.voice.confirm"
     )
     NSLayoutConstraint.activate([
       button.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.voiceOrbDiameter),

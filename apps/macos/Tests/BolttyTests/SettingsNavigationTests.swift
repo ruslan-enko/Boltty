@@ -77,13 +77,10 @@ final class SettingsNavigationTests: XCTestCase {
     XCTAssertEqual(SettingsNavigation(defaults: defaults).current, .general)
   }
 
-  func testEveryPageHasATitleAndASymbolThatExists() {
+  func testEveryPageHasATitleAndAnIconThatExists() {
     for page in SettingsPage.allCases {
       XCTAssertFalse(page.title.isEmpty, "\(page)")
-      XCTAssertNotNil(
-        NSImage(systemSymbolName: page.symbol, accessibilityDescription: nil),
-        "\(page) names a symbol this system does not have: \(page.symbol)"
-      )
+      XCTAssertNotNil(page.icon.image(size: 17), "\(page) names an icon that did not ship: \(page.icon)")
     }
   }
 }

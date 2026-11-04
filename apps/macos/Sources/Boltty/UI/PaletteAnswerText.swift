@@ -722,7 +722,7 @@ final class PaletteCodeBlockView: NSView {
     copyButton.toolTip = "Copy code"
     copyButton.setAccessibilityLabel("Copy code")
     copyButton.isHidden = true
-    applyCopyGlyph("doc.on.doc")
+    applyCopyGlyph(.copy)
     addSubview(copyButton)
     heightConstraint = heightAnchor.constraint(equalToConstant: 0)
     NSLayoutConstraint.activate([
@@ -769,16 +769,15 @@ final class PaletteCodeBlockView: NSView {
     guard !code.isEmpty else { return }
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(code, forType: .string)
-    applyCopyGlyph("checkmark")
+    applyCopyGlyph(.check)
     copyResetWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph("doc.on.doc") }
+    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph(.copy) }
     copyResetWork = work
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
   }
 
-  private func applyCopyGlyph(_ name: String) {
-    copyButton.image = NSImage(systemSymbolName: name, accessibilityDescription: "Copy code")?
-      .withSymbolConfiguration(.init(pointSize: AgentPaletteMetrics.previewFileGlyphPointSize, weight: .medium))
+  private func applyCopyGlyph(_ icon: BolttyIcon) {
+    copyButton.image = icon.image(size: AgentPaletteMetrics.previewFileGlyphPointSize, description: "Copy code")
   }
 
   static func attributed(_ code: String) -> NSAttributedString {

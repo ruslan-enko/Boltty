@@ -66,7 +66,7 @@ final class PaletteFileRowView: NSView {
 
     makeButton(
       previewButton,
-      symbol: "eye",
+      icon: .eye,
       description: "Preview file",
       identifier: "boltty.ask.chat.file.preview",
       tooltip: "Quick Look",
@@ -74,7 +74,7 @@ final class PaletteFileRowView: NSView {
     )
     makeButton(
       revealButton,
-      symbol: "folder",
+      icon: .folder,
       description: "Reveal file in Finder",
       identifier: "boltty.ask.chat.file.reveal",
       tooltip: "Reveal in Finder",
@@ -82,7 +82,7 @@ final class PaletteFileRowView: NSView {
     )
     makeButton(
       useButton,
-      symbol: "plus",
+      icon: .plus,
       description: "Use file in a follow-up",
       identifier: "boltty.ask.chat.file.use",
       tooltip: "Use in follow-up",
@@ -218,7 +218,7 @@ final class PaletteFileRowView: NSView {
 
   private func makeButton(
     _ button: PaletteIconButton,
-    symbol: String,
+    icon: BolttyIcon,
     description: String,
     identifier: String,
     tooltip: String,
@@ -228,13 +228,7 @@ final class PaletteFileRowView: NSView {
     button.isBordered = false
     button.title = ""
     button.imagePosition = .imageOnly
-    button.image = NSImage(
-      systemSymbolName: symbol,
-      accessibilityDescription: description
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewFileGlyphPointSize,
-      weight: .medium
-    ))
+    button.image = icon.image(size: AgentPaletteMetrics.previewFileGlyphPointSize, description: description)
     button.contentTintColor = .white
     button.restingTint = PaletteInk.secondary
     button.hoverTint = .white

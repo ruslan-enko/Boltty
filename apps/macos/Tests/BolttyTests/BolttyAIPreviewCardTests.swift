@@ -2029,8 +2029,7 @@ final class PaletteAnswerCopyTests: XCTestCase {
     let (copy, text) = row.copyLayoutForTesting
     XCTAssertLessThanOrEqual(copy.maxY, text.minY, "under the words, never over them")
     XCTAssertEqual(copy.height, AgentPaletteMetrics.previewCopyButtonSize, accuracy: 0.5)
-    let glyph = try XCTUnwrap(NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)?
-      .withSymbolConfiguration(.init(pointSize: AgentPaletteMetrics.previewFileGlyphPointSize, weight: .medium)))
+    let glyph = try XCTUnwrap(BolttyIcon.copy.image(size: AgentPaletteMetrics.previewFileGlyphPointSize))
     XCTAssertEqual(copy.midX - glyph.size.width / 2, row.bubbleFrameForFlight.minX, accuracy: 0.25)
     XCTAssertEqual(
       PaletteChatMessageView.height(for: answer, width: 464, offersCopy: true),

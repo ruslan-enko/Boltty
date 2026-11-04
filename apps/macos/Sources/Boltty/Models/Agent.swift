@@ -67,15 +67,15 @@ enum AgentId: String, CaseIterable, Codable, Sendable, Equatable {
 
   var iconAssetName: String { rawValue }
 
-  var fallbackSymbolName: String {
+  var fallbackIcon: BolttyIcon {
     switch self {
-    case .opencode: "sparkles"
-    case .pi: "circle.hexagongrid"
-    case .codex: "chevron.left.forwardslash.chevron.right"
-    case .claude: "brain.head.profile"
-    case .grok: "bolt.fill"
-    case .antigravity: "arrow.up.circle"
-    case .custom: "sparkles"
+    case .opencode: .sparkles
+    case .pi: .hexGrid
+    case .codex: .code
+    case .claude: .brain
+    case .grok: .boltFill
+    case .antigravity: .arrowUpCircle
+    case .custom: .sparkles
     }
   }
 }

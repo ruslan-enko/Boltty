@@ -86,7 +86,7 @@ final class StatusBarController {
     let menu = NSMenu(title: "Boltty")
     menu.autoenablesItems = false
     let ask = addItem(
-      to: menu, title: "Boltty AI", action: #selector(bolttyAI), symbolName: "sparkles"
+      to: menu, title: "Boltty AI", action: #selector(bolttyAI), icon: .sparkles
     )
     if let hotkeyHint {
       let title = NSMutableAttributedString(
@@ -127,7 +127,7 @@ final class StatusBarController {
       to: menu,
       title: "Jump to Latest Unread",
       action: #selector(jumpLatestUnread),
-      symbolName: "bell.badge"
+      icon: .bellBadge
     )
     jump.isEnabled = snapshot.latestUnreadSessionID != nil
     jump.toolTip = snapshot.latestUnreadTitle
@@ -136,7 +136,7 @@ final class StatusBarController {
         to: menu,
         title: "No Unread Chats",
         action: nil,
-        symbolName: "bell.slash"
+        icon: .bellSlash
       )
       empty.isEnabled = false
     }
@@ -147,7 +147,7 @@ final class StatusBarController {
         to: menu,
         title: "Read-only — another Boltty owns the store",
         action: nil,
-        symbolName: "lock"
+        icon: .lock
       )
       readOnly.isEnabled = false
       readOnly.toolTip = "Chats can be read. New ones will not be saved until that Boltty quits."
@@ -159,36 +159,36 @@ final class StatusBarController {
         to: menu,
         title: "Download Boltty \(version)…",
         action: #selector(checkForUpdates),
-        symbolName: "arrow.down.circle"
+        icon: .arrowDownCircle
       )
     case let .install(version):
       addItem(
         to: menu,
         title: "Install Boltty \(version)…",
         action: #selector(checkForUpdates),
-        symbolName: "arrow.down.circle"
+        icon: .arrowDownCircle
       )
     case let .installing(version):
       addItem(
         to: menu,
         title: "Installing Boltty \(version)…",
         action: nil,
-        symbolName: "arrow.down.circle"
+        icon: .arrowDownCircle
       )
     case let .check(enabled):
       let check = addItem(
         to: menu,
         title: "Check for Updates…",
         action: #selector(checkForUpdates),
-        symbolName: "arrow.triangle.2.circlepath"
+        icon: .sync
       )
       check.isEnabled = enabled
     case nil:
       break
     }
-    addItem(to: menu, title: "Settings…", action: #selector(openSettings), symbolName: "gearshape")
+    addItem(to: menu, title: "Settings…", action: #selector(openSettings), icon: .gear)
     menu.addItem(.separator())
-    addItem(to: menu, title: "Quit Boltty", action: #selector(quitApp), symbolName: "power")
+    addItem(to: menu, title: "Quit Boltty", action: #selector(quitApp), icon: .power)
     return menu
   }
 
@@ -198,7 +198,7 @@ final class StatusBarController {
     title: String,
     action: Selector?,
     keyEquivalent: String = "",
-    symbolName: String? = nil,
+    icon: BolttyIcon? = nil,
     image: NSImage? = nil
   ) -> NSMenuItem {
     let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
@@ -206,8 +206,8 @@ final class StatusBarController {
     item.isEnabled = action != nil
     if let image {
       item.image = image
-    } else if let symbolName {
-      item.image = BolttySFSymbolImage.make(name: symbolName, pointSize: 13, weight: .regular)
+    } else if let icon {
+      item.image = icon.image(size: 16)
     }
     menu.addItem(item)
     return item

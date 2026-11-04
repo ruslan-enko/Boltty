@@ -4,6 +4,10 @@ What changed from release to release. The newest is at the top.
 
 ## Unreleased
 
+**Boltty AI**
+- Boltty wears its own softer, thinner icons everywhere: the panel, the tray
+  and Settings.
+
 **Settings**
 - Choose Boltty's icon in General: Default, Citrus, Pastel or Sunset. It shows
   in the Dock and in Boltty's own windows.

@@ -34,12 +34,7 @@ final class BolttyAIFailureCard: NSView {
     layer?.backgroundColor = AgentPaletteMetrics.failureCardFill.cgColor
 
     symbol.translatesAutoresizingMaskIntoConstraints = false
-    symbol.image = NSImage(
-      systemSymbolName: "exclamationmark.triangle",
-      accessibilityDescription: nil
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewBodyFontSize, weight: .regular
-    ))
+    symbol.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.previewBodyFontSize + 3)
     symbol.contentTintColor = AgentPaletteMetrics.failureCardAccent
     symbol.setContentHuggingPriority(.required, for: .horizontal)
 
@@ -74,7 +69,7 @@ final class BolttyAIFailureCard: NSView {
     copyButton.target = self
     copyButton.action = #selector(copyDetails(_:))
     copyButton.setAccessibilityIdentifier("boltty.ask.failure.copy")
-    applyCopyGlyph("doc.on.doc")
+    applyCopyGlyph(.copy)
 
     detailsText.translatesAutoresizingMaskIntoConstraints = false
     detailsText.font = NSFont.monospacedSystemFont(
@@ -182,7 +177,7 @@ final class BolttyAIFailureCard: NSView {
     retryButton.isHidden = !report.canRetry
     retryButton.button.isEnabled = report.canRetry
     if isNewFailure { collapseDetails() }
-    applyCopyGlyph("doc.on.doc")
+    applyCopyGlyph(.copy)
     setAccessibilityLabel(report.sentence)
     needsLayout = true
   }
@@ -209,19 +204,14 @@ final class BolttyAIFailureCard: NSView {
   private func applyDisclosure() {
     let open = !detailsBox.isHidden
     disclosure.title = "Details"
-    disclosure.image = NSImage(
-      systemSymbolName: open ? "chevron.down" : "chevron.right",
-      accessibilityDescription: nil
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewActivityChevronPointSize, weight: .semibold))
+    disclosure.image = (open ? BolttyIcon.chevronDown : .chevronRight)
+      .image(size: AgentPaletteMetrics.previewActivityChevronPointSize)
     disclosure.setAccessibilityValue(open ? "expanded" : "collapsed")
   }
 
-  private func applyCopyGlyph(_ name: String) {
-    copyButton.image = NSImage(
-      systemSymbolName: name, accessibilityDescription: "Copy the details"
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewFileGlyphPointSize, weight: .medium))
+  private func applyCopyGlyph(_ icon: BolttyIcon) {
+    copyButton.image = icon.image(
+      size: AgentPaletteMetrics.previewFileGlyphPointSize, description: "Copy the details")
   }
 
   @objc private func retry(_ sender: NSButton) {
@@ -235,9 +225,9 @@ final class BolttyAIFailureCard: NSView {
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     pasteboard.setString(details, forType: .string)
-    applyCopyGlyph("checkmark")
+    applyCopyGlyph(.check)
     copyResetWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph("doc.on.doc") }
+    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph(.copy) }
     copyResetWork = work
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
   }

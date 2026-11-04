@@ -657,7 +657,7 @@ enum AgentPaletteMetrics {
   /// Confirm is white with a black glyph, cancel is transparent with a white
   /// one: the vocabulary the idle microphone already established, where solid
   /// means the primary action and transparent means the secondary.
-  static let voiceControlsGlyphPointSize: CGFloat = fromMock(12)
+  static let voiceControlsIconSize: CGFloat = fromMock(16)
   static let voiceControlsTimerFontSize: CGFloat = fromMock(12)
   static let voiceControlsCancelGlyphColor = PaletteInk.primary
   /// Flat white, and opaque on purpose: with the frost showing through, it
@@ -735,8 +735,7 @@ enum AgentPaletteMetrics {
   /// `bezelStyle = .glass`, `borderShape = .circle`).
   static let previewCloseDiameter: CGFloat = 36
   /// `chevron.backward` at the toolbar's symbol size and weight.
-  static let previewCloseGlyphPointSize: CGFloat = 16
-  static let previewCloseGlyphWeight: NSFont.Weight = .regular
+  static let previewCloseGlyphPointSize: CGFloat = 18
   /// The close disc's inset from the card's top **and** leading edges.
   ///
   /// One number for both, so the disc sits *in* the corner rather than near
@@ -1525,7 +1524,7 @@ enum AgentPaletteMetrics {
   /// opens, the way Claude's own transcript says "Ran 5 commands ▾".
   static let previewWorkPillChevronGap: CGFloat = 5
   static let previewWorkPillChevronWidth: CGFloat = 12
-  static let previewWorkPillChevronPointSize: CGFloat = 10
+  static let previewWorkPillChevronPointSize: CGFloat = 13
   static let previewWorkPillTextInset: CGFloat = 0
   static let previewWorkPillTrailingInset: CGFloat = 0
   /// The thread: a hairline under the first glyph, the calls standing a
@@ -1569,7 +1568,7 @@ enum AgentPaletteMetrics {
   static let previewFileIconTileFill = PaletteInk.tertiaryFill
   static let previewFileIconSize: CGFloat = 28
   static let previewFileButtonSize: CGFloat = 24
-  static let previewFileGlyphPointSize: CGFloat = 13
+  static let previewFileGlyphPointSize: CGFloat = 16
   static let previewFileNameFontSize: CGFloat = typeMeta
   static let previewFileSizeFontSize: CGFloat = typeFootnote
 
@@ -1585,8 +1584,8 @@ enum AgentPaletteMetrics {
   static let previewActivityRowSpacing: CGFloat = 2
   static let previewActivityRowsTopMargin: CGFloat = 6
   static let previewActivityGlyphSize: CGFloat = 14
-  static let previewActivityGlyphPointSize: CGFloat = 11
-  static let previewActivityChevronPointSize: CGFloat = 9
+  static let previewActivityGlyphPointSize: CGFloat = 14
+  static let previewActivityChevronPointSize: CGFloat = 12
   static let previewActivityNameFontSize: CGFloat = typeMeta
   /// Monospaced tool output, and every other raw text the card shows —
   /// a permission's command, a failure's details. One size for all of it.
@@ -2103,16 +2102,10 @@ enum ComposerControlGroup {
   static func glyph(chat: Bool) -> CGFloat { chat ? glyph : promptGlyph }
   static func gap(chat: Bool) -> CGFloat { chat ? gap : promptGap }
   static func target(chat: Bool) -> CGFloat { glyph(chat: chat) + gap(chat: chat) }
-  /// The symbols' point size for that screen's glyph: `restingAttachGlyphPointSize`
-  /// draws Return `glyph` wide, and a symbol scales with its point size.
-  static func pointSize(chat: Bool) -> CGFloat {
-    AgentPaletteMetrics.restingAttachGlyphPointSize * glyph(chat: chat) / glyph
-  }
-  /// One of the group's symbols, at that screen's size.
-  static func symbol(_ name: String, description: String, chat: Bool) -> NSImage? {
-    NSImage(systemSymbolName: name, accessibilityDescription: description)?
-      .withSymbolConfiguration(.init(pointSize: pointSize(chat: chat), weight: .medium))
-  }
+  /// The box a `BolttyIcon` is drawn in on that screen. A point over `glyph`,
+  /// since an icon's ink stops short of its box: this brings its ink close to
+  /// the ring's edge without thickening its stroke much.
+  static func iconSize(chat: Bool) -> CGFloat { glyph(chat: chat) + 1 }
   /// Written down rather than dynamic, like `PaletteInk`'s fills: the panel
   /// is always dark, and these are chosen numbers, not a system step.
   static let restingInk = NSColor.white.withAlphaComponent(0.5)
@@ -2127,7 +2120,7 @@ enum ComposerControlGroup {
   /// From the microphone's target to the disc: with the half-gap the target
   /// already holds, the group's `gap` from the microphone's ink to the disc.
   static let sendGap: CGFloat = gap / 2
-  static let sendGlyphPointSize: CGFloat = 12
+  static let sendIconSize: CGFloat = 16
   static let sendFill = NSColor.white
   static let sendHoverFill = NSColor.white.withAlphaComponent(0.85)
   static let sendInk = NSColor.black
@@ -2135,9 +2128,8 @@ enum ComposerControlGroup {
   static let sendDisabledFill = PaletteInk.fill
   static let sendDisabledInk = NSColor.white.withAlphaComponent(0.35)
   /// A glyph inside the disc.
-  static func sendSymbol(_ name: String, description: String) -> NSImage? {
-    NSImage(systemSymbolName: name, accessibilityDescription: description)?
-      .withSymbolConfiguration(.init(pointSize: sendGlyphPointSize, weight: .semibold))
+  static func sendIcon(_ icon: BolttyIcon, description: String) -> NSImage? {
+    icon.image(size: sendIconSize, description: description)
   }
 
   /// Dresses the Send disc's glyph. Its fill follows whether it can be

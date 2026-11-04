@@ -41,7 +41,7 @@ struct HotkeyRecorderField: View {
   }
 
   private var suggestionsButton: some View {
-    SettingsPopUpIndicator(symbol: "chevron.down", isHovered: isSuggestionsHovered)
+    SettingsPopUpIndicator(icon: .chevronDown, isHovered: isSuggestionsHovered)
       .contentShape(Circle())
       .onHover { isSuggestionsHovered = $0 && isEnabled }
       .overlay {

@@ -22,36 +22,8 @@ enum AgentIconProvider {
       image.accessibilityDescription = agent.displayName
       return image
     }
-    return BolttySFSymbolImage.make(
-      name: agent.fallbackSymbolName,
-      accessibilityDescription: agent.displayName
-    )
-  }
-}
-
-@MainActor
-enum BolttySFSymbolImage {
-  static func make(
-    name: String,
-    fallbackName: String? = nil,
-    accessibilityDescription: String? = nil,
-    pointSize: CGFloat = 18,
-    weight: NSFont.Weight = .medium,
-    palette: [NSColor] = [.systemBlue, .systemPurple, .systemPink]
-  ) -> NSImage {
-    _ = palette
-    let source = NSImage(
-      systemSymbolName: name,
-      accessibilityDescription: accessibilityDescription
-    ) ?? NSImage(
-      systemSymbolName: fallbackName ?? "questionmark.circle.fill",
-      accessibilityDescription: accessibilityDescription
-    ) ?? NSImage(size: NSSize(width: pointSize, height: pointSize))
-
-    let size = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
-    let image = source.withSymbolConfiguration(size) ?? source
-    image.isTemplate = true
-    return image
+    return agent.fallbackIcon.image(size: 18, description: agent.displayName)
+      ?? NSImage(size: NSSize(width: 18, height: 18))
   }
 }
 

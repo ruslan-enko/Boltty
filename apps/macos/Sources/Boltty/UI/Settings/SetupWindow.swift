@@ -471,8 +471,7 @@ private struct SetupAccessTile: View {
   var body: some View {
     SetupTile(isOn: status == .allowed) {
       VStack(spacing: 10) {
-        Image(systemName: kind.symbol)
-          .font(.system(size: 22, weight: .semibold))
+        BolttyIconView(icon: kind.icon, size: 28)
           .foregroundStyle(.white)
           .frame(width: 48, height: 48)
           .background(kind.tint.gradient, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -616,10 +615,10 @@ private struct SetupVoiceVisual: View {
   var body: some View {
     VStack(spacing: 12) {
       SetupVoiceTile(
-        model: model, id: .parakeetUltra, symbol: "mic.fill", title: "Natural dictation",
+        model: model, id: .parakeetUltra, icon: .micFill, title: "Natural dictation",
         detail: "Parakeet hears Ukrainian, English and 23 more, even mixed in one sentence.")
       SetupVoiceTile(
-        model: model, id: .supertonic3, symbol: "speaker.wave.2.fill", title: "Natural voice",
+        model: model, id: .supertonic3, icon: .speakerFill, title: "Natural voice",
         detail: "Supertonic reads answers aloud in 31 languages.")
       Text(summary)
         .font(.system(size: 12, design: .rounded))
@@ -641,7 +640,7 @@ private struct SetupVoiceVisual: View {
 private struct SetupVoiceTile: View {
   @ObservedObject var model: BolttyAISettingsModel
   let id: LocalVoiceModel.ID
-  let symbol: String
+  let icon: BolttyIcon
   let title: String
   let detail: String
   @State private var isHovered = false
@@ -652,8 +651,7 @@ private struct SetupVoiceTile: View {
   var body: some View {
     SetupTile(isOn: isOn || isHere, isHovered: isHovered) {
       HStack(spacing: 14) {
-        Image(systemName: symbol)
-          .font(.system(size: 22, weight: .medium))
+        BolttyIconView(icon: icon, size: 28)
           .frame(width: 36)
         VStack(alignment: .leading, spacing: 3) {
           Text(title).font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -666,8 +664,7 @@ private struct SetupVoiceTile: View {
             .foregroundStyle(.tertiary)
         }
         Spacer(minLength: 8)
-        Image(systemName: isOn || isHere ? "checkmark.circle.fill" : "circle")
-          .font(.system(size: 20))
+        BolttyIconView(icon: isOn || isHere ? .checkCircleFill : .circle, size: 24)
           .foregroundStyle(isOn || isHere ? .primary : .tertiary)
       }
       .padding(.horizontal, 18)

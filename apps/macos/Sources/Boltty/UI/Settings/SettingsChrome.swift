@@ -64,12 +64,21 @@ struct SettingsRefreshButton: View {
   let identifier: String
   let action: () -> Void
 
+  /// Turning is a rotation of its own: `symbolEffect` works only on a symbol.
+  private var turns: Bool { isBusy && !MotionPreferences.reduceMotion }
+
   var body: some View {
     Button(action: action) {
-      Label(isBusy ? busyTitle : title, systemImage: "arrow.clockwise")
-        .symbolEffect(
-          .rotate, options: .speed(1.5), isActive: isBusy && !MotionPreferences.reduceMotion
-        )
+      Label {
+        Text(isBusy ? busyTitle : title)
+      } icon: {
+        BolttyIconView(icon: .reload, size: 16)
+          .rotationEffect(.degrees(turns ? 360 : 0))
+          .animation(
+            turns ? .linear(duration: 0.9).repeatForever(autoreverses: false) : nil,
+            value: turns
+          )
+      }
     }
     .help(isBusy ? busyHelp : help)
     .accessibilityIdentifier(identifier)

@@ -340,8 +340,7 @@ private struct AgentSettingsListRow: View {
         .controlSize(.small)
 
       Button(action: open) {
-        Image(systemName: "chevron.forward")
-          .font(BolttyInterfaceTypography.fixed(size: 12, weight: .semibold))
+        BolttyIconView(icon: .chevronRight, size: 16)
           .foregroundStyle(isHovered ? .secondary : .tertiary)
           .frame(width: 16, height: 24)
           .contentShape(Rectangle())
@@ -566,7 +565,11 @@ struct UsageSettingsPage: View {
     Group {
       if rows.isEmpty, model.statistics?.sessions.isEmpty == true {
         ContentUnavailableView {
-          Label("No usage yet", systemImage: SettingsPage.usage.symbol)
+          Label {
+            Text("No usage yet")
+          } icon: {
+            BolttyIconView(icon: SettingsPage.usage.icon, size: 40)
+          }
         } description: {
           Text("Nothing any agent wrote down yet. Claude Code, Codex and Grok report their plan limits here, and every chat with any of them is counted.")
         }

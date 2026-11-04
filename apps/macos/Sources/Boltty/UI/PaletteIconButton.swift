@@ -596,9 +596,7 @@ private final class PaletteKeycapView: NSView {
     let size = AgentPaletteMetrics.helpKeycapSize
     let mark: NSView
     var centring: [NSLayoutConstraint]
-    if let symbol = Self.symbols[key],
-       let image = NSImage(systemSymbolName: symbol, accessibilityDescription: key)?
-         .withSymbolConfiguration(.init(pointSize: font.pointSize, weight: .regular)) {
+    if let image = Self.icons[key]?.image(size: font.pointSize + 2, description: key) {
       let view = NSImageView(image: image)
       view.contentTintColor = PaletteInk.secondary
       mark = view
@@ -633,9 +631,9 @@ private final class PaletteKeycapView: NSView {
     setAccessibilityElement(false)
   }
 
-  private static let symbols: [String: String] = [
-    "↵": "return", "⏎": "return", "⌘": "command", "⇧": "shift",
-    "⌥": "option", "⌃": "control", "⌫": "delete.left", "⇥": "arrow.right.to.line",
+  private static let icons: [String: BolttyIcon] = [
+    "↵": .keyReturn, "⏎": .keyReturn, "⌘": .keyCommand, "⇧": .keyShift,
+    "⌥": .keyOption, "⌃": .keyControl, "⌫": .keyDelete, "⇥": .keyTab,
   ]
 
   @available(*, unavailable)

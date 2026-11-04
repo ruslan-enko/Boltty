@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0016A2C4D67C9E0335296665 /* AgentIconProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4AA1DF27F1B70A8B8E19052 /* AgentIconProvider.swift */; };
+		C1A7E0B24D5F4E6A9B3C7D12 /* BolttyIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A7E0B24D5F4E6A9B3C7D13 /* BolttyIcon.swift */; };
+		C1A7E0B24D5F4E6A9B3C7D14 /* BolttyIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A7E0B24D5F4E6A9B3C7D15 /* BolttyIconView.swift */; };
 		00513CB7FB07CA1C7B1DC1DB /* PaletteEffectsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C504CC00C75BF69BA78B4124 /* PaletteEffectsTests.swift */; };
 		00E9ED621475937A53D78327 /* AgentHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E5E427F639DAE032007247 /* AgentHistoryTests.swift */; };
 		01C5BB5EED979C52F8F47D4D /* ChipEntranceAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235BFE75A0C5C0F4FAF88BD4 /* ChipEntranceAnimator.swift */; };
@@ -226,6 +228,7 @@
 		A25C8C36D80194BBA7AC4A05 /* ParakeetTDT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFA39871C46A5139ED11782 /* ParakeetTDT.swift */; };
 		A30D243EEEDFD2730FBF6307 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFFE90DB0AF895622BF308C /* LoginItem.swift */; };
 		A457BB588CE225D3B034A513 /* ChipGlass in Resources */ = {isa = PBXBuildFile; fileRef = 721223C7C17BB8CF63B684F2 /* ChipGlass */; };
+		C1A7E0B24D5F4E6A9B3C7D10 /* Icons in Resources */ = {isa = PBXBuildFile; fileRef = C1A7E0B24D5F4E6A9B3C7D11 /* Icons */; };
 		A46A2A69EA180E342A3824D4 /* PaletteActivityContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812E433BEE90F47097100667 /* PaletteActivityContactSheet.swift */; };
 		A4DDB8D94D0DC6789C9EE7DB /* AskBolttySessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79FDC922E2ECE048E620B7F6 /* AskBolttySessionTests.swift */; };
 		A552B47AC21809235379BC7E /* hum-1.wav in Resources */ = {isa = PBXBuildFile; fileRef = B73F61F021D50126A770FE26 /* hum-1.wav */; };
@@ -514,6 +517,7 @@
 		6F98E1E94EB5E6C6F9AD9B63 /* AgentFailureReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFailureReport.swift; sourceTree = "<group>"; };
 		714EBB1D5FB1FF38653FDF0D /* AgentPaletteController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteController.swift; sourceTree = "<group>"; };
 		721223C7C17BB8CF63B684F2 /* ChipGlass */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ChipGlass; path = Resources/ChipGlass; sourceTree = SOURCE_ROOT; };
+		C1A7E0B24D5F4E6A9B3C7D11 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Icons; path = Resources/Icons; sourceTree = SOURCE_ROOT; };
 		722B566E5FB40FC069AE2AFF /* VoiceGlowContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceGlowContactSheet.swift; sourceTree = "<group>"; };
 		74892E151D851D467D5FFC4D /* SettingsPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPages.swift; sourceTree = "<group>"; };
 		751B75F3EE48969055B46F21 /* ConversationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngineTests.swift; sourceTree = "<group>"; };
@@ -580,6 +584,8 @@
 		A295D064E180753EC63C2009 /* SystemAttentionNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAttentionNotificationService.swift; sourceTree = "<group>"; };
 		A3741CC8770F4D873A8F84E0 /* BolttyAIScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAIScreenshotTests.swift; sourceTree = "<group>"; };
 		A4AA1DF27F1B70A8B8E19052 /* AgentIconProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentIconProvider.swift; sourceTree = "<group>"; };
+		C1A7E0B24D5F4E6A9B3C7D13 /* BolttyIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyIcon.swift; sourceTree = "<group>"; };
+		C1A7E0B24D5F4E6A9B3C7D15 /* BolttyIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyIconView.swift; sourceTree = "<group>"; };
 		A548468290B4BC4E201557FF /* run-1.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "run-1.wav"; sourceTree = "<group>"; };
 		A6720FF01A0557277FCD28D8 /* AnswerReadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerReadingTests.swift; sourceTree = "<group>"; };
 		A721ACBD18047573D0E6AE5D /* BolttyBrandMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyBrandMark.swift; sourceTree = "<group>"; };
@@ -1132,6 +1138,7 @@
 				6DC4384CB1C713DF2697CFFE /* HotkeyRecorderField.swift */,
 				3E6CE8FCF46B26A25BFFEEC8 /* MascotPickerView.swift */,
 				1CAB907A495E0F0B078F6AC7 /* SettingsChrome.swift */,
+				C1A7E0B24D5F4E6A9B3C7D15 /* BolttyIconView.swift */,
 				46C5FF8F1D96DF8A275D81A4 /* SettingsFormView.swift */,
 				CA5F15940EBC37D16E7D4972 /* SettingsNavigation.swift */,
 				74892E151D851D467D5FFC4D /* SettingsPages.swift */,
@@ -1207,6 +1214,7 @@
 				24568FB2D3EA339880D65CBF /* AgentIcons */,
 				C4A92FA5D0FE0A354844534E /* AppIcons */,
 				721223C7C17BB8CF63B684F2 /* ChipGlass */,
+				C1A7E0B24D5F4E6A9B3C7D11 /* Icons */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -1222,6 +1230,7 @@
 				4D765AEE1AF628330D1175A7 /* Voice */,
 				200978181FDA086EE4DC3CD9 /* AgentHistoryViews.swift */,
 				A4AA1DF27F1B70A8B8E19052 /* AgentIconProvider.swift */,
+				C1A7E0B24D5F4E6A9B3C7D13 /* BolttyIcon.swift */,
 				714EBB1D5FB1FF38653FDF0D /* AgentPaletteController.swift */,
 				5A94638B89B61B01E7833DBE /* AgentPaletteInstallHints.swift */,
 				0A350C105B7036568E82232E /* AgentPaletteMetrics.swift */,
@@ -1434,6 +1443,7 @@
 				B7EB967CA083892D3AFCA439 /* AppIcon.icon in Resources */,
 				0B24B816732B3E051B7BAE16 /* AppIcons in Resources */,
 				A457BB588CE225D3B034A513 /* ChipGlass in Resources */,
+				C1A7E0B24D5F4E6A9B3C7D10 /* Icons in Resources */,
 				3607A598B75CE3C90A91536F /* LICENSE in Resources */,
 				636F89C2A009AD76BD80399F /* THIRD_PARTY_NOTICES.md in Resources */,
 				58F9EE4BF92A5A1237D5CCC6 /* attention.wav in Resources */,
@@ -1484,6 +1494,8 @@
 				E43020BF616F1D290EA6360D /* AgentHistory.swift in Sources */,
 				3B69879C9A4B94C9B83B9493 /* AgentHistoryViews.swift in Sources */,
 				0016A2C4D67C9E0335296665 /* AgentIconProvider.swift in Sources */,
+				C1A7E0B24D5F4E6A9B3C7D12 /* BolttyIcon.swift in Sources */,
+				C1A7E0B24D5F4E6A9B3C7D14 /* BolttyIconView.swift in Sources */,
 				84391032BD1B6DA35A1C19AA /* AgentPaletteController.swift in Sources */,
 				04AFCE18301B400B79062602 /* AgentPaletteInstallHints.swift in Sources */,
 				A7E7B892C781F19376980B74 /* AgentPaletteMetrics.swift in Sources */,

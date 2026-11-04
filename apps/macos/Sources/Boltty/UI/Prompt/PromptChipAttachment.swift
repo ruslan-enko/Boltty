@@ -15,12 +15,12 @@ extension PromptAttachmentKind {
     chipColor.withAlphaComponent(AgentPaletteMetrics.chipFillAlpha)
   }
 
-  var chipSymbolName: String {
+  var chipIcon: BolttyIcon {
     switch self {
-    case .image: "photo"
-    case .file: "doc"
-    case .text: "text.viewfinder"
-    case .link: "link"
+    case .image: .photo
+    case .file: .doc
+    case .text: .textScan
+    case .link: .link
     }
   }
 }
@@ -101,14 +101,10 @@ final class PromptChipCell: NSTextAttachmentCell {
 
   private var symbol: NSImage? {
     if let cachedSymbol { return cachedSymbol }
-    let configuration = NSImage.SymbolConfiguration(
-      pointSize: displayFont.pointSize * AgentPaletteMetrics.chipSymbolPerPoint,
-      weight: .regular
-    ).applying(.init(paletteColors: [promptAttachment.kind.chipColor]))
-    let symbol = NSImage(
-      systemSymbolName: promptAttachment.kind.chipSymbolName,
-      accessibilityDescription: nil
-    )?.withSymbolConfiguration(configuration)
+    let symbol = promptAttachment.kind.chipIcon.image(
+      size: (displayFont.pointSize * AgentPaletteMetrics.chipSymbolPerPoint * 1.2).rounded(),
+      colour: promptAttachment.kind.chipColor
+    )
     cachedSymbol = symbol
     return symbol
   }

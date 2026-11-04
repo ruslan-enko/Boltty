@@ -298,9 +298,8 @@ private struct RestoreGlyph: View {
   @Environment(\.settingsControlIsPressed) private var isPressed
 
   var body: some View {
-    Image(systemName: "arrow.uturn.backward.circle.fill")
-      .symbolRenderingMode(.hierarchical)
-      .font(BolttyInterfaceTypography.fixed(size: 15))
+    BolttyIconView(icon: .undoCircleFill, size: 18)
+      .foregroundStyle(.secondary)
       .opacity(isPressed ? 0.55 : 1)
       .animation(isPressed ? nil : SettingsMotion.quick, value: isPressed)
   }

@@ -30,10 +30,7 @@ struct BolttyAISettingsView: View {
         Label {
           Text(page.title)
         } icon: {
-          Image(systemName: page.symbol)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 17, height: 17)
+          BolttyIconView(icon: page.icon, size: 17)
             .foregroundStyle(.secondary)
         }
           .tag(page)
@@ -73,7 +70,11 @@ struct BolttyAISettingsView: View {
       Button {
         navigation.goBack()
       } label: {
-        Label("Back", systemImage: "chevron.backward")
+        Label {
+          Text("Back")
+        } icon: {
+          BolttyIconView(icon: .chevronLeft, size: 18)
+        }
       }
       .disabled(!navigation.canGoBack)
       .keyboardShortcut("[", modifiers: .command)
@@ -83,7 +84,11 @@ struct BolttyAISettingsView: View {
       Button {
         navigation.goForward()
       } label: {
-        Label("Forward", systemImage: "chevron.forward")
+        Label {
+          Text("Forward")
+        } icon: {
+          BolttyIconView(icon: .chevronRight, size: 18)
+        }
       }
       .disabled(!navigation.canGoForward)
       .keyboardShortcut("]", modifiers: .command)
@@ -134,13 +139,12 @@ struct SettingsNote: View {
 }
 
 struct SettingsPopUpIndicator: View {
-  var symbol = "chevron.up.chevron.down"
+  var icon = BolttyIcon.chevronsUpDown
   var isHovered = false
   @Environment(\.settingsControlIsPressed) private var isPressed
 
   var body: some View {
-    Image(systemName: symbol)
-      .font(BolttyInterfaceTypography.fixed(size: 9, weight: .bold))
+    BolttyIconView(icon: icon, size: 13)
       .foregroundStyle(isHovered || isPressed ? .primary : .secondary)
       .frame(width: 20, height: 20)
       .background(Circle().fill(Color.primary.opacity(fill)))

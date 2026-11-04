@@ -17,10 +17,6 @@ final class WorkingDirectoryChipView: PaletteIconButton {
   var fillForTesting: NSColor? {
     layer?.backgroundColor.flatMap { NSColor(cgColor: $0) }
   }
-  private static func symbolFolder(pointSize: CGFloat) -> NSImage? {
-    NSImage(systemSymbolName: "folder", accessibilityDescription: "Working folder")?
-      .withSymbolConfiguration(.init(pointSize: pointSize, weight: .medium))
-  }
   private(set) var isChatSized = false
   private lazy var widthConstraint =
     widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.voiceOrbDiameter)
@@ -52,8 +48,7 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     nameLabel.isHidden = true
     addSubview(nameLabel)
 
-    warningIcon.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill",
-      accessibilityDescription: nil)
+    warningIcon.image = BolttyIcon.warningFill.image(size: AgentPaletteMetrics.directoryChipGlyphPointSize)
     warningIcon.contentTintColor = AgentPaletteMetrics.directoryChipWarningTint
     warningIcon.imageScaling = .scaleProportionallyUpOrDown
     warningIcon.isHidden = true
@@ -83,12 +78,10 @@ final class WorkingDirectoryChipView: PaletteIconButton {
 
   private func syncIcon() {
     let named = chip?.folderLabel != nil
-    let pointSize = named
-      ? AgentPaletteMetrics.folderChipFontSize(chat: isChatSized)
-      : ComposerControlGroup.pointSize(chat: isChatSized)
-    guard pointSize != iconPointSize else { return }
-    iconPointSize = pointSize
-    icon.image = Self.symbolFolder(pointSize: pointSize)
+    let size = named ? ComposerControlGroup.glyph : ComposerControlGroup.iconSize(chat: isChatSized)
+    guard size != iconPointSize else { return }
+    iconPointSize = size
+    icon.image = BolttyIcon.folder.image(size: size, description: "Working folder")
   }
   private var iconPointSize: CGFloat = 0
 

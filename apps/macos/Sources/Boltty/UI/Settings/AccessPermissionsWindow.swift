@@ -164,8 +164,7 @@ private struct AccessPermissionRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      Image(systemName: kind.symbol)
-        .font(.body.weight(.semibold))
+      BolttyIconView(icon: kind.icon, size: 20)
         .foregroundStyle(.white)
         .frame(width: 30, height: 30)
         .background(kind.tint.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
@@ -192,8 +191,7 @@ private struct AccessPermissionRow: View {
     } else {
       switch status {
       case .allowed:
-        Image(systemName: "checkmark.circle.fill")
-          .font(.title2)
+        BolttyIconView(icon: .checkCircleFill, size: 22)
           .foregroundStyle(.green)
           .help("Allowed")
           .transition(.scale.combined(with: .opacity))
@@ -212,12 +210,12 @@ private struct AccessPermissionRow: View {
 }
 
 extension AccessKind {
-  var symbol: String {
+  var icon: BolttyIcon {
     switch self {
-    case .dictation: "mic.fill"
-    case .screen: "rectangle.dashed"
-    case .notifications: "bell.badge.fill"
-    case .finder: "folder.fill"
+    case .dictation: .micFill
+    case .screen: .region
+    case .notifications: .bellBadgeFill
+    case .finder: .folderFill
     }
   }
 

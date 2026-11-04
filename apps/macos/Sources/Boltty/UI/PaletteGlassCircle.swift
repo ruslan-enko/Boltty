@@ -25,36 +25,26 @@ final class GlassCircleButton: NSView {
       }
     }
   }
-  private let symbol: String
+  private let icon: BolttyIcon
   private let symbolDescription: String
-  private let weight: NSFont.Weight
   private(set) var pointSize: CGFloat
 
   func setPointSize(_ pointSize: CGFloat) {
     guard pointSize != self.pointSize else { return }
     self.pointSize = pointSize
-    button.image = Self.image(symbol, symbolDescription, pointSize, weight)
-  }
-
-  private static func image(
-    _ symbol: String, _ description: String, _ pointSize: CGFloat, _ weight: NSFont.Weight
-  ) -> NSImage? {
-    NSImage(systemSymbolName: symbol, accessibilityDescription: description)?
-      .withSymbolConfiguration(.init(pointSize: pointSize, weight: weight))
+    button.image = icon.image(size: pointSize, description: symbolDescription)
   }
 
   init(
-    symbol: String,
+    icon: BolttyIcon,
     accessibilityDescription: String,
     diameter: CGFloat,
-    pointSize: CGFloat,
-    weight: NSFont.Weight = .medium,
+    size pointSize: CGFloat,
     showsGlass: Bool = true
   ) {
     self.showsGlass = showsGlass
-    self.symbol = symbol
+    self.icon = icon
     self.symbolDescription = accessibilityDescription
-    self.weight = weight
     self.pointSize = pointSize
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
@@ -64,7 +54,7 @@ final class GlassCircleButton: NSView {
     button.translatesAutoresizingMaskIntoConstraints = false
     button.title = ""
     button.imagePosition = .imageOnly
-    button.image = Self.image(symbol, accessibilityDescription, pointSize, weight)
+    button.image = icon.image(size: pointSize, description: accessibilityDescription)
     button.restingBackground = .clear
     button.hoverBackdropBlurRadius = 0
     if showsGlass {

@@ -34,10 +34,7 @@ final class PaletteNoticeView: NSView {
     wantsLayer = true
     layer?.masksToBounds = false
 
-    glyph.image = NSImage(
-      systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.promptNoteFontSize, weight: .semibold))
+    glyph.image = BolttyIcon.warningFill.image(size: AgentPaletteMetrics.promptNoteFontSize + 3)
     glyph.contentTintColor = AgentPaletteMetrics.failureCardAccent
     glyph.setContentHuggingPriority(.required, for: .horizontal)
     glyph.setContentCompressionResistancePriority(.required, for: .horizontal)

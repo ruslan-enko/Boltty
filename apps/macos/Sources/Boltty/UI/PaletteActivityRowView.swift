@@ -159,14 +159,12 @@ final class PaletteActivityRowView: NSView {
 
     let tint = Self.tint(for: value.state)
     let isCompaction = value.name == AgentCompaction.toolName
-    let symbol = isCompaction ? "arrow.down.right.and.arrow.up.left"
-      : value.isThought ? "brain" : Self.symbol(for: value.state)
-    glyph.image = NSImage(
-      systemSymbolName: symbol,
-      accessibilityDescription: value.state.rawValue
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewActivityGlyphPointSize, weight: .medium
-    ))
+    let icon = isCompaction ? BolttyIcon.compact
+      : value.isThought ? .brain : Self.icon(for: value.state)
+    glyph.image = icon.image(
+      size: AgentPaletteMetrics.previewActivityGlyphPointSize,
+      description: value.state.rawValue
+    )
     glyph.contentTintColor = tint
 
     headline.stringValue = value.headline
@@ -175,12 +173,10 @@ final class PaletteActivityRowView: NSView {
     let opens = Self.opens(value)
     chevron.isHidden = !opens
     button.isEnabled = opens
-    chevron.image = NSImage(
-      systemSymbolName: expanded ? "chevron.down" : "chevron.right",
-      accessibilityDescription: expanded ? "Hide output" : "Show output"
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewActivityChevronPointSize, weight: .semibold
-    ))
+    chevron.image = (expanded ? BolttyIcon.chevronDown : .chevronRight).image(
+      size: AgentPaletteMetrics.previewActivityChevronPointSize,
+      description: expanded ? "Hide output" : "Show output"
+    )
     applyInk()
 
     let showsSteps = Self.showsSteps(value, isExpanded: expanded)
@@ -232,12 +228,12 @@ final class PaletteActivityRowView: NSView {
     )
   }
 
-  private static func symbol(for state: AgentActivity.State) -> String {
+  private static func icon(for state: AgentActivity.State) -> BolttyIcon {
     switch state {
-    case .pending: return "circle.dotted"
-    case .running: return "circle.dashed"
-    case .completed: return "checkmark.circle"
-    case .failed: return "exclamationmark.triangle"
+    case .pending: return .circleDotted
+    case .running: return .circleDashed
+    case .completed: return .checkCircle
+    case .failed: return .warning
     }
   }
 
@@ -250,17 +246,16 @@ final class PaletteActivityRowView: NSView {
   }
 
   private static func stepRow(_ step: PlanStep) -> NSView {
-    let (symbol, tint): (String, NSColor) = switch step.status {
-    case .completed: ("checkmark.circle", PaletteInk.secondary)
-    case .inProgress: ("circle.dashed", PaletteInk.primary)
-    case .pending: ("circle", PaletteInk.tertiary)
+    let (icon, tint): (BolttyIcon, NSColor) = switch step.status {
+    case .completed: (.checkCircle, PaletteInk.secondary)
+    case .inProgress: (.circleDashed, PaletteInk.primary)
+    case .pending: (.circle, PaletteInk.tertiary)
     }
     let glyph = NSImageView()
     glyph.translatesAutoresizingMaskIntoConstraints = false
     glyph.imageScaling = .scaleProportionallyDown
-    glyph.image = NSImage(systemSymbolName: symbol, accessibilityDescription: step.status.rawValue)?
-      .withSymbolConfiguration(.init(
-        pointSize: AgentPaletteMetrics.previewActivityGlyphPointSize, weight: .medium))
+    glyph.image = icon.image(
+      size: AgentPaletteMetrics.previewActivityGlyphPointSize, description: step.status.rawValue)
     glyph.contentTintColor = tint
     let label = NSTextField(labelWithString: step.text)
     label.translatesAutoresizingMaskIntoConstraints = false
@@ -344,10 +339,8 @@ final class PaletteActivityGroupView: NSView {
       glyph.translatesAutoresizingMaskIntoConstraints = false
       glyph.imageScaling = .scaleProportionallyDown
     }
-    warning.image = NSImage(
-      systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Something failed"
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewActivityGlyphPointSize, weight: .medium))
+    warning.image = BolttyIcon.warning.image(
+      size: AgentPaletteMetrics.previewActivityGlyphPointSize, description: "Something failed")
     warning.contentTintColor = AgentPaletteMetrics.failureCardAccent
 
     button.translatesAutoresizingMaskIntoConstraints = false
@@ -423,12 +416,10 @@ final class PaletteActivityGroupView: NSView {
       + (failed ? AgentPaletteMetrics.previewActivityGlyphSize + AgentPaletteMetrics.previewActivityRowSpacing * 3 : 0)
     headline.stringValue = AgentActivityGroup.summary(of: value)
     headline.toolTip = value.filter { !$0.isThought }.map(\.headline).joined(separator: "\n")
-    chevron.image = NSImage(
-      systemSymbolName: isExpanded ? "chevron.up" : "chevron.down",
-      accessibilityDescription: isExpanded ? "Hide steps" : "Show steps"
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewWorkPillChevronPointSize, weight: .semibold
-    ))
+    chevron.image = (isExpanded ? BolttyIcon.chevronUp : .chevronDown).image(
+      size: AgentPaletteMetrics.previewWorkPillChevronPointSize,
+      description: isExpanded ? "Hide steps" : "Show steps"
+    )
     applyInk()
 
     if rows.map(\.activity.id) != value.map(\.id) {

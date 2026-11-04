@@ -24,15 +24,15 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     }
   }
 
-  var symbol: String {
+  var icon: BolttyIcon {
     switch self {
-    case .general: "gearshape"
+    case .general: .gear
     // The agents are command-line tools; sparkles said "AI" and nothing more.
-    case .agents: "terminal"
-    case .usage: "chart.bar"
-    case .voice: "mic"
-    case .askBoltty: "person.wave.2"
-    case .shortcuts: "keyboard"
+    case .agents: .terminal
+    case .usage: .chart
+    case .voice: .mic
+    case .askBoltty: .speakingPerson
+    case .shortcuts: .keyboard
     }
   }
 }

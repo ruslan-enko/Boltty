@@ -107,11 +107,10 @@ final class BolttyAIPreviewCard: NSView {
   var isRecoverVisibleForTesting: Bool { !recoverButton.isHidden }
   private let messages = NSStackView()
   private let closeButton = GlassCircleButton(
-    symbol: "chevron.backward",
+    icon: .chevronLeft,
     accessibilityDescription: "Back",
     diameter: AgentPaletteMetrics.previewCloseDiameter,
-    pointSize: AgentPaletteMetrics.previewCloseGlyphPointSize,
-    weight: AgentPaletteMetrics.previewCloseGlyphWeight
+    size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
   var closeButtonUsesSystemGlassForTesting: Bool { closeButton.usesSystemGlass }
   var isCloseVisibleForTesting: Bool { !closeButton.isHidden }
@@ -1558,7 +1557,7 @@ final class PaletteChatMessageView: NSView {
     copyButton.toolTip = "Copy this answer"
     copyButton.setAccessibilityIdentifier("boltty.ask.chat.message.copy")
     copyButton.setAccessibilityLabel("Copy this answer")
-    applyCopyGlyph("doc.on.doc")
+    applyCopyGlyph(.copy)
     if user { return setUpQuestionMeta() }
     bubble.addSubview(copyButton)
     speakButton.isHidden = true
@@ -1615,7 +1614,7 @@ final class PaletteChatMessageView: NSView {
     questionMeta.setCustomSpacing(0, after: questionTime)
     questionMeta.isHidden = true
     addSubview(questionMeta)
-    let glyph = Self.copyImage("doc.on.doc")?.size.width ?? AgentPaletteMetrics.previewFileGlyphPointSize
+    let glyph = Self.copyImage(.copy)?.size.width ?? AgentPaletteMetrics.previewFileGlyphPointSize
     let inkInset = (AgentPaletteMetrics.previewCopyButtonSize - glyph) / 2
     NSLayoutConstraint.activate([
       copyButton.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewCopyButtonSize),
@@ -1657,9 +1656,7 @@ final class PaletteChatMessageView: NSView {
   /// One tick when sent, two once the agent answers; the second overlaps the
   /// first as messengers draw it.
   private static func statusImage(answered: Bool) -> NSImage? {
-    guard let mark = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)?
-      .withSymbolConfiguration(.init(pointSize: AgentPaletteMetrics.typeMeta - 2, weight: .semibold))
-    else { return nil }
+    guard let mark = BolttyIcon.check.image(size: AgentPaletteMetrics.typeMeta + 1) else { return nil }
     guard answered else { return mark }
     let offset = (mark.size.width * 0.42).rounded()
     let image = NSImage(
@@ -1704,7 +1701,7 @@ final class PaletteChatMessageView: NSView {
   private func pinCopyButton() {
     NSLayoutConstraint.deactivate(copyConstraints)
     guard copyButton.superview === bubble else { return copyConstraints = [] }
-    let glyph = Self.copyImage("doc.on.doc")?.size.width ?? AgentPaletteMetrics.previewFileGlyphPointSize
+    let glyph = Self.copyImage(.copy)?.size.width ?? AgentPaletteMetrics.previewFileGlyphPointSize
     let inkInset = (AgentPaletteMetrics.previewCopyButtonSize - glyph) / 2
     copyConstraints = [
       copyButton.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: -inkInset),
@@ -1713,18 +1710,12 @@ final class PaletteChatMessageView: NSView {
     NSLayoutConstraint.activate(copyConstraints)
   }
 
-  private func applyCopyGlyph(_ name: String) {
-    copyButton.image = Self.copyImage(name)
+  private func applyCopyGlyph(_ icon: BolttyIcon) {
+    copyButton.image = Self.copyImage(icon)
   }
 
-  private static func copyImage(_ name: String) -> NSImage? {
-    NSImage(
-      systemSymbolName: name,
-      accessibilityDescription: "Copy this answer"
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewFileGlyphPointSize,
-      weight: .medium
-    ))
+  private static func copyImage(_ icon: BolttyIcon) -> NSImage? {
+    icon.image(size: AgentPaletteMetrics.previewFileGlyphPointSize, description: "Copy this answer")
   }
 
   override func mouseEntered(with event: NSEvent) { setCopyRevealed(true) }
@@ -1761,9 +1752,8 @@ final class PaletteChatMessageView: NSView {
   private func applySpeakGlyph() {
     let label = isSpeaking ? "Stop reading aloud" : "Read this answer aloud"
     speakButton.restingTint = isSpeaking ? .white : ComposerControlGroup.restingInk
-    speakButton.image = NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: label)?
-      .withSymbolConfiguration(.init(
-        pointSize: AgentPaletteMetrics.previewFileGlyphPointSize, weight: .medium))
+    speakButton.image = BolttyIcon.speaker.image(
+      size: AgentPaletteMetrics.previewFileGlyphPointSize, description: label)
     speakButton.toolTip = label
     speakButton.setAccessibilityLabel(label)
   }
@@ -1779,9 +1769,9 @@ final class PaletteChatMessageView: NSView {
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     pasteboard.setString(value, forType: .string)
-    applyCopyGlyph("checkmark")
+    applyCopyGlyph(.check)
     copyResetWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph("doc.on.doc") }
+    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph(.copy) }
     copyResetWork = work
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
   }
@@ -2393,12 +2383,10 @@ final class PaletteTurnHeaderView: NSView {
     label.stringValue = value.text()
     chevron.isHidden = value.isRunning
     button.isEnabled = !value.isRunning
-    chevron.image = NSImage(
-      systemSymbolName: value.isCollapsed ? "chevron.right" : "chevron.down",
-      accessibilityDescription: value.isCollapsed ? "Show the work" : "Hide the work"
-    )?.withSymbolConfiguration(.init(
-      pointSize: AgentPaletteMetrics.previewActivityChevronPointSize, weight: .semibold
-    ))
+    chevron.image = (value.isCollapsed ? BolttyIcon.chevronRight : .chevronDown).image(
+      size: AgentPaletteMetrics.previewActivityChevronPointSize,
+      description: value.isCollapsed ? "Show the work" : "Hide the work"
+    )
     setAccessibilityLabel(label.stringValue)
     setAccessibilityValue(value.isRunning ? nil : (value.isCollapsed ? "collapsed" : "expanded"))
   }

@@ -17,15 +17,14 @@ final class GlassCircleVoiceButton: PaletteIconButton {
   private var smoothedLevel: CGFloat = 0
   var showsMicrophoneGlyphForTesting: Bool { image != nil }
   var drawsBarsForTesting: Bool { !chrome.isHidden }
-  var restingGlyphPointSize: CGFloat = ComposerControlGroup.pointSize(chat: false) {
-    didSet { if restingGlyphPointSize != oldValue { syncRestingGlyph() } }
+  var restingIconSize: CGFloat = ComposerControlGroup.iconSize(chat: false) {
+    didSet { if restingIconSize != oldValue { syncRestingGlyph() } }
   }
   private func syncRestingGlyph() {
     let mic = !usesSystemGlass
     chrome.isHidden = mic
     image = mic
-      ? NSImage(systemSymbolName: "mic", accessibilityDescription: "Dictate prompt")?
-          .withSymbolConfiguration(.init(pointSize: restingGlyphPointSize, weight: .medium))
+      ? BolttyIcon.mic.image(size: restingIconSize, description: "Dictate prompt")
       : nil
   }
   private var phase: CGFloat = 0

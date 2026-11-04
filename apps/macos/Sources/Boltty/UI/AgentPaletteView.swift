@@ -146,10 +146,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   ///
   /// WORK PAGE 1091:4731 removes the resting glass, keeping the hit target.
   private let attachRestDisc = GlassCircleButton(
-    symbol: "plus",
+    icon: .plus,
     accessibilityDescription: "Attach a file",
     diameter: AgentPaletteMetrics.voiceOrbDiameter,
-    pointSize: ComposerControlGroup.pointSize(chat: false),
+    size: ComposerControlGroup.iconSize(chat: false),
     showsGlass: false
   )
   /// The + at the foot's leading edge, apart from the group on the right;
@@ -199,11 +199,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// alone** — the back disc's size and weight; the word is its help tag.
   private let latestPill: GlassCircleButton = {
     let disc = GlassCircleButton(
-      symbol: "arrow.down",
+      icon: .arrowDown,
       accessibilityDescription: "Latest",
       diameter: AgentPaletteMetrics.previewCloseDiameter,
-      pointSize: AgentPaletteMetrics.previewCloseGlyphPointSize,
-      weight: AgentPaletteMetrics.previewCloseGlyphWeight
+      size: AgentPaletteMetrics.previewCloseGlyphPointSize
     )
     disc.button.toolTip = "Latest"
     return disc
@@ -215,18 +214,16 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// chosen tab, Settings to the whole of Boltty. Inside the corner grips,
   /// which give way on them (`resizeEdges`); the rows dissolve under them.
   private let historyNewChatButton = GlassCircleButton(
-    symbol: "plus",
+    icon: .plus,
     accessibilityDescription: "New Chat",
     diameter: AgentPaletteMetrics.previewCloseDiameter,
-    pointSize: AgentPaletteMetrics.previewCloseGlyphPointSize,
-    weight: AgentPaletteMetrics.previewCloseGlyphWeight
+    size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
   private let historySettingsButton = GlassCircleButton(
-    symbol: "gearshape",
+    icon: .gear,
     accessibilityDescription: "Settings",
     diameter: AgentPaletteMetrics.previewCloseDiameter,
-    pointSize: AgentPaletteMetrics.previewCloseGlyphPointSize,
-    weight: AgentPaletteMetrics.previewCloseGlyphWeight
+    size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
   private var showsHistoryFoot: Bool { !historyNewChatButton.isHidden }
   /// Whether this agent reads files at all — see `setAcceptsAttachments`.
@@ -286,9 +283,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private let leadingControls = NSStackView()
   /// Send, a white disc with Return in it — see `ComposerControlGroup.sendDisc`.
   private let sendButton = GlassCircleButton(
-    symbol: "return", accessibilityDescription: "Send message",
+    icon: .keyReturn, accessibilityDescription: "Send message",
     diameter: ComposerControlGroup.sendDisc,
-    pointSize: ComposerControlGroup.sendGlyphPointSize, weight: .semibold, showsGlass: false)
+    size: ComposerControlGroup.sendIconSize, showsGlass: false)
   private let sendSlot = NSView()
   private lazy var sendSlotWidth = sendSlot.widthAnchor.constraint(equalToConstant: 0)
   var sendButtonForTesting: PaletteIconButton { sendButton.button }
@@ -301,8 +298,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// the eye already is while waiting. A typed draft takes the slot back —
   /// Enter queues it, and the button has to say what Enter does.
   private var sendSlotStops = false
-  private let returnGlyph = ComposerControlGroup.sendSymbol("return", description: "Send message")
-  private let stopGlyph = ComposerControlGroup.sendSymbol("stop.fill", description: "Stop")
+  private let returnGlyph = ComposerControlGroup.sendIcon(.keyReturn, description: "Send message")
+  private let stopGlyph = ComposerControlGroup.sendIcon(.stopFill, description: "Stop")
   /// The composer's glyphs at the size of the screen they stand on — 22 on
   /// the first, 16 in a chat (`ComposerControlGroup`). The views travel
   /// between the two, so their symbols are re-made when the screen changes.
@@ -310,10 +307,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private func applyComposerGlyphSize(chat: Bool) {
     guard chat != composerGlyphsAreChat else { return }
     composerGlyphsAreChat = chat
-    let size = ComposerControlGroup.pointSize(chat: chat)
+    let size = ComposerControlGroup.iconSize(chat: chat)
     directoryChip.setChatSized(chat)
     attachRestDisc.setPointSize(size)
-    micButton.restingGlyphPointSize = size
+    micButton.restingIconSize = size
     placeDirectorySlot(inChat: chat)
   }
   /// The folder stands between the ring and the microphone on the first

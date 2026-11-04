@@ -73,6 +73,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Notch face | `UI/NotchMascotController.swift` |
 | Mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal`; `Models/MascotShape.swift`, `MascotPalette.swift`, `MascotLook.swift` |
 | Screen selection | `Services/ScreenRegionCapture.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
+| Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons` |
 | Shader effects | `UI/Effects/` |
 | Chat backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
@@ -988,6 +989,18 @@ heard.
 
 ## Design contract (AppKit)
 
+- **Icons are Boltty's own** (`BolttyIcon`, `Resources/Icons`;
+  `BolttyIconView` in SwiftUI). Never an SF Symbol: the one left is the Apple
+  mark in the first-run show's made-up menu bar, which is Apple's to draw, not
+  ours. A 16 × 16 grid, a 1.25 stroke with round ends, continuous corners and
+  no hard vertex, one colour. An icon is sized by its box (a chat's composer
+  `ComposerControlGroup.iconSize`, a point over `glyph`; elsewhere about a
+  fifth over the point size its symbol had, since the ink stops short of the
+  box), and its stroke grows with the box. A small round mark is solid:
+  stroked, it reads as a ring round a pinhole. `NSImage` draws the files as
+  template images, so they are black, not `currentColor`, and **it blurs an
+  SVG mask**: a solid with marks cut out is one plain path. Refresh turns by a
+  rotation of its own, since `symbolEffect` works only on a symbol.
 - **Glass is the system's**, in five kinds: the shell (`PaletteGlassHost`, bare
   regular glass under a black ramp), controls (the same
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,

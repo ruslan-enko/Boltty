@@ -70,13 +70,11 @@ final class AgentIconProviderTests: XCTestCase {
     XCTAssertTrue(AgentIconProvider.trimmedImage(for: .opencode).isTemplate)
   }
 
-  func testUnavailableNewSymbolUsesAnOlderSystemFallback() {
-    let image = BolttySFSymbolImage.make(
-      name: "boltty.symbol.that.does.not.exist",
-      fallbackName: "sparkles"
-    )
-
-    XCTAssertTrue(image.isTemplate)
-    XCTAssertNotNil(image.symbolConfiguration)
+  func testEveryIconShipsAsATemplateAtTheSizeAsked() throws {
+    for icon in BolttyIcon.allCases {
+      let image = try XCTUnwrap(icon.image(size: 17), "\(icon) did not ship")
+      XCTAssertTrue(image.isTemplate, "\(icon)")
+      XCTAssertEqual(image.size, NSSize(width: 17, height: 17), "\(icon)")
+    }
   }
 }

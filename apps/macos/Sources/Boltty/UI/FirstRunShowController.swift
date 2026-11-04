@@ -1576,20 +1576,18 @@ final class ShowPrompt {
     parent.addSubview(hint)
     parent.addSubview(text)
     let inside = glass.content
-    func control(_ symbol: String) -> NSImageView {
-      let configuration = NSImage.SymbolConfiguration(pointSize: space.v(24), weight: .regular)
-        .applying(.init(paletteColors: [NSColor.white.withAlphaComponent(0.8)]))
-      let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-        .withSymbolConfiguration(configuration)
+    func control(_ icon: BolttyIcon) -> NSImageView {
+      let image = icon.image(size: space.v(27))
       let view = NSImageView(frame: .zero)
       view.image = image
+      view.contentTintColor = NSColor.white.withAlphaComponent(0.8)
       let size = image?.size ?? .zero
       view.frame.size = size
       inside.addSubview(view)
       return view
     }
-    folder = control("folder")
-    microphone = control("mic")
+    folder = control(.folder)
+    microphone = control(.mic)
     auto = ShowText.label("Auto", size: space.v(22), weight: .medium)
     auto.sizeToFit()
     auto.alphaValue = 0
@@ -1600,10 +1598,9 @@ final class ShowPrompt {
     send.layer?.backgroundColor = CGColor(gray: 1, alpha: 1)
     send.layer?.cornerRadius = disc / 2
     send.alphaValue = 0
-    if let image = NSImage(systemSymbolName: "return", accessibilityDescription: nil)?
-      .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: space.v(24), weight: .semibold)
-        .applying(.init(paletteColors: [.black]))) {
+    if let image = BolttyIcon.keyReturn.image(size: space.v(36)) {
       let glyph = NSImageView(image: image)
+      glyph.contentTintColor = .black
       glyph.frame = CGRect(x: (disc - image.size.width) / 2, y: (disc - image.size.height) / 2,
                            width: image.size.width, height: image.size.height).integral
       send.addSubview(glyph)
@@ -1960,13 +1957,11 @@ struct ShowSketch {
     view.layer?.addSublayer(layer)
   }
 
-  /// An SF Symbol, white, `side` tall, its middle on (x, y).
-  func symbol(_ name: String, at x: CGFloat, _ y: CGFloat, side: CGFloat, alpha: CGFloat) {
-    let configuration = NSImage.SymbolConfiguration(pointSize: space.v(side), weight: .medium)
-      .applying(.init(paletteColors: [NSColor.white.withAlphaComponent(alpha)]))
-    guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-      .withSymbolConfiguration(configuration) else { return }
+  /// An icon, white, its box a fifth over `side` and its middle on (x, y).
+  func symbol(_ glyph: BolttyIcon, at x: CGFloat, _ y: CGFloat, side: CGFloat, alpha: CGFloat) {
+    guard let image = glyph.image(size: space.v(side * 1.2)) else { return }
     let icon = NSImageView(image: image)
+    icon.contentTintColor = NSColor.white.withAlphaComponent(alpha)
     icon.frame = CGRect(x: space.v(x) - image.size.width / 2, y: size.height - space.v(y) - image.size.height / 2,
                         width: image.size.width, height: image.size.height).integral
     view.addSubview(icon)
@@ -2012,8 +2007,10 @@ final class ShowAppWindow {
     // The library, each clip with its kind's symbol.
     sketch.block(36, 76, 190, 530, alpha: 0.2, radius: 28)
     sketch.text("Library", at: 58, middle: 106, size: 14, alpha: 0.55, weight: .semibold)
-    let clips = [("launch.mov", "film"), ("intro.mov", "film"), ("demo-v2.mov", "film"),
-                 ("voiceover.m4a", "waveform"), ("music.m4a", "music.note"), ("logo.png", "photo")]
+    let clips: [(String, BolttyIcon)] = [
+      ("launch.mov", .film), ("intro.mov", .film), ("demo-v2.mov", .film),
+      ("voiceover.m4a", .waveform), ("music.m4a", .music), ("logo.png", .photo),
+    ]
     for (index, clip) in clips.enumerated() {
       let row = 126 + CGFloat(index) * 46
       if index == 0 { sketch.block(46, row, 170, 40, alpha: 0.28, radius: 12) }
@@ -2834,9 +2831,9 @@ final class ShowChatList {
 /// on this Mac and the voices as plain circles in the mascots' gradients.
 @MainActor
 final class ShowSettingsWindow {
-  private static let pages: [(symbol: String, title: String)] = [
-    ("gearshape", "General"), ("person.2", "Agents"), ("chart.bar", "Usage"), ("waveform", "Voice"),
-    ("cursorarrow.rays", "Ask Boltty"), ("keyboard", "Shortcuts"),
+  private static let pages: [(symbol: BolttyIcon, title: String)] = [
+    (.gear, "General"), (.people, "Agents"), (.chart, "Usage"), (.waveform, "Voice"),
+    (.pointerRays, "Ask Boltty"), (.keyboard, "Shortcuts"),
   ]
   private static let backdrops: [ChatBackdrop] = [.standard, .sky, .space]
   private static let usage: [(left: CGFloat, words: String)] = [
