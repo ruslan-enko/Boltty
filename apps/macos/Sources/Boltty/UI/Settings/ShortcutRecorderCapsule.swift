@@ -226,7 +226,7 @@ final class ShortcutRecorderButton: NSButton {
     let ink: NSColor
     if isRecording {
       title = heldModifiers.isEmpty ? Self.recordingTitle : Self.glyphs(for: heldModifiers)
-      ink = .alternateSelectedControlTextColor
+      ink = BolttyBrand.onAccent
     } else if chord.isEmpty || chord == "None" {
       title = Self.unboundTitle
       ink = .tertiaryLabelColor
@@ -234,7 +234,7 @@ final class ShortcutRecorderButton: NSButton {
       title = chord
       ink = !isEnabled ? .disabledControlTextColor : (isConflicting ? .systemOrange : .labelColor)
     }
-    bezelColor = isRecording ? .controlAccentColor : nil
+    bezelColor = isRecording ? BolttyBrand.accent : nil
     isBordered = !isInline || isRecording
     let paragraph = NSMutableParagraphStyle()
     paragraph.alignment = isBordered ? .center : .right

@@ -47,11 +47,11 @@ struct UsageOverviewSection: View {
 
   private var controls: some View {
     HStack(spacing: 12) {
-      Picker("View", selection: $tab) {
-        ForEach(Tab.allCases) { Text($0.title).tag($0) }
-      }
-      .pickerStyle(.segmented)
-      .labelsHidden()
+      SettingsSegments(
+        title: "View",
+        options: Tab.allCases.map { (value: $0, title: $0.title) },
+        selection: $tab
+      )
       .fixedSize()
 
       Spacer(minLength: 0)
@@ -69,11 +69,11 @@ struct UsageOverviewSection: View {
         .fixedSize()
       }
 
-      Picker("Range", selection: $range) {
-        ForEach(AgentStatisticsRange.allCases) { Text($0.title).tag($0) }
-      }
-      .pickerStyle(.segmented)
-      .labelsHidden()
+      SettingsSegments(
+        title: "Range",
+        options: AgentStatisticsRange.allCases.map { (value: $0, title: $0.title) },
+        selection: $range
+      )
       .fixedSize()
     }
   }
@@ -89,7 +89,7 @@ struct UsageOverviewSection: View {
         firstDay: AgentStatisticsSummary(statistics, range: .all, agent: agent, among: model.listedAgents)
           .days.keys.min(),
         rangeStart: range.start(now: Date(), calendar: .current),
-        tint: .accentColor
+        tint: .bolttyAccent
       )
       if let line = AgentStatisticsSummary.bookComparison(tokens: summary.tokens) {
         Text(line)
@@ -238,17 +238,17 @@ private struct UsageDayGrid: View {
     } else {
       let day = days[date]
       let level = Self.level(day?.messages ?? 0, thresholds: thresholds)
-      // Flat: an empty day is the system's fill, a busy one the tint over it.
+      // A busy day is the tint on the card alone: over the empty day's grey its
+      // lower steps were a dirty beige.
       shape
-        .fill(Color.primary.opacity(0.08))
-        .overlay(shape.fill(tint.opacity(Self.opacity[level])))
+        .fill(level == 0 ? Color.primary.opacity(0.08) : tint.opacity(Self.opacity[level]))
         .aspectRatio(1, contentMode: .fit)
         .opacity(rangeStart.map { date < $0 } == true ? 0.45 : 1)
         .help(Self.caption(date, day))
     }
   }
 
-  private static let opacity: [Double] = [0, 0.3, 0.5, 0.72, 0.95]
+  private static let opacity: [Double] = [0, 0.3, 0.5, 0.75, 1]
 
   static func weeks(firstDay: Date?, today: Date, calendar: Calendar) -> [[Date]] {
     let weekday = calendar.component(.weekday, from: today)

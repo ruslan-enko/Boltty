@@ -708,8 +708,8 @@ final class BolttyAIApprovalBar: NSView {
   }
 
   private static func mark(_ button: GlassPillLabelButton, asDefault: Bool) {
-    button.bezelColor = asDefault ? .controlAccentColor : nil
-    button.restingTint = asDefault ? .white : AgentPaletteMetrics.directoryChipTextColor
+    button.bezelColor = asDefault ? BolttyBrand.accentOnGlass : nil
+    button.restingTint = asDefault ? BolttyBrand.onAccent : AgentPaletteMetrics.directoryChipTextColor
   }
 
   var defaultTitleForTesting: String? {

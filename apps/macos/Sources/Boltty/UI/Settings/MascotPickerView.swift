@@ -283,7 +283,7 @@ private struct MascotCellStyle: ButtonStyle {
       )
       .overlay(
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .strokeBorder(Color.accentColor, lineWidth: isChosen ? 2 : 0)
+          .strokeBorder(Color.bolttyAccent, lineWidth: isChosen ? 2 : 0)
           .animation(SettingsMotion.quick, value: isChosen)
       )
       .contentShape(Rectangle())

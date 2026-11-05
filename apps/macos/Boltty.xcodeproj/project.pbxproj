@@ -263,6 +263,7 @@
 		C3B5946322B7EA4E3C9E2CCC /* TestDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FBCD670829C710C1F74A04C /* TestDefaults.swift */; };
 		C4754C9CD7CF21502A6F8597 /* BolttyBrandMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = A721ACBD18047573D0E6AE5D /* BolttyBrandMark.swift */; };
 		C4FD10D8B562857987885C11 /* CodexSessionRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17517BFC83D30415D8C5CE16 /* CodexSessionRecoveryTests.swift */; };
+		C5414FF59E4461C5D37D204E /* BolttyBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77EFE6B20808D485E22F2B8 /* BolttyBrand.swift */; };
 		C7E17EB580842B50FEA9E33C /* PromptTextViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B212F4E61B9D9B73FFAE0F /* PromptTextViewTests.swift */; };
 		C819DA906FDD869C5F21338D /* ShortcutBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1439929FAACA5C20478BB6F /* ShortcutBindingTests.swift */; };
 		C895D199E4A94ED24BD8BEBA /* BolttyAISessionListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AA1337F1DA263F1B44FCC96 /* BolttyAISessionListTests.swift */; };
@@ -678,6 +679,7 @@
 		F51652F32D2261C47F0A5E07 /* NotchRowContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchRowContactSheet.swift; sourceTree = "<group>"; };
 		F6906F4A20354BB8B1003130 /* SupertonicSpeaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupertonicSpeaker.swift; sourceTree = "<group>"; };
 		F74D9A4C3F74819F91FBD107 /* BolttyAIAnnouncement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAIAnnouncement.swift; sourceTree = "<group>"; };
+		F77EFE6B20808D485E22F2B8 /* BolttyBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyBrand.swift; sourceTree = "<group>"; };
 		F84AE288F8591AA4C16C57CF /* OpenCodeServerReaperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeServerReaperTests.swift; sourceTree = "<group>"; };
 		F937DE5F5BD33EBAC4EDEF9A /* BolttyShortcutRouter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BolttyShortcutRouter.h; sourceTree = "<group>"; };
 		FB195FE1886ECB64C7E2073C /* MascotPaletteContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotPaletteContactSheet.swift; sourceTree = "<group>"; };
@@ -1069,6 +1071,7 @@
 		A0072E386D6A9C20798A53FA /* Appearance */ = {
 			isa = PBXGroup;
 			children = (
+				F77EFE6B20808D485E22F2B8 /* BolttyBrand.swift */,
 				54017E79AFF01185941AF159 /* BolttyTypeface.swift */,
 				32B39312A8A7FA2039914B4A /* MotionPreferences.swift */,
 			);
@@ -1516,6 +1519,7 @@
 				8228A990B7F5215D91583F2A /* BolttyAIPreviewCard.swift in Sources */,
 				8A5DBB4CA52BD8E1BA1805AC /* BolttyAISettingsModel.swift in Sources */,
 				BD42E1882B6FA9BAFD2F2407 /* BolttyAISettingsView.swift in Sources */,
+				C5414FF59E4461C5D37D204E /* BolttyBrand.swift in Sources */,
 				C4754C9CD7CF21502A6F8597 /* BolttyBrandMark.swift in Sources */,
 				A6F03F4E7DD5EFBB50B4FC71 /* BolttyIcon.swift in Sources */,
 				D2735D750207FDBBEAB3D81D /* BolttyIconView.swift in Sources */,

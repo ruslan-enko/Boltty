@@ -103,14 +103,14 @@ struct AccessPermissionsView: View {
             .keyboardShortcut(.cancelAction)
             .accessibilityIdentifier("boltty.access.done")
           Button("Allow All") { model.allowAll() }
-            .buttonStyle(.glassProminent)
+            .bolttyProminentButton()
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
             .disabled(model.asking != nil)
             .accessibilityIdentifier("boltty.access.allowAll")
         } else {
           Button(model.allAllowed ? "Done" : "Not Now", action: onDone)
-            .buttonStyle(.glassProminent)
+            .bolttyProminentButton()
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
             .accessibilityIdentifier("boltty.access.done")

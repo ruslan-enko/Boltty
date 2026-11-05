@@ -85,6 +85,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal`; `Models/MascotShape.swift`, `MascotPalette.swift`, `MascotLook.swift` |
 | Screen selection | `Services/ScreenRegionCapture.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
 | Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons` |
+| Brand colours | `UI/Appearance/BolttyBrand.swift`, [BRAND.md](BRAND.md) |
 | Shader effects | `UI/Effects/` |
 | Chat backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
@@ -855,7 +856,7 @@ heard.
   its default model, else the first ready agent that takes pictures. No model is
   hunted for by name: an "Automatic" that meant Claude Code on Haiku was tried and
   removed. Chosen in Settings › Ask Boltty as a strip of bare faces, no circle or
-  ring, the chosen one told by its name in the accent colour
+  ring, the chosen one told by its name in the accent's ink
   (`AskBolttyAgentPicker`, on `RingedChoice` with `isRinged` off); "Can make
   changes" is the one switch for access. Always at the model's lowest
   effort, never the effort the agent's chats use and never stored
@@ -904,10 +905,14 @@ heard.
   `-boltty.setup.step N` in Debug. Launch with `open`, never the binary from a
   shell (TCC would attribute the request to the shell's app).
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
-  Shortcuts), standard parts only. The selected page is
-  `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The
-  sidebar highlight is its own `@State`; the window is sized after its view
-  controller is set; the sidebar width modifier is last on its column.
+  Shortcuts), standard parts but for what is selected: the sidebar's rows and
+  the segments are drawn here (`SettingsSidebarRow`, `SettingsSegments`), since a
+  `List`'s selection and a segmented `Picker` take the person's accent. The sidebar
+  takes the focus as it appears, so the arrows walk the pages and no control opens
+  wearing a ring. The selected page is
+  `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The window
+  is sized after its view controller is set; the sidebar width modifier is last on
+  its column.
 - **App icon**: one, `AppIcon.icon` (Icon Composer); `.github/icon.png` is it
   rendered with Xcode's `ictool`. A choice of four was tried and removed: macOS has
   no alternate icons, so it only ever showed while a Boltty window was open.
@@ -920,8 +925,8 @@ heard.
   the face's shape, gradient and finish as rows. Never expand every agent on
   the list again. `-boltty.settings.agent claude` opens an agent's page.
 - **Usage**: plan windows per agent (each: what remains and when it
-  comes back, the bar and the activity chart flat in the system accent
-  colour, never the face's gradient), 14 days of activity, and an overview counted
+  comes back, the bar and the activity chart flat in Boltty's accent,
+  never the face's gradient), 14 days of activity, and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`). Never summed across
   agents' different units. Signing in happens in a terminal, so the page asks
@@ -1120,6 +1125,15 @@ heard.
   take the typed size), and so is the notch badge's digit at 9. Whole points only, SF Pro Rounded everywhere, no `.kern`.
 - **Colour**: `PaletteInk` — system label colours (dynamic) and fills written as
   values (they end up as `CGColor`). Pure white only for primary-action fills.
+- **The accent is Boltty's, not the system's** (`BolttyBrand`, off the app icon;
+  [BRAND.md](BRAND.md) says where it goes). `controlAccentColor` and
+  `Color.accentColor` are not used: an `NSAccentColorName` counts only while the
+  person's own accent is Multicolor. It is always a fill, under black words (white
+  is 1.5:1): words in it were unreadable on white, and an ink dark enough to read
+  was brown and was refused. `.tint` goes on the control (`BolttySwitchStyle`,
+  `.bolttyProminentButton()`), never a page: on Settings' root it turned every
+  button's and menu's words yellow on white. Focus rings and text selection stay
+  the person's.
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
   concentric (`outer = inner + inset`). The composer's content stands 16 from
@@ -1296,6 +1310,7 @@ Code, identifiers and commits are in English. Product name **Boltty**; features
 | `ARCHITECTURE.md` | how the pieces fit |
 | `CHANGELOG.md` | what changed per release |
 | `AGENTS.md` | the rules and facts above |
+| `BRAND.md` | the name, icon, colour, type and voice |
 | `SECURITY.md` | reporting a vulnerability, what counts |
 | `THIRD_PARTY_NOTICES.md` | licences of what ships |
 

@@ -31,7 +31,7 @@ else
 fi
 
 # Місця, яким ці значення належать за визначенням.
-EXCLUDE='(^|/)(\.build|DerivedData|Tests|BolttyDesign|BolttyTypeface|MascotPalette|\.git)'
+EXCLUDE='(^|/)(\.build|DerivedData|Tests|BolttyDesign|BolttyBrand|BolttyTypeface|MascotPalette|\.git)'
 
 swift_files() {
   find "${SEARCH[@]}" -name '*.swift' -type f 2>/dev/null | grep -Ev "$EXCLUDE" | sort

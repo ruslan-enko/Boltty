@@ -2909,7 +2909,7 @@ final class ShowSettingsWindow {
     let shape = CAShapeLayer()
     shape.frame = view.bounds
     shape.fillRule = .evenOdd
-    shape.fillColor = NSColor.controlAccentColor.cgColor
+    shape.fillColor = BolttyBrand.accentOnGlass.cgColor
     let path = CGMutablePath()
     path.addEllipse(in: view.bounds)
     path.addEllipse(in: view.bounds.insetBy(dx: space.v(4), dy: space.v(4)))
@@ -3031,7 +3031,7 @@ final class ShowSettingsWindow {
       } else {
         let track = NSView(frame: box(1016, middle - 13, 48, 26))
         track.wantsLayer = true
-        track.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        track.layer?.backgroundColor = BolttyBrand.accentOnGlass.cgColor
         track.layer?.cornerRadius = track.frame.height / 2
         agentsPage.addSubview(track)
         let knob = NSView(frame: box(1040, middle - 11, 22, 22))
@@ -3116,7 +3116,7 @@ final class ShowSettingsWindow {
       trackView.layer?.cornerCurve = .continuous
       usagePage.addSubview(trackView)
       let meter = CAGradientLayer()
-      let tint = NSColor.controlAccentColor.cgColor
+      let tint = BolttyBrand.accentOnGlass.cgColor
       meter.colors = [tint, tint]
       meter.startPoint = CGPoint(x: 0, y: 0.5)
       meter.endPoint = CGPoint(x: 1, y: 0.5)

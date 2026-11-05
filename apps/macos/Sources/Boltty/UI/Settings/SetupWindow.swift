@@ -112,13 +112,13 @@ struct SetupView: View {
     HStack(spacing: 10) {
       if let next = step.next {
         Button { go(to: next) } label: { SetupButtonLabel(title: "Continue") }
-          .buttonStyle(.glassProminent)
+          .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("boltty.setup.continue")
       } else if access.hasSomethingToAsk {
         Button { access.allowAll() } label: { SetupButtonLabel(title: "Allow All") }
-          .buttonStyle(.glassProminent)
+          .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
           .disabled(access.asking != nil)
@@ -127,7 +127,7 @@ struct SetupView: View {
           .controlSize(.extraLarge)
       } else {
         Button(action: finish) { SetupButtonLabel(title: "Let’s Go") }
-          .buttonStyle(.glassProminent)
+          .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("boltty.setup.finish")

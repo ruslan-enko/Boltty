@@ -521,7 +521,7 @@ private struct AgentEnabledSwitch: View {
       }
     ))
     .labelsHidden()
-    .toggleStyle(.switch)
+    .toggleStyle(BolttySwitchStyle())
     .accessibilityIdentifier("boltty.settings.agent.\(row.agent.rawValue)")
   }
 }
@@ -535,7 +535,7 @@ private struct SettingsRowPressStyle: ButtonStyle {
   }
 }
 
-/// A word beside a name that marks it, quieter than the name.
+/// A word beside a name that marks it: the accent under black.
 private struct SettingsTag: View {
   let text: String
 
@@ -546,10 +546,10 @@ private struct SettingsTag: View {
   var body: some View {
     Text(text)
       .font(BolttyInterfaceTypography.fixed(size: 11, weight: .medium))
-      .foregroundStyle(.secondary)
+      .foregroundStyle(Color.bolttyOnAccent)
       .padding(.horizontal, 6)
       .padding(.vertical, 1.5)
-      .background(Capsule().fill(Color.primary.opacity(0.08)))
+      .background(Capsule().fill(Color.bolttyAccent))
   }
 }
 
@@ -686,8 +686,7 @@ private struct UsageLimitCard: View {
   }
 }
 
-/// A capsule track, the filled part in the accent colour, as the system's
-/// own meters are. The faces' colours made every agent's bar a scale of its own.
+/// A capsule track, the filled part in Boltty's accent. The faces' colours made every agent's bar a scale of its own.
 struct UsageMeter: View {
   let fraction: Double
   var height: CGFloat = 8
@@ -699,7 +698,7 @@ struct UsageMeter: View {
         Capsule().fill(Color.primary.opacity(0.08))
         if filled > 0 {
           Capsule()
-            .fill(Color.accentColor)
+            .fill(Color.bolttyAccent)
             .frame(width: max(filled, height))
         }
       }
@@ -721,7 +720,7 @@ private struct UsageHistoryChart: View {
           width: .ratio(0.62)
         )
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(Color.bolttyAccent)
       }
       .chartYAxis {
         AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
@@ -916,6 +915,7 @@ struct VoiceSettingsPage: View {
         Text("Downloading \(language)…")
           .font(BolttyInterfaceTypography.callout)
       }
+      .tint(Color.bolttyAccent)
       .accessibilityIdentifier("boltty.settings.dictationDownload")
     case let .failed(message):
       SettingsNote(message, color: .red)
@@ -1054,6 +1054,7 @@ struct LocalModelProgress: View {
     case let .downloading(fraction):
       HStack(spacing: 8) {
         ProgressView(value: fraction)
+          .tint(Color.bolttyAccent)
           .frame(width: 140)
           .accessibilityIdentifier("boltty.settings.\(id.rawValue).progress")
         Text("\(Int(fraction * 100)) % of \(model.modelSize(id))")
@@ -1221,7 +1222,7 @@ struct RingedChoice<Picture: View>: View {
           .padding(Self.ringGap + Self.ringWidth)
           .overlay(
             Circle()
-              .strokeBorder(Color.accentColor, lineWidth: Self.ringWidth)
+              .strokeBorder(Color.bolttyAccent, lineWidth: Self.ringWidth)
               .opacity(isRinged && isChosen ? 1 : 0)
               .scaleEffect(isChosen ? 1 : 0.9)
           )
@@ -1234,8 +1235,11 @@ struct RingedChoice<Picture: View>: View {
           .animation(.spring(duration: 0.3, bounce: 0.4), value: isHovered)
         Text(title)
           .font(BolttyInterfaceTypography.callout.weight(isChosen ? .semibold : .regular))
-          .foregroundStyle(isChosen ? Color.accentColor : Color.secondary)
+          .foregroundStyle(isChosen ? Color.bolttyOnAccent : Color.secondary)
           .fixedSize()
+          .padding(.horizontal, 7)
+          .padding(.vertical, 1.5)
+          .background(Capsule().fill(Color.bolttyAccent.opacity(isChosen ? 1 : 0)))
       }
       .contentShape(Rectangle())
     }

@@ -4,7 +4,9 @@ import SwiftUI
 struct BolttyAISettingsView: View {
   @ObservedObject var model: BolttyAISettingsModel
   @ObservedObject var navigation: SettingsNavigation
-  @State private var selection: SettingsPage?
+  /// The sidebar starts with the focus, as a list did: the arrows walk the pages
+  /// at once, and no control on the page opens wearing a focus ring.
+  @FocusState private var sidebarHasFocus: Bool
 
   var body: some View {
     NavigationSplitView(columnVisibility: .constant(.all)) {
@@ -17,6 +19,7 @@ struct BolttyAISettingsView: View {
         .toolbar { history }
     }
     .bolttyInterfaceTypography()
+    .toggleStyle(BolttySwitchStyle())
     .writingToolsBehavior(.disabled)
     .task {
       await model.loadDictationLanguages()
@@ -24,32 +27,43 @@ struct BolttyAISettingsView: View {
     }
   }
 
+  /// Drawn here and not a `List`: a list's selection takes the person's system
+  /// accent as soon as it has the focus, and offers no way to change that.
   private var sidebar: some View {
-    List(selection: $selection) {
-      ForEach(SettingsPage.allCases) { page in
-        Label {
-          Text(page.title)
-        } icon: {
-          BolttyIconView(icon: page.icon, size: 17)
-            .foregroundStyle(.secondary)
+    ScrollView {
+      VStack(spacing: 0) {
+        ForEach(SettingsPage.allCases) { page in
+          SettingsSidebarRow(page: page, isSelected: navigation.current == page) {
+            select(page)
+          }
         }
-          .tag(page)
-          .accessibilityIdentifier("boltty.settings.page.\(page.rawValue)")
+      }
+      .padding(.horizontal, 10)
+    }
+    .scrollIndicators(.never)
+    .focusable()
+    .focused($sidebarHasFocus)
+    .focusEffectDisabled()
+    .onAppear { sidebarHasFocus = true }
+    .onMoveCommand { direction in
+      let pages = SettingsPage.allCases
+      guard let index = pages.firstIndex(of: navigation.current) else { return }
+      switch direction {
+      case .up where index > pages.startIndex:
+        select(pages[pages.index(before: index)])
+      case .down where pages.index(after: index) < pages.endIndex:
+        select(pages[pages.index(after: index)])
+      default:
+        break
       }
     }
-    .listStyle(.sidebar)
-    .listItemTint(.monochrome)
     .toolbar(removing: .sidebarToggle)
     .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 280)
-    .onAppear { selection = navigation.current }
-    .onChange(of: selection) { _, page in
-      // Following navigation (back, or the first selection) must not push
-      // the page's top over an agent's page.
-      if let page, page != navigation.current { navigation.open(page) }
-    }
-    .onChange(of: navigation.current) { _, page in
-      if selection != page { selection = page }
-    }
+  }
+
+  /// Selecting the page already shown must not push its top over an agent's page.
+  private func select(_ page: SettingsPage) {
+    if page != navigation.current { navigation.open(page) }
   }
 
   @ViewBuilder
@@ -104,6 +118,105 @@ extension View {
   func settingsGroupedPage() -> some View {
     formStyle(.grouped)
       .scrollContentBackground(.hidden)
+  }
+}
+
+private struct SettingsSidebarRow: View {
+  let page: SettingsPage
+  let isSelected: Bool
+  let action: () -> Void
+  @Environment(\.controlActiveState) private var activeState
+  @State private var isHovered = false
+
+  var body: some View {
+    let selection = SettingsSelection(isSelected: isSelected, activeState: activeState)
+    Button(action: action) {
+      HStack(spacing: 8) {
+        BolttyIconView(icon: page.icon, size: 17)
+          .foregroundStyle(isSelected ? selection.ink : Color.secondary)
+          .frame(width: 24)
+        Text(page.title)
+          .fontWeight(isSelected ? .semibold : .regular)
+          .foregroundStyle(selection.ink)
+        Spacer(minLength: 0)
+      }
+      .padding(.horizontal, 8)
+      .frame(height: 32)
+      .background(
+        selection.fill ?? Color.primary.opacity(isHovered ? 0.06 : 0),
+        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+      )
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .onHover { isHovered = $0 }
+    .animation(SettingsMotion.quick, value: isHovered)
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
+    .accessibilityIdentifier("boltty.settings.page.\(page.rawValue)")
+  }
+}
+
+/// How a chosen thing looks: the accent under black words while the window is
+/// the one in use, and the system's quiet grey while it is not, as a Mac's own
+/// selections and switches go.
+struct SettingsSelection {
+  let isSelected: Bool
+  let activeState: ControlActiveState
+
+  private var isLit: Bool { activeState == .key || activeState == .active }
+
+  var fill: Color? {
+    guard isSelected else { return nil }
+    return isLit ? Color.bolttyAccent : Color.primary.opacity(0.12)
+  }
+
+  var ink: Color {
+    isSelected && isLit ? Color.bolttyOnAccent : Color.primary
+  }
+}
+
+/// A row of choices of which one is on. Drawn here for the same reason as the
+/// sidebar: a system segmented control's selection is the system's accent.
+struct SettingsSegments<Value: Hashable>: View {
+  let title: String
+  let options: [(value: Value, title: String)]
+  @Binding var selection: Value
+  @Environment(\.controlActiveState) private var activeState
+  @Namespace private var thumb
+
+  var body: some View {
+    HStack(spacing: 0) {
+      ForEach(options, id: \.value) { option in
+        segment(option.value, title: option.title)
+      }
+    }
+    .padding(2)
+    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(title)
+  }
+
+  private func segment(_ value: Value, title: String) -> some View {
+    let chosen = SettingsSelection(isSelected: value == selection, activeState: activeState)
+    return Button {
+      withAnimation(SettingsMotion.arrival) { selection = value }
+    } label: {
+      Text(title)
+        .fontWeight(chosen.isSelected ? .medium : .regular)
+        .foregroundStyle(chosen.ink)
+        .padding(.horizontal, 12)
+        .frame(height: 22)
+        .background {
+          if let fill = chosen.fill {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+              .fill(fill)
+              .matchedGeometryEffect(id: "thumb", in: thumb)
+          }
+        }
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityAddTraits(chosen.isSelected ? .isSelected : [])
   }
 }
 
