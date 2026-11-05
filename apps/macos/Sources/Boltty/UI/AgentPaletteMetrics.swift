@@ -766,6 +766,9 @@ enum AgentPaletteMetrics {
   static let previewCloseDiameter: CGFloat = 36
   /// `chevron.backward` at the toolbar's symbol size and weight.
   static let previewCloseGlyphPointSize: CGFloat = 18
+  /// A chevron centred by its box reads right of centre, since its point is
+  /// where the eye goes and that is thin. By eye.
+  static let previewCloseGlyphNudge: CGFloat = 1
   /// The close disc's inset from the card's top **and** leading edges.
   ///
   /// One number for both, so the disc sits *in* the corner rather than near
@@ -1665,8 +1668,8 @@ enum AgentPaletteMetrics {
   static let workingLineHaloBlur: CGFloat = 6
   static let workingLineHaloOpacity: CGFloat = 0.55
 
-  /// The copy control under an agent's finished answer, revealed under the
-  /// pointer, on a row of its own at the answer's foot.
+  /// The copy control under an agent's finished answer, always there, on a
+  /// row of its own at the answer's foot.
   ///
   /// A line of prose can run to the column's edge, so the copy control
   /// takes a row of its own, as Claude's app keeps it — and the row is the

@@ -3,6 +3,18 @@ import AppKit
 final class KeyablePanel: NSPanel {
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { false }
+
+  /// Told of each key before it goes anywhere; `true` means it was dealt with.
+  var onKeyDown: ((NSEvent) -> Bool)?
+  /// Told when a press has ended. A text view follows a drag inside its
+  /// `mouseDown`, so by now the selection is made.
+  var onPressEnded: (() -> Void)?
+
+  override func sendEvent(_ event: NSEvent) {
+    if event.type == .keyDown, onKeyDown?(event) == true { return }
+    super.sendEvent(event)
+    if event.type == .leftMouseDown || event.type == .rightMouseDown { onPressEnded?() }
+  }
 }
 
 final class PassivePanel: NSPanel {

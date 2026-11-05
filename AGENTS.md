@@ -547,7 +547,15 @@ The loop that must keep working:
 ### The transcript
 
 - The question is a white bubble with black text; the answer is prose on the
-  glass, Codex's proportions (headings 1.5/1.25/1.125×, line 24 on 15).
+  glass, Codex's proportions (headings 1.5/1.25/1.125×, line 24 on 15). A
+  turn's last answer always has Copy and, where it can be read, the speaker
+  under it; a question's row shows under the pointer.
+- **Selecting never takes the keyboard from the composer.** A press in an
+  answer gives focus back as it ends, the words staying selected
+  (`returnFocusAfterReadingPress`), and ⌘C copies them while the composer has
+  nothing selected. A selectable label loses its selection with the focus, so
+  it keeps the focus until a key goes to the composer
+  (`routeKeyFromReadingText`).
 - **Tool calls are rows, folded into one line per run of work**
   (`PaletteActivityGroupView`), said in one line ("Thought • Read 3 files •
   Edit config.ts") with a small chevron after its last word. No box: opened,

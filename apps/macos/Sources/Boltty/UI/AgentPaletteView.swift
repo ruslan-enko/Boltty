@@ -136,6 +136,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private let promptScroll: NSScrollView
   private let selectedAgentImage = BolttyAIMarkView()
   private let micButton = GlassCircleVoiceButton()
+  /// The answer whose selected words ⌘C copies while the composer has the keys.
+  private weak var heldSelection: NSTextView?
   /// Picks files for the prompt — a bare glyph, like the microphone beside it.
   ///
   /// **Drag-and-drop and ⌘V already worked and neither is advertised
@@ -1295,6 +1297,54 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let end = field.textStorage?.length ?? 0
     field.setSelectedRange(NSRange(location: end, length: 0))
     return accepted
+  }
+
+  /// The first responder when it is words to read rather than the composer.
+  private var readingText: NSTextView? {
+    guard let text = window?.firstResponder as? NSTextView, text !== field, !text.isEditable,
+          !field.isHiddenOrHasHiddenAncestor
+    else { return nil }
+    return text
+  }
+
+  /// A press in an answer hands the keyboard straight back: the caret stays in
+  /// the composer and typing goes on, with the words still selected.
+  ///
+  /// A selectable label (a question's bubble, a card's details) selects through
+  /// the field editor and loses the selection with the focus, so one with
+  /// something selected keeps the focus until a key takes it
+  /// (`routeKeyFromReadingText`).
+  func returnFocusAfterReadingPress() {
+    guard let text = readingText else { return }
+    if heldSelection !== text { heldSelection?.setSelectedRange(NSRange()) }
+    let selects = text.selectedRange().length > 0
+    if text is PaletteAnswerTextView {
+      heldSelection = selects ? text : nil
+    } else if selects {
+      heldSelection = nil
+      return
+    }
+    applyPromptForegroundAppearance()
+    window?.makeFirstResponder(field)
+  }
+
+  /// A key typed over selected words belongs to the composer, and ⌘C, with
+  /// nothing selected in the composer, to the words the keyboard came back from.
+  func routeKeyFromReadingText(_ event: NSEvent) -> Bool {
+    let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+    if modifiers == [.command], event.latinCharactersIgnoringModifiers == "c" {
+      guard window?.firstResponder === field, field.selectedRange().length == 0,
+            let held = heldSelection, held.selectedRange().length > 0,
+            !held.isHiddenOrHasHiddenAncestor, held.window === window
+      else { return false }
+      held.copy(nil)
+      return true
+    }
+    guard readingText != nil, modifiers.isDisjoint(with: [.command, .control]) else { return false }
+    applyPromptForegroundAppearance()
+    window?.makeFirstResponder(field)
+    // Not dealt with: the window now sends the key to the composer.
+    return false
   }
 
   /// What the folder chip says, or `nil` to draw none.
@@ -4104,7 +4154,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     // Not while the drop falls: drawn for the drop, the sky showed as a small
     // square. It is drawn once the drop spreads, at the chat's size.
     if !isDrippingIn {
-      backdrop.morphingTo = surfaceMotion.isMoving ? surfaceMotion.destination.size : nil
+      // A drip's destination is the drop. Drawn at that size as the panel closed,
+      // the sky stood as a small square in the middle of the still wide shell, so
+      // it keeps the chat's size and the shell's clip takes it in.
+      let skySize = dripTarget != nil ? resizeTarget.size : surfaceMotion.destination.size
+      backdrop.morphingTo = surfaceMotion.isMoving ? skySize : nil
       backdrop.show(chosen, palette: chosen == .standard ? .standard : MascotPalette.face(for: agent))
       backdrop.layOut(in: rect, corner: corner, curve: curve)
     }

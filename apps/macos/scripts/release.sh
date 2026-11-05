@@ -159,7 +159,10 @@ step "Building Boltty $version ($build) from $commit, $archs"
 # The packages are the shared ones, so nothing is fetched.
 derived="$app_dir/.release/DerivedData"
 built="$derived/Build/Products/Release/Boltty.app"
-rm -rf "$built"   # a failed build must not leave the last one looking current
+# A failed build must not leave the last one looking current, so its binary goes.
+# Only that: with the whole bundle gone, an incremental build puts everything back
+# but default.metallib, whose link does not run again unless a shader changed.
+rm -f "$built/Contents/MacOS/Boltty"
 if ! xcodebuild -project "$project/Boltty.xcodeproj" -scheme Boltty -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$derived" \
   -clonedSourcePackagesDirPath "$app_dir/.derivedData/SourcePackages" \
@@ -169,7 +172,10 @@ if ! xcodebuild -project "$project/Boltty.xcodeproj" -scheme Boltty -configurati
   grep -E 'error:' "$out/build.log" | head -20 >&2
   die "the build failed — $out/build.log"
 fi
-[[ -d "$built" ]] || die "the build produced no $built"
+[[ -x "$built/Contents/MacOS/Boltty" ]] || die "the build produced no $built"
+# Without the shaders the app runs with no faces, and says nothing.
+[[ -f "$built/Contents/Resources/default.metallib" ]] \
+  || die "the app has no shaders: touch Sources/Boltty/Chat/UI/MascotShaders.metal and run this again"
 
 app="$out/Boltty.app"
 ditto "$built" "$app"

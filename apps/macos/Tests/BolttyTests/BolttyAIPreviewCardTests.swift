@@ -1968,7 +1968,7 @@ final class PaletteAnswerCopyTests: XCTestCase {
     XCTAssertTrue(value.copyableText.isEmpty)
   }
 
-  func testTheButtonAppearsUnderThePointerAndCopiesTheAnswer() throws {
+  func testTheButtonStandsUnderTheAnswerAndCopiesIt() throws {
     let card = BolttyAIPreviewCard()
     card.frame = NSRect(x: 0, y: 0, width: AgentPaletteMetrics.promptSize.width, height: 320)
     let answer = message("a", role: .agent, parts: [prose("t", "## Done\n\nTwo files changed.")])
@@ -1979,17 +1979,11 @@ final class PaletteAnswerCopyTests: XCTestCase {
     card.layoutSubtreeIfNeeded()
 
     let row = try XCTUnwrap(card.messageRowForTesting("a"))
-    XCTAssertFalse(row.isCopyVisibleForTesting, "nothing is offered until the pointer arrives")
-
-    row.hoverForTesting(true)
-    XCTAssertTrue(row.isCopyVisibleForTesting)
+    XCTAssertTrue(row.isCopyVisibleForTesting, "there without the pointer")
 
     NSPasteboard.general.clearContents()
     row.pressCopyForTesting()
     XCTAssertEqual(NSPasteboard.general.string(forType: .string), "## Done\n\nTwo files changed.")
-
-    row.hoverForTesting(false)
-    XCTAssertFalse(row.isCopyVisibleForTesting)
   }
 
   func testReadAloudSitsBesideCopyAndStaysUpWhileItSpeaks() throws {
@@ -2008,19 +2002,16 @@ final class PaletteAnswerCopyTests: XCTestCase {
     card.layoutSubtreeIfNeeded()
 
     let row = try XCTUnwrap(card.messageRowForTesting("a"))
-    XCTAssertFalse(row.isSpeakVisibleForTesting, "nothing is offered until the pointer arrives")
-    row.hoverForTesting(true)
-    XCTAssertTrue(row.isSpeakVisibleForTesting)
+    XCTAssertTrue(row.isSpeakVisibleForTesting, "there without the pointer")
     row.pressSpeakForTesting()
     XCTAssertEqual(spoken, ["a"])
 
     card.speakingMessageID = "a"
-    row.hoverForTesting(false)
     XCTAssertTrue(row.isSpeakVisibleForTesting, "the stop stays under the answer while it is read")
-    XCTAssertFalse(row.isCopyVisibleForTesting)
+    XCTAssertTrue(row.isCopyVisibleForTesting)
 
     card.speakingMessageID = nil
-    XCTAssertFalse(row.isSpeakVisibleForTesting)
+    XCTAssertTrue(row.isSpeakVisibleForTesting)
   }
 
   func testASentStandInHandsItsRowToTheStoredMessage() throws {

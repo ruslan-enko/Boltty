@@ -149,6 +149,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
     panel.delegate = self
     panel.contentView = panelView
+    panel.onKeyDown = { [weak panelView] in panelView?.routeKeyFromReadingText($0) ?? false }
+    panel.onPressEnded = { [weak panelView] in panelView?.returnFocusAfterReadingPress() }
     Motion.applyTimeScale(to: panel)
     BackgroundCursor.enable()
 

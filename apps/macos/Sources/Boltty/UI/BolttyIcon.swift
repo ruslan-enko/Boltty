@@ -90,6 +90,22 @@ enum BolttyIcon: String, CaseIterable {
     return image
   }
 
+  /// The icon standing `nudge` left of the centre of the button that centres it:
+  /// the template is widened on its right.
+  func image(size: CGFloat, nudgedLeft nudge: CGFloat, description: String? = nil) -> NSImage? {
+    guard let template = image(size: size) else { return nil }
+    let box = NSSize(width: size + nudge * 2, height: size)
+    let nudged = NSImage(size: box, flipped: false) { _ in
+      template.draw(
+        in: NSRect(x: 0, y: 0, width: size, height: size),
+        from: .zero, operation: .sourceOver, fraction: 1)
+      return true
+    }
+    nudged.isTemplate = true
+    nudged.accessibilityDescription = description
+    return nudged
+  }
+
   /// In a colour of its own, for where nothing tints it: text attachments draw
   /// their image as it is.
   func image(size: CGFloat, colour: NSColor) -> NSImage? {

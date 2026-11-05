@@ -291,6 +291,11 @@ final class BolttyAIPreviewCard: NSView {
     scroll.wantsLayer = true
     configureScrollEdge()
     addSubview(scroll)
+    closeButton.button.image = BolttyIcon.chevronLeft.image(
+      size: AgentPaletteMetrics.previewCloseGlyphPointSize,
+      nudgedLeft: AgentPaletteMetrics.previewCloseGlyphNudge,
+      description: "Back"
+    )
     closeButton.button.toolTip = "Back"
     closeButton.button.helpShortcut = "Esc"
     closeButton.button.target = self
@@ -1475,15 +1480,16 @@ final class PaletteChatMessageView: NSView {
 
   private let copyButton = PaletteIconButton()
   private var copyResetWork: DispatchWorkItem?
-  /// Reads the answer aloud; while it does, it stays up and stops it.
+  /// Reads the answer aloud; while it does, a press stops it.
   private let speakButton = PaletteIconButton()
-  var onSpeak: ((ConversationMessage) -> Void)?
+  var onSpeak: ((ConversationMessage) -> Void)? {
+    didSet { syncAnswerActions() }
+  }
   private var isHovered = false
   var isSpeaking = false {
     didSet {
       guard isSpeaking != oldValue else { return }
       applySpeakGlyph()
-      setCopyRevealed(isHovered)
     }
   }
   var isSpeakVisibleForTesting: Bool { !speakButton.isHidden }
@@ -1610,11 +1616,7 @@ final class PaletteChatMessageView: NSView {
       speakButton.centerYAnchor.constraint(equalTo: copyButton.centerYAnchor),
     ])
     pinCopyButton()
-    addTrackingArea(NSTrackingArea(
-      rect: .zero,
-      options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
-      owner: self
-    ))
+    syncAnswerActions()
   }
 
   /// Under a question, at its trailing edge: whether the agent has taken it
@@ -1748,25 +1750,27 @@ final class PaletteChatMessageView: NSView {
 
   private func setCopyRevealed(_ revealed: Bool) {
     isHovered = revealed
-    if message.role == .user {
-      questionMeta.isHidden = Self.questionMetaHeight(for: message) == 0 || !revealed
-      copyButton.isHidden = questionMeta.isHidden
-      return
-    }
-    guard copyButton.superview != nil else { return }
+    guard message.role == .user else { return }
+    questionMeta.isHidden = Self.questionMetaHeight(for: message) == 0 || !revealed
+    copyButton.isHidden = questionMeta.isHidden
+  }
+
+  /// An answer's actions stand under it for as long as it offers them.
+  private func syncAnswerActions() {
+    guard message.role != .user else { return }
     let offered = offersCopy && !message.copyableText.isEmpty
-    copyButton.isHidden = !revealed || !offered
-    let shows = offered && (revealed || isSpeaking) && onSpeak != nil
-    speakButton.isHidden = !(shows && speaksThisAnswer)
+    copyButton.isHidden = !offered
+    speakButton.isHidden = !(offered && onSpeak != nil && speaksThisAnswer)
   }
 
   /// Whether this answer can be read aloud — in one of the languages Boltty
-  /// speaks (`SpeechOutput.languages`). Worked out when the pointer first comes to
-  /// it, not as the transcript draws, and kept while the words stay the same.
+  /// speaks (`SpeechOutput.languages`). Every finished turn asks as the transcript
+  /// draws, so only the answer's start is read, and the result is kept while the
+  /// words stay the same.
   private var speaksThisAnswer: Bool {
     let words = message.copyableText
     if let known = spokenAnswer, known.words == words { return known.speaks }
-    let speaks = SpeechOutput.canSpeak(text: words)
+    let speaks = SpeechOutput.canSpeak(text: String(words.prefix(2000)))
     spokenAnswer = (words, speaks)
     return speaks
   }
@@ -1814,8 +1818,9 @@ final class PaletteChatMessageView: NSView {
       if bubbleBottom.constant != -meta { bubbleBottom.constant = -meta }
       questionTime.stringValue = Self.sentTime(value.createdAt)
       setCopyRevealed(isHovered)
-    } else if !copyButton.isHidden, !offersCopy || value.copyableText.isEmpty { copyButton.isHidden = true }
-    if !speakButton.isHidden, !offersCopy || value.copyableText.isEmpty { speakButton.isHidden = true }
+    } else {
+      syncAnswerActions()
+    }
     needsLayout = true
   }
 
