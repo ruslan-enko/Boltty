@@ -84,6 +84,7 @@ final class PaletteGlassHostTests: XCTestCase {
   }
 
   func testThePromptRampRunsFromABlackCrownToNothingAtTheFoot() throws {
+    try XCTSkipIf(PaletteGlassHost.prefersReducedTransparency, "Reduce Transparency has a flat fill, not the ramp")
     let host = PaletteGlassHost(
       content: NSView(),
       cornerRadius: 43,
@@ -299,6 +300,7 @@ final class PaletteGlassHostTests: XCTestCase {
   }
 
   func testAGrownPromptWearsTheSameRamp() throws {
+    try XCTSkipIf(PaletteGlassHost.prefersReducedTransparency, "Reduce Transparency has a flat fill, not the ramp")
     func wash(height: CGFloat) throws -> [NSColor] {
       let host = PaletteGlassHost(
         content: NSView(),

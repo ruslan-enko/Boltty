@@ -722,7 +722,8 @@ final class AgentPaletteViewTests: XCTestCase {
                   "the chat draws the SF Symbol microphone, not the waveform")
   }
 
-  func testTheChatPlaceholderStandsOnTheLineTheTextWillTake() {
+  func testTheChatPlaceholderStandsOnTheLineTheTextWillTake() throws {
+    try XCTSkipIf((NSScreen.main?.backingScaleFactor ?? 1) < 2, "at 1× text snaps to whole pixels, past this tolerance")
     let view = makeScreenSizedView()
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
                                state: .finished, body: "A reply."))
@@ -1007,6 +1008,7 @@ final class AgentPaletteViewTests: XCTestCase {
   }
 
   func testShiftTabSwapsTheAgentMarkThroughABlurAndLeavesThePlaceholderStill() throws {
+    try XCTSkipIf(MotionPreferences.reduceMotion, "Reduce Motion swaps the mark at once")
     let view = makeView(targets: [.opencode, .claude])
     view.layoutSubtreeIfNeeded()
     let placeholder = view.promptPlaceholderForTesting
@@ -3848,6 +3850,7 @@ extension AgentPaletteViewTests {
   }
 
   func testSwitchingTabsSlidesTheGlass() throws {
+    try XCTSkipIf(MotionPreferences.reduceMotion, "Reduce Motion has no slide")
     let view = hostOffscreen(makeScreenSizedView())
     view.setSessions([.row("claude work", .claude), .row("codex work", .codex)], activeSessionID: nil)
     openHistory(view)

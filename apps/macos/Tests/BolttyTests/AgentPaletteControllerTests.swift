@@ -663,8 +663,12 @@ final class AgentPaletteControllerTests: XCTestCase {
     wait(for: [chip], timeout: 5)
     XCTAssertEqual(view.addressedSessionIDForTesting, chat.id, "the chat stays open")
     XCTAssertEqual(view.screenSelectionPhase, .idle)
+    // In the panel's own coordinates: it stands on the Dock's top edge where the
+    // Dock is at the foot of the screen.
+    let origin = try XCTUnwrap(view.window?.frame.origin)
     XCTAssertEqual(
-      view.screenOutlinesForTesting, [CGRect(x: 40, y: 60, width: 200, height: 120)],
+      view.screenOutlinesForTesting,
+      [CGRect(x: 40, y: 60, width: 200, height: 120).offsetBy(dx: -origin.x, dy: -origin.y)],
       "its place stays outlined as long as the chip is there")
   }
 

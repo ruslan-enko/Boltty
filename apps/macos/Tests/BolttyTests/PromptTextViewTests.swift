@@ -409,6 +409,7 @@ final class PromptTextViewTests: XCTestCase {
   }
 
   func testChipLabelInkIsVerticallyCentredInTheCapsule() throws {
+    try XCTSkipIf((NSScreen.main?.backingScaleFactor ?? 1) < 2, "at 1× text snaps to whole pixels, past this tolerance")
     let samples: [PromptAttachment] = [
       PromptAttachment(kind: .text, payload: .text("hello"), label: "text1"),
       fileChip("/x/glyph.png"),
