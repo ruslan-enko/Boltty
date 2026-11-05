@@ -61,7 +61,11 @@ final class PromptAttachmentCardTests: XCTestCase {
     window.contentView = field.enclosingScrollView
     addTeardownBlock { MainActor.assumeIsolated { window.close() } }
     let attachment = file("/x/a.mov")
-    field.insertAttachments([attachment])
+    // Not inserted here: with no event between them, an insertion and the removal
+    // are one undo group, and undoing it takes the card away again.
+    var draft = PromptDraft()
+    draft.append(attachment)
+    field.setDraft(draft)
 
     field.removeAttachment(id: attachment.id)
     XCTAssertTrue(field.attachments.isEmpty)

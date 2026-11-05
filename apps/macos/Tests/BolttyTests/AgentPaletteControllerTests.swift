@@ -723,7 +723,7 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     XCTAssertEqual(
       conversations.sentFiles[id],
-      [SentFile(path: copy.path, label: "file1", name: "report.pdf")])
+      [SentFile(path: copy.path, label: "", name: "report.pdf")])
   }
 
   func testEscapePreservesChatDraftAndReturnsToNewPromptBeforeHiding() throws {

@@ -261,7 +261,9 @@ final class NotchMascotTests: XCTestCase {
     chat.lastKnownState = .idle
     dock.update(conversations: [chat], roster: MascotRoster())
     XCTAssertFalse(dock.isDocked, "read and idle, it goes back under the notch")
-    let deadline = Date().addingTimeInterval(3)
+    // Generous: drawing the face can hold the main thread for seconds on a machine
+    // with no GPU to speak of, and the hiding waits for the main thread too.
+    let deadline = Date().addingTimeInterval(20)
     while Date() < deadline, dock.windowForTesting.isVisible {
       try await Task.sleep(for: .milliseconds(50))
     }
