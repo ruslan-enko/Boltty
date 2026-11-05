@@ -2,7 +2,7 @@
 
 What changed from release to release. The newest is at the top.
 
-## Unreleased
+## 0.5.0
 
 **Files in the prompt**
 - What you paste, drop or attach now stands over your words as a row of cards. A
@@ -16,6 +16,16 @@ What changed from release to release. The newest is at the top.
   A file can no longer stand in the middle of a sentence.
 - Dropping a file on the words attaches it, as dropping it anywhere else on the
   panel does.
+
+**Chats**
+- Copy and the speaker always stand under a turn's last answer, with no need to
+  hover over it.
+- Selecting words in an answer no longer takes the keyboard from the composer. Keep
+  typing, or press ⌘C to copy what you selected.
+
+**Fixes**
+- Closing a chat with a Sky or Space backdrop no longer shows the sky as a small
+  square in the middle of the panel.
 
 ## 0.4.0
 
