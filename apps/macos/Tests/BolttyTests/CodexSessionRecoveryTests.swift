@@ -202,6 +202,18 @@ final class CodexSessionRecoveryTests: XCTestCase {
                              "thread/resume", "turn/start"])
   }
 
+  /// A turn can end before the answer to `turn/start` is read: one that fails at
+  /// once did, and the chat stood working for good.
+  func testATurnOverBeforeItsStartIsAnsweredIsNotLeftRunning() async throws {
+    try await send(to: "instant")
+    do {
+      try await client.steer(messageID: "more", text: "More", to: "instant")
+      XCTFail("no turn is running")
+    } catch {
+      XCTAssertEqual(error as? AgentClientError, .transport("No turn is running to add to."))
+    }
+  }
+
   private static let fixture = #"""
     #!/usr/bin/env python3
     import json, os, sys
@@ -244,6 +256,10 @@ final class CodexSessionRecoveryTests: XCTestCase {
                                  {'method': 'turn/completed', 'params': {'threadId': tid, 'turn': {'id': 'turn-1', 'status': 'completed'}}}):
                         print(json.dumps(note), flush=True)
                     continue
+                if tid == 'instant':
+                    for note in ({'method': 'turn/started', 'params': {'threadId': tid, 'turn': {'id': 'turn-1'}}},
+                                 {'method': 'turn/completed', 'params': {'threadId': tid, 'turn': {'id': 'turn-1', 'status': 'completed'}}}):
+                        print(json.dumps(note), flush=True)
         elif method == 'thread/unsubscribe':
             loaded.discard(tid)
             result = {'status': 'unsubscribed'}

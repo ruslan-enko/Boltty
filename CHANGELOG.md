@@ -10,6 +10,10 @@ What changed from release to release. The newest is at the top.
   Usage.
 - The arrow keys walk the pages of the sidebar as soon as Settings opens.
 
+**Fixes**
+- A Codex turn that ends the moment it starts, as one that fails at once can, no
+  longer leaves the chat working for good.
+
 ## 0.5.0
 
 **Files in the prompt**

@@ -53,6 +53,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     var effort: String?
     var autoApprove = false
     var currentTurnID: String?
+    /// The last turn the server said is over, which can come before the answer to
+    /// its `turn/start` is read.
+    var endedTurnID: String?
     var executionState: ConversationExecutionState = .idle
     weak var loadedOn: JSONLineProcess?
 
@@ -351,10 +354,13 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       response = try await request("turn/start", params: params, on: server)
     }
     let turnID = response.object("turn")?.string("id")
-    lock.withLock {
+    let isOver: Bool = lock.withLock {
+      if turnID != nil, threads[sessionID]?.endedTurnID == turnID { return true }
       threads[sessionID]?.currentTurnID = turnID
       threads[sessionID]?.executionState = .working
+      return false
     }
+    guard !isOver else { return }
     emit(.executionStateChanged(sessionID: sessionID, state: .working))
   }
 
@@ -777,6 +783,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       let ended: ConversationExecutionState = hit == nil ? .idle : .rateLimited
       lock.withLock {
         threads[threadID]?.currentTurnID = nil
+        threads[threadID]?.endedTurnID = turnID
         threads[threadID]?.executionState = ended
       }
       emit(.executionStateChanged(sessionID: threadID, state: ended))
