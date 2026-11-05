@@ -32,6 +32,14 @@ enum ComposerChord: CaseIterable {
   }
 }
 
+/// How a link standing in the draft is drawn: the sentence's own type in a
+/// cyan-blue, underlined. `key` marks the characters `PromptTextView.styleLinks`
+/// has styled.
+enum PromptLinkStyle {
+  static let color = HexColor.nsColor("#5AC8FA")
+  static let key = NSAttributedString.Key("boltty.promptLink")
+}
+
 final class PromptTextView: NSTextView {
   var onPaste: ((Bool) -> Void)?
   var onCommandPeriod: (() -> Bool)?
@@ -55,11 +63,8 @@ final class PromptTextView: NSTextView {
   private var trailingHintIsDue = false
   private(set) var isTrailingHintShown = false
 
-  private var entranceAnimators: [ChipEntranceAnimator] = []
   private(set) var usesExpandedStyle = false
   var maximumViewportHeight: CGFloat?
-
-  private lazy var chipPreview = PromptChipPreview(host: self)
 
   func setExpandedStyle(_ expanded: Bool) {
     guard usesExpandedStyle != expanded else { return }
@@ -72,26 +77,22 @@ final class PromptTextView: NSTextView {
     )
   }
 
-  var entranceAnimatorsForTesting: [ChipEntranceAnimator] { entranceAnimators }
+  /// What came with the words, in the order it came. Kept apart from the
+  /// text storage: an attachment stands over the sentence (`PromptAttachmentStrip`),
+  /// so nothing in the sentence can select, cross or delete it.
+  private(set) var attachments: [PromptAttachment] = []
+
+  /// The cards have to follow. Told before the text view's own change, so
+  /// the height worked out from that already counts them.
+  var onAttachmentsChange: ((_ animated: Bool) -> Void)?
 
   var draft: PromptDraft {
-    var draft = PromptDraft()
-    guard let storage = textStorage else { return draft }
-
-    storage.enumerateAttribute(
-      .attachment,
-      in: NSRange(location: 0, length: storage.length)
-    ) { value, range, _ in
-      if let chip = value as? PromptChipAttachment {
-        draft.append(chip.promptAttachment)
-      } else {
-        draft.append(text: storage.attributedSubstring(from: range).string)
-      }
-    }
+    var draft = PromptDraft(string)
+    attachments.forEach { draft.append($0) }
     return draft
   }
 
-  var searchQuery: String { draft.typedText }
+  var searchQuery: String { string }
 
   // MARK: - The keys after the text
 
@@ -107,8 +108,6 @@ final class PromptTextView: NSTextView {
     let line = layoutManager.lineFragmentRect(forGlyphAt: last, effectiveRange: nil)
     let glyph = layoutManager.boundingRect(
       forGlyphRange: NSRange(location: last, length: 1), in: textContainer)
-    // The typesetter's baseline, never a glyph's location: a chip's stands at its
-    // capsule's foot, and the keys dropped by as much once the space after it was deleted.
     let baseline = line.maxY - layoutManager.typesetter.baselineOffset(
       in: layoutManager, glyphIndex: last)
     let font = trailingHintFont
@@ -218,7 +217,7 @@ final class PromptTextView: NSTextView {
   }
 
   /// The sentence's face, never `font`, which answers with the first character's.
-  private var caretFont: NSFont { chipFont }
+  private var caretFont: NSFont { isChatComposer ? Self.chatComposerFont : Self.promptFont }
 
   var caretBarRect: NSRect? {
     guard let layoutManager, let textContainer, let storage = textStorage else { return nil }
@@ -237,7 +236,6 @@ final class PromptTextView: NSTextView {
       let glyph = layoutManager.glyphIndexForCharacter(at: min(index, storage.length - 1))
       let line = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
       let location = layoutManager.location(forGlyphAt: glyph)
-      // The typesetter's baseline, never a glyph's location: a chip's stands at its capsule's foot.
       baseline = line.maxY - layoutManager.typesetter.baselineOffset(
         in: layoutManager, glyphIndex: glyph)
       x = index < storage.length
@@ -363,7 +361,10 @@ final class PromptTextView: NSTextView {
 
   var caretViewForTesting: PromptCaretView { caretView }
 
+  /// No words, which is what the placeholder and a key on the empty field
+  /// go by. Whether there is anything to send is `draft.isEffectivelyEmpty`.
   var isEmptyPrompt: Bool { (textStorage?.length ?? 0) == 0 }
+  var isWhollyEmpty: Bool { isEmptyPrompt && attachments.isEmpty }
 
   var isCaretOnFirstLine: Bool {
     guard let layoutManager, let storage = textStorage, storage.length > 0 else { return true }
@@ -379,21 +380,6 @@ final class PromptTextView: NSTextView {
     return abs(caretLine.minY - firstLine.minY) < 0.5
   }
 
-  var containsChips: Bool {
-    guard let storage = textStorage else { return false }
-    var found = false
-    storage.enumerateAttribute(
-      .attachment,
-      in: NSRange(location: 0, length: storage.length)
-    ) { value, _, stop in
-      if value is PromptChipAttachment {
-        found = true
-        stop.pointee = true
-      }
-    }
-    return found
-  }
-
   func notifyContentHeightIfNeeded() {
     let height = clampedContentHeight
     guard abs(height - lastReportedContentHeight) > 0.5 else { return }
@@ -404,9 +390,7 @@ final class PromptTextView: NSTextView {
   func syncVerticalInset() {
     let inset = usesExpandedStyle
       ? (isChatComposer ? AgentPaletteMetrics.chatComposerGrownTextInset : AgentPaletteMetrics.promptGrownInset)
-      : PromptTextView.verticalInset(
-          hasChips: containsChips,
-          font: isChatComposer ? Self.chatComposerFont : Self.promptFont)
+      : PromptTextView.verticalInset(font: isChatComposer ? Self.chatComposerFont : Self.promptFont)
     guard abs(textContainerInset.height - inset) > 0.01 else { return }
     textContainerInset = NSSize(width: 0, height: inset)
     syncCaret()
@@ -470,8 +454,8 @@ final class PromptTextView: NSTextView {
 
   /// Draws every link in the draft as one — cyan-blue, underlined — and puts
   /// back the sentence's own ink on what is no longer one. Attributes only:
-  /// the characters, the line breaks and the chips are not touched, so a link
-  /// pasted or typed in the middle of a sentence leaves the rest where it was.
+  /// the characters and the line breaks are not touched, so a link pasted or
+  /// typed in the middle of a sentence leaves the rest where it was.
   func styleLinks() {
     guard let storage = textStorage else { return }
     let wanted = PromptAttachmentKind.linkRanges(in: storage.string)
@@ -502,7 +486,6 @@ final class PromptTextView: NSTextView {
   }
 
   override func didChangeText() {
-    chipPreview.dismiss()
     holdTrailingHint()
     styleLinks()
     super.didChangeText()
@@ -519,7 +502,14 @@ final class PromptTextView: NSTextView {
   static var lineHeight: CGFloat {
     let font = promptFont
     let text = ceil(font.ascender - font.descender + font.leading)
-    return max(text, PromptChipCell.lineHeight(for: font))
+    return max(text, restingLineHeight(for: font))
+  }
+
+  /// A line roomier than its type, which the first screen's row is centred on.
+  private static func restingLineHeight(for font: NSFont) -> CGFloat {
+    let height = (font.pointSize * AgentPaletteMetrics.promptLineHeightPerPoint * 2).rounded() / 2
+    let descent = height / 2 - font.capHeight / 2
+    return ceil(max(font.ascender, height - descent) + max(-font.descender, descent))
   }
 
   var wrapsBeyondOneLine: Bool {
@@ -546,8 +536,8 @@ final class PromptTextView: NSTextView {
     ceil(font.ascender - font.descender + font.leading)
   }
 
-  static func verticalInset(hasChips: Bool, font: NSFont = promptFont) -> CGFloat {
-    hasChips ? 0 : max(0, (lineHeight - textOnlyLineHeight(for: font)) / 2)
+  static func verticalInset(font: NSFont = promptFont) -> CGFloat {
+    max(0, (lineHeight - textOnlyLineHeight(for: font)) / 2)
   }
 
   static var firstBaselineOffsetFromTop: CGFloat {
@@ -555,7 +545,7 @@ final class PromptTextView: NSTextView {
   }
 
   static func firstBaselineOffsetFromTop(for font: NSFont) -> CGFloat {
-    verticalInset(hasChips: false, font: font) + typesetBaseline(for: font)
+    verticalInset(font: font) + typesetBaseline(for: font)
   }
 
   static func typesetBaseline(for font: NSFont) -> CGFloat {
@@ -580,26 +570,9 @@ final class PromptTextView: NSTextView {
     if let textStorage, textStorage.length > 0 {
       textStorage.addAttribute(.font, value: font, range: NSRange(location: 0, length: textStorage.length))
     }
-    syncChipFonts()
     typingAttributes = defaultTypingAttributes
     syncVerticalInset()
     syncCaret()
-  }
-
-  private var chipFont: NSFont { isChatComposer ? Self.chatComposerFont : Self.promptFont }
-
-  private func makeChip(_ attachment: PromptAttachment) -> NSAttributedString {
-    let chip = PromptChipAttachment(attachment)
-    (chip.attachmentCell as? PromptChipCell)?.displayFont = chipFont
-    return chip.attributedString()
-  }
-
-  private func syncChipFonts() {
-    guard let storage = textStorage, storage.length > 0 else { return }
-    let font = chipFont
-    storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
-      ((value as? PromptChipAttachment)?.attachmentCell as? PromptChipCell)?.displayFont = font
-    }
   }
 
   var defaultTypingAttributes: [NSAttributedString.Key: Any] {
@@ -614,23 +587,16 @@ final class PromptTextView: NSTextView {
   // MARK: - Editing
 
   func setDraft(_ draft: PromptDraft) {
-    let composed = NSMutableAttributedString()
-    for element in draft.elements {
-      switch element {
-      case let .text(text):
-        composed.append(NSAttributedString(string: text, attributes: defaultTypingAttributes))
-      case let .attachment(attachment):
-        // A link chip saved in an older draft comes back as its words.
-        if attachment.kind == .link, case let .text(url) = attachment.payload {
-          composed.append(NSAttributedString(string: url, attributes: defaultTypingAttributes))
-        } else {
-          composed.append(makeChip(attachment))
-        }
-      }
-    }
-    textStorage?.setAttributedString(composed)
+    let (words, attachments) = draft.separated
+    textStorage?.setAttributedString(NSAttributedString(string: words, attributes: defaultTypingAttributes))
     typingAttributes = defaultTypingAttributes
-    setSelectedRange(NSRange(location: composed.length, length: 0))
+    setSelectedRange(NSRange(location: textStorage?.length ?? 0, length: 0))
+    // Nothing older can be undone into a draft that has just been replaced.
+    undoManager?.removeAllActions(withTarget: self)
+    if attachments != self.attachments {
+      self.attachments = attachments
+      onAttachmentsChange?(false)
+    }
     didChangeText()
   }
 
@@ -650,74 +616,42 @@ final class PromptTextView: NSTextView {
     textStorage?.setAttributedString(NSAttributedString())
     typingAttributes = defaultTypingAttributes
     setSelectedRange(NSRange(location: 0, length: 0))
+    undoManager?.removeAllActions(withTarget: self)
+    if !attachments.isEmpty {
+      attachments = []
+      onAttachmentsChange?(false)
+    }
     didChangeText()
   }
 
-  func insertChips(_ attachments: [PromptAttachment]) {
-    guard !attachments.isEmpty else { return }
-
-    let range = selectedRange()
-    let ns = (textStorage?.string ?? "") as NSString
-    let start = range.location
-    let end = range.location + range.length
-    func isWhitespace(at index: Int) -> Bool {
-      guard index >= 0, index < ns.length else { return false }
-      let unit = ns.substring(with: NSRange(location: index, length: 1))
-      return unit.rangeOfCharacter(from: .whitespacesAndNewlines) != nil
-    }
-    let needsLeading = start > 0 && !isWhitespace(at: start - 1)
-    let needsTrailing = end >= ns.length || !isWhitespace(at: end)
-
-    let composed = NSMutableAttributedString()
-    if needsLeading {
-      composed.append(NSAttributedString(string: " ", attributes: defaultTypingAttributes))
-    }
-    for (index, attachment) in attachments.enumerated() {
-      if index > 0 {
-        composed.append(NSAttributedString(string: " ", attributes: defaultTypingAttributes))
-      }
-      composed.append(makeChip(attachment))
-    }
-    if needsTrailing {
-      composed.append(NSAttributedString(string: " ", attributes: defaultTypingAttributes))
-    }
-
-    guard shouldChangeText(in: range, replacementString: nil) else { return }
-    textStorage?.replaceCharacters(in: range, with: composed)
-    typingAttributes = defaultTypingAttributes
-    setSelectedRange(NSRange(location: range.location + composed.length, length: 0))
-    didChangeText()
-    scrollRangeToVisible(selectedRange())
-    animateEntrance(of: composed)
+  func insertAttachments(_ new: [PromptAttachment]) {
+    guard !new.isEmpty else { return }
+    changeAttachments(to: attachments + new)
   }
 
-  private func animateEntrance(of inserted: NSAttributedString) {
-    var cells: [PromptChipCell] = []
-    inserted.enumerateAttribute(
-      .attachment,
-      in: NSRange(location: 0, length: inserted.length)
-    ) { value, _, _ in
-      if let cell = (value as? PromptChipAttachment)?.attachmentCell as? PromptChipCell {
-        cells.append(cell)
-      }
-    }
-    guard !cells.isEmpty else { return }
+  func removeAttachment(id: UUID) {
+    guard attachments.contains(where: { $0.id == id }) else { return }
+    changeAttachments(to: attachments.filter { $0.id != id })
+  }
 
-    guard !MotionPreferences.reduceMotion else {
-      cells.forEach { $0.appearProgress = 1 }
-      return
+  /// Backspace with nothing before the caret: the card nearest the words goes.
+  func removeLastAttachmentFromFieldStart() -> Bool {
+    guard selectedRange() == NSRange(location: 0, length: 0), let last = attachments.last else {
+      return false
     }
+    removeAttachment(id: last.id)
+    return true
+  }
 
-    cells.forEach { $0.appearProgress = 0 }
-    let animator = ChipEntranceAnimator(
-      duration: AgentPaletteMetrics.chipAppearDuration
-    ) { [weak self] progress in
-      cells.forEach { $0.appearProgress = progress }
-      self?.needsDisplay = true
+  private func changeAttachments(to next: [PromptAttachment]) {
+    let previous = attachments
+    breakUndoCoalescing()
+    undoManager?.registerUndo(withTarget: self) { field in
+      MainActor.assumeIsolated { field.changeAttachments(to: previous) }
     }
-    entranceAnimators.removeAll { $0.isFinished }
-    entranceAnimators.append(animator)
-    animator.start(in: self)
+    attachments = next
+    onAttachmentsChange?(true)
+    didChangeText()
   }
 
   func insertPlainText(_ text: String) {
@@ -728,119 +662,16 @@ final class PromptTextView: NSTextView {
     typingAttributes = defaultTypingAttributes
   }
 
-  func attachment(at point: NSPoint) -> PromptAttachment? {
-    chip(at: point)?.attachment
-  }
-
-  func chipSnapshots() -> [UUID: (frame: NSRect, image: NSImage?)] {
-    guard let layoutManager, let textContainer, let storage = textStorage, storage.length > 0
-    else { return [:] }
-    layoutManager.ensureLayout(for: textContainer)
-    var chips: [UUID: (frame: NSRect, image: NSImage?)] = [:]
-    storage.enumerateAttribute(
-      .attachment, in: NSRange(location: 0, length: storage.length)
-    ) { value, range, _ in
-      guard let chip = value as? PromptChipAttachment else { return }
-      let glyphs = layoutManager.glyphRange(
-        forCharacterRange: NSRange(location: range.location, length: 1), actualCharacterRange: nil)
-      guard glyphs.length > 0 else { return }
-      var rect = layoutManager.boundingRect(forGlyphRange: glyphs, in: textContainer)
-      rect.origin.x += textContainerOrigin.x
-      rect.origin.y += textContainerOrigin.y
-      guard rect.width > 0, rect.height > 0, visibleRect.intersects(rect) else { return }
-      var image: NSImage?
-      if let bitmap = bitmapImageRepForCachingDisplay(in: rect) {
-        cacheDisplay(in: rect, to: bitmap)
-        image = NSImage(size: rect.size)
-        image?.addRepresentation(bitmap)
-      }
-      chips[chip.promptAttachment.id] = (convert(rect, to: nil), image)
-    }
-    return chips
-  }
-
-  private func chipRect(characterIndex: Int) -> NSRect? {
-    guard let layoutManager, let textContainer else { return nil }
-    let glyphs = layoutManager.glyphRange(
-      forCharacterRange: NSRange(location: characterIndex, length: 1), actualCharacterRange: nil)
-    guard glyphs.length > 0 else { return nil }
-    var rect = layoutManager.boundingRect(forGlyphRange: glyphs, in: textContainer)
-    rect.origin.x += textContainerOrigin.x
-    rect.origin.y += textContainerOrigin.y
-    return rect
-  }
-
-  private func attachmentRange(at point: NSPoint) -> NSRange? {
-    chip(at: point).map { NSRange(location: $0.characterIndex, length: 1) }
-  }
-
-  private func chip(at point: NSPoint) -> (attachment: PromptAttachment, characterIndex: Int)? {
-    guard
-      let layoutManager,
-      let textContainer,
-      let storage = textStorage,
-      storage.length > 0
-    else { return nil }
-
-    let local = convert(point, from: nil)
-    let inContainer = NSPoint(
-      x: local.x - textContainerOrigin.x,
-      y: local.y - textContainerOrigin.y
-    )
-    var fraction: CGFloat = 0
-    let glyph = layoutManager.glyphIndex(
-      for: inContainer,
-      in: textContainer,
-      fractionOfDistanceThroughGlyph: &fraction
-    )
-    let character = layoutManager.characterIndexForGlyph(at: glyph)
-    guard character < storage.length else { return nil }
-    let value = storage.attribute(.attachment, at: character, effectiveRange: nil)
-    guard let chip = value as? PromptChipAttachment else { return nil }
-    return (chip.promptAttachment, character)
-  }
-
   // MARK: - Pointer
 
   override func mouseDown(with event: NSEvent) {
     onMouseDown?()
-    if let range = attachmentRange(at: event.locationInWindow) {
-      window?.makeFirstResponder(self)
-      setSelectedRange(range)
-      return
-    }
     super.mouseDown(with: event)
   }
 
-  override func mouseMoved(with event: NSEvent) {
-    super.mouseMoved(with: event)
-    let hovered = chip(at: event.locationInWindow)
-    let rect = hovered.flatMap { chipRect(characterIndex: $0.characterIndex) } ?? .zero
-    let isOnChip = rect.contains(convert(event.locationInWindow, from: nil))
-    chipPreview.hover(isOnChip ? hovered?.attachment : nil, at: rect)
-  }
-
-  override func mouseExited(with event: NSEvent) {
-    super.mouseExited(with: event)
-    chipPreview.dismiss()
-  }
-
-  override func viewWillMove(toWindow newWindow: NSWindow?) {
-    if newWindow == nil { chipPreview.dismiss() }
-    super.viewWillMove(toWindow: newWindow)
-  }
-
-  override func updateTrackingAreas() {
-    super.updateTrackingAreas()
-    trackingAreas.filter { $0.owner === self }.forEach(removeTrackingArea)
-    addTrackingArea(
-      NSTrackingArea(
-        rect: bounds,
-        options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
-        owner: self
-      )
-    )
-  }
+  /// One door for what is dropped: the panel's (`AgentPaletteView.performDragOperation`).
+  /// Left to itself the text view takes a dropped file as its path, in words.
+  override var acceptableDragTypes: [NSPasteboard.PasteboardType] { [] }
 
   // MARK: - Paste
 
@@ -932,6 +763,7 @@ final class PromptTextView: NSTextView {
     isAutomaticDashSubstitutionEnabled = false
     isAutomaticTextReplacementEnabled = false
     isAutomaticSpellingCorrectionEnabled = false
+    updateDragTypeRegistration()
     syncVerticalInset()
 
     isHorizontallyResizable = false

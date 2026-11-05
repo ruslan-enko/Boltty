@@ -2,6 +2,21 @@
 
 What changed from release to release. The newest is at the top.
 
+## Unreleased
+
+**Files in the prompt**
+- What you paste, drop or attach now stands over your words as a row of cards. A
+  picture shows itself; a file shows where it is and what kind it is; pasted text
+  shows how it begins.
+- Hover a card for its ×, click it for Quick Look. Backspace at the start of the
+  words takes the last card, and ⌘Z brings it back.
+- What you sent stands over your message as the same cards, and flies there from
+  the composer without changing shape.
+- The agent now reads your words first, then the files in the order of the cards.
+  A file can no longer stand in the middle of a sentence.
+- Dropping a file on the words attaches it, as dropping it anywhere else on the
+  panel does.
+
 ## 0.4.0
 
 **Ask Boltty**

@@ -5,9 +5,9 @@ import CoreImage
 final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var helpRoom: NSRect? { convert(surface.bounds, from: surface) }
 
-  /// Carries chips, not just characters — a pasted file has no string form the
-  /// palette could hand over without deciding what it expands to, and that
-  /// decision belongs to `PromptExpansion`, past the controller.
+  /// Carries attachments, not just characters — a pasted file has no string
+  /// form the palette could hand over without deciding what it expands to, and
+  /// that decision belongs to `PromptExpansion`, past the controller.
   var onSubmit: ((PromptDraft) -> Void)?
   /// ⌘Return in a chat: the draft, to go into the running turn where the
   /// agent can take it, and to the queue otherwise.
@@ -37,15 +37,15 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// was left (`AgentPaletteController.resumeAddressing`).
   func resumeChatAnimations() { previewCard.resumeAnimations() }
 
-  /// Hands the card where each sent chip stood, by the path it went out as,
-  /// for the flight that lands it on its card. Read before the draft is
+  /// Hands the transcript where each sent card stood, by the path it went out
+  /// as, for the flight that lands it over its bubble. Read before the draft is
   /// cleared — afterwards there is nothing left to read it from.
-  func prepareFileFlights(_ files: [(chip: UUID, file: SentFile)]) {
+  func prepareFileFlights(_ files: [(attachment: UUID, file: SentFile)]) {
     guard !files.isEmpty else { return }
-    let chips = field.chipSnapshots()
+    let cards = attachmentStrip.cardSnapshots()
     var origins: [String: BolttyAIPreviewCard.FlightOrigin] = [:]
-    for (chip, file) in files {
-      guard let snapshot = chips[chip] else { continue }
+    for (attachment, file) in files {
+      guard let snapshot = cards[attachment] else { continue }
       origins[file.path] = .init(frameInWindow: snapshot.frame, image: snapshot.image)
     }
     previewCard.prepareFileFlights(origins)
@@ -75,7 +75,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// A region is drawn on the first screen: the question about it begins.
   var onScreenRegionReady: (() -> Void)?
   /// In an open chat, the region drawn — global screen coordinates — to be
-  /// put in the composer as a chip (`insertScreenSelection`).
+  /// put in the composer as a card (`insertScreenSelection`).
   var onScreenRegionSelected: ((CGRect) -> Void)?
   /// Escape, a click off the region, or a region too small to be one.
   var onScreenSelectionCancelled: (() -> Void)?
@@ -426,6 +426,15 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private var listeningWordsWidth: CGFloat = 0
   /// Icon + field, always composited in front of glass/gradient.
   private let promptForeground = BolttyAIChromeView()
+  /// What came with the words, over them. A sibling of the foreground, which
+  /// stands under it, so nothing the foreground holds has to know it is there.
+  private let attachmentStrip = PromptAttachmentStrip()
+  private lazy var promptForegroundTop = promptForeground.topAnchor.constraint(
+    equalTo: promptCapsule.topAnchor)
+  private lazy var attachmentStripHeight = attachmentStrip.heightAnchor.constraint(equalToConstant: 0)
+  /// The foreground on its way to a band the first screen has just gained or
+  /// lost, carried by the shell's foot (`rideAttachmentBand`).
+  private var bandTravel: (from: CGFloat, to: CGFloat, fromHeight: CGFloat)?
   /// Presentation target: scales chrome and content together.
   private let promptCapsule = NSView()
   // A single live glass surface survives prompt → list → conversation.
@@ -488,7 +497,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// On the first screen dictation is always the capsule, whatever the
   /// draft already holds; the draft is kept and comes back when the take
   /// ends. In an open chat an empty composer collapses the card to the same
-  /// capsule, but a draft that holds words or chips keeps the composer, so
+  /// capsule, but a draft that holds words or cards keeps the composer, so
   /// what is being added to stays beside the transcript it answers.
   ///
   /// A confirmed take stays the orb while the engine finalises, and goes from
@@ -903,6 +912,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     return (field.convert(NSPoint(x: x, y: 0), to: nil).x + glyph.minX, baseline + font.capHeight)
   }
   var promptCapsuleHeightForTesting: CGFloat { promptCapsuleHeightConstraint.constant }
+  var attachmentStripForTesting: PromptAttachmentStrip { attachmentStrip }
+  var surfaceMotionForTesting: PaletteSurfaceMotion { surfaceMotion }
   var isVoiceListeningForTesting: Bool { isVoiceListening }
   var isVoiceListeningNow: Bool { isVoiceListening }
   var micButtonForTesting: GlassCircleVoiceButton { micButton }
@@ -1182,7 +1193,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// Applies a voice transcript into the prompt field (partial or final).
   ///
   /// Dictation rewrites its whole transcript on every partial result, so it
-  /// replaces the spoken span only. Typed words and chips from before the
+  /// replaces the spoken span only. Typed words and cards from before the
   /// mic went live stay put.
   func applyVoiceTranscript(_ transcript: String) {
     guard !voiceTranscriptWasInterrupted else { return }
@@ -1223,9 +1234,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// What the listening capsule says: the words of this take alone — a draft
   /// typed before it is in the prompt, out of sight, and silence is the orb.
   private func setListeningWords(_ transcript: String) {
-    let words = transcript
-      .replacingOccurrences(of: "\u{FFFC}", with: "")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let words = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
     let before = listeningWords.wordCount
     listeningWords.setText(words, animated: window?.isVisible == true)
     // The face takes each new word in with a small nod.
@@ -2000,13 +2009,14 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       }
       previewCard.onUseFile = { [weak self] url in
         guard let self else { return }
-        // A file on disk becomes a file chip. What the agent then receives is
-        // the path, via the same `PromptExpansion` every pasted file takes —
-        // no second transport, no engine change.
-        var draft = self.currentDraft
+        // A file on disk becomes a card. What the agent then receives is the
+        // path, via the same `PromptExpansion` every pasted file takes — no
+        // second transport, no engine change.
+        let draft = self.currentDraft
         let kind = PromptAttachmentKind.resolve(for: url)
-        draft.append(PromptAttachment.file(url, label: draft.nextGeneratedLabel(for: kind)))
-        self.setChatDraft(draft)
+        self.applyIngest(.attachments([
+          PromptAttachment.file(url, label: draft.nextGeneratedLabel(for: kind)),
+        ]))
         self.onDraftChange?()
         _ = self.focusField()
       }
@@ -3236,6 +3246,20 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     field.onCommandN = { [weak self] in self?.startNewChatFromKeyboard() ?? false }
     field.onComposerChord = { [weak self] in self?.pressComposerChord($0) ?? false }
     field.onMouseDown = { [weak self] in self?.setComposerKeyTarget(.text) }
+    field.onAttachmentsChange = { [weak self] animated in
+      guard let self else { return }
+      self.attachmentStrip.show(self.field.attachments, animated: animated)
+    }
+    attachmentStrip.onRemove = { [weak self] id in
+      guard let self else { return }
+      self.field.removeAttachment(id: id)
+      _ = self.focusField()
+    }
+    attachmentStrip.onOpen = { attachment in
+      // Written out only now: a pasted picture or text has no file until it is asked for.
+      guard let url = try? PromptAttachmentStore.shared.fileURL(for: attachment) else { return }
+      FileQuickLookStore.shared.show(url: url)
+    }
     registerForDraggedTypes([.fileURL, .png, .tiff, .string])
     let agentClick = NSClickGestureRecognizer(
       target: self,
@@ -3378,9 +3402,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       // grow for the face and for the pointer without dragging the sentence
       // along. See `AgentPaletteMetrics.promptTextLeading`.
       editorLeading,
-      // One line high to start, sized for the tallest thing a line can hold —
-      // a chip is taller than the type beside it, so sizing to the font would
-      // clip it. `syncPromptHeight` raises this by whole lines as text wraps.
+      // One line high to start. `syncPromptHeight` raises this by whole lines
+      // as text wraps.
       promptScrollHeightConstraint,
 
 
@@ -3390,7 +3413,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       micHeight,
 
       hintLabel.leadingAnchor.constraint(equalTo: promptScroll.leadingAnchor),
-      // Baselines, not boxes. The prompt's box is sized for a chip and lays its
+      // Baselines, not boxes. The prompt's box is roomier than its type and lays its
       // text out from the top; the label's box hugs its own font and centres
       // inside the same row. Centring both left the placeholder sitting ~3pt
       // below the text it stands in for, so type appeared to jump on the first
@@ -3626,8 +3649,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     // Capsule: glass chrome under, icon/text always on the front edge.
     promptCapsule.addSubview(promptHost)
     promptCapsule.addSubview(promptForeground)
+    attachmentStrip.translatesAutoresizingMaskIntoConstraints = false
+    attachmentStrip.isHidden = true
+    promptCapsule.addSubview(attachmentStrip)
     promptHost.layer?.zPosition = 0
     promptForeground.layer?.zPosition = 10
+    attachmentStrip.layer?.zPosition = 10
     // List: same split so the blue wash never covers row titles.
     resultsCapsule.addSubview(resultsForeground)
     resultsForeground.layer?.zPosition = 10
@@ -3701,8 +3728,13 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
       promptForeground.leadingAnchor.constraint(equalTo: promptCapsule.leadingAnchor),
       promptForeground.trailingAnchor.constraint(equalTo: promptCapsule.trailingAnchor),
-      promptForeground.topAnchor.constraint(equalTo: promptCapsule.topAnchor),
+      promptForegroundTop,
       promptForeground.bottomAnchor.constraint(equalTo: promptCapsule.bottomAnchor),
+
+      attachmentStrip.leadingAnchor.constraint(equalTo: promptCapsule.leadingAnchor),
+      attachmentStrip.trailingAnchor.constraint(equalTo: promptCapsule.trailingAnchor),
+      attachmentStrip.bottomAnchor.constraint(equalTo: promptForeground.topAnchor),
+      attachmentStripHeight,
 
       resultsCapsule.centerXAnchor.constraint(equalTo: promptCapsule.centerXAnchor),
       resultsTopConstraint,
@@ -3865,7 +3897,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     _ = updatePromptHeights()
     expandedPromptTop.constant = bottomControls ? AgentPaletteMetrics.chatComposerGrownTextTop : 0
     controlsTop.constant = bottomControls
-      ? promptCapsuleHeightConstraint.constant
+      ? promptCapsuleHeightConstraint.constant - attachmentBand
         - (AgentPaletteMetrics.chatComposerControlsPadding + ComposerControlGroup.glyph / 2)
       : (chat ? AgentPaletteMetrics.chatComposerHeight / 2 : AgentPaletteMetrics.promptSize.height / 2)
     let inset = chat ? AgentPaletteMetrics.shellContentInset : 0
@@ -4043,6 +4075,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private func drawSurface(at rect: CGRect) {
     surfaceFrame = rect
+    rideAttachmentBand(at: rect)
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     surfaceContainer.frame = rect
@@ -4082,7 +4115,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     applyFloatingShadow(to: surfaceContainer, cornerRadius: corner)
     syncShellShadow()
     // Clip live text to the moving shell; never scale or snapshot the editor.
-    let clippedContent = [promptForeground, resultsForeground, previewForeground]
+    let clippedContent = [promptForeground, attachmentStrip, resultsForeground, previewForeground]
     for content in clippedContent {
       let mask = (content.layer?.mask as? CAShapeLayer) ?? CAShapeLayer()
       mask.frame = content.bounds
@@ -4410,7 +4443,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       hideSelectionPointerHint()
       return
     }
-    // Over a chat a region is a chip for the composer, not a question.
+    // Over a chat a region is a card for the composer, not a question.
     selectionPointerHint.setText(
       addressedPreview == nil
         ? AgentPaletteMetrics.screenSelectionHintText
@@ -4662,7 +4695,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     /// The region is being dragged out; the shell is out of the way.
     case drawing
     /// The region is drawn and the shell stands beside it; its handles move
-    /// and resize it. The first screen only — in a chat it becomes a chip.
+    /// and resize it. The first screen only — in a chat it becomes a card.
     case editing
   }
 
@@ -4701,7 +4734,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   /// Whether a press on the empty glass may become a region of the screen: on
-  /// the first screen a question for Ask Boltty, over an open chat a chip in its
+  /// the first screen a question for Ask Boltty, over an open chat a card in its
   /// composer; with no list or take up. Whatever the agent: one that cannot see pictures is handed the text read
   /// off the region (`PromptExpansion`).
   private var acceptsScreenSelection: Bool {
@@ -4799,7 +4832,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       return
     }
     if addressedPreview != nil {
-      // A chat keeps its card: the region becomes a chip in its composer,
+      // A chat keeps its card: the region becomes a card in its composer,
       // and the screen comes back once it has (`endScreenSelection`).
       noteRegionDrawn()
       onScreenRegionSelected?(region)
@@ -4855,14 +4888,14 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     syncSelectionOverlay()
   }
 
-  /// In a chat, the region as a chip at the caret.
+  /// In a chat, the region as a card in the composer.
   func insertScreenSelection(_ selection: ScreenSelection) {
-    let chip = PromptAttachment(
+    let card = PromptAttachment(
       kind: .image,
       payload: .screen(selection),
       label: field.draft.nextGeneratedLabel(for: .image)
     )
-    applyIngest(.attachments([chip]))
+    applyIngest(.attachments([card]))
   }
 
   /// Escape or a click off the region: the whole question goes, panel and all.
@@ -4893,7 +4926,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     return window.convertPoint(toScreen: face.convert(centre, to: nil))
   }
 
-  /// Done with the region — sent with the prompt, or put in a chat as a chip.
+  /// Done with the region — sent with the prompt, or put in a chat as a card.
   func endScreenSelection() {
     regionVoiceWait?.cancel()
     regionVoiceWait = nil
@@ -5025,7 +5058,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
   }
 
-  /// One border per screen chip in the draft, where it was taken.
+  /// One border per screen card in the draft, where it was taken.
   private func syncScreenOutlines() {
     outlinedWindowFrame = window?.frame
     guard let window else {
@@ -5345,7 +5378,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// Expand once per draft. No animated width/font interpolation on a live
   /// editor: it reflows each glyph at every frame and moves the insertion point.
   private func syncPromptExpansion() {
-    isDraftExpanded = !field.isEmptyPrompt && (isDraftExpanded || field.wrapsBeyondOneLine)
+    // Cards hold it too: the words gone, narrowing would move every card.
+    isDraftExpanded = !field.attachments.isEmpty
+      || (!field.isEmptyPrompt && (isDraftExpanded || field.wrapsBeyondOneLine))
     let expanded = isDraftExpanded || isOpenChat
     guard expanded != isPromptExpanded else { return }
     isPromptExpanded = expanded
@@ -5435,10 +5470,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// `layout` would re-enter it.
   @discardableResult
   private func updatePromptHeights() -> Bool {
+    let band = attachmentBand
     field.maximumViewportHeight = isOpenChat
       ? max(PromptTextView.lineHeight,
           chatSurfaceSize.height - AgentPaletteMetrics.previewMinHeight
             - AgentPaletteMetrics.surfaceStackSpacing - AgentPaletteMetrics.shellContentInset
+            - band
             - (isPromptExpanded
                 ? AgentPaletteMetrics.chatComposerGrownTextTop
                   + AgentPaletteMetrics.chatComposerGrownControlsBand
@@ -5449,7 +5486,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let bottomControls = addressedPreview != nil && isPromptExpanded
     // The first screen's capsule grows with a wrapped draft
     // (`promptGrownInset`); one line keeps the resting 79.
-    let capsuleHeight = !isOpenChat
+    let capsuleHeight = band + (!isOpenChat
       ? (isPromptExpanded
           ? max(AgentPaletteMetrics.promptSize.height, textHeight)
           : AgentPaletteMetrics.promptSize.height)
@@ -5459,7 +5496,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
                   AgentPaletteMetrics.chatComposerGrownTextTop + textHeight
                     + AgentPaletteMetrics.chatComposerGrownControlsBand)
             : textHeight)
-        : AgentPaletteMetrics.chatComposerHeight + max(0, extra)
+        : AgentPaletteMetrics.chatComposerHeight + max(0, extra))
+
+    attachmentStrip.placement = addressedPreview == nil
+      ? AgentPaletteMetrics.attachmentStripOnFirstScreen : AgentPaletteMetrics.attachmentStripInChat
+    placeAttachmentBand(band)
 
     guard abs(promptScrollHeightConstraint.constant - textHeight) > 0.5
       || abs(promptCapsuleHeightConstraint.constant - capsuleHeight) > 0.5
@@ -5468,6 +5509,52 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     promptScrollHeightConstraint.constant = textHeight
     promptCapsuleHeightConstraint.constant = capsuleHeight
     return true
+  }
+
+  /// What the strip takes out of the composer. Nothing while the list is up:
+  /// the field is its search there, and the cards wait out of sight.
+  private var attachmentBand: CGFloat {
+    guard !field.attachments.isEmpty, !isHistoryOpen else { return 0 }
+    return (addressedPreview == nil
+      ? AgentPaletteMetrics.attachmentStripOnFirstScreen : AgentPaletteMetrics.attachmentStripInChat).band
+  }
+
+  /// The strip's place in the capsule. On the first screen the shell's top is
+  /// held under the notch, so a new band can only come out of its foot: the
+  /// line under the strip goes down with the foot, and the strip with it,
+  /// uncovered from under the shell's top. Moved at once, the line stood below
+  /// a foot that had not got there yet, and the shell's mask cut it away.
+  private func placeAttachmentBand(_ band: CGFloat) {
+    let settled = bandTravel?.to ?? promptForegroundTop.constant
+    if abs(band - settled) > 0.5 {
+      bandTravel = addressedPreview == nil && surfaceReady && window?.isVisible == true
+        ? (promptForegroundTop.constant, band, surfaceFrame.height) : nil
+      if bandTravel == nil { promptForegroundTop.constant = band }
+    }
+    let held = max(band, promptForegroundTop.constant)
+    if abs(attachmentStripHeight.constant - held) > 0.5, held > 0 { attachmentStripHeight.constant = held }
+    attachmentStrip.isHidden = band == 0 && bandTravel == nil
+  }
+
+  private func rideAttachmentBand(at rect: CGRect) {
+    guard let travel = bandTravel else { return }
+    // The capsule, not the spring's destination: the spring may not have been
+    // told yet, and on the first screen the capsule is where it is going.
+    let span = promptCapsuleHeightConstraint.constant - travel.fromHeight
+    let progress = surfaceMotion.isMoving && abs(span) > 1 && addressedPreview == nil
+      ? min(max((rect.height - travel.fromHeight) / span, 0), 1)
+      : 1
+    let shown = travel.from + (travel.to - travel.from) * progress
+    if progress >= 1 {
+      bandTravel = nil
+      attachmentStrip.isHidden = travel.to == 0
+      if travel.to > 0 { attachmentStripHeight.constant = travel.to }
+    }
+    guard abs(promptForegroundTop.constant - shown) > 0.01 else { return }
+    promptForegroundTop.constant = shown
+    // From the spring's clock, outside any layout pass: the mask this frame
+    // draws is worked out from where the foreground now stands.
+    if !isPerformingLayout { promptCapsule.layoutSubtreeIfNeeded() }
   }
 
   private func configureMicButton() {
@@ -5683,13 +5770,13 @@ extension AgentPaletteView: NSTextViewDelegate {
     }
     // An empty composer lets Space toggle multiple choices. Once a written
     // answer has started, every space belongs to that answer as usual.
-    if replacementString == " ", field.isEmptyPrompt, addressedPreview != nil,
+    if replacementString == " ", field.isWhollyEmpty, addressedPreview != nil,
        previewCard.toggleFocusedOption() { return false }
     // A digit on an empty composer answers by number where the question
     // takes no typed answer (`AgentQuestion.answersByNumber`) — Claude
     // Code's 1, 2, 3. Anywhere else it is the first letter of the reply.
     if let typed = replacementString, typed.count == 1, let number = Int(typed), number > 0,
-       field.isEmptyPrompt, addressedPreview != nil,
+       field.isWhollyEmpty, addressedPreview != nil,
        previewCard.chooseOption(number: number) { return false }
     return true
   }
@@ -5823,7 +5910,9 @@ extension AgentPaletteView: NSTextViewDelegate {
         closeSwitcher()
         return true
       }
-      return false
+      // Nothing before the caret: the card nearest the words goes, as it did
+      // when it stood in the sentence.
+      return field.removeLastAttachmentFromFieldStart()
     }
     if commandSelector == #selector(insertNewline(_:))
         || commandSelector == #selector(insertNewlineIgnoringFieldEditor(_:)) {
@@ -5879,7 +5968,7 @@ extension AgentPaletteView: NSTextViewDelegate {
     if !voiceTranscriptWasInterrupted, !isApplyingVoiceTranscript, let expected = voiceExpectedText,
        field.string != expected {
       // Editing takes ownership of the draft; a later recognizer revision
-      // must not overwrite a correction, an undo or a newly pasted chip.
+      // must not overwrite a correction, an undo or a newly pasted file.
       voiceTranscriptWasInterrupted = true
       onVoiceEditingInterrupted?()
       setVoiceListening(false)
@@ -5896,7 +5985,7 @@ extension AgentPaletteView: NSTextViewDelegate {
 
 
   /// Routes ⌘V through `PasteboardIngest`, which decides whether the clipboard
-  /// is a chip or characters.
+  /// is an attachment or characters.
   private func handlePaste(forcePlainText: Bool) {
     applyIngest(
       PasteboardIngest.read(
@@ -5910,7 +5999,7 @@ extension AgentPaletteView: NSTextViewDelegate {
   private func applyIngest(_ outcome: PasteboardIngest.Outcome) {
     switch outcome {
     case let .attachments(attachments):
-      field.insertChips(attachments)
+      field.insertAttachments(attachments)
       hideNotice()
     case let .plainText(text):
       field.insertPlainText(text)

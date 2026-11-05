@@ -28,11 +28,6 @@ targets:
       - path: Resources/AgentIcons
         type: folder
         buildPhase: resources
-      # The prompt chips' pictures — the owner's glass, drawn in Figma, one
-      # per kind. See `PromptChipCell.picture(for:)`.
-      - path: Resources/ChipGlass
-        type: folder
-        buildPhase: resources
       # Boltty's own icons. See `BolttyIcon`.
       - path: Resources/Icons
         type: folder

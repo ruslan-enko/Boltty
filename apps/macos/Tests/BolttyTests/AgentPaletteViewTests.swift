@@ -2197,10 +2197,63 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(opticalCentre, PromptTextView.lineHeight / 2, accuracy: 0.6)
   }
 
-  func testALineOfPlainTypeIsCentredInAChipsLine() {
-    XCTAssertEqual(PromptTextView.verticalInset(hasChips: true), 0)
+  // MARK: - Cards over the words
+
+  private func fileCard(_ name: String = "a.mov") -> PromptAttachment {
+    PromptAttachment.file(URL(fileURLWithPath: "/tmp/\(name)"))
+  }
+
+  func testACardWidensTheFirstScreenAndAddsItsBandOverTheLine() {
+    let view = makeView()
+    view.layoutSubtreeIfNeeded()
+    let resting = view.promptCapsuleHeightForTesting
+    view.field.insertAttachments([fileCard()])
+    view.layoutSubtreeIfNeeded()
+
     XCTAssertEqual(
-      PromptTextView.verticalInset(hasChips: false),
+      view.promptCapsuleHeightForTesting,
+      resting + AgentPaletteMetrics.attachmentStripOnFirstScreen.band, accuracy: 0.5)
+    XCTAssertEqual(view.attachmentStripForTesting.cardsForTesting.count, 1)
+    XCTAssertFalse(view.attachmentStripForTesting.isHidden)
+  }
+
+  func testTheLastCardGoingGivesTheBandBack() {
+    let view = makeView()
+    view.layoutSubtreeIfNeeded()
+    let resting = view.promptCapsuleHeightForTesting
+    let card = fileCard()
+    view.field.insertAttachments([card])
+    view.layoutSubtreeIfNeeded()
+
+    view.field.removeAttachment(id: card.id)
+    view.layoutSubtreeIfNeeded()
+
+    XCTAssertEqual(view.promptCapsuleHeightForTesting, resting, accuracy: 0.5)
+  }
+
+  func testThePlaceholderStaysBesideACard() {
+    let view = makeView()
+    view.field.insertAttachments([fileCard()])
+    view.layoutSubtreeIfNeeded()
+
+    XCTAssertTrue(view.field.isEmptyPrompt)
+    XCTAssertFalse(view.currentDraft.isEffectivelyEmpty)
+  }
+
+  func testBackspaceOnTheEmptyFieldTakesACard() {
+    let view = makeView()
+    view.field.insertAttachments([fileCard()])
+
+    XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.deleteBackward(_:))))
+    XCTAssertTrue(view.currentDraft.attachments.isEmpty)
+    XCTAssertFalse(
+      view.textView(view.field, doCommandBy: #selector(NSResponder.deleteBackward(_:))),
+      "with no card left, the key is the field's")
+  }
+
+  func testALineOfPlainTypeIsCentredInItsLine() {
+    XCTAssertEqual(
+      PromptTextView.verticalInset(),
       (PromptTextView.lineHeight - PromptTextView.textOnlyLineHeight) / 2
     )
     XCTAssertGreaterThanOrEqual(PromptTextView.lineHeight, PromptTextView.textOnlyLineHeight)
@@ -2727,7 +2780,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
     let attached = view.currentDraft.attachments.map(\.payload)
     XCTAssertEqual(attached, [.file(url)])
-    XCTAssertTrue(view.currentDraft.typedText.isEmpty, "no words added, only the chip")
+    XCTAssertTrue(view.currentDraft.typedText.isEmpty, "no words added, only the card")
   }
 
   func testSearchFindsAnOlderMessageInTheTranscript() {    let view = makeView()

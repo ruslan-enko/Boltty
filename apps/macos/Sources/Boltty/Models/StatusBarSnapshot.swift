@@ -233,7 +233,7 @@ extension ConversationExecutionState {
 /// kept short for the notch, the banners and the tray), which in a row stops
 /// half way across while the reply under it runs to the edge. And the
 /// prompt as sent carries what the person never typed: a screen
-/// selection's bracket, a path where a file chip stood.
+/// selection's bracket, a path where a file was sent.
 ///
 /// So the row reads the first request off the transcript when the stored
 /// title is only a cut of it, and the label truncates by its own width.
@@ -252,14 +252,14 @@ enum ChatTitle {
       }
     }
     if !stored.isEmpty, !untitled { return stored }
-    // A request that was only chips: the first file's name ("image1.png"),
+    // A request that was only files: the first file's name ("image1.png"),
     // rather than "New conversation" or nothing.
     return files.first?.name ?? conversation.title
   }
 
-  /// The request the person typed, with each chip as only a file they chose
+  /// The request the person typed, with each attachment as only a file they chose
   /// keeps it: its own name. A picture pasted or a region of the screen —
-  /// a chip Boltty named, "image1" — leaves nothing, nor does pasted text;
+  /// one Boltty named, "image1" — leaves nothing, nor does pasted text;
   /// any other path is its last part. Whitespace is one space; past
   /// `displayLimit` it is cut at a word. Empty when nothing typed is left.
   static func clean(_ text: String, files: [SentFile] = []) -> String {
@@ -325,7 +325,7 @@ enum ChatTitle {
 
   /// A file the person chose is named by itself; one Boltty wrote out
   /// (a picture, a screen region, a long paste) is named by Boltty after
-  /// its chip, and says nothing in a title.
+  /// its attachment, and says nothing in a title.
   private static func name(of file: SentFile) -> String {
     let own = URL(fileURLWithPath: file.path).lastPathComponent
     return file.expansion == nil && own == file.name ? file.name : ""

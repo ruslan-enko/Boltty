@@ -52,9 +52,8 @@ RULES=(
 
 # SwiftUI — нуль збігів сьогодні, спрацюють на новому коді
 # `\([^:]*\)` — без міток аргументів, бо модифікатор SwiftUI їх не має:
-# `.cornerRadius(12)`. Наша власна `PromptChipCell.cornerRadius(forHeight:)`
-# має мітку, і саме вона два роки стояла в baseline як борг, будучи
-# звичайним викликом функції.
+# `.cornerRadius(12)`. Власна функція з міткою аргумента сюди не потрапляє:
+# одна така два роки стояла в baseline як борг, будучи звичайним викликом.
 'cornerRadius|\.cornerRadius\([^:]*\)|ConcentricRectangle() або RoundedRectangle(cornerRadius:style: .continuous)'
 'material|\.(ultraThin|thin|regular|thick|ultraThick)Material|.bolttySurface(...) — матеріал обирає BolttyDesign'
 'blur|\.blur\(radius:|blur() це не скло — .glassEffect(...)'

@@ -113,7 +113,6 @@ final class PromptDraftTests: XCTestCase {
     XCTAssertEqual(found("«https://a.com», and www.b.org/y?z=1!"), ["https://a.com", "www.b.org/y?z=1"])
     XCTAssertEqual(found("http://localhost:3000"), ["http://localhost:3000"])
     XCTAssertEqual(found("https://a.com\nhttps://b.com"), ["https://a.com", "https://b.com"])
-    XCTAssertEqual(found("a\u{FFFC}https://a.com"), ["https://a.com"], "a chip parts words like a space")
 
     XCTAssertEqual(found("README.md and main.sh"), [], "a file is not a link")
     XCTAssertEqual(found("file:///Users/e/a.png"), [])
@@ -169,7 +168,78 @@ final class PromptDraftTests: XCTestCase {
       try PromptExpansion.expand(draft, store: store),
       "Rewrite <pasted-text>line one\nline two</pasted-text>"
     )
-    XCTAssertTrue(store.requested.isEmpty)
+  }
+
+  func testShortTextIsAlsoRememberedSoItsCardHasAFile() throws {
+    var draft = PromptDraft("Rewrite ")
+    let pasted = PromptAttachment(kind: .text, payload: .text("line one"), label: "text1")
+    draft.append(pasted)
+    store.result = URL(fileURLWithPath: "/tmp/boltty-stub/text1.txt")
+
+    let (text, files) = try PromptExpansion.expandRecordingFiles(draft, store: store)
+
+    XCTAssertEqual(text, "Rewrite <pasted-text>line one</pasted-text>")
+    XCTAssertEqual(files.map(\.file), [
+      SentFile(path: "/tmp/boltty-stub/text1.txt", label: "", name: "text1.txt",
+               expansion: "<pasted-text>line one</pasted-text>"),
+    ])
+  }
+
+  func testShortTextStillGoesWhenItsFileCannotBeWritten() throws {
+    var draft = PromptDraft()
+    draft.append(PromptAttachment(kind: .text, payload: .text("line one"), label: "text1"))
+    store.failure = PromptExpansionError.attachmentUnavailable("text1")
+
+    let (text, files) = try PromptExpansion.expandRecordingFiles(draft, store: store)
+
+    XCTAssertEqual(text, "<pasted-text>line one</pasted-text>")
+    XCTAssertTrue(files.isEmpty, "the words reach the agent; only the card is lost")
+  }
+
+  // MARK: - Words first
+
+  func testADraftKeepsItsWordsAheadOfWhatCameWithThem() {
+    var draft = PromptDraft("Compare these")
+    let first = PromptAttachment.file(URL(fileURLWithPath: "/x/a.mov"))
+    let second = PromptAttachment.file(URL(fileURLWithPath: "/x/b.mov"))
+    draft.append(first)
+    draft.append(second)
+
+    XCTAssertEqual(draft.separated.words, "Compare these")
+    XCTAssertEqual(draft.separated.attachments, [first, second])
+  }
+
+  func testADraftStoredWithChipsInTheSentenceLosesTheirSpaces() {
+    let first = PromptAttachment.file(URL(fileURLWithPath: "/x/a.mov"))
+    let second = PromptAttachment.file(URL(fileURLWithPath: "/x/b.mov"))
+    let draft = PromptDraft(elements: [
+      .text("Compare "), .attachment(first), .text(" with "), .attachment(second), .text(" "),
+    ])
+
+    XCTAssertEqual(draft.separated.words, "Compare with")
+    XCTAssertEqual(draft.separated.attachments, [first, second])
+  }
+
+  func testAnOwnTrailingSpaceIsNotAChipsSpace() {
+    var draft = PromptDraft("Compare ")
+    draft.append(PromptAttachment.file(URL(fileURLWithPath: "/x/a.mov")))
+    XCTAssertEqual(draft.separated.words, "Compare ", "a word being typed stays as it was typed")
+  }
+
+  func testAFileGoesAfterABlankLineAndTheNextAfterASpace() throws {
+    var draft = PromptDraft("What is this?")
+    draft.append(PromptAttachment.file(URL(fileURLWithPath: "/x/a.mov")))
+    draft.append(PromptAttachment.file(URL(fileURLWithPath: "/x/b.png")))
+
+    XCTAssertEqual(try PromptExpansion.expand(draft, store: store), "What is this?\n\n/x/a.mov /x/b.png")
+  }
+
+  func testFilesWithNoWordsHaveNothingBeforeThem() throws {
+    var draft = PromptDraft()
+    draft.append(PromptAttachment.file(URL(fileURLWithPath: "/x/a.mov")))
+    draft.append(PromptAttachment.file(URL(fileURLWithPath: "/x/b.png")))
+
+    XCTAssertEqual(try PromptExpansion.expand(draft, store: store), "/x/a.mov /x/b.png")
   }
 
   func testALinkExpandsToTheBareURL() throws {
@@ -213,15 +283,14 @@ final class PromptDraftTests: XCTestCase {
     inline.append(PromptAttachment(kind: .text, payload: .text(atLimit), label: "text1"))
     XCTAssertEqual(
       try PromptExpansion.expand(inline, store: store),
-      PromptExpansion.textOpenTag + atLimit + PromptExpansion.textCloseTag
+      PromptExpansion.textOpenTag + atLimit + PromptExpansion.textCloseTag,
+      "8 KB exactly still inlines"
     )
-    XCTAssertTrue(store.requested.isEmpty, "8 KB exactly still inlines")
 
     var filed = PromptDraft()
     filed.append(PromptAttachment(kind: .text, payload: .text(overLimit), label: "text1"))
     store.result = URL(fileURLWithPath: "/tmp/boltty-stub/pasted.txt")
     XCTAssertEqual(try PromptExpansion.expand(filed, store: store), "/tmp/boltty-stub/pasted.txt")
-    XCTAssertEqual(store.requested.count, 1)
   }
 
   func testEveryChipThatBecameAPathIsRememberedAsASentFile() throws {
@@ -246,12 +315,12 @@ final class PromptDraftTests: XCTestCase {
         + "/tmp/boltty-stub/image1-ab12cd34.png and https://example.com",
       "the agent's string is exactly what `expand` always sent"
     )
-    XCTAssertEqual(files.map(\.chip), [report.id, picture.id])
+    XCTAssertEqual(files.map(\.attachment), [report.id, picture.id])
     XCTAssertEqual(files.map(\.file), [
       SentFile(
-        path: "/Users/e/Boltty copies/3f2a1b2c-Report final.pdf", label: "file1",
+        path: "/Users/e/Boltty copies/3f2a1b2c-Report final.pdf", label: "",
         name: "Report final.pdf"),
-      SentFile(path: "/tmp/boltty-stub/image1-ab12cd34.png", label: "image1", name: "image1.png"),
+      SentFile(path: "/tmp/boltty-stub/image1-ab12cd34.png", label: "", name: "image1.png"),
     ])
   }
 
@@ -402,7 +471,7 @@ final class SentFileTests: XCTestCase {
     }
   }
 
-  func testAChipComesBackAsItsNameAndItsFileAsAnAttachment() {
+  func testARequestSentWithChipsInItsSentenceStillReadsAsIt() {
     let lifted = SentFile.lift(
       request("Compare \"\(picture.path)\" with \(report.path), please"),
       files: [report, picture])
@@ -411,6 +480,29 @@ final class SentFileTests: XCTestCase {
     XCTAssertEqual(files(lifted).map(\.url?.path), [picture.path, report.path],
                    "in the order they were written, not the order they were remembered")
     XCTAssertEqual(files(lifted).map(\.displayName), ["image1.png", "report.pdf"])
+  }
+
+  func testFilesAfterTheWordsLeaveOnlyTheWords() {
+    let sent = [
+      SentFile(path: report.path, label: "", name: "report.pdf"),
+      SentFile(path: picture.path, label: "", name: "image1.png"),
+    ]
+    let lifted = SentFile.lift(
+      request("What is this?\n\n\(report.path) \"\(picture.path)\""), files: sent)
+
+    XCTAssertEqual(words(lifted), ["What is this?"])
+    XCTAssertEqual(files(lifted).map(\.url?.path), [report.path, picture.path])
+  }
+
+  func testPastedTextComesOutOfTheBubbleAndIntoItsCard() {
+    let pasted = SentFile(
+      path: "/tmp/boltty-stub/text1.txt", label: "", name: "text1.txt",
+      expansion: "<pasted-text>line one</pasted-text>")
+    let lifted = SentFile.lift(
+      request("Rewrite\n\n<pasted-text>line one</pasted-text>"), files: [pasted])
+
+    XCTAssertEqual(words(lifted), ["Rewrite"])
+    XCTAssertEqual(files(lifted).map(\.displayName), ["text1.txt"])
   }
 
   func testARequestOfOnlyChipsKeepsNoWords() {
@@ -497,7 +589,7 @@ final class SentFileTests: XCTestCase {
 
     let lifted = SentFile.lift(request(text), files: sent.map(\.file).reversed())
 
-    XCTAssertEqual(words(lifted), ["What is this? image1"])
+    XCTAssertEqual(words(lifted), ["What is this?"])
     XCTAssertEqual(files(lifted).map(\.displayName), ["image1.png", "image1-screen.png"])
   }
 

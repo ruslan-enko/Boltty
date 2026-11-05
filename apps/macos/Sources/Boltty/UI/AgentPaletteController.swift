@@ -1511,7 +1511,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   private func sendFollowUp(
-    _ prompt: String, files: [(chip: UUID, file: SentFile)] = [], to sessionID: UUID,
+    _ prompt: String, files: [(attachment: UUID, file: SentFile)] = [], to sessionID: UUID,
     steering: Bool = false
   ) {
     let preview = conversations?.preview(for: sessionID)

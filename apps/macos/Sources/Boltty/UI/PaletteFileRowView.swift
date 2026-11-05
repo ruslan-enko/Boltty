@@ -168,9 +168,9 @@ final class PaletteFileRowView: NSView {
     setAccessibilityLabel("\(nameLabel.stringValue), \(sizeLabel.stringValue)")
 
     if exists {
-      FileThumbnails.shared.thumbnail(of: url) { [weak self] image in
+      FileThumbnails.shared.thumbnail(of: url, done: { [weak self] image in
         self?.showThumbnail(image)
-      }
+      })
     }
   }
 
@@ -246,11 +246,18 @@ final class PaletteFileRowView: NSView {
     let url = URL(fileURLWithPath: path)
     let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
     if values?.isDirectory == true { return "Folder" }
-    let kind = url.pathExtension.uppercased()
     let size = values?.fileSize.map {
       ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file)
     }
-    return [kind.isEmpty ? nil : kind, size].compactMap { $0 }.joined(separator: " · ")
+    return [kindWord(ofPath: path), size].compactMap { $0 }.joined(separator: " · ")
+  }
+
+  /// What a file is in the fewest letters; nil for a file with no extension.
+  static func kindWord(ofPath path: String) -> String? {
+    let url = URL(fileURLWithPath: path)
+    if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true { return "Folder" }
+    let kind = url.pathExtension.uppercased()
+    return kind.isEmpty ? nil : kind
   }
 
   // MARK: Hover and press
@@ -352,7 +359,7 @@ final class FileThumbnails {
   static let shared = FileThumbnails()
 
   private let cache = NSCache<NSString, CGImage>()
-  private var waiting: [String: [(CGImage) -> Void]] = [:]
+  private var waiting: [String: [(CGImage?) -> Void]] = [:]
   var generate: (URL, CGSize, CGFloat, @escaping @Sendable (CGImage?) -> Void) -> Void = { url, size, scale, done in
     let request = QLThumbnailGenerator.Request(
       fileAt: url, size: size, scale: scale, representationTypes: .thumbnail)
@@ -366,25 +373,33 @@ final class FileThumbnails {
     return type.conforms(to: .image) || type.conforms(to: .pdf) || type.conforms(to: .movie)
   }
 
-  func thumbnail(of url: URL, done: @escaping (CGImage) -> Void) {
-    guard Self.wantsThumbnail(url) else { return }
+  /// `failed` is told when there will be no picture, so a card that was
+  /// waiting for one can say what it is in words.
+  func thumbnail(
+    of url: URL,
+    side: CGFloat = AgentPaletteMetrics.previewFileIconTileSize,
+    done: @escaping (CGImage) -> Void,
+    failed: @escaping () -> Void = {}
+  ) {
+    guard Self.wantsThumbnail(url) else { return failed() }
     let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
       .contentModificationDate?.timeIntervalSince1970 ?? 0
-    let key = "\(url.path)#\(modified)"
+    let key = "\(url.path)#\(modified)#\(side)"
     if let image = cache.object(forKey: key as NSString) { return done(image) }
+    let answer: (CGImage?) -> Void = { image in
+      if let image { done(image) } else { failed() }
+    }
     if waiting[key] != nil {
-      waiting[key]?.append(done)
+      waiting[key]?.append(answer)
       return
     }
-    waiting[key] = [done]
-    let side = AgentPaletteMetrics.previewFileIconTileSize
+    waiting[key] = [answer]
     let scale = NSScreen.main?.backingScaleFactor ?? 2
     generate(url, CGSize(width: side, height: side), scale) { image in
       DispatchQueue.main.async {
         MainActor.assumeIsolated {
           let callbacks = FileThumbnails.shared.waiting.removeValue(forKey: key) ?? []
-          guard let image else { return }
-          FileThumbnails.shared.cache.setObject(image, forKey: key as NSString)
+          if let image { FileThumbnails.shared.cache.setObject(image, forKey: key as NSString) }
           callbacks.forEach { $0(image) }
         }
       }

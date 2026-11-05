@@ -259,6 +259,105 @@ final class PaletteActivityContactSheet: XCTestCase {
     print("BOLTTY_MESSENGER_CHAT \(directory.path)")
   }
 
+  func testRenderTheAttachments() throws {
+    guard let dir = ProcessInfo.processInfo.environment["BOLTTY_CONTACT_SHEET"] else {
+      throw XCTSkip("set BOLTTY_CONTACT_SHEET to render")
+    }
+    let directory = URL(fileURLWithPath: dir)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let icon = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("AppIcon.icon/Assets/Icon.png")
+    let home = NSHomeDirectory()
+    let attachments: [PromptAttachment] = [
+      .file(icon, label: "image1"),
+      PromptAttachment(
+        kind: .image, payload: .imageData(try Data(contentsOf: icon), type: .png), label: "image2"),
+      .file(URL(fileURLWithPath: home + "/Desktop/Upload 1.mp4"), label: "file1"),
+      .file(URL(fileURLWithPath: home + "/Desktop/Upload 1 4K.mp4"), label: "file2"),
+      .file(URL(fileURLWithPath: home + "/Documents/Projects/boltty/apps/macos/Sources/README.md"), label: "file3"),
+      PromptAttachment(
+        kind: .text, payload: .text("Вставлений довгий текст, його перші рядки видно на картці."), label: "text1"),
+      .file(URL(fileURLWithPath: home + "/Desktop/Report.pdf"), label: "file4"),
+    ]
+    var draft = PromptDraft("Порівняй ці два відео")
+    attachments.forEach { draft.append($0) }
+
+    func panel() -> AgentPaletteView {
+      let view = AgentPaletteView()
+      view.appearance = NSAppearance(named: .darkAqua)
+      view.frame = CGRect(x: 0, y: 0, width: 1440, height: 900)
+      view.setAgentChoices([.claude], planned: .claude)
+      view.prepareForPresentation()
+      view.setAcceptsAttachments(true)
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      return view
+    }
+    func ground(for view: AgentPaletteView) -> NSView {
+      let ground = NSView(frame: view.frame)
+      ground.wantsLayer = true
+      ground.layer?.backgroundColor = NSColor(calibratedWhite: 0.06, alpha: 1).cgColor
+      ground.addSubview(view)
+      return ground
+    }
+
+    let first = panel()
+    first.field.setDraft(draft)
+    first.cancelAllAnimationsAndSettle()
+    first.layoutSubtreeIfNeeded()
+    let firstGround = ground(for: first)
+    // The pictures come from other threads: Quick Look and ImageIO.
+    RunLoop.main.run(until: Date().addingTimeInterval(2))
+    try write(firstGround, to: directory.appendingPathComponent("attachments-first-screen.png"))
+    first.attachmentStripForTesting.cardsForTesting[5].setHoveredForTesting(true)
+    try write(firstGround, to: directory.appendingPathComponent("attachments-first-screen-hover.png"))
+
+    // A card arriving on the first screen, stopped on the shell's spring: the
+    // line rides the foot down and the strip comes out from under the top.
+    let riding = panel()
+    let ridingGround = ground(for: riding)
+    let window = NSWindow(
+      contentRect: ridingGround.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    window.contentView = ridingGround
+    window.setFrame(NSRect(x: -20_000, y: -20_000, width: 1440, height: 900), display: false)
+    window.orderFrontRegardless()
+    addTeardownBlock { MainActor.assumeIsolated { window.close() } }
+    riding.field.setDraft(PromptDraft("Порівняй ці два відео"))
+    riding.cancelAllAnimationsAndSettle()
+    riding.layoutSubtreeIfNeeded()
+    riding.field.insertAttachments(Array(attachments[2...3]))
+    riding.layoutSubtreeIfNeeded()
+    try write(ridingGround, to: directory.appendingPathComponent("attachments-ride-0.png"))
+    for step in 1...3 {
+      riding.surfaceMotionForTesting.advance(by: 0.03)
+      try write(ridingGround, to: directory.appendingPathComponent("attachments-ride-\(step).png"))
+    }
+
+    let chat = panel()
+    var preview = BolttyAISessionPreview(id: UUID(), title: "Chat", agent: .claude, state: nil, body: "")
+    let sent = [icon.path, home + "/Desktop/Upload 1.mp4"].map { path in
+      ConversationPart.attachment(ConversationAttachment(
+        id: "sent-\(path)", displayName: URL(fileURLWithPath: path).lastPathComponent,
+        url: URL(fileURLWithPath: path)))
+    }
+    preview.messages = [
+      ConversationMessage(
+        id: "u0", role: .user, createdAt: Date(),
+        parts: [.text(TextPart(id: "u0t", kind: .text, text: "Що тут не так?"))] + sent),
+      ConversationMessage(
+        id: "a0", role: .agent, createdAt: Date(), completedAt: Date(),
+        parts: [.text(TextPart(id: "a0t", kind: .text, text: "Надіслане стоїть тими самими картками."))]),
+    ]
+    chat.enterAddressing(preview)
+    chat.field.setDraft(draft)
+    chat.cancelAllAnimationsAndSettle()
+    chat.layoutSubtreeIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(2))
+    try write(ground(for: chat), to: directory.appendingPathComponent("attachments-chat.png"))
+    print("BOLTTY_ATTACHMENTS \(directory.path)")
+  }
+
   func testRenderTheReferenceAnswer() throws {
     guard let dir = ProcessInfo.processInfo.environment["BOLTTY_CONTACT_SHEET"] else {
       throw XCTSkip("set BOLTTY_CONTACT_SHEET to render")

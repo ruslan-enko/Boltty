@@ -33,9 +33,8 @@ enum PromptAttachmentKind: String, Sendable, CaseIterable, Equatable, Codable {
   ///
   /// A link is a word `isLink` agrees with, or one that opens with `www.`,
   /// with the punctuation a sentence puts round it left out ("(see
-  /// https://a.com/x)." is the address alone). An attachment's placeholder
-  /// character parts words like a space does. Links are not chips: they
-  /// stay text in the draft and are only drawn as links.
+  /// https://a.com/x)." is the address alone). Links are not attachments:
+  /// they stay text in the draft and are only drawn as links.
   static func linkRanges(in text: String) -> [NSRange] {
     guard text.contains("://") || text.localizedCaseInsensitiveContains("www.") else { return [] }
     let source = text as NSString
@@ -60,7 +59,7 @@ enum PromptAttachmentKind: String, Sendable, CaseIterable, Equatable, Codable {
     }
     for index in 0..<source.length {
       let unit = source.character(at: index)
-      if unit == 0xFFFC || contains(.whitespacesAndNewlines, unit) {
+      if contains(.whitespacesAndNewlines, unit) {
         close(at: index)
       } else if start == nil {
         start = index

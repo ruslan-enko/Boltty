@@ -1760,11 +1760,12 @@ final class PaletteSentFilesTests: XCTestCase {
     let message = request("Look at file1", files: [path])
     let card = card([message])
     let row = try XCTUnwrap(card.messageRowForTesting("u"))
-    let file = try XCTUnwrap(card.messageFileRowsForTesting["u"]?.first)
+    let file = try XCTUnwrap(card.messageSentCardsForTesting["u"]?.first)
     let cardFrame = row.convert(file.bounds, from: file)
     let bubble = row.bubbleFrameForFlight
 
-    XCTAssertEqual(file.displayedNameForTesting, "Report.pdf", "the name it was attached under")
+    XCTAssertEqual(cardFrame.size, NSSize(
+      width: AgentPaletteMetrics.attachmentCardSide, height: AgentPaletteMetrics.attachmentCardSide))
     XCTAssertTrue(isAbove(cardFrame, bubble, in: row), "\(cardFrame) over \(bubble)")
     XCTAssertEqual(
       abs(row.isFlipped ? bubble.minY - cardFrame.maxY : cardFrame.minY - bubble.maxY),
@@ -1775,7 +1776,7 @@ final class PaletteSentFilesTests: XCTestCase {
       accuracy: 0.5, "the measure is the draw")
     XCTAssertEqual(
       row.frame.height,
-      AgentPaletteMetrics.previewFileRowHeight + AgentPaletteMetrics.previewSentFilesGap
+      AgentPaletteMetrics.attachmentCardSide + AgentPaletteMetrics.previewSentFilesGap
         + bubble.height + PaletteChatMessageView.questionMetaHeight(for: message),
       accuracy: 0.5, "with the room its ticks, time and copy take under the pointer")
   }
@@ -1785,10 +1786,38 @@ final class PaletteSentFilesTests: XCTestCase {
     let row = try XCTUnwrap(card.messageRowForTesting("u"))
 
     XCTAssertFalse(row.isBubbleShownForTesting)
-    XCTAssertEqual(row.frame.height, AgentPaletteMetrics.previewFileRowHeight, accuracy: 0.5)
+    XCTAssertEqual(row.frame.height, AgentPaletteMetrics.attachmentCardSide, accuracy: 0.5)
   }
 
-  func testASentFileFliesFromItsChipToItsCard() throws {
+  func testSentCardsWrapFromTheRightAndTheMeasureIsTheDraw() {
+    let side = AgentPaletteMetrics.attachmentCardSide
+    let gap = AgentPaletteMetrics.attachmentCardGap
+    let width = side * 2 + gap
+    let frames = AgentPaletteMetrics.sentCardFrames(count: 3, width: width)
+
+    XCTAssertEqual(frames.map(\.minX), [0, side + gap, width - side], "two to a row, the last on the right")
+    XCTAssertEqual(frames.map(\.minY), [0, 0, side + gap])
+    XCTAssertEqual(AgentPaletteMetrics.sentCardsHeight(count: 3, width: width), side * 2 + gap)
+    XCTAssertEqual(AgentPaletteMetrics.sentCardsHeight(count: 0, width: width), 0)
+  }
+
+  func testACardNarrowerThanTheRowStillStandsOneToARow() {
+    let frames = AgentPaletteMetrics.sentCardFrames(count: 2, width: 40)
+    XCTAssertEqual(frames.map(\.minY), [0, AgentPaletteMetrics.attachmentCardSide + AgentPaletteMetrics.attachmentCardGap])
+  }
+
+  func testWhatTheAgentMadeStaysARow() {
+    let answer = ConversationMessage(
+      id: "a", role: .agent, createdAt: Date(), completedAt: Date(),
+      parts: [.attachment(ConversationAttachment(
+        id: "x", displayName: "out.mp4", url: URL(fileURLWithPath: "/tmp/out.mp4")))])
+    let card = card([answer])
+
+    XCTAssertEqual(card.messageFileRowsForTesting["a"]?.count, 1)
+    XCTAssertEqual(card.messageSentCardsForTesting["a"]?.count, 0)
+  }
+
+  func testASentFileFliesFromTheStripToItsCard() throws {
     try XCTSkipIf(MotionPreferences.reduceMotion, "Reduce Motion lands everything in place")
     let card = BolttyAIPreviewCard()
     card.frame = NSRect(x: 0, y: 0, width: 520, height: 420)
@@ -1810,7 +1839,7 @@ final class PaletteSentFilesTests: XCTestCase {
     card.layoutSubtreeIfNeeded()
 
     let other = "/tmp/boltty-sent-notes.txt"
-    let chip = NSRect(x: 60, y: 30, width: 64, height: 26)
+    let chip = NSRect(x: 60, y: 30, width: 100, height: 100)
     let picture = NSImage(size: chip.size, flipped: false) { rect in
       NSColor.systemGreen.setFill()
       rect.fill()
@@ -1822,14 +1851,15 @@ final class PaletteSentFilesTests: XCTestCase {
     let flights = card.fileFlightsForTesting
     XCTAssertEqual(flights.map(\.path), [path, other])
     let row = try XCTUnwrap(card.messageRowForTesting("q2"))
-    let cards = try XCTUnwrap(card.messageFileRowsForTesting["q2"])
-    XCTAssertEqual(flights[0].start, card.convert(chip, from: nil), "from where the chip stood")
-    XCTAssertEqual(card.fileFlightGrowsForTesting.first, true, "the card grows out of the chip")
+    let cards = try XCTUnwrap(card.messageSentCardsForTesting["q2"])
+    XCTAssertEqual(flights[0].start, card.convert(chip, from: nil), "from where the card stood")
+    XCTAssertEqual(flights[0].start.size, flights[0].landing.size, "and it keeps its shape")
+    XCTAssertEqual(card.fileFlightGrowsForTesting.first, true)
     if PaletteEffects.shared != nil {
-      XCTAssertEqual(card.fileFlightWhipsForTesting, 1, "the chip flies on the GPU, bending")
+      XCTAssertEqual(card.fileFlightWhipsForTesting, 1, "the card flies on the GPU, bending")
     }
     XCTAssertEqual(flights[1].start.minX, flights[1].landing.minX, accuracy: 0.5,
-                   "a file with no chip on screen rises straight up")
+                   "a file scrolled out of the strip rises straight up")
     XCTAssertEqual(flights[1].start.size, flights[1].landing.size)
     XCTAssertEqual(row.alphaValue, 0, "the row waits for its flights to land")
 

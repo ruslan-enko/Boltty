@@ -102,6 +102,9 @@ final class BolttyAIPreviewCard: NSView {
   var messageFileRowsForTesting: [String: [PaletteFileRowView]] {
     messageRows.mapValues(\.fileRowsForTesting)
   }
+  var messageSentCardsForTesting: [String: [PromptAttachmentCard]] {
+    messageRows.mapValues(\.sentCardsForTesting)
+  }
   func messageRowForTesting(_ id: String) -> PaletteChatMessageView? { messageRows[id] }
   var statusTextForTesting: String? { statusLabel.isHidden ? nil : statusLabel.stringValue }
   var isRecoverVisibleForTesting: Bool { !recoverButton.isHidden }
@@ -475,7 +478,8 @@ final class BolttyAIPreviewCard: NSView {
     var morphs: [(card: NSView, chip: NSImageView?, grow: CATransform3D?)] = []
     var whips: [PaletteWhipView] = []
     for (path, name, landed) in cards {
-      let card = PaletteFileRowView(path: path, name: name)
+      let card = PromptAttachmentCard(
+        sentPath: path, name: name, corner: AgentPaletteMetrics.attachmentCardCornerInChat)
       card.translatesAutoresizingMaskIntoConstraints = true
       card.frame = landed
       addSubview(card, positioned: .above, relativeTo: scroll)
@@ -553,7 +557,7 @@ final class BolttyAIPreviewCard: NSView {
     guard let picture = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
       return nil
     }
-    let room = AgentPaletteMetrics.whipMaxLagHeights * max(start.height, landed.height)
+    let room = AgentPaletteMetrics.whipReach(height: max(start.height, landed.height))
     let stretch = start.union(landed).insetBy(dx: -room, dy: -room)
     let local = { (rect: NSRect) in rect.offsetBy(dx: -stretch.minX, dy: -stretch.minY) }
     guard !isFlipped, let whip = PaletteWhipView.make(
@@ -1432,11 +1436,16 @@ final class PaletteChatMessageView: NSView {
   var onUseFile: ((URL) -> Void)? {
     didSet {
       for row in fileRows { row.onUse = onUseFile }
+      for card in sentCards { card.onUse = onUseFile }
     }
   }
+  /// What the agent made: rows, with their actions in reach.
   private var fileRows: [PaletteFileRowView] = []
+  /// What the person sent: the cards it came as, over the bubble.
+  private var sentCards: [PromptAttachmentCard] = []
   var filePathsForTesting: [String] { shownFiles }
   var fileRowsForTesting: [PaletteFileRowView] { fileRows }
+  var sentCardsForTesting: [PromptAttachmentCard] { sentCards }
 
   private static func attributed(_ message: ConversationMessage) -> NSAttributedString {
     attributed(blocks: message.paletteBlocks, of: message)
@@ -1510,9 +1519,9 @@ final class PaletteChatMessageView: NSView {
     let user = message.role == .user
     fileStack.translatesAutoresizingMaskIntoConstraints = false
     fileStack.orientation = .vertical
-    fileStack.alignment = user ? .trailing : .leading
+    fileStack.alignment = .leading
     fileStack.spacing = AgentPaletteMetrics.previewFileRowSpacing
-    if user { addSubview(fileStack) } else { bubble.addSubview(fileStack) }
+    if !user { bubble.addSubview(fileStack) }
     bubble.layer?.backgroundColor = user
       ? AgentPaletteMetrics.previewUserBubbleFill.cgColor
       : NSColor.clear.cgColor
@@ -1539,20 +1548,15 @@ final class PaletteChatMessageView: NSView {
     ])
     if user {
       userBubbleTop = bubbleTop
-      fileRowsTop = fileStack.topAnchor.constraint(equalTo: topAnchor)
-      NSLayoutConstraint.activate([
-        fileStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-        fileStack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
-      ])
     } else {
       fileRowsTop = fileStack.topAnchor.constraint(equalTo: bodyStack.bottomAnchor)
       NSLayoutConstraint.activate([
+        fileRowsTop,
         fileStack.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: side),
         fileStack.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -side),
         fileStack.bottomAnchor.constraint(lessThanOrEqualTo: bubble.bottomAnchor),
       ])
     }
-    fileRowsTop.isActive = true
     syncFileRows(message)
     rowHeight = heightAnchor.constraint(equalToConstant: Self.height(
       for: message, width: 464, folded: folded, offersCopy: offersCopy))
@@ -2016,12 +2020,23 @@ final class PaletteChatMessageView: NSView {
     let paths = message.resultFiles
     guard paths != shownFiles else { return }
     shownFiles = paths
+    let names = message.fileCardNames
+    if message.role == .user {
+      sentCards.forEach { $0.removeFromSuperview() }
+      sentCards = paths.map { path in
+        let card = PromptAttachmentCard(
+          sentPath: path, name: names[path], corner: AgentPaletteMetrics.attachmentCardCornerInChat)
+        card.onUse = onUseFile
+        addSubview(card)
+        return card
+      }
+      placeSentCards()
+      return
+    }
     for row in fileRows {
       fileStack.removeArrangedSubview(row)
       row.removeFromSuperview()
     }
-    let names = message.fileCardNames
-    let user = message.role == .user
     fileRows = paths.map { path in
       let row = PaletteFileRowView(path: path, name: names[path])
       row.onUse = onUseFile
@@ -2031,17 +2046,28 @@ final class PaletteChatMessageView: NSView {
       preferred.priority = .defaultHigh
       NSLayoutConstraint.activate([
         preferred,
-        row.widthAnchor.constraint(lessThanOrEqualTo: user ? widthAnchor : fileStack.widthAnchor),
+        row.widthAnchor.constraint(lessThanOrEqualTo: fileStack.widthAnchor),
       ])
       return row
     }
-    fileRowsTop.constant = paths.isEmpty || user ? 0 : AgentPaletteMetrics.previewFileRowsTopMargin
+    fileRowsTop.constant = paths.isEmpty ? 0 : AgentPaletteMetrics.previewFileRowsTopMargin
+  }
+
+  private func placeSentCards() {
+    let width = bounds.width > 0 ? bounds.width : 464
+    let frames = AgentPaletteMetrics.sentCardFrames(count: sentCards.count, width: width)
+    for (card, frame) in zip(sentCards, frames) {
+      // The frames count from the row's top; this view's origin is its foot.
+      card.frame = CGRect(
+        x: frame.minX, y: bounds.height - frame.maxY, width: frame.width, height: frame.height)
+    }
   }
 
   var fileCardsForFlight: [(path: String, name: String?, frame: NSRect)] {
     let names = message.fileCardNames
-    return zip(shownFiles, fileRows).map { path, row in
-      (path, names[path], convert(row.bounds, from: row))
+    let views: [NSView] = message.role == .user ? sentCards : fileRows
+    return zip(shownFiles, views).map { path, view in
+      (path, names[path], convert(view.bounds, from: view))
     }
   }
 
@@ -2071,11 +2097,12 @@ final class PaletteChatMessageView: NSView {
       offersCopy: offersCopy)
     if abs(rowHeight.constant - height) > 0.5 { rowHeight.constant = height }
     if let userBubbleTop {
-      let offset = Self.userBubbleOffset(for: message)
+      let offset = Self.userBubbleOffset(for: message, width: width)
       if abs(userBubbleTop.constant - offset) > 0.5 { userBubbleTop.constant = offset }
       bubble.isHidden = !drawsBubble
     }
     if message.role == .user {
+      placeSentCards()
       bubble.layer?.applyPaletteCorner(
         radius: AgentPaletteMetrics.previewUserBubbleCornerRadius
       )
@@ -2145,14 +2172,13 @@ final class PaletteChatMessageView: NSView {
     }
     let bubble = units(of: message, folded: folded).isEmpty && !message.resultFiles.isEmpty
       ? 0 : body + AgentPaletteMetrics.previewUserBubbleVerticalPadding * 2
-    return userBubbleOffset(for: message) + bubble + questionMetaHeight(for: message)
+    return userBubbleOffset(for: message, width: width) + bubble + questionMetaHeight(for: message)
   }
 
-  static func userBubbleOffset(for message: ConversationMessage) -> CGFloat {
+  static func userBubbleOffset(for message: ConversationMessage, width: CGFloat) -> CGFloat {
     let count = message.resultFiles.count
     guard count > 0 else { return 0 }
-    let cards = CGFloat(count) * AgentPaletteMetrics.previewFileRowHeight
-      + CGFloat(count - 1) * AgentPaletteMetrics.previewFileRowSpacing
+    let cards = AgentPaletteMetrics.sentCardsHeight(count: count, width: width)
     return units(of: message, folded: false).isEmpty
       ? cards : cards + AgentPaletteMetrics.previewSentFilesGap
   }

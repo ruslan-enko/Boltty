@@ -80,6 +80,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | CLI records, transcript readers, usage stats | `Chat/Native/` |
 | Panel ↔ conversations | `Chat/BolttyAIConversations.swift` (implemented by `ChatWorkspaceCoordinator`) |
 | Panel | `UI/AgentPalette*`, metrics in `UI/AgentPaletteMetrics.swift` |
+| What comes with the words | `UI/Prompt/PromptAttachmentStrip.swift`, `PromptAttachmentCard.swift`, `Models/PromptDraft.swift`, `Services/PasteboardIngest.swift` |
 | Notch face | `UI/NotchMascotController.swift` |
 | Mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal`; `Models/MascotShape.swift`, `MascotPalette.swift`, `MascotLook.swift` |
 | Screen selection | `Services/ScreenRegionCapture.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
@@ -477,9 +478,9 @@ The loop that must keep working:
   centre stays put. The cursor reaches the screen from a non-activating panel
   through `BackgroundCursor` (private `CGSSetConnectionProperty`, looked up with
   `dlsym`). Sizes are kept in `BolttyAISurfaceSizes`.
-- **Sizes:** first screen 540 × 85 capsule; once the draft wraps it widens to
-  680 (until emptied) and grows up to five lines; list five
-  rows; chat 584 × 680 default. They reserve their space; short content does
+- **Sizes:** first screen 540 × 85 capsule; once the draft wraps or holds a
+  card it widens to 680 (until emptied) and grows up to five lines, with the
+  cards' band over them; list five rows; chat 584 × 680 default. They reserve their space; short content does
   not shrink them.
 - **Return while a turn runs queues** (one slot, shown, cancellable).
   **⌘Return** steers where the agent declares `.steering`. **⌘.** stops where it
@@ -503,15 +504,35 @@ The loop that must keep working:
   and no key ("— Ask Claude", "— Queue"). Only ever that one: a second hint
   read as a second answer, so neither ⇧Tab's next agent nor ⌘Return or ⌘. is
   suggested (the Send slot turning into Stop says the last). They appear after a 1 s rest, drop from the end when short of room, and
-  stand on the typesetter's baseline, never a glyph's location (a chip's
-  baseline is its capsule's foot).
-- **A chip is the owner's glass picture**: one PNG per kind in
-  `Resources/ChipGlass` (a folder reference), its word drawn in it — "file",
-  "image", "text". `PromptChipCell.picture(for:)` draws it at the capsule's
-  height, as wide as its aspect. So a chip names its kind, not its item; what
-  each holds is under the pointer (`PromptChipPreview`). The tinted capsule with
-  a symbol is only the fallback for a kind with no picture. Not a thumbnail of
-  the file: the glass is the point.
+  stand on the typesetter's baseline.
+- **What comes with the words stands over them as cards, never in the
+  sentence** (`PromptAttachmentStrip`, `PromptAttachmentCard`): 100 × 100, side
+  by side, scrolling sideways (a mouse's wheel too), the ends dissolving only
+  where there is more. A picture or a region fills its card. A file says where
+  it is (`~/Desktop/Upload 1.mp4`, the leading folders giving way first, so the
+  name always shows) over a tag saying what it is (`MP4`, `Folder`): video and
+  PDF too, with no thumbnail. Pasted text says how it begins. The tag is a filled
+  capsule, since borders are never stroked. The × comes with the pointer and
+  stands past the corner; a press is Quick Look; Backspace with nothing before
+  the caret takes the last card and ⌘Z brings it back. A link is not a card: it
+  stays words, drawn as a link. Dropped anywhere on the panel it goes through
+  `PasteboardIngest`: the field takes no drags of its own, or a file dropped on
+  the words became its path in words.
+- **The agent reads the words, then the files** (`PromptDraft.separated`,
+  `PromptExpansion`): a blank line, then the paths in the cards' order, with
+  a space between. A draft stored while files stood in the sentence is read into
+  this shape, losing the space either side of each. So nothing is said about
+  which file a word meant but the order of the cards.
+- **The strip's band comes out of the shell's foot on the first screen**, whose
+  top is held under the notch: the line under it and the strip go down with the
+  foot (`rideAttachmentBand`, one constraint on the spring's clock), the strip
+  uncovered from under the shell's top. Moved at once, the line stood below a
+  foot that had not got there, and the mask cut it away. Cards hold the width
+  at 680 until the last goes. In a chat the band comes out of the transcript, at
+  once. The band is 120 on the first screen (corner 22.5) and 116 in a chat
+  (corner 13), both concentric with their shells; it is nothing while the list
+  is up. The placeholder stands beside cards: `isEmptyPrompt` means no words,
+  `isWhollyEmpty` nothing at all.
 - **The black ramp** (`bolttyAIPrompt`) is worn by the shell in every state
   — first screen, listening, list and chat — never by the composer, and only
   once the state has settled (`applySurfaceStyle` defers changes *to* a wash to
@@ -543,11 +564,15 @@ The loop that must keep working:
   (`MascotPalette.arrivalLight`). A face of one hue (Ember, Mist, Lilac)
   has its light fanned 80° round that hue: lifted as it was, it was one
   pastel and read as no light at all.
-- Only files a turn **made** get cards; reads and searches leave rows only.
-  Pictures get Quick Look thumbnails that resolve out of a blur.
-- What the person sent with chips is shown as file cards over their words
-  (`Conversation.sentFiles`, `SentFile.lift`), stored on the conversation
-  because providers re-file requests under their own ids.
+- Only files a turn **made** get file rows (`PaletteFileRowView`, with their
+  actions in reach); reads and searches leave activity rows only. Pictures get
+  Quick Look thumbnails that resolve out of a blur.
+- What the person sent stands over their words as the cards it came as, in rows
+  from the right (`AgentPaletteMetrics.sentCardFrames`; `Conversation.sentFiles`,
+  `SentFile.lift`), stored on the conversation because providers re-file requests
+  under their own ids. Pasted text too: its words go inline, and a file written
+  beside them is what its card stands on. A card flies there from the strip
+  without changing shape. Right click: Quick Look, Show in Finder, Use in Follow-up.
 - A failure belongs to the turn that produced it; once the agent speaks again
   it draws no card. A failure is never a bubble.
 - The answer text view is contiguous layout: non-contiguous layout drew long
@@ -681,7 +706,7 @@ in nothing.
 
 Files in the prompt wait out the question: taken out as the region begins, so the
 microphone opens, and back in the prompt afterwards. Over an open chat a dragged
-region is still a chip in its composer; a click outside still hides. Screen
+region is a card in its composer; a click outside still hides. Screen
 Recording is asked the first time; refusals are said in the panel.
 
 ### The folder chip
@@ -741,7 +766,7 @@ heard.
   and a window or another app's banner lying over a shown one stays hidden; the
   prompt says it is hidden on purpose. A window above layer 0 as big as the screen
   is ignored: some are clear (the system's Screenshot keeps one at the menu bar's
-  level). The whole screen selected, the whole screen goes. A region's chip
+  level). The whole screen selected, the whole screen goes. A region's card
   in a chat goes the same way. People read "this area" as what is sent, and the
   picture is something Boltty makes (*Boltty is a wrapper*), so README and
   Settings › Ask Boltty say so.
@@ -1051,8 +1076,8 @@ heard.
   settling is the same frame (redrawn at every size of the spring, the
   list-to-chat morph stuttered; held back, it popped in late); 20 fps, and the clock stops while the window is occluded (a hidden
   panel keeps the view).
-- `UI/Effects/`: a thumbnail's reveal out of a blur, a sent chip's whip toward
-  its card, the selection border's light. Each always ends by a timer, is made
+- `UI/Effects/`: a thumbnail's reveal out of a blur, a sent card's whip to
+  its place over the bubble, the selection border's light. Each always ends by a timer, is made
   through `make` (a failable `NSView` init crashes), and uploads textures as
   8-bit sRGB.
 

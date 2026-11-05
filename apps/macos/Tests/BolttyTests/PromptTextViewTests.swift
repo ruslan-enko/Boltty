@@ -53,59 +53,6 @@ final class PromptTextViewTests: XCTestCase {
     XCTAssertNil(field.caretBarRect, "a selection is a highlight, not a caret")
   }
 
-  func testTheCaretAfterAChipIsTheSentencesHeight() throws {
-    let field = makeField()
-    field.setDraft(PromptDraft("Describe"))
-    let plain = try XCTUnwrap(field.caretBarRect)
-
-    field.setDraft(PromptDraft(elements: [
-      .attachment(PromptAttachment(kind: .image, payload: .text("x"), label: "image 1")),
-    ]))
-    field.setSelectedRange(NSRange(location: field.string.utf16.count, length: 0))
-    let afterChip = try XCTUnwrap(field.caretBarRect)
-
-    XCTAssertEqual(afterChip.width, plain.width)
-    XCTAssertEqual(afterChip.height, plain.height, accuracy: 0.01)
-  }
-
-  func testTheCaretBesideAChipStandsOnTheLinesBaseline() throws {
-    let field = makeField()
-    let chip = PromptDraft.Element.attachment(
-      PromptAttachment(kind: .image, payload: .text("x"), label: "image 1"))
-    field.setDraft(PromptDraft(elements: [chip, .text(" ")]))
-    field.setSelectedRange(NSRange(location: field.string.utf16.count, length: 0))
-    let afterSpace = try XCTUnwrap(field.caretBarRect)
-
-    field.deleteBackward(nil)
-    XCTAssertEqual(field.string.utf16.count, 1, "precondition: only the chip is left")
-    let afterChip = try XCTUnwrap(field.caretBarRect)
-    XCTAssertEqual(afterChip.midY, afterSpace.midY, accuracy: 0.01, "deleting the space does not drop it")
-    XCTAssertEqual(afterChip.height, afterSpace.height, accuracy: 0.01)
-
-    field.setSelectedRange(NSRange(location: 0, length: 0))
-    let beforeChip = try XCTUnwrap(field.caretBarRect)
-    XCTAssertEqual(beforeChip.midY, afterSpace.midY, accuracy: 0.01, "nor does standing before the chip")
-  }
-
-  func testTheKeysBesideAChipStandOnTheLinesBaseline() throws {
-    let field = makeField()
-    field.trailingHint = [PromptKeyHint(words: "Ask OpenCode", key: "↵")]
-    let chip = PromptDraft.Element.attachment(
-      PromptAttachment(kind: .file, payload: .text("x"), label: "file 1"))
-    field.setDraft(PromptDraft(elements: [chip, .text(" ")]))
-    let afterSpace = try XCTUnwrap(field.trailingHintFrame)
-
-    field.deleteBackward(nil)
-    XCTAssertEqual(field.string.utf16.count, 1, "precondition: only the chip is left")
-    let afterChip = try XCTUnwrap(field.trailingHintFrame)
-    XCTAssertEqual(afterChip.minY, afterSpace.minY, accuracy: 0.01, "deleting the space does not drop them")
-    XCTAssertEqual(afterChip.height, afterSpace.height, accuracy: 0.01)
-
-    field.setDraft(PromptDraft("file"))
-    let afterWords = try XCTUnwrap(field.trailingHintFrame)
-    XCTAssertEqual(afterChip.midY, afterWords.midY, accuracy: 0.5, "after a chip as after words")
-  }
-
   // MARK: - Links
 
   func testALinkInTheDraftIsTextDrawnAsALink() throws {
@@ -116,7 +63,7 @@ final class PromptTextViewTests: XCTestCase {
     let link = (sentence as NSString).range(of: "https://example.com/a")
 
     XCTAssertEqual(field.draft, PromptDraft(sentence), "the words are the words")
-    XCTAssertFalse(field.containsChips)
+    XCTAssertTrue(field.attachments.isEmpty)
     for index in [link.location, link.location + link.length - 1] {
       XCTAssertEqual(storage.attribute(.underlineStyle, at: index, effectiveRange: nil) as? Int,
                      NSUnderlineStyle.single.rawValue)
@@ -148,46 +95,7 @@ final class PromptTextViewTests: XCTestCase {
       .text(" please"),
     ]))
     XCTAssertEqual(field.string, "https://example.com please")
-    XCTAssertFalse(field.containsChips)
-  }
-
-  func testRenderTheChips() throws {
-    guard let dir = ProcessInfo.processInfo.environment["BOLTTY_CONTACT_SHEET"] else {
-      throw XCTSkip("set BOLTTY_CONTACT_SHEET to render")
-    }
-    let chip = { (kind: PromptAttachmentKind) in
-      PromptDraft.Element.attachment(
-        PromptAttachment(kind: kind, payload: .text("x"), label: "\(kind.rawValue)1"))
-    }
-    let draft = PromptDraft(elements: [
-      .text("Look at "), chip(.image), .text(" and "), chip(.file),
-      .text(", then "), chip(.text), .text(" from https://example.com/a?b=1 please"),
-    ])
-    try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-    for (name, chat) in [("prompt", false), ("chat", true)] {
-      let (scroll, field) = PromptTextView.makeInScrollView()
-      field.setChatComposerStyle(chat)
-      field.textColor = .white
-      field.setDraft(draft)
-      let root = NSView(frame: NSRect(x: 0, y: 0, width: 760, height: 90))
-      root.wantsLayer = true
-      root.layer?.backgroundColor = NSColor(white: 0.08, alpha: 1).cgColor
-      let window = NSWindow(contentRect: root.bounds, styleMask: [.borderless],
-                            backing: .buffered, defer: false)
-      window.isReleasedWhenClosed = false
-      window.appearance = NSAppearance(named: .darkAqua)
-      window.contentView = root
-      scroll.translatesAutoresizingMaskIntoConstraints = true
-      scroll.frame = root.bounds.insetBy(dx: 24, dy: 20)
-      root.addSubview(scroll)
-      root.layoutSubtreeIfNeeded()
-      window.displayIfNeeded()
-      let bitmap = try XCTUnwrap(root.bitmapImageRepForCachingDisplay(in: root.bounds))
-      root.cacheDisplay(in: root.bounds, to: bitmap)
-      try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-        .write(to: URL(fileURLWithPath: dir).appendingPathComponent("chips-\(name).png"))
-      window.close()
-    }
+    XCTAssertTrue(field.attachments.isEmpty)
   }
 
   func testTheSystemCaretIsClearAndTheDrawnOneTakesTheColour() {
@@ -199,25 +107,17 @@ final class PromptTextViewTests: XCTestCase {
 
   // MARK: - Round trip
 
-  func testExpandingPreservesSelectionAndAttachmentIdentity() throws {
+  func testExpandingPreservesSelectionAndTheDraft() {
     let field = makeField()
-    var draft = PromptDraft("Review ")
+    var draft = PromptDraft("Review with these details")
     draft.append(fileChip("/x/report.pdf"))
-    draft.append(text: " with these details")
     field.setDraft(draft)
     let selection = NSRange(location: 2, length: 3)
     field.setSelectedRange(selection)
-    let storage = try XCTUnwrap(field.textStorage)
-    let attachment = try XCTUnwrap(storage.attribute(.attachment, at: 7, effectiveRange: nil) as? PromptChipAttachment)
     field.setExpandedStyle(true)
     XCTAssertEqual(field.draft, draft)
     XCTAssertEqual(field.selectedRange(), selection)
-    XCTAssertTrue(storage.attribute(.attachment, at: 7, effectiveRange: nil) as? PromptChipAttachment === attachment)
-    let cell = try XCTUnwrap(attachment.attachmentCell as? PromptChipCell)
-    XCTAssertEqual(cell.displayFont.pointSize, PromptTextView.promptFont.pointSize)
-    XCTAssertLessThanOrEqual(cell.cellSize().height, PromptTextView.lineHeight)
     field.setExpandedStyle(false)
-    XCTAssertEqual(cell.displayFont.pointSize, PromptTextView.promptFont.pointSize)
     XCTAssertEqual(field.selectedRange(), selection)
   }
 
@@ -263,7 +163,7 @@ final class PromptTextViewTests: XCTestCase {
     field.setDraft(original)
     let recovered = field.draft
 
-    XCTAssertEqual(recovered.typedText, "Optimize  in mp4")
+    XCTAssertEqual(recovered.typedText, "Optimize in mp4", "the space either side was the chip's")
     XCTAssertEqual(recovered.attachments.count, 1)
     XCTAssertEqual(recovered.attachments.first?.label, "file1")
     XCTAssertEqual(recovered.attachments.first?.kind, .file)
@@ -275,14 +175,14 @@ final class PromptTextViewTests: XCTestCase {
     draft.append(fileChip("/x/report.pdf"))
     field.setDraft(draft)
 
-    XCTAssertEqual(field.string, "\u{FFFC}")
+    XCTAssertEqual(field.string, "", "an attachment is not a character in the sentence")
     XCTAssertEqual(field.draft.attachments.first?.label, "file1")
     XCTAssertTrue(field.draft.typedText.isEmpty)
   }
 
-  func testSeveralChipsAreSeparatedBySpaces() {
+  func testSeveralAttachmentsKeepTheirOrderAndAddNoWords() {
     let field = makeField()
-    field.insertChips([
+    field.insertAttachments([
       fileChip("/x/a.mov"),
       fileChip("/x/b.png"),
       fileChip("/x/c.pdf"),
@@ -290,32 +190,19 @@ final class PromptTextViewTests: XCTestCase {
 
     let draft = field.draft
     XCTAssertEqual(draft.attachments.map(\.kind), [.file, .image, .file])
-    XCTAssertEqual(draft.typedText, "   ", "spaces between chips, and one after the last")
+    XCTAssertEqual(draft.typedText, "")
   }
 
-  func testInsertingAChipLeavesASpaceSoTypingDoesNotJamAgainstIt() {
+  func testTheCaretStaysInTheWordsWhenAFileArrives() {
     let field = makeField()
-    field.insertChips([fileChip("/x/a.mov")])
     field.insertPlainText("in png")
-
-    XCTAssertEqual(field.draft.typedText, " in png")
+    field.insertAttachments([fileChip("/x/a.mov")])
+    XCTAssertEqual(field.selectedRange(), NSRange(location: 6, length: 0))
+    field.insertPlainText(", please")
+    XCTAssertEqual(field.draft.typedText, "in png, please")
   }
 
-  func testTypingAfterAChipIsPlainText() {
-    let field = makeField()
-    field.insertChips([fileChip("/x/a.mov")])
-    field.insertPlainText("in mp4")
-
-    let storage = field.textStorage!
-    let last = storage.length - 1
-    XCTAssertNil(
-      storage.attribute(.attachment, at: last, effectiveRange: nil),
-      "typing must not inherit the attachment attribute and draw a second chip"
-    )
-    XCTAssertEqual(field.draft.typedText, " in mp4")
-  }
-
-  func testTheSwitcherQueryIgnoresChips() {
+  func testTheSwitcherQueryIgnoresAttachments() {
     let field = makeField()
     var draft = PromptDraft("shell")
     draft.append(fileChip("/x/a.mov"))
@@ -324,148 +211,24 @@ final class PromptTextViewTests: XCTestCase {
     XCTAssertEqual(field.searchQuery, "shell")
   }
 
-  func testClearingRemovesChipsAsWellAsText() {
+  func testClearingRemovesAttachmentsAsWellAsText() {
     let field = makeField()
     var draft = PromptDraft("a")
     draft.append(fileChip("/x/a.mov"))
     field.setDraft(draft)
 
     field.clearPrompt()
-    XCTAssertTrue(field.isEmptyPrompt)
+    XCTAssertTrue(field.isWhollyEmpty)
     XCTAssertTrue(field.draft.attachments.isEmpty)
   }
 
-  func testAnEmptyPromptIsEmptyEvenThoughAChipHasNoCharacters() {
+  func testAnAttachmentLeavesTheWordsEmptyAndTheDraftNot() {
     let field = makeField()
-    XCTAssertTrue(field.isEmptyPrompt)
-    field.insertChips([fileChip("/x/a.mov")])
-    XCTAssertFalse(field.isEmptyPrompt, "the placeholder must not show over a chip")
-  }
-
-  // MARK: - Hit testing
-
-  func testAChipCanBeFoundUnderAPoint() {
-    let field = makeField()
-    field.insertChips([fileChip("/x/a.mov")])
-    field.layoutManager?.ensureLayout(for: field.textContainer!)
-
-    let cellFrame = field.layoutManager!.boundingRect(
-      forGlyphRange: NSRange(location: 0, length: 1),
-      in: field.textContainer!
-    )
-    let point = NSPoint(x: cellFrame.midX, y: cellFrame.midY)
-    XCTAssertEqual(field.attachment(at: field.convert(point, to: nil))?.label, "file1")
-  }
-
-  // MARK: - Geometry
-
-  /// A chip is a tinted capsule, as Spotlight draws its tokens.
-  func testAChipIsACapsuleAtTheSentencesHeight() {
-    for font in [PromptTextView.promptFont, PromptTextView.chatComposerFont] {
-      for kind in PromptAttachmentKind.allCases {
-        let cell = PromptChipCell(PromptAttachment(kind: kind, payload: .text("x"), label: "\(kind.rawValue)1"))
-        cell.displayFont = font
-        let size = cell.cellSize()
-        XCTAssertEqual(size.height, PromptChipCell.height(for: font))
-        XCTAssertEqual(size.height, (font.pointSize * AgentPaletteMetrics.chipHeightPerPoint * 2).rounded() / 2)
-        XCTAssertGreaterThan(size.width, size.height, "\(kind): a name in a capsule is wider than tall")
-      }
-    }
-  }
-
-  func testEveryKindOfChipHasItsGlassPicture() {
-    for kind in [PromptAttachmentKind.image, .file, .text, .link] {
-      XCTAssertNotNil(PromptChipCell.picture(for: kind), kind.rawValue)
-    }
-  }
-
-  func testALineIsTallEnoughForAChip() {
-    let chipHeight = PromptChipCell(fileChip("/x/a.mov")).cellSize().height
-    XCTAssertGreaterThanOrEqual(
-      PromptTextView.lineHeight,
-      chipHeight,
-      "a capsule taller than the line would be clipped"
-    )
-  }
-
-  func testAChipIsWiderThanItsLabelByItsPadding() {
-    let cell = PromptChipCell(fileChip("/x/a.mov"))
-    let size = cell.cellSize()
-    let font = cell.displayFont
-    XCTAssertGreaterThan(
-      size.width,
-      font.pointSize * (AgentPaletteMetrics.chipPaddingPerPoint * 2 + AgentPaletteMetrics.chipSymbolGapPerPoint)
-    )
-    XCTAssertEqual(size.height, PromptChipCell.height(for: font))
-  }
-
-  func testTheCapsuleSitsOnTheBaselineRatherThanAboveIt() {
-    let cell = PromptChipCell(fileChip("/x/a.mov"))
-    XCTAssertLessThan(
-      cell.cellBaselineOffset().y,
-      0,
-      "the capsule has to drop below the baseline by its descender plus padding"
-    )
-  }
-
-  func testChipLabelInkIsVerticallyCentredInTheCapsule() throws {
-    try XCTSkipIf((NSScreen.main?.backingScaleFactor ?? 1) < 2, "at 1× text snaps to whole pixels, past this tolerance")
-    let samples: [PromptAttachment] = [
-      PromptAttachment(kind: .text, payload: .text("hello"), label: "text1"),
-      fileChip("/x/glyph.png"),
-      fileChip("/x/a.mov"),
-    ]
-    for attachment in samples {
-      let cell = PromptChipCell(attachment)
-      let size = cell.cellSize()
-      let ink = try XCTUnwrap(
-        Self.measureChipInk(cell: cell, size: size),
-        "no ink for \(attachment.displayLabel())"
-      )
-      let title = PromptChipCell.title(for: attachment)
-      let hangs = title.rangeOfCharacter(from: CharacterSet(charactersIn: "gjpqy")) != nil
-      let allowance = hangs ? -cell.displayFont.descender / 2 : 0
-      XCTAssertEqual(
-        ink.labelMidY,
-        ink.capsuleMidY + allowance / 2,
-        accuracy: 1.0 + allowance / 2,
-        "\(attachment.displayLabel()) ink midY \(ink.labelMidY) vs capsule midY \(ink.capsuleMidY)"
-      )
-    }
-  }
-
-  func testTheCapsuleIsTallerThanItsTypeAndItsLineHoldsIt() throws {
-    for font in [PromptTextView.promptFont, PromptTextView.chatComposerFont] {
-      let cell = PromptChipCell(PromptAttachment(kind: .image, payload: .text("x"), label: "image1"))
-      cell.displayFont = font
-      XCTAssertEqual(cell.cellSize().height, PromptChipCell.height(for: font))
-      XCTAssertGreaterThan(cell.cellSize().height, ceil(font.ascender - font.descender))
-      XCTAssertLessThanOrEqual(cell.cellSize().height, PromptChipCell.lineHeight(for: font))
-    }
-    XCTAssertEqual(
-      PromptTextView.lineHeight,
-      PromptChipCell.lineHeight(for: PromptTextView.promptFont)
-    )
-  }
-
-  func testTheNumberIsAWordOfItsOwn() {
-    let image = PromptAttachment(kind: .image, payload: .text("x"), label: "image12")
-    XCTAssertEqual(PromptChipCell.title(for: image), "image 12")
-    let named = PromptAttachment(kind: .file, payload: .text("x"), label: "report.pdf")
-    XCTAssertEqual(PromptChipCell.title(for: named), "report.pdf")
-  }
-
-  func testTheCornerIsAStadiumAtEveryHeightAChipReaches() {
-    let chipHeight = PromptChipCell(
-      PromptAttachment(kind: .image, payload: .text("x"), label: "image1")
-    ).cellSize().height
-    XCTAssertEqual(PromptChipCell.cornerRadius(forHeight: chipHeight), chipHeight / 2)
-    XCTAssertEqual(PromptChipCell.cornerRadius(forHeight: 10), 5)
-
-    XCTAssertEqual(
-      PromptChipCell.cornerRadius(forHeight: 400),
-      AgentPaletteMetrics.chipCornerRadius
-    )
+    XCTAssertTrue(field.isWhollyEmpty)
+    field.insertAttachments([fileChip("/x/a.mov")])
+    XCTAssertTrue(field.isEmptyPrompt, "the placeholder stands beside a card")
+    XCTAssertFalse(field.isWhollyEmpty)
+    XCTAssertFalse(field.draft.isEffectivelyEmpty, "and there is something to send")
   }
 
   // MARK: - Paste
@@ -516,107 +279,6 @@ final class PromptTextViewTests: XCTestCase {
     XCTAssertFalse(pasted)
   }
 
-  func testEntranceScaleRunsFromTheStartScaleToOne() {
-    XCTAssertEqual(PromptChipCell.entranceScale(for: 0), AgentPaletteMetrics.chipAppearStartScale)
-    XCTAssertEqual(PromptChipCell.entranceScale(for: 1), 1)
-    XCTAssertEqual(PromptChipCell.entranceScale(for: -5), AgentPaletteMetrics.chipAppearStartScale)
-    XCTAssertEqual(PromptChipCell.entranceScale(for: 5), 1)
-  }
-
-  // MARK: - Colours (D13)
-
-  func testEachKindGetsItsOwnColourAndAFaintFillOfIt() {
-    let kinds = PromptAttachmentKind.allCases
-    let colors = Set(kinds.map { $0.chipColor.description })
-    XCTAssertEqual(colors.count, kinds.count, "four kinds, four colours")
-
-    for kind in kinds {
-      XCTAssertEqual(kind.chipColor.alphaComponent, 1)
-      XCTAssertEqual(kind.chipFillColor.alphaComponent, AgentPaletteMetrics.chipFillAlpha, accuracy: 0.001)
-      XCTAssertEqual(
-        kind.chipFillColor.usingColorSpace(.sRGB)?.redComponent,
-        kind.chipColor.usingColorSpace(.sRGB)?.redComponent,
-        "\(kind): the fill is the label's own colour, not a second one"
-      )
-    }
-
-    XCTAssertEqual(PromptAttachmentKind.image.chipColor.hexForTesting, "5FE3BD")
-    XCTAssertEqual(PromptAttachmentKind.file.chipColor.hexForTesting, "3D94FF")
-    XCTAssertEqual(PromptAttachmentKind.text.chipColor.hexForTesting, "FFAA3D")
-    XCTAssertEqual(PromptAttachmentKind.link.chipColor.hexForTesting, "C7C7CC")
-  }
-
-  private struct ChipInk {
-    let labelMidY: CGFloat
-    let capsuleMidY: CGFloat
-    let labelHeight: CGFloat
-    let capsuleHeight: CGFloat
-  }
-
-  private static func measureChipInk(cell: PromptChipCell, size: NSSize) -> ChipInk? {
-    let host = ChipInkHost(frame: NSRect(origin: .zero, size: size), cell: cell)
-    guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
-    host.cacheDisplay(in: host.bounds, to: rep)
-
-    var labelMin = Int.max
-    var labelMax = Int.min
-    var capsuleMin = Int.max
-    var capsuleMax = Int.min
-    let width = rep.pixelsWide
-    let height = rep.pixelsHigh
-    for y in 0..<height {
-      for x in 0..<width {
-        guard let color = rep.colorAt(x: x, y: y) else { continue }
-        let alpha = color.alphaComponent
-        guard alpha > 0.05 else { continue }
-        capsuleMin = min(capsuleMin, y)
-        capsuleMax = max(capsuleMax, y)
-        let brightest = max(color.redComponent, color.greenComponent, color.blueComponent)
-        if alpha > 0.9, brightest > 0.7 {
-          labelMin = min(labelMin, y)
-          labelMax = max(labelMax, y)
-        }
-      }
-    }
-    guard labelMin <= labelMax, capsuleMin <= capsuleMax else { return nil }
-    let scale = CGFloat(rep.pixelsHigh) / max(size.height, 1)
-    let px = { (minY: Int, maxY: Int) in
-      (CGFloat(minY + maxY) / 2) / scale
-    }
-    let span = { (minY: Int, maxY: Int) in
-      CGFloat(maxY - minY + 1) / scale
-    }
-    return ChipInk(
-      labelMidY: px(labelMin, labelMax),
-      capsuleMidY: px(capsuleMin, capsuleMax),
-      labelHeight: span(labelMin, labelMax),
-      capsuleHeight: span(capsuleMin, capsuleMax)
-    )
-  }
-}
-
-private final class ChipInkHost: NSView {
-  private let cell: PromptChipCell
-
-  init(frame: NSRect, cell: PromptChipCell) {
-    self.cell = cell
-    super.init(frame: frame)
-    wantsLayer = true
-    layer?.backgroundColor = NSColor.clear.cgColor
-  }
-
-  override var isOpaque: Bool { false }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-
-  override var isFlipped: Bool { true }
-
-  override func draw(_ dirtyRect: NSRect) {
-    cell.draw(withFrame: bounds, in: self)
-  }
 }
 
 extension NSColor {

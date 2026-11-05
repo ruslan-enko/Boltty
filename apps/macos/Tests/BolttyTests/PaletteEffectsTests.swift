@@ -309,7 +309,7 @@ final class PaletteEffectsContactSheet: XCTestCase {
       data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8,
       bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-    let colour = PromptAttachmentKind.image.chipColor
+    let colour = HexColor.nsColor("#5FE3BD")
     context.setFillColor(colour.withAlphaComponent(0.2).cgColor)
     context.addPath(CGPath(
       roundedRect: CGRect(origin: .zero, size: size), cornerWidth: 26, cornerHeight: 26,

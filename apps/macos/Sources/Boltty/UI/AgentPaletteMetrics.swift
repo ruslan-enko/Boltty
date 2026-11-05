@@ -492,18 +492,10 @@ enum AgentPaletteMetrics {
   /// kind's colour, on that colour at a fifth, a capsule taller than the
   /// type round them.
   ///
-  /// **Ratios of the sentence's point size, not points**, because the chip
-  /// stands in two sentences — the first screen's 20 and a chat's 15. The
-  /// name is the sentence's own size: a word in the sentence.
-  static let chipHeightPerPoint: CGFloat = 1.46
-  static let chipPaddingPerPoint: CGFloat = 0.44
-  static let chipSymbolPerPoint: CGFloat = 0.68
-  static let chipSymbolGapPerPoint: CGFloat = 0.31
+  /// A prompt's line against its point size: roomier than the type, and the
+  /// row on the first screen is centred on it.
+  static let promptLineHeightPerPoint: CGFloat = 1.46
 
-  /// What a chip shows under the pointer (`PromptChipPreview`), in a system
-  /// popover: a picture fitted inside a square this big, or a few lines of
-  /// what it carries at most this wide.
-  static let chipPreviewImageMaxSide: CGFloat = 240
   /// A region dragged across the screen (`ScreenSelectionOverlay`): a press
   /// outside the shell that moves this far is a drag, not "go away"; a drag
   /// smaller than the minimum on either side is neither, and selects nothing.
@@ -558,12 +550,6 @@ enum AgentPaletteMetrics {
   /// The shell closing round the face once a question has gone: most of the
   /// way on its spring (`surfaceResponse`).
   static let regionHandOverDuration: CFTimeInterval = 0.26
-  static let chipPreviewImageCornerRadius: CGFloat = 8
-  static let chipPreviewImageInset: CGFloat = 8
-  static let chipPreviewTextInset: CGFloat = 12
-  static let chipPreviewTextMaxWidth: CGFloat = 320
-  static let chipPreviewTextMaxLines = 12
-  static let chipPreviewFileIconSize: CGFloat = 48
 
   /// How long the typing has to rest before the keys are said: words
   /// arriving while a sentence is still being written are
@@ -571,25 +557,65 @@ enum AgentPaletteMetrics {
   /// at once; they come back over `Motion.standard`.
   static let keyHintDelay: TimeInterval = 1
 
-  /// The pill's corner: the mock's 50 against a 21pt chip, i.e. a stadium.
-  /// `PromptChipCell` clamps it to half the height, which is what actually
-  /// draws it — the number only has to be big enough to reach that clamp.
-  static let chipCornerRadius: CGFloat = fromMock(50)
+  // MARK: What came with the words
 
-  /// Chip fill, as a fraction of its own ink colour — the label's colour at
-  /// a fifth, as the reference draws all four.
-  static let chipFillAlpha: CGFloat = 0.22
+  /// A card in the composer's strip, and over the bubble once it is sent.
+  /// The strip's band is this and the inset over it, whichever shell it is in:
+  /// at 100 a chat of the smallest size keeps a transcript of more than
+  /// `previewMinHeight`.
+  static let attachmentCardSide: CGFloat = 100
+  static let attachmentCardGap: CGFloat = 8
+  static let attachmentCardInset: CGFloat = 11
+  static let attachmentCardLines = 3
+  static let attachmentCardLineHeight: CGFloat = 16
+  static let attachmentCardPressedScale: CGFloat = 0.97
+  /// What the card holds is cropped to a square, so a wide picture's short side
+  /// has to have enough in it: twice the card.
+  static let attachmentThumbnailSide: CGFloat = attachmentCardSide * 2
+  /// A filled capsule, not an outlined one: block borders are never stroked.
+  static let attachmentTagHeight: CGFloat = 18
+  static let attachmentTagPadding: CGFloat = 7
+  static let attachmentTagFill = PaletteInk.tertiaryFill
+  /// Past the card's corner by this, into the gap and the inset over the strip.
+  static let attachmentCloseOverhang: CGFloat = 8
+  static let attachmentCloseDiameter: CGFloat = 22
+  static let attachmentCloseGlyph: CGFloat = 11
+  /// Settles dryly: a card is the result of a keystroke, not an event.
+  static let attachmentCardAppearDuration: TimeInterval = 0.16
+  static let attachmentCardAppearScale: CGFloat = 0.94
+  static let attachmentStripFadeWidth: CGFloat = 28
+  /// Points per line of a mouse's wheel, which reports lines and not points.
+  static let attachmentStripWheelStep: CGFloat = 8
 
-  /// Chip entrance. Tight and short by design: a chip is the result of a
-  /// keystroke, not an event, so it should settle dryly rather than spring —
-  /// see `MotionPreferences.controlPressSpring`, which is what drives it.
-  ///
-  /// The duration is also a budget. `NSTextAttachmentCell` is *drawn*, not
-  /// layered, so this animation is redraws of one small rect rather than a
-  /// `CABasicAnimation`; 0.16s is ~19 frames at 120Hz, and a longer one would
-  /// be paid for in CPU rather than in polish.
-  static let chipAppearDuration: TimeInterval = 0.16
-  static let chipAppearStartScale: CGFloat = 0.94
+  /// Concentric with the capsule: 42.5 less 20.
+  @MainActor static let attachmentStripOnFirstScreen = PromptAttachmentStrip.Placement(
+    inset: 20, corner: cornerRadius - 20)
+  /// The composer's content stands 16 from its rim, its corner concentric too.
+  @MainActor static let attachmentStripInChat = PromptAttachmentStrip.Placement(
+    inset: chatComposerInkInset, corner: attachmentCardCornerInChat)
+  static let attachmentCardCornerInChat: CGFloat = chatComposerRestingCornerRadius - chatComposerInkInset
+
+  /// A sent file over its bubble, in rows from the right: `count` cards in
+  /// `width`. In a top-left space; one function measures and places them.
+  static func sentCardFrames(count: Int, width: CGFloat) -> [CGRect] {
+    let side = attachmentCardSide
+    let gap = attachmentCardGap
+    let columns = max(1, Int((width + gap) / (side + gap)))
+    return (0..<count).map { index in
+      let row = index / columns
+      let inRow = min(columns, count - row * columns)
+      let column = index % columns
+      let rowWidth = CGFloat(inRow) * side + CGFloat(inRow - 1) * gap
+      return CGRect(
+        x: width - rowWidth + CGFloat(column) * (side + gap),
+        y: CGFloat(row) * (side + gap),
+        width: side, height: side)
+    }
+  }
+
+  static func sentCardsHeight(count: Int, width: CGFloat) -> CGFloat {
+    sentCardFrames(count: count, width: width).last?.maxY ?? 0
+  }
 
   /// Shared resting hit target for the clip and waveform, including when the
   /// initial prompt draws them without a backing disc (WORK PAGE 1091:4731).
@@ -1719,11 +1745,14 @@ enum AgentPaletteMetrics {
   /// something already there rather than out of nothing.
   static let revealOpaqueAt: CGFloat = 0.35
 
-  /// The flying chip's tail: at most this many of its own heights behind it.
+  /// The flying card's tail: at most this many of its own heights behind it,
+  /// and at most this far, since a tall card's own heights would be most of a chat.
   static let whipMaxLagHeights: CGFloat = 1.2
+  static let whipMaxLag: CGFloat = 40
+  static func whipReach(height: CGFloat) -> CGFloat { min(whipMaxLagHeights * height, whipMaxLag) }
   /// Points of lag per point-per-second of speed, before the reach eases it.
   static let whipLagPerSpeed: CGFloat = 0.03
-  /// The chip's picture is gone by this share of the flight; the card has
+  /// The flying picture is gone by this share of the flight; the card has
   /// arrived by half way (`BolttyAIPreviewCard.launch`).
   static let whipFadeOutAt: CGFloat = 0.4
 

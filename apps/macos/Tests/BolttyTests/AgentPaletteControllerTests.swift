@@ -527,7 +527,7 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertEqual(conversations.startedPrompts, ["Trim /tmp/boltty-clip.mov"])
     XCTAssertEqual(
       conversations.sentFiles[id],
-      [SentFile(path: clip.path, label: "file1", name: "boltty-clip.mov")])
+      [SentFile(path: clip.path, label: "", name: "boltty-clip.mov")])
 
     let shot = URL(fileURLWithPath: "/tmp/boltty-shot.png")
     var followUp = PromptDraft("And ")
@@ -535,7 +535,7 @@ final class AgentPaletteControllerTests: XCTestCase {
     view.field.setDraft(followUp)
     _ = view.textView(view.field, doCommandBy: #selector(NSResponder.insertNewline(_:)))
 
-    XCTAssertEqual(conversations.sentFiles[id]?.map(\.label), ["file1", "image1"])
+    XCTAssertEqual(conversations.sentFiles[id]?.map(\.name), ["boltty-clip.mov", "boltty-shot.png"])
   }
 
   private func frozenScreen(for controller: AgentPaletteController) throws -> FrozenScreen {

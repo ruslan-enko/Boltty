@@ -101,7 +101,7 @@ final class PaletteEffects {
     size: CGSize, frame: CGRect, velocity: CGVector, pixelSize: CGFloat, opacity: CGFloat
   ) -> PaletteWhipUniforms {
     let speed = hypot(velocity.dx, velocity.dy)
-    let reach = AgentPaletteMetrics.whipMaxLagHeights * frame.height
+    let reach = AgentPaletteMetrics.whipReach(height: frame.height)
     var u = PaletteWhipUniforms()
     u.size = simd_float2(Float(size.width), Float(size.height))
     u.frame = simd_float4(
