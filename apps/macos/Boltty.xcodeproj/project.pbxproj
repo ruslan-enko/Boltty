@@ -1834,7 +1834,7 @@
 				CODE_SIGN_IDENTITY = "$(BOLTTY_LOCAL_SIGN_IDENTITY)";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_TESTABILITY = YES;
@@ -1849,7 +1849,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.boltty.app;
 				PRODUCT_NAME = Boltty;
 				SDKROOT = macosx;
@@ -1883,7 +1883,7 @@
 				CODE_SIGN_ENTITLEMENTS = Boltty.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1897,7 +1897,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.boltty.app;
 				PRODUCT_NAME = Boltty;
 				SDKROOT = macosx;

@@ -1193,7 +1193,9 @@ heard.
   an uncommitted version bump and a version not above the latest release. It
   **publishes nothing**: it prints the `git tag` and `gh release create` for the
   maintainer to run. `--local` builds the working tree for this Mac and installs it
-  into /Applications.
+  into /Applications. Before a build only the old binary goes, not the bundle: with
+  the bundle gone an incremental build leaves out `default.metallib` and the app has
+  no faces, so `release.sh` refuses an app without it.
 - The DMG window is written onto the disk, not asked of Finder (Finder on macOS
   27 drops AppleScript-set icon size, order and background):
   `scripts/make-dmg-layout.py` writes `.DS_Store` into the writable image, using

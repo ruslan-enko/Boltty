@@ -42,8 +42,9 @@ from whatever I'm doing, for the simple tasks and the not-so-simple ones.
 you're doing.
 Return starts the chat in the background, and the same panel turns into the chat
 when you want to read the answer, follow up or approve something. ↓ shows your
-recent chats and ⇧Tab switches the agent. Open it over Finder and the chat starts
-in that folder, with the selected files already in the prompt.
+recent chats and ⇧Tab switches the agent. Paste or drop a file or a picture and it
+sits over your words as a card. Open it over Finder and the chat starts in that
+folder, with the selected files already in the prompt.
 
 <p align="center">
   <img src=".github/readme/prompt.png" width="100%" alt="The Boltty AI prompt, with a request typed in">

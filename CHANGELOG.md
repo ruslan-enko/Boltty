@@ -2,6 +2,14 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.5.1
+
+**Settings**
+- Boltty has a colour of its own, the yellow of its icon, whatever accent colour
+  your Mac uses: on the sidebar, the segments, the switches and the meters in
+  Usage.
+- The arrow keys walk the pages of the sidebar as soon as Settings opens.
+
 ## 0.5.0
 
 **Files in the prompt**
