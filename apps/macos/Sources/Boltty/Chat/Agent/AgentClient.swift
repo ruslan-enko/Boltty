@@ -79,6 +79,10 @@ protocol AgentClient: AnyObject, Sendable {
   /// the next request starts the CLI as it is now on disk.
   func restartIdleProcess() async
 
+  /// A few words naming this chat, from the CLI's record or asked of a small
+  /// model. nil is no name yet: the engine tries again after the next turn.
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String?
+
   func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?)
 }
 
@@ -105,6 +109,7 @@ extension AgentClient {
   func missedAnything(sessionID: String) async -> Bool? { nil }
   func release(sessionID: String) async {}
   func restartIdleProcess() async {}
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? { nil }
 }
 
 struct AgentSessionOptions: Equatable, Sendable {

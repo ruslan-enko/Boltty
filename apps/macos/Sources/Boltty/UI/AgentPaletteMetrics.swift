@@ -258,9 +258,10 @@ enum AgentPaletteMetrics {
   /// stays `promptMockHeight`, which is what its other numbers are read
   /// against.
   ///
-  /// **85 tall, Spotlight's proportion** — macOS 27's Spotlight field at
-  /// the same width. Only the height: the walls keep `promptPaddingGrowth`.
-  static let promptSize = CGSize(width: 540, height: 85)
+  /// **92 tall, nearer Siri's field than Spotlight's 85.** Only the height:
+  /// the walls keep `promptPaddingGrowth`, and the face keeps its size, so
+  /// this stops short of the 98 where it floated.
+  static let promptSize = CGSize(width: 540, height: 92)
   /// The first screen once its draft wraps: the controls beside the words —
   /// ring, a named folder pill, microphone — left a long request a column
   /// of about 240 at 540. It widens about the locked centre, then grows down.
@@ -587,7 +588,7 @@ enum AgentPaletteMetrics {
   /// Points per line of a mouse's wheel, which reports lines and not points.
   static let attachmentStripWheelStep: CGFloat = 8
 
-  /// Concentric with the capsule: 42.5 less 20.
+  /// Concentric with the capsule: its corner less 20.
   @MainActor static let attachmentStripOnFirstScreen = PromptAttachmentStrip.Placement(
     inset: 20, corner: cornerRadius - 20)
   /// The composer's content stands 16 from its rim, its corner concentric too.
@@ -899,8 +900,7 @@ enum AgentPaletteMetrics {
   static let voiceSilenceSubmitDelay: TimeInterval = 2.4
 
   /// Listening is an orb: the shell collapses to a ball this wide, with the
-  /// voice's light in it. A little taller than the prompt capsule, so the
-  /// collapse reads as a change of shape and not as a shrink.
+  /// voice's light in it.
   static let listeningOrbDiameter: CGFloat = 84
   /// **The face sits in the orb**, this big; in silence the orb is glass
   /// round it, and once words are heard it moves to the top of the capsule

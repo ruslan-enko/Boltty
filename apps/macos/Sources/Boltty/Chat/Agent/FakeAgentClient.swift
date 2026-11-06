@@ -162,6 +162,16 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
     lock.withLock { released.append(sessionID) }
   }
 
+  var chatTitleAnswer: String?
+  private(set) var chatTitleRequests: [ChatNaming.Material] = []
+
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    lock.withLock {
+      chatTitleRequests.append(material)
+      return chatTitleAnswer
+    }
+  }
+
   func answerQuestion(requestID: String, sessionID: String, answers: [[String]]) async throws {
     if let questionError { throw questionError }
     lock.withLock { questionReplies.append((requestID, answers)) }

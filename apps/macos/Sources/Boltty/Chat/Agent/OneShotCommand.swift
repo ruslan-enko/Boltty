@@ -16,14 +16,18 @@ enum OneShotCommand {
     _ arguments: [String],
     deadline: TimeInterval,
     includeStandardError: Bool = false,
-    searchPath: Bool = true
+    searchPath: Bool = true,
+    input: String? = nil,
+    directory: URL? = nil
   ) async -> Result? {
     await withCheckedContinuation { continuation in
       start(
         executable, arguments,
         deadline: deadline,
         includeStandardError: includeStandardError,
-        searchPath: searchPath
+        searchPath: searchPath,
+        input: input,
+        directory: directory
       ) { continuation.resume(returning: $0) }
     }
   }
@@ -87,6 +91,8 @@ enum OneShotCommand {
     deadline: TimeInterval,
     includeStandardError: Bool,
     searchPath: Bool,
+    input: String? = nil,
+    directory: URL? = nil,
     completion: @escaping @Sendable (Result?) -> Void
   ) {
     let run = Run(completion: completion)
@@ -101,7 +107,9 @@ enum OneShotCommand {
     let pipe = Pipe()
     process.standardOutput = pipe
     process.standardError = includeStandardError ? pipe : FileHandle.nullDevice
-    process.standardInput = FileHandle.nullDevice
+    let inputPipe = input.map { _ in Pipe() }
+    process.standardInput = inputPipe ?? FileHandle.nullDevice
+    if let directory { process.currentDirectoryURL = directory }
 
     let reader = pipe.fileHandleForReading
     reader.readabilityHandler = { handle in
@@ -140,6 +148,15 @@ enum OneShotCommand {
       process.terminationHandler = nil
       run.finish(timedOut: true)
       return
+    }
+
+    // Off this thread, since a child that never reads would block the write.
+    // SIGPIPE is ignored, so one that has died only makes it throw.
+    if let input, let writer = inputPipe?.fileHandleForWriting {
+      DispatchQueue.global().async {
+        try? writer.write(contentsOf: Data(input.utf8))
+        try? writer.close()
+      }
     }
 
     let pid = process.processIdentifier

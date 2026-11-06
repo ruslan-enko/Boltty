@@ -99,6 +99,16 @@ enum GrokChatHistoryTranscript {
     return nil
   }
 
+  /// The name Grok wrote for this session, and nothing in its place: the row
+  /// `transcript` reads falls back on the typed words.
+  static func recordedName(sessionID: String, in root: URL = defaultRoot) -> String? {
+    guard let directory = locate(sessionID: sessionID, in: root),
+          let data = try? Data(contentsOf: directory.appendingPathComponent("summary.json")),
+          let summary = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    else { return nil }
+    return summary["generated_title"] as? String ?? summary["session_summary"] as? String
+  }
+
   static func transcript(sessionID: String, in root: URL = defaultRoot) throws -> DiskTranscript? {
     guard let directory = locate(sessionID: sessionID, in: root) else { return nil }
     let history = directory.appendingPathComponent("chat_history.jsonl")

@@ -221,6 +221,14 @@ final class BolttyAISessionRowView: NSView {
     if showsFace, agentChanged { face.image = Self.faceImage(for: newItem.agent) }
 
     if titleLabel.stringValue != newItem.title {
+      // A chat's name arrives with the list open, and a row that changes its
+      // words at a stroke reads as a different chat.
+      if window != nil, !MotionPreferences.reduceMotion {
+        let fade = CATransition()
+        fade.type = .fade
+        fade.duration = Motion.standard
+        titleLabel.layer?.add(fade, forKey: "name")
+      }
       titleLabel.stringValue = newItem.title
     }
     if subtitleLabel.stringValue != newItem.subtitle {

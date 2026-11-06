@@ -237,6 +237,7 @@ extension ConversationExecutionState {
 ///
 /// So the row reads the first request off the transcript when the stored
 /// title is only a cut of it, and the label truncates by its own width.
+/// A name given to the chat (`ChatNaming`) replaces it, whatever its words.
 /// A stored title that is not a cut — a CLI's own name for an adopted
 /// session — is kept. Either is cleaned the same way (`clean`).
 enum ChatTitle {
@@ -244,6 +245,7 @@ enum ChatTitle {
   static func forRow(_ conversation: Conversation, transcript: ConversationTranscript) -> String {
     let files = conversation.sentFiles
     let stored = clean(conversation.title, files: files)
+    if conversation.hasOwnName, !stored.isEmpty { return stored }
     let untitled = conversation.title == ConversationEngine.untitled
     if let request = firstRequest(in: transcript) {
       let whole = clean(request, files: files)
@@ -289,6 +291,19 @@ enum ChatTitle {
 
   static let rawLimit = 600
   static let displayLimit = 240
+
+  /// What a chat's name is made from: its first request as the person typed it
+  /// and the last thing the agent said. nil until the agent has said something:
+  /// a turn stopped at once has told nothing about what the chat is.
+  static func namingMaterial(
+    _ conversation: Conversation,
+    transcript: ConversationTranscript
+  ) -> ChatNaming.Material? {
+    let reply = transcript.messages.last { $0.role == .agent && !$0.plainText.isEmpty }
+    guard let reply else { return nil }
+    let request = firstRequest(in: transcript).map { clean($0, files: conversation.sentFiles) } ?? ""
+    return ChatNaming.Material(request: request, reply: reply.plainText)
+  }
 
   private static func firstRequest(in transcript: ConversationTranscript) -> String? {
     guard let message = transcript.messages.first(where: { $0.role == .user }) else { return nil }

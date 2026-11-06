@@ -7,6 +7,7 @@ struct ACPAgent: Sendable {
   let arguments: [String]
   let capabilities: AgentCapabilities
   var history: (@Sendable (String) throws -> DiskTranscript?)?
+  var recordedName: (@Sendable (String) -> String?)? = nil
   var usage: (method: String, read: @Sendable (JSONObject) -> AgentUsage?)?
   var planMethod: String? = nil
   var askMethods: Set<String> = []
@@ -24,6 +25,7 @@ struct ACPAgent: Sendable {
       .rereadableTranscript, .usageLimits, .questions,
     ],
     history: { try GrokChatHistoryTranscript.transcript(sessionID: $0) },
+    recordedName: { GrokChatHistoryTranscript.recordedName(sessionID: $0) },
     usage: ("_x.ai/billing", { AgentUsage.grok($0) }),
     planMethod: "x.ai/exit_plan_mode",
     askMethods: ["x.ai/ask_user_question", "_x.ai/ask_user_question"]
@@ -33,6 +35,11 @@ struct ACPAgent: Sendable {
 final class ACPClient: AgentClient, @unchecked Sendable {
   let agent: ACPAgent
   var provider: AgentId { agent.provider }
+
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    guard let read = agent.recordedName else { return nil }
+    return await ChatNaming.fromRecord { read(sessionID) }
+  }
 
   var capabilities: AgentCapabilities { agent.capabilities }
 

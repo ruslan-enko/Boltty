@@ -147,7 +147,7 @@ struct CodexSessionStore: NativeSessionStore {
 
   // MARK: - The index, used only for its titles
 
-  private func indexedTitles() -> [String: String] {
+  func indexedTitles() -> [String: String] {
     let index = root.appendingPathComponent("session_index.jsonl")
     guard let lines = try? FileHead.lines(of: index, maxLines: 5000) else { return [:] }
     var titles: [String: String] = [:]

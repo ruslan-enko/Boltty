@@ -30,6 +30,9 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var providerID: String
   var remoteSessionID: String?
   var title: String
+  /// The title is a name for the chat (`ChatNaming`), not the request cut. It
+  /// is given once and stays when the talk moves on.
+  var hasOwnName: Bool = false
   var workingDirectory: String
   var canChangeWorkingDirectory: Bool { remoteSessionID == nil }
   var model: ModelSelection?
@@ -86,7 +89,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey {
     case id, providerID, remoteSessionID, title, workingDirectory, model
     case reasoningEffort, autoApprove, readOnly, createdAt, updatedAt, draft, draftAttachments
-    case hasUnread, lastKnownState, panelDraft, sentFiles
+    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName
     /// Written as "isTalk" before Talk was named Ask Boltty; chats on disk carry it.
     case isAskBoltty = "isTalk"
   }
@@ -98,6 +101,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
       ?? OpenCodeProvider.identifier
     remoteSessionID = try container.decodeIfPresent(String.self, forKey: .remoteSessionID)
     title = try container.decode(String.self, forKey: .title)
+    hasOwnName = try container.decodeIfPresent(Bool.self, forKey: .hasOwnName) ?? false
     workingDirectory = try container.decode(String.self, forKey: .workingDirectory)
     model = try container.decodeIfPresent(ModelSelection.self, forKey: .model)
     reasoningEffort = try container.decodeIfPresent(String.self, forKey: .reasoningEffort)

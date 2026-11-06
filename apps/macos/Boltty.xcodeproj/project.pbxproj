@@ -65,6 +65,7 @@
 		2E717E61D1EE61CABDDE3D39 /* whoosh-2.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8A06939E457509BA0C62DE11 /* whoosh-2.wav */; };
 		2EA940967B7B0A0D081660EE /* BolttyAIOptionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82577870613B7647999E3EBB /* BolttyAIOptionRow.swift */; };
 		30A0EEE874F021515F86C10C /* AskBolttyOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B36AC2FEA558A790A39F4ED /* AskBolttyOverlayController.swift */; };
+		30CED40E52D9AC4388AEF1F1 /* ChatNamingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4660E9085F6B0A645097CC1 /* ChatNamingTests.swift */; };
 		324B10001A706B1BEA06661E /* PromptAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3683073E836756574F681566 /* PromptAttachment.swift */; };
 		32A76093292305651790AA36 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00FE8E7345E352E0598531BE /* AppModel.swift */; };
 		32B26A717D4A8F6FE858D0A1 /* PaletteTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE9B076438A5044E13E31067 /* PaletteTranscript.swift */; };
@@ -241,6 +242,7 @@
 		B313D6F2860C2FF0D9B411BB /* AgentStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D3046681B49E34EDA66E94E /* AgentStatistics.swift */; };
 		B3A702D34AAB6B2DC5AA2E2C /* AppPresenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C09834F7D58DE7A7F5DE453D /* AppPresenceTests.swift */; };
 		B3FDFA71B9C647BEFB8E84A2 /* ISO8601StampTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B682D4D25113F5E2A737A5 /* ISO8601StampTests.swift */; };
+		B54FC3C4176CBADC6F7B350E /* ChatNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D7F3D499444D362B344BB6 /* ChatNaming.swift */; };
 		B56C595B8C6FE0F58C820422 /* AccessPermissionsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9849CD3540344DBE272DAD0 /* AccessPermissionsWindow.swift */; };
 		B59E0801E14B2A2956E45A24 /* ModifierHotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14100488D233FA342B0CDF0A /* ModifierHotkeyMonitor.swift */; };
 		B73F6E1B730A5E0F1131AA5D /* PendingInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F13619807292ADCBA64E14 /* PendingInteraction.swift */; };
@@ -464,6 +466,7 @@
 		4CF662F4712F6629DDAEEB3D /* claude-background-wake.jsonl */ = {isa = PBXFileReference; path = "claude-background-wake.jsonl"; sourceTree = "<group>"; };
 		4D8AEA719AFE93CF8E30415A /* AntigravityClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityClientTests.swift; sourceTree = "<group>"; };
 		4E954DF2A6913EBED92FEF1B /* BolttyAISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAISettingsView.swift; sourceTree = "<group>"; };
+		50D7F3D499444D362B344BB6 /* ChatNaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatNaming.swift; sourceTree = "<group>"; };
 		5115B25E92F854FAF9E90026 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		518C0C9E2914964246021A32 /* AgentBackdropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentBackdropView.swift; sourceTree = "<group>"; };
 		51D353D81C325B8262FBB155 /* PromptAttachmentCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptAttachmentCardTests.swift; sourceTree = "<group>"; };
@@ -599,6 +602,7 @@
 		B15FEE7371D2C35D4395F86F /* AntigravityTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityTranscript.swift; sourceTree = "<group>"; };
 		B19B08993C3FDFCF15F7E902 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Icons; path = Resources/Icons; sourceTree = SOURCE_ROOT; };
 		B1B5A46902FC1B2C9FEC926E /* NotchMascotController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMascotController.swift; sourceTree = "<group>"; };
+		B4660E9085F6B0A645097CC1 /* ChatNamingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatNamingTests.swift; sourceTree = "<group>"; };
 		B480B69DC62146AB64331781 /* AnswerReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerReading.swift; sourceTree = "<group>"; };
 		B488946E72434D43AA6ED7E6 /* ConversationPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationPersistence.swift; sourceTree = "<group>"; };
 		B50DE8B0F1A4E36033E01857 /* LocalVoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVoiceCatalog.swift; sourceTree = "<group>"; };
@@ -862,6 +866,7 @@
 				CC4A4156703185A3A166A205 /* BolttyAIPreviewCardTests.swift */,
 				0AA1337F1DA263F1B44FCC96 /* BolttyAISessionListTests.swift */,
 				B92AB55835FBC7D279338F4D /* BolttyAITestSupport.swift */,
+				B4660E9085F6B0A645097CC1 /* ChatNamingTests.swift */,
 				898B251F3E571432754F920A /* ClaudeCodeWakeTests.swift */,
 				17517BFC83D30415D8C5CE16 /* CodexSessionRecoveryTests.swift */,
 				751B75F3EE48969055B46F21 /* ConversationEngineTests.swift */,
@@ -1144,6 +1149,7 @@
 				7BC58DA19C08C4BB06CA5FB2 /* AgentPlan.swift */,
 				A85BDBD98B2E9EE64BB140ED /* AgentRegistry.swift */,
 				8815146EA73E59CB9CBF2033 /* AgentUsage.swift */,
+				50D7F3D499444D362B344BB6 /* ChatNaming.swift */,
 				60C61F01566EE6EA57450C51 /* FakeAgentClient.swift */,
 				2D947D58DE45A832815F2FCE /* ISO8601Stamp.swift */,
 				0D545E1F60C181C3DC305082 /* JSONLineProcess.swift */,
@@ -1528,6 +1534,7 @@
 				0FBBE1A74F66B84997D60049 /* BuiltInKeyCatalog.swift in Sources */,
 				5EA7F129F0A5C8D1B86FF496 /* ChatBackdrop.swift in Sources */,
 				43485201004FB7EE50F08A63 /* ChatBackdropPicker.swift in Sources */,
+				B54FC3C4176CBADC6F7B350E /* ChatNaming.swift in Sources */,
 				7DDE39E53BDA5F6AE37BE508 /* ChatWorkspaceCoordinator.swift in Sources */,
 				903984B004A236DA6B4EED46 /* ClaudeCodeClient.swift in Sources */,
 				3E5E07FFC379DE3A9C885C79 /* ClaudeCodeSession.swift in Sources */,
@@ -1710,6 +1717,7 @@
 				ED33C0DA0F39E398B37B7E19 /* BolttyAIPreviewCardTests.swift in Sources */,
 				C895D199E4A94ED24BD8BEBA /* BolttyAISessionListTests.swift in Sources */,
 				CB49ECCE7603458D1B3E951B /* BolttyAITestSupport.swift in Sources */,
+				30CED40E52D9AC4388AEF1F1 /* ChatNamingTests.swift in Sources */,
 				D317211E55CD8FE3A4DECC99 /* ClaudeCodeWakeTests.swift in Sources */,
 				C4FD10D8B562857987885C11 /* CodexSessionRecoveryTests.swift in Sources */,
 				89B3066E7E9860A698251956 /* ConversationEngineTests.swift in Sources */,

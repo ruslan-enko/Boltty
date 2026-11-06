@@ -24,6 +24,7 @@ final class ConversationEngine: ObservableObject {
   private var attached: Set<String> = []
   private var creatingSessions: [UUID: Task<String, Error>] = [:]
   private var sending: Set<UUID> = []
+  private var namingChats: Set<UUID> = []
   private var processesToRestart: Set<UUID> = []
   private var modelsReadAt: Date?
   private var modelRefresh: Task<Void, Never>?
@@ -346,7 +347,30 @@ final class ConversationEngine: ObservableObject {
        !state.blocksSending,
        let conversation = store.conversation(
          remoteSessionID: sessionID, providerID: envelope.providerID) {
+      if state == .idle { nameIfDue(conversation.id) }
       await refreshContext(conversationID: conversation.id)
+    }
+  }
+
+  // MARK: - Naming
+
+  /// A turn has ended well in a chat with no name of its own. In the
+  /// background: it can take the CLI half a minute, and nothing waits on it.
+  private func nameIfDue(_ id: UUID) {
+    guard !store.isReadOnly, !namingChats.contains(id),
+          let conversation = store.conversation(id: id),
+          !conversation.hasOwnName, !conversation.isAskBoltty,
+          let session = conversation.remoteSessionID,
+          let client = registry.client(forProviderID: conversation.providerID),
+          let material = ChatTitle.namingMaterial(conversation, transcript: store.transcript(id: id))
+    else { return }
+    namingChats.insert(id)
+    Task { [weak self] in
+      let answer = await client.chatTitle(sessionID: session, material: material)
+      guard let self else { return }
+      self.namingChats.remove(id)
+      guard let name = ChatNaming.name(from: answer) else { return }
+      self.store.giveName(name, to: id)
     }
   }
 

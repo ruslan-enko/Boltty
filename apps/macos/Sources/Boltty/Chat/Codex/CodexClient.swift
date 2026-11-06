@@ -198,6 +198,14 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return AgentActivityHistory.codex(result)
   }
 
+  /// Codex names its threads itself, a moment after a turn, and not always
+  /// (three of Boltty's four, 0.166.0). What it does not name keeps its request.
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    await ChatNaming.fromRecord {
+      CodexSessionStore().indexedTitles()[sessionID.lowercased()]
+    }
+  }
+
   // MARK: - Context
 
   func contextUsage(sessionID: String) async -> AgentContextUsage? {

@@ -6,7 +6,7 @@ final class AgentPaletteMetricsTests: XCTestCase {
     XCTAssertEqual(AgentPaletteMetrics.promptFontSize, 20)
     XCTAssertEqual(AgentPaletteMetrics.resultsTitleFontSize, 15)
     XCTAssertEqual(AgentPaletteMetrics.resultsSubtitleFontSize, 13)
-    XCTAssertEqual(AgentPaletteMetrics.promptSize.height, 85)
+    XCTAssertEqual(AgentPaletteMetrics.promptSize.height, 92)
     XCTAssertEqual(AgentPaletteMetrics.iconSize, 33.5)
   }
 

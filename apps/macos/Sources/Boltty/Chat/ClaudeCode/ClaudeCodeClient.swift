@@ -344,6 +344,34 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     session.process.terminate()
   }
 
+  // MARK: - A chat's name
+
+  /// Print mode names nothing in its record, so a name is asked for: the
+  /// smallest model the CLI lists, with none of the person's servers, hooks or
+  /// instructions, and no session left behind (2.1.296: 5.5 s).
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    guard let executable = locate() else { return nil }
+    let models = (try? await availableModels()) ?? []
+    var arguments = [
+      "--print", "--no-session-persistence", "--strict-mcp-config",
+      "--setting-sources", "", "--settings", #"{"disableAllHooks":true}"#,
+      "--tools", "", "--system-prompt", ChatNaming.instruction, "--output-format", "text",
+    ]
+    if let small = models.first(where: { $0.selection.modelID.contains("haiku") }) {
+      arguments += ["--model", small.selection.modelID]
+    } else if let usual = models.first(where: \.isDefault) {
+      arguments += Self.effortArguments(AskBolttyConfiguration.fastestEffort(usual.effortOptions))
+    }
+    let answer = await OneShotCommand.run(
+      executable, arguments,
+      deadline: ChatNaming.askDeadline,
+      input: ChatNaming.conversation(material),
+      directory: ChatNaming.workingDirectory()
+    )
+    guard let answer, answer.exitCode == 0 else { return nil }
+    return answer.output
+  }
+
   // MARK: - Process lifecycle
 
   private func locate() -> String? {

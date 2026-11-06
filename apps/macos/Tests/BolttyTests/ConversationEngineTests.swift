@@ -1022,6 +1022,39 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertNotNil(reply.completedAt, "an idle turn has nothing left to write")
   }
 
+  func testAChatIsNamedOnceAfterATurnThatSaidSomething() async throws {
+    let (engine, id, remote) = try await attachedConversation(client)
+    withExtendedLifetime(engine) {}
+    client.chatTitleAnswer = "Рахунки в папці"
+    store.appendUserMessage(id: "msg_user", text: "rename the invoices", attachments: [], to: id)
+
+    client.emit(.executionStateChanged(sessionID: remote, state: .idle))
+    try await waitFor("the silent turn to end") {
+      self.store.conversation(id: id)?.lastKnownState == .idle
+    }
+    XCTAssertTrue(client.chatTitleRequests.isEmpty, "nothing said, nothing to name it by")
+
+    store.setExecutionState(.working, for: id)
+    client.emit(.messageUpdated(
+      sessionID: remote,
+      message: ConversationMessage(
+        id: "msg_reply", role: .agent, createdAt: Date(),
+        parts: [.text(TextPart(id: "p", kind: .text, text: "Done."))]
+      )
+    ))
+    client.emit(.executionStateChanged(sessionID: remote, state: .idle))
+    try await waitFor("the name") { self.store.conversation(id: id)?.hasOwnName == true }
+    XCTAssertEqual(store.conversation(id: id)?.title, "Рахунки в папці")
+    XCTAssertEqual(client.chatTitleRequests.first?.reply, "Done.")
+
+    store.setExecutionState(.working, for: id)
+    client.emit(.executionStateChanged(sessionID: remote, state: .idle))
+    try await waitFor("the next turn to end") {
+      self.store.conversation(id: id)?.lastKnownState == .idle
+    }
+    XCTAssertEqual(client.chatTitleRequests.count, 1, "a name is given once")
+  }
+
   func testAnIdleTurnThatSaidNothingLeavesTheTranscriptAsItWas() async throws {
     let (engine, id, remote) = try await attachedConversation(client)
     withExtendedLifetime(engine) {}

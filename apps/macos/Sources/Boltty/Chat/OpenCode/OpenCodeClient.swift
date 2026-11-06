@@ -293,6 +293,16 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return !events.isEmpty
   }
 
+  /// OpenCode names a session itself, a moment after its first turn; until
+  /// then its title is a placeholder, which `ChatNaming.name` refuses.
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    await ChatNaming.fromRecord { [self] in
+      let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo>? =
+        try? await get("/api/session/\(sessionID)")
+      return session?.data.title
+    }
+  }
+
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
     async let sessionCall: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> =
       get("/api/session/\(id)")

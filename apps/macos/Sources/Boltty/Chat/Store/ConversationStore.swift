@@ -202,6 +202,16 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.title = title }
   }
 
+  /// Gives a chat its name. Nothing was said by it, so its place in the list
+  /// stays where it was.
+  func giveName(_ name: String, to id: UUID) {
+    updateWithoutTouching(id) {
+      $0.title = name
+      $0.hasOwnName = true
+    }
+    scheduleIndexSave()
+  }
+
   func setModel(_ model: ModelSelection?, for id: UUID) {
     update(id) {
       $0.model = model

@@ -3,7 +3,7 @@ import XCTest
 
 final class AgentPaletteGeometryTests: XCTestCase {
   func testIdleCapsuleUsesTheWideReferenceProportion() {
-    XCTAssertEqual(AgentPaletteMetrics.promptSize, CGSize(width: 540, height: 85))
+    XCTAssertEqual(AgentPaletteMetrics.promptSize, CGSize(width: 540, height: 92))
     XCTAssertEqual(
       AgentPaletteMetrics.promptSize.width - 20,
       AgentPaletteMetrics.fromMock(388.449),

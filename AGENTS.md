@@ -479,7 +479,7 @@ The loop that must keep working:
   centre stays put. The cursor reaches the screen from a non-activating panel
   through `BackgroundCursor` (private `CGSSetConnectionProperty`, looked up with
   `dlsym`). Sizes are kept in `BolttyAISurfaceSizes`.
-- **Sizes:** first screen 540 × 85 capsule; once the draft wraps or holds a
+- **Sizes:** first screen 540 × 92 capsule; once the draft wraps or holds a
   card it widens to 680 (until emptied) and grows up to five lines, with the
   cards' band over them; list five rows; chat 584 × 680 default. They reserve their space; short content does
   not shrink them.
@@ -530,7 +530,7 @@ The loop that must keep working:
   uncovered from under the shell's top. Moved at once, the line stood below a
   foot that had not got there, and the mask cut it away. Cards hold the width
   at 680 until the last goes. In a chat the band comes out of the transcript, at
-  once. The band is 120 on the first screen (corner 22.5) and 116 in a chat
+  once. The band is 120 on the first screen (corner 26) and 116 in a chat
   (corner 13), both concentric with their shells; it is nothing while the list
   is up. The placeholder stands beside cards: `isEmptyPrompt` means no words,
   `isWhollyEmpty` nothing at all.
@@ -636,8 +636,19 @@ The loop that must keep working:
   to, the still picture (`handOver`, `awake`) so switching never jumps.
 - Rows are built lazily near the viewport (`ResultsListView`); a filtered row is
   hidden in place. A row's preview stops at 400 characters.
-- A row's title is the first request, cleaned of brackets and Boltty's paths
-  (`ChatTitle`). Unread rows have a blue dot and a semibold title. A working
+- A row's title is the chat's name once it has one, until then the first
+  request, cleaned of brackets and Boltty's paths (`ChatTitle`). **The name comes
+  once, after a turn that ended well with something said** (`nameIfDue`,
+  `AgentClient.chatTitle`, `ChatNaming`, `Conversation.hasOwnName`), fades in on
+  the row, keeps the row's place and stays when the talk moves on. OpenCode,
+  Grok and Codex name their sessions themselves, so it is read off their records
+  (waited for over 22 s). Claude Code's print mode and Antigravity name nothing,
+  so it is asked of the smallest model they list, in a folder of its own, at a
+  small cost to the plan (5.5 s; `--no-session-persistence`, nothing left on
+  disk). `agy` cannot keep no record: each name leaves one conversation, which is
+  left alone and counts in Usage. No name is no failure: the request stays, and
+  the next turn tries again. Ask Boltty chats are not named, and what the
+  person typed is still found by search, off the transcript. Unread rows have a blue dot and a semibold title. A working
   row's second line is the step it is on ("Reading upscale.py", "Thinking…",
   `BolttyAISessionList.liveStep`; "Working…" between steps), with a band of the
   agent's light sweeping across those words, as the CLIs' shimmer does. Nothing

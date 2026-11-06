@@ -667,6 +667,50 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     process.terminate()
   }
 
+  // MARK: - A chat's name
+
+  /// Its record names nothing, so a name is asked for: Flash at its lowest
+  /// effort where it is listed (1.5.2: 5.4 s). `agy` has no way to keep no
+  /// record, so each name leaves one conversation behind, in a folder of its own.
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    guard let executable = locate(),
+          let models = try? await availableModels(),
+          let model = models.first(where: { $0.selection.modelID.contains("flash") })
+            ?? models.first(where: \.isDefault)
+    else { return nil }
+    var arguments = [
+      "--input-format", "stream-json", "--output-format", "stream-json",
+      "--disable-slash-commands", "--model", model.selection.modelID,
+    ]
+    if let effort = AskBolttyConfiguration.fastestEffort(model.effortOptions) {
+      arguments += ["--effort", effort]
+    }
+    arguments.append("--print=")
+    let words = ChatNaming.instruction + "\n\n" + ChatNaming.conversation(material)
+    let frame: [String: Any] = ["event": "user", "message": ["content": words]]
+    guard let line = try? JSONSerialization.data(withJSONObject: frame) else { return nil }
+    let answer = await OneShotCommand.run(
+      executable, arguments,
+      deadline: ChatNaming.askDeadline,
+      input: String(decoding: line, as: UTF8.self) + "\n",
+      directory: ChatNaming.workingDirectory()
+    )
+    guard let answer, answer.exitCode == 0 else { return nil }
+    return Self.response(inStream: answer.output)
+  }
+
+  /// The words of the `result` frame, which repeats what the deltas said.
+  static func response(inStream output: String) -> String? {
+    for line in output.split(whereSeparator: \.isNewline).reversed() {
+      guard let frame = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],
+            frame["event"] as? String == "result",
+            let result = frame["result"] as? [String: Any]
+      else { continue }
+      return result["response"] as? String
+    }
+    return nil
+  }
+
   func shutdown() async {
     let (live, gate) = lock.withLock { () -> ([JSONLineProcess], AntigravityPermissionGate?) in
       let processes = sessions.values.compactMap(\.process)

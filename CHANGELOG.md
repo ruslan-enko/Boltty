@@ -2,6 +2,18 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.6.0
+
+**Boltty AI**
+- Chats name themselves. After a turn that ended well, a row in the list changes
+  from your first request to a few words about the chat, and keeps its place. You
+  can still find a chat by what you typed.
+- OpenCode, Grok and Codex already name their sessions, so Boltty reads the name
+  from there. Claude Code and Antigravity don't, so Boltty asks their smallest model
+  once per chat, which takes a little of your plan. Antigravity also keeps one short
+  conversation for each name, and it counts in Usage.
+- The prompt stands a little taller.
+
 ## 0.5.1
 
 **Settings**
