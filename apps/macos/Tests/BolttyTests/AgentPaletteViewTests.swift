@@ -2187,7 +2187,8 @@ final class AgentPaletteViewTests: XCTestCase {
     view.layoutSubtreeIfNeeded()
     let typed = try XCTUnwrap(view.typedBaselineInWindowForTesting, "nothing laid out")
 
-    XCTAssertEqual(placeholder, typed, accuracy: 0.5)
+    // A pixel: at 1× each snaps to its own whole point.
+    XCTAssertEqual(placeholder, typed, accuracy: 1 / (NSScreen.main?.backingScaleFactor ?? 1))
   }
 
   func testPlainTypeIsCentredInTheRowLikeTheIconBesideIt() {

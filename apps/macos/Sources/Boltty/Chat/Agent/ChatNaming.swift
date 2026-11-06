@@ -43,7 +43,11 @@ enum ChatNaming {
       .first { !$0.isEmpty } ?? ""
     let marks = CharacterSet(charactersIn: "\"'`«»“”„‘’*#").union(.whitespaces)
     var name = line.trimmingCharacters(in: marks)
-    while let last = name.last, ".:".contains(last) { name.removeLast() }
+    // In turn, since a stop can stand outside the quotes as well as in them.
+    while let last = name.last, ".:".contains(last) {
+      name.removeLast()
+      name = name.trimmingCharacters(in: marks)
+    }
     guard !name.isEmpty, name.count <= longestName else { return nil }
     guard !placeholders.contains(where: { name.hasPrefix($0) }) else { return nil }
     return name
