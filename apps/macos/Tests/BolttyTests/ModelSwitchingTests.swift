@@ -191,7 +191,6 @@ final class ModelSwitchingTests: XCTestCase {
     XCTAssertEqual(try events(#"{"id":"e","type":"provider.updated","data":{}}"#), [.modelsChanged])
   }
 
-  /// As recorded from 2.2.5 asked to run a model no provider has.
   func testAnExecutionThatFailedIsAFailureAndNotAChatLeftWorking() throws {
     let found = try events(#"""
       {"id":"e","type":"session.execution.failed","data":{"sessionID":"ses_1",\#

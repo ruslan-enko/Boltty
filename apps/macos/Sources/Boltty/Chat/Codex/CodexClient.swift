@@ -160,10 +160,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  /// `turn/start` carries the model and effort, turn by turn (0.167: two turns
-  /// on one thread, each with its own model in the rollout's `turn_context`).
-  /// A chat that chose no effort keeps the thread's; another model's turn goes
-  /// without one, since that level may not be the new model's.
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
     let server = try await server()
     try await ensureThread(id: id, on: server)
@@ -179,7 +175,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// Read off the rollout: thread/resume writes to it.
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
     let live = lock.withLock { () -> (directory: String, model: ModelSelection?, state: ConversationExecutionState)? in
       threads[id].map { ($0.directory, $0.model, $0.executionState) }
@@ -217,8 +212,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return AgentActivityHistory.codex(result)
   }
 
-  /// Codex names its threads itself, a moment after a turn, and not always
-  /// (three of Boltty's four, 0.166.0). What it does not name keeps its request.
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     await ChatNaming.fromRecord {
       CodexSessionStore().indexedTitles()[sessionID.lowercased()]
@@ -475,8 +468,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     running?.terminate()
   }
 
-  /// The same ending as a quit, which leaves nothing that a new server cannot
-  /// pick up: threads are resumed on it as they are next used (`ensureThread`).
   func restartIdleProcess() async { await shutdown() }
 
   // MARK: - The server

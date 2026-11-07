@@ -9,7 +9,6 @@ protocol AgentClient: AnyObject, Sendable {
 
   func availableModels() async throws -> [AgentModelOption]
 
-  /// How long a model list is good for before the panel opening reads it again.
   var modelListLifetime: TimeInterval { get }
 
   func makeSessionID() -> String
@@ -19,11 +18,6 @@ protocol AgentClient: AnyObject, Sendable {
     options: AgentSessionOptions
   ) async throws -> RemoteSessionInfo
 
-  /// Makes an existing session run as `options` say from its next turn: after a
-  /// relaunch, when the person chose another model in the chat, when the CLI's
-  /// process was let go. The engine calls it before a send whenever what is in
-  /// force is not what the chat asks for, never during a turn. `.sessionNotFound`
-  /// means the session is gone, as from `send`.
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot
@@ -80,17 +74,10 @@ protocol AgentClient: AnyObject, Sendable {
 
   func shutdown() async
 
-  /// Lets go of what keeps a session open in Boltty — a CLI's process per
-  /// conversation — without touching the CLI's record of it. A later send
-  /// starts it again. Ask Boltty lets go of every chat it is done with.
   func release(sessionID: String) async
 
-  /// Ends a process kept running across chats, with nothing running in it, so
-  /// the next request starts the CLI as it is now on disk.
   func restartIdleProcess() async
 
-  /// A few words naming this chat, from the CLI's record or asked of a small
-  /// model. nil is no name yet: the engine tries again after the next turn.
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String?
 
   func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?)
@@ -129,8 +116,6 @@ struct AgentSessionOptions: Equatable, Sendable {
   var model: ModelSelection?
   var effort: String?
   var autoApprove: Bool
-  /// Start the agent without the tools that write, where the CLI can be told.
-  /// The engine refuses every permission such a chat is asked either way.
   var readOnly: Bool
 
   init(
@@ -197,15 +182,11 @@ struct AgentModelOption: Identifiable, Equatable, Sendable {
 }
 
 extension Array where Element == AgentModelOption {
-  /// What Settings stores: the option's `id`, or from before that its bare model
-  /// id, which two of OpenCode's providers can share.
   func option(stored: String?) -> AgentModelOption? {
     guard let stored, !stored.isEmpty else { return nil }
     return first { $0.id == stored } ?? first { $0.selection.modelID == stored }
   }
 
-  /// A chat's model: exactly, else by its id alone, since a chat's record can
-  /// name the agent where the list names the provider.
   func option(for selection: ModelSelection?) -> AgentModelOption? {
     guard let selection else { return nil }
     return first { $0.selection.providerID == selection.providerID && $0.selection.modelID == selection.modelID }
@@ -309,7 +290,6 @@ enum AgentEvent: Equatable, Sendable {
   )
   case fileChanged(sessionID: String, path: String)
   case sessionDeleted(sessionID: String)
-  /// The agent's own catalogue changed: read its model list again.
   case modelsChanged
 
   var sessionID: String? {

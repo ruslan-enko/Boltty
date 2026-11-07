@@ -12,8 +12,6 @@ extension ClaudeCodeClient {
     let id: String
     let directory: String
     var model: ModelSelection?
-    /// What the process was started with; another effort or read-only needs
-    /// another process (`prepareSession`).
     let options: AgentSessionOptions
     let process: JSONLineProcess
     var readerTask: Task<Void, Never>?
@@ -233,7 +231,6 @@ enum ClaudeCodeTranscript {
         order.append(id)
 
       case "attachment":
-        // Words sent mid-turn are filed as a queued_command attachment, not a user record.
         guard let attachment = record.object("attachment"),
               attachment.string("type") == "queued_command"
         else { return true }

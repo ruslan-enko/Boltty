@@ -19,8 +19,6 @@ final class LocalModelStoreTests: XCTestCase {
       "Model.mlmodelc/weights/weight.bin": Data(repeating: 7, count: 4096),
       "Model.mlmodelc/model.mil": Data("program".utf8),
     ])
-    // Digests of the bodies as served now; a test that changes a body after
-    // this serves a file that no longer matches.
     model = LocalVoiceModel(
       id: .supertonic3, name: "Supertonic", repository: "Org/repo",
       revision: "0123456789abcdef0123456789abcdef01234567",
@@ -216,7 +214,6 @@ final class LocalModelStoreTests: XCTestCase {
   }
 }
 
-/// Serves bodies by path, after the revision in the URL.
 final class FakeModelFetcher: LocalModelFetching, @unchecked Sendable {
   private let lock = NSLock()
   private var _bodies: [String: Data]
@@ -254,7 +251,6 @@ final class FakeModelFetcher: LocalModelFetching, @unchecked Sendable {
   }
 }
 
-/// The folders `prepare` was handed, from whatever thread it ran on.
 private final class PreparedFolders: @unchecked Sendable {
   private let lock = NSLock()
   private var added: [URL] = []

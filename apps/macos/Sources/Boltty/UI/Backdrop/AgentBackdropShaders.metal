@@ -1,25 +1,3 @@
-//  AgentBackdropShaders.metal
-//
-//  What an open chat wears behind its transcript, in the agent's own
-//  sky (`ChatBackdrop`, `AgentBackdropSky`): clouds, or stars on near black.
-//
-//  The sky is after Messages' Sky backgrounds, read off the system's
-//  `DynamicBackgroundPosterExtension` (`clouds.vfx`): there each cloud is a
-//  large sprite cut from a packed cloud texture, its UVs pushed about by two
-//  scrolling noise samples, its edge choked with a `smoothstep`, and tinted by
-//  a vertical ramp; three depths (far, middle, near) drift at their own
-//  speeds, and a preset is only another row of the ramps. Here the sprite is
-//  replaced by domain-warped noise, so nothing of theirs ships and the shapes
-//  never repeat; the preset is the face's own sky (`AgentBackdropSky`): a
-//  blue face gets a blue day, a pink-and-cyan one a teal dusk with rosy
-//  clouds. The sky is whole and coloured, as theirs is, but deeper, and its
-//  brightness rolls off under a ceiling: theirs carries bubbles, ours carries
-//  bare white prose.
-//
-//  Every scene is dark at the top on purpose: the answer is white prose on
-//  this, and the shell's other states wear a black ramp there too. The corner
-//  is the view layer's, not this file's (see `AgentBackdropUniforms.scene`).
-
 #include <metal_stdlib>
 #include "AgentBackdropUniforms.h"
 
@@ -59,8 +37,6 @@ static inline float backdropNoise(float2 p) {
   return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
 }
 
-/// `octaves` of noise, each turned against the last so no grid shows through.
-/// Soft things need fewer: an octave past what a shape shows is pure cost.
 static inline float backdropFBM(float2 p, int octaves) {
   const float2x2 turn = float2x2(float2(0.8, 0.6), float2(-0.6, 0.8));
   float sum = 0.0;
@@ -75,9 +51,6 @@ static inline float backdropFBM(float2 p, int octaves) {
 
 static inline float backdropFBM(float2 p) { return backdropFBM(p, 5); }
 
-/// Brightness rolled off above `knee` so it never passes `ceiling`: white
-/// prose stays readable on the brightest cloud. Dimming alone turns white
-/// grey and yellow olive, so what is dimmed gets back saturation in step.
 static inline float3 backdropCeiling(float3 c, float knee, float ceiling) {
   const float y = dot(c, float3(0.2126, 0.7152, 0.0722));
   if (y <= knee) { return c; }
@@ -91,8 +64,6 @@ static inline float3 backdropCeiling(float3 c, float knee, float ceiling) {
 // MARK: - Sky
 
 static float3 backdropSky(float2 local, float2 size, float t, constant float4 *sky) {
-  // Height 0 at the foot, 1 at the top; uv square, so clouds keep their shape
-  // as the chat is resized.
   const float h = local.y / size.y;
   const float2 uv = local / 420.0;
   const float3 zenith = sky[0].rgb;
@@ -102,10 +73,6 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
   const float3 middle = sky[4].rgb;
   const float3 glow = sky[5].rgb;
 
-  // The feeling of the face's colour, not a wall of it: a soft walk from the
-  // horizon through the middle of the sky to the zenith, leaning across the
-  // chat and breathing with a slow noise, so no two heights are one flat
-  // band. The sun's glow warms one corner low down.
   const float x = local.x / size.x;
   const float lean = (backdropFBM(local / size * 1.3 + float2(t * 0.006, 0.0), 3) - 0.5) * 0.3;
   const float g = clamp(h * 0.85 + (0.5 - x) * 0.25 + lean, 0.0, 1.0);
@@ -115,9 +82,6 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
   const float sun = exp(-pow(length((local - sunAt) / float2(size.x * 0.75, size.y * 0.5)), 1.4) * 1.8);
   color = mix(color, glow, sun * 0.75);
 
-  // Far, middle and near: each larger, faster and lower than the last — the
-  // same three depths as Messages' BG, MG and FG. The far ones sit in the
-  // sky's own haze.
   const float3 scales = float3(2.1, 1.4, 0.95);
   const float3 speeds = float3(0.0125, 0.023, 0.036);
   const float3 bands = float3(0.7, 0.45, 0.18);
@@ -125,11 +89,8 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
   const float3 softness = float3(0.2, 0.13, 0.09);
 
   for (int layer = 0; layer < 3; layer++) {
-    // Wider than tall, as clouds lie in a sky.
     const float2 p = float2(uv.x * 0.5, uv.y) * scales[layer]
       + float2(t * speeds[layer], 0.0) + float2(float(layer) * 11.7, float(layer) * 3.9);
-    // Two slow noises push the shape about, as Messages' two scrolling
-    // samples push its sprite's UVs, so the clouds billow as they drift.
     const float2 warp = float2(
       backdropFBM(p * 0.55 + float2(0.0, t * 0.02), 3),
       backdropFBM(p * 0.55 + float2(5.2, 1.3) - t * 0.016, 3)
@@ -137,30 +98,19 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
     const float2 at = p + 0.6 * warp;
     // Four octaves: a fifth frays the edges into smoke.
     const float density = backdropFBM(at, 4);
-    // A band of weather per layer, so the sky is not covered evenly.
     const float band = exp(-pow((h - bands[layer]) / 0.22, 2.0));
     const float threshold = mix(0.6, 0.36, band);
-    // The choke: a soft edge, not a fog; softer far away.
     const float cloud = smoothstep(threshold, threshold + softness[layer], density);
     if (cloud <= 0.001) { continue; }
 
-    // Lit from above: where the cloud thins toward the light it is bright,
-    // where it thickens away from it, the underside takes the shade.
     const float toward = backdropFBM(at + float2(0.05, 0.16), 4);
     const float lit = clamp((density - toward) * 5.0 + 0.4, 0.0, 1.0);
     const float thick = smoothstep(threshold + 0.04, threshold + 0.32, density);
-    // The shade is the sky's own colour, so a cloud belongs to the sky it
-    // sits in; the light is the sun's, coloured by its glow. Near-white tops
-    // would only come out grey under the ceiling.
-    // Low down the shade is the horizon's, deepened: a blue underside over a
-    // warm horizon mixes to grey, as no sunset does.
     const float3 under = mix(horizon * 0.82, underside, smoothstep(0.2, 0.62, h));
     const float3 shade = mix(under, color, 0.5);
     const float3 light = mix(sunlight, glow, 0.3 + sun * 0.3 + (1.0 - smoothstep(0.0, 0.5, h)) * 0.25);
     float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
-    // A silver lining where the cloud is thin and faces the light.
     body += light * (1.0 - thick) * lit * 0.3;
-    // Aerial perspective: far clouds melt into the sky behind them.
     body = mix(body, color, haze[layer]);
     color = mix(color, body, cloud);
   }
@@ -170,8 +120,6 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
 
 // MARK: - Space
 
-/// The colour of a star: most are white, some lean blue, a few warm, and a
-/// few take the face's own light — a sky of one white reads as a pattern.
 static float3 backdropStarColor(float k, float3 face) {
   const float3 blue = float3(0.72, 0.82, 1.0);
   const float3 warm = float3(1.0, 0.84, 0.64);
@@ -180,13 +128,6 @@ static float3 backdropStarColor(float k, float3 face) {
   return mix(c, face, step(0.82, fract(k * 7.31)) * 0.6);
 }
 
-/// One depth of stars: at most one star in a cell of a grid, drifting left
-/// at `drift` points a second. How many cells hold one swells and thins with
-/// `crowd`, so they gather in loose drifts instead of an even sprinkle;
-/// brightness falls off steeply, so most are faint and few are bright. The
-/// brightest wear a soft halo and, in the nearest depth, faint rays. Each
-/// centre keeps `margin` of its cell clear, so nothing it draws is cut by the
-/// cell's edge.
 static float3 backdropStarLayer(
   float2 local, float cellSize, float chance, float radius, float drift, float seed,
   float margin, bool rays, float t, float pixel, float3 face
@@ -212,7 +153,6 @@ static float3 backdropStarLayer(
     const float thin = exp(-min(abs(d.x), abs(d.y)) / max(pixel, 0.35));
     light += along * along * thin * 0.35 * smoothstep(0.45, 1.0, magnitude);
   }
-  // A slow scintillation, deeper for the faint ones.
   const float twinkle = 1.0 - (0.45 - 0.3 * magnitude)
     * (0.5 + 0.5 * sin(t * (0.6 + jitter.x * 1.6) + jitter.y * 40.0));
   return backdropStarColor(backdropHash(cell + seed + 5.3), face) * light * twinkle;
@@ -226,10 +166,6 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
   const float3 light = sky[2].rgb;
   const float3 glow = sky[5].rgb;
 
-  // Near black, as space is. Only breaths of the face's sky: its glow low in
-  // one corner, as if a dawn were still below the edge, and its zenith in
-  // the opposite one, both drifting slowly so the dark is never one flat
-  // fill. No clouds, no milky way, no night colour.
   const float breath = backdropFBM(local / 380.0 + float2(t * 0.004, 0.0), 3);
   float3 color = float3(0.006, 0.007, 0.011);
   const float dawn = exp(-pow(length(float2((x - 0.82) * 1.1, h + 0.08)), 2.0) * 3.2);
@@ -237,15 +173,12 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
   const float dusk = exp(-pow(length(float2((x - 0.08) * 1.2, h - 0.95)), 2.0) * 3.5);
   color += zenith * dusk * (0.08 + 0.04 * breath);
 
-  // Four depths: dust, small, middle and near; the nearest drift fastest.
   float3 stars = backdropStarLayer(local, 7.0, 0.11, 0.3, 0.5, 0.0, 0.15, false, t, pixel, light) * 0.45;
   stars += backdropStarLayer(local, 16.0, 0.13, 0.5, 0.9, 17.0, 0.15, false, t, pixel, light) * 0.75;
   stars += backdropStarLayer(local, 38.0, 0.12, 0.8, 1.5, 41.0, 0.2, false, t, pixel, light) * 1.1;
   stars += backdropStarLayer(local, 84.0, 0.26, 1.1, 2.4, 73.0, 0.25, true, t, pixel, light) * 1.15;
-  // Fewer stars where the dawn still glows.
   color += stars * (1.0 - 0.7 * dawn);
 
-  // Now and then a star falls across the upper sky.
   const float period = 11.0;
   const float which = floor(t / period);
   const float age = fract(t / period) * period;
@@ -283,9 +216,7 @@ fragment float4 agentBackdropFragment(
     color = backdropSky(in.local, size, t, u.sky);
   }
 
-  // The top darkens toward black, as the shell's ramp does elsewhere.
   color *= mix(1.0, 0.45, smoothstep(0.62, 1.0, h));
-  // Sub-quantum grain against banding in a wash this smooth.
   color += (backdropHash(in.position.xy + fract(t)) - 0.5) / 255.0;
 
   return float4(max(color, 0.0) * u.opacity, u.opacity);

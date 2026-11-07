@@ -318,8 +318,6 @@ enum OpenCodeMapper {
     }
   }
 
-  /// A model's `variants` are its reasoning levels (`/api/model` on 2.0): `[{id, settings}]`.
-  /// A model that lists both `none` and `minimal` would show "Minimal" twice.
   static func efforts(from variants: JSONValue?) -> [AgentEffortOption] {
     (variants?.arrayValue ?? []).compactMap { variant in
       guard let id = variant["id"]?.stringValue, !id.isEmpty else { return nil }

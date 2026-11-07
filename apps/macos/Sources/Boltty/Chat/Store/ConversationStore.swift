@@ -140,8 +140,6 @@ final class ConversationStore: ObservableObject {
     objectWillChange.send()
   }
 
-  /// Gone on with in the panel, an Ask Boltty chat is the person's own: it is no
-  /// longer forgotten, and it asks as any chat does.
   func keepAskBolttyChat(id: UUID) {
     guard let index = conversations.firstIndex(where: { $0.id == id }),
           conversations[index].isAskBoltty
@@ -202,8 +200,6 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.title = title }
   }
 
-  /// Gives a chat its name. Nothing was said by it, so its place in the list
-  /// stays where it was.
   func giveName(_ name: String, to id: UUID) {
     updateWithoutTouching(id) {
       $0.title = name
@@ -316,8 +312,6 @@ final class ConversationStore: ObservableObject {
   func attachRemoteSession(_ remoteID: String, to id: UUID, model: ModelSelection?) {
     update(id) {
       $0.remoteSessionID = remoteID
-      // Only what the chat did not name: chosen while the session started, the
-      // person's choice stands and the next send applies it.
       if $0.model == nil, let model { $0.model = model }
     }
   }
@@ -566,8 +560,6 @@ final class ConversationStore: ObservableObject {
         last.completedAt = last.completedAt ?? clock()
         upsert(last, in: id)
       } else if !failure.isAbort {
-        // Failed before the agent said anything: the failure's words still need
-        // a place, or the card has nothing to say about what went wrong.
         var empty = ConversationMessage(
           id: "failure-\(UUID().uuidString)", role: .agent, createdAt: clock(), completedAt: clock())
         empty.failure = failure

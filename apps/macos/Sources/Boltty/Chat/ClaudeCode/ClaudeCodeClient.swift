@@ -14,8 +14,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
   private let lock = NSLock()
   private var sessions: [String: LiveSession] = [:]
-  /// What each chat asked for last: the next process starts with it, whoever
-  /// ended the one before (Boltty, a crash, `prepareSession`).
   private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var conversationResolver: (@Sendable (String) -> UUID?)?
@@ -103,10 +101,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  /// `set_model` reaches the running process, so the chat's "Always allow" rules
-  /// survive it (2.1.319: the next turn ran the new model). Effort and the
-  /// read-only tools are launch flags, so those let the process go, and the next
-  /// send resumes it with them; `--resume` takes `--model` and costs 0.3 s.
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
     let live = lock.withLock { () -> LiveSession? in
       wantedOptions[id] = options
@@ -138,11 +132,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  /// A read-only chat's tools: measured on 2.1.296, asked to write
-  /// a file and run `touch`, it had neither tool and did neither. The web
-  /// reads nothing of the person's and writes nothing, so it goes without
-  /// asking (`readOnlyAllowedTools`): a read-only chat refuses every ask,
-  /// and "find where this news is" needs a search.
   static let readOnlyTools = "Read,Glob,Grep,WebSearch,WebFetch"
   static let readOnlyAllowedTools = "WebSearch,WebFetch"
 
@@ -168,11 +157,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return arguments
   }
 
-  /// Auto is Claude Code's own `auto` mode: its classifier lets through what
-  /// the person asked for, edits and commands alike, and asks about the rest
-  /// (2.1.296: `ls`, `rm -rf ./junk` and `git push --force`, each asked for,
-  /// ran without a `can_use_tool`). `acceptEdits` still asked about every
-  /// command, which read as Auto not working.
   static func permissionMode(autoApprove: Bool) -> String {
     autoApprove ? "auto" : "default"
   }
@@ -381,9 +365,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   // MARK: - A chat's name
 
-  /// Print mode names nothing in its record, so a name is asked for: the
-  /// smallest model the CLI lists, with none of the person's servers, hooks or
-  /// instructions, and no session left behind (2.1.296: 5.5 s).
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     guard let executable = locate() else { return nil }
     let models = (try? await availableModels()) ?? []

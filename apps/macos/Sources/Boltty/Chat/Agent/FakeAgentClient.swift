@@ -155,7 +155,6 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
     return existingMessages.contains(id)
   }
 
-  /// Seconds a stop takes per session; a cancelled wait records no stop.
   var stopDelays: [String: TimeInterval] = [:]
 
   func stop(sessionID: String) async throws {

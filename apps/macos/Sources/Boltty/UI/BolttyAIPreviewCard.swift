@@ -70,9 +70,7 @@ final class BolttyAIPreviewCard: NSView {
   var onClose: (() -> Void)?
   var onRecover: ((String) -> Void)?
   var onUseFile: ((URL) -> Void)?
-  /// Read an answer aloud, or stop it.
   var onSpeak: ((ConversationMessage) -> Void)?
-  /// The answer being read aloud, which keeps its stop control up.
   var speakingMessageID: String? {
     didSet {
       guard speakingMessageID != oldValue else { return }
@@ -240,7 +238,6 @@ final class BolttyAIPreviewCard: NSView {
     cancelQueuedButton.button.action = #selector(cancelQueued(_:))
     cancelQueuedButton.setAccessibilityIdentifier("boltty.ask.chat.cancelQueued")
     cancelQueuedButton.button.setContentHuggingPriority(.required, for: .horizontal)
-    // Sized to the 13-point note beside it, as the help tag's action is.
     cancelQueuedButton.button.controlSize = .regular
     cancelQueuedButton.button.titleFontSize = AgentPaletteMetrics.typeMeta
     cancelQueuedButton.button.height = AgentPaletteMetrics.helpActionHeight
@@ -863,7 +860,6 @@ final class BolttyAIPreviewCard: NSView {
     scroll.layer?.mask = scrollEdge
   }
 
-  /// The scroll view's layer is flipped: location 0 is the top.
   private func orientScrollEdge() {
     let flipped = scroll.layer?.isGeometryFlipped ?? scroll.isFlipped
     scrollEdge.startPoint = CGPoint(x: 0.5, y: flipped ? 0 : 1)
@@ -1021,7 +1017,6 @@ final class BolttyAIPreviewCard: NSView {
     }
   }
 
-  /// The questions the agent has said something after.
   private static func answeredQuestions(in items: [PaletteTranscriptItem]) -> Set<String> {
     var answered = Set<String>()
     var waiting: [String] = []
@@ -1242,8 +1237,6 @@ final class BolttyAIPreviewCard: NSView {
     return true
   }
 
-  /// What stands in a card that asks, in order. The gap between two is
-  /// `serviceGap`'s, the same for the card on screen and for its measure.
   enum ServicePiece: Equatable {
     case eyebrow, title, well, options, footer
     case actions(captioned: Bool)
@@ -1262,8 +1255,6 @@ final class BolttyAIPreviewCard: NSView {
     }
   }
 
-  /// To the ink of what ends the card: a button's edge, or the footer's
-  /// baseline.
   static func serviceBottomInset(for question: AgentQuestion) -> CGFloat {
     guard question.kind == .question else { return AgentPaletteMetrics.failureCardPadding }
     return AgentPaletteMetrics.inkInset(
@@ -1446,9 +1437,7 @@ final class PaletteChatMessageView: NSView {
       for card in sentCards { card.onUse = onUseFile }
     }
   }
-  /// What the agent made: rows, with their actions in reach.
   private var fileRows: [PaletteFileRowView] = []
-  /// What the person sent: the cards it came as, over the bubble.
   private var sentCards: [PromptAttachmentCard] = []
   var filePathsForTesting: [String] { shownFiles }
   var fileRowsForTesting: [PaletteFileRowView] { fileRows }
@@ -1482,7 +1471,6 @@ final class PaletteChatMessageView: NSView {
 
   private let copyButton = PaletteIconButton()
   private var copyResetWork: DispatchWorkItem?
-  /// Reads the answer aloud; while it does, a press stops it.
   private let speakButton = PaletteIconButton()
   var onSpeak: ((ConversationMessage) -> Void)? {
     didSet { syncAnswerActions() }
@@ -1621,9 +1609,6 @@ final class PaletteChatMessageView: NSView {
     syncAnswerActions()
   }
 
-  /// Under a question, at its trailing edge: whether the agent has taken it
-  /// up, when it was sent, and Copy. The row stands in the gap to the answer,
-  /// so it moves nothing; it shows only while the pointer is on the question.
   private func setUpQuestionMeta() {
     copyButton.toolTip = "Copy this message"
     copyButton.setAccessibilityLabel("Copy this message")
@@ -1666,7 +1651,6 @@ final class PaletteChatMessageView: NSView {
   private let questionTime = NSTextField(labelWithString: "")
   private var bubbleBottom: NSLayoutConstraint!
 
-  /// The agent has said something since this question: ✓✓ rather than ✓.
   var isAnswered = false {
     didSet { if isAnswered != oldValue { applyQuestionStatus() } }
   }
@@ -1682,8 +1666,6 @@ final class PaletteChatMessageView: NSView {
       ? AgentPaletteMetrics.previewQuestionMetaRowHeight : 0
   }
 
-  /// One tick when sent, two once the agent answers; the second overlaps the
-  /// first as messengers draw it.
   private static func statusImage(answered: Bool) -> NSImage? {
     guard let mark = BolttyIcon.check.image(size: AgentPaletteMetrics.typeMeta + 1) else { return nil }
     guard answered else { return mark }
@@ -1699,9 +1681,6 @@ final class PaletteChatMessageView: NSView {
     return image
   }
 
-  /// When a question was sent: the time today, "Yesterday" and the time,
-  /// else the day. A clock time stays true without a timer, as "5 min ago"
-  /// would not.
   static func sentTime(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
     if calendar.isDate(date, inSameDayAs: now) { return clockFormatter.string(from: date) }
     if calendar.isDateInYesterday(date) { return "Yesterday, " + clockFormatter.string(from: date) }
@@ -1757,7 +1736,6 @@ final class PaletteChatMessageView: NSView {
     copyButton.isHidden = questionMeta.isHidden
   }
 
-  /// An answer's actions stand under it for as long as it offers them.
   private func syncAnswerActions() {
     guard message.role != .user else { return }
     let offered = offersCopy && !message.copyableText.isEmpty
@@ -1765,10 +1743,6 @@ final class PaletteChatMessageView: NSView {
     speakButton.isHidden = !(offered && onSpeak != nil && speaksThisAnswer)
   }
 
-  /// Whether this answer can be read aloud — in one of the languages Boltty
-  /// speaks (`SpeechOutput.languages`). Every finished turn asks as the transcript
-  /// draws, so only the answer's start is read, and the result is kept while the
-  /// words stay the same.
   private var speaksThisAnswer: Bool {
     let words = message.copyableText
     if let known = spokenAnswer, known.words == words { return known.speaks }
@@ -1779,7 +1753,6 @@ final class PaletteChatMessageView: NSView {
 
   private var spokenAnswer: (words: String, speaks: Bool)?
 
-  /// The speaker stays the speaker; while it reads it is lit white.
   private func applySpeakGlyph() {
     let label = isSpeaking ? "Stop reading aloud" : "Read this answer aloud"
     speakButton.restingTint = isSpeaking ? .white : ComposerControlGroup.restingInk
@@ -2064,7 +2037,6 @@ final class PaletteChatMessageView: NSView {
     let width = bounds.width > 0 ? bounds.width : 464
     let frames = AgentPaletteMetrics.sentCardFrames(count: sentCards.count, width: width)
     for (card, frame) in zip(sentCards, frames) {
-      // The frames count from the row's top; this view's origin is its foot.
       card.frame = CGRect(
         x: frame.minX, y: bounds.height - frame.maxY, width: frame.width, height: frame.height)
     }

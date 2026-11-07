@@ -1,21 +1,6 @@
 import Foundation
 import SQLite3
 
-/// Reads an Antigravity conversation off `agy`'s own record:
-/// `~/.gemini/antigravity-cli/conversations/<id>.db`, a SQLite file whose
-/// `steps` rows hold protobuf with no published schema.
-///
-/// The fields below were measured on agy 1.3.4 against
-/// conversations whose text was known, and each one is read defensively: a
-/// field that moves costs that piece of the transcript, never the read.
-///
-/// - `steps.step_type` 14 is the person's input: its text at 19.2.
-/// - 15 is the agent's reply: its text at 20.1, its tool calls at 20.7
-///   (1 id, 2 name, 3 arguments as JSON). 20.3 is thinking, never shown.
-/// - 17 is an error: the provider's words at 24.3.1, else 24.3.2.
-/// - Every step's own call, when it is one, is at 5.4.1; `steps.status` 7 is
-///   a step that failed (a refused tool), 3 one that finished.
-/// - 5.1 is when the step was made (seconds, nanos).
 enum AntigravityTranscript {
   enum StepType {
     static let userInput = 14
@@ -34,8 +19,6 @@ enum AntigravityTranscript {
     root.appendingPathComponent("\(sessionID).db")
   }
 
-  /// `nil` when the conversation has no file; throws when it has one that
-  /// cannot be read.
   static func transcript(sessionID: String, in root: URL = defaultRoot) throws -> DiskTranscript? {
     let file = url(sessionID: sessionID, in: root)
     guard FileManager.default.fileExists(atPath: file.path) else { return nil }
@@ -49,11 +32,9 @@ enum AntigravityTranscript {
     var payload: Data
   }
 
-  /// The files are WAL databases. While `agy` has one open its steps are in
-  /// the `-wal`, which only a `mode=ro` connection reads; once it exits it
-  /// leaves no `-wal` or `-shm`, and `mode=ro` cannot open the file at all
-  /// (it may not create the `-shm`), so then it is opened immutable — nothing
-  /// is writing it. A read that loses that race is retried once.
+  /// WAL: while `agy` has a file open its steps are in the `-wal`, which only
+  /// `mode=ro` reads; after it exits `mode=ro` cannot open the file, so it is
+  /// opened immutable. A read that loses that race is retried once.
   static func read(at file: URL) throws -> [ConversationMessage] {
     do {
       return messages(from: try steps(at: file))
@@ -73,9 +54,6 @@ enum AntigravityTranscript {
     }
   }
 
-  /// The model each number names, off `gen_metadata` — one row per model
-  /// call, the number at 1.3 and its name at 1.19 (agy 1.3.4: every number
-  /// on this Mac's 433 replies had one). A reply step carries only the number.
   static func modelNames(at file: URL) throws -> [UInt64: String] {
     var names: [UInt64: String] = [:]
     let calls = try rows(at: file, "SELECT data FROM gen_metadata") { ProtoFields(blob($0, 0)) }
@@ -89,8 +67,6 @@ enum AntigravityTranscript {
     return names
   }
 
-  /// The files are WAL databases; see `read(at:)` for why the mode depends
-  /// on whether a `-wal` stands beside them.
   private static func rows<Row>(
     at file: URL, _ sql: String, _ make: (OpaquePointer) -> Row
   ) throws -> [Row] {
@@ -135,13 +111,6 @@ enum AntigravityTranscript {
 
   // MARK: - Usage
 
-  /// What one step counts toward Usage: the person's input is a message; a
-  /// reply step is a model call, its tokens at 5.9 — 2 input, 3 output
-  /// (thinking included), 5 cached input, counted apart from 2 as Claude
-  /// Code's cache reads are. Measured against the `usage` `agy` printed for
-  /// the same turns: input and output matched to the token; the cache field
-  /// was not seen beside a nonzero `cache_read_tokens`, and is read as one
-  /// because it exceeds the input on 264 of the 265 replies that carry it.
   struct Use: Equatable {
     var date: Date
     var model: String
@@ -232,10 +201,6 @@ enum AntigravityTranscript {
     return messages
   }
 
-  /// `agy` describes each call in its own words (`toolAction`), which reads
-  /// better than the arguments. Not every call carries them, so the command
-  /// and the file are kept too: the row names the file, and an opened
-  /// command shows what was run.
   static func described(
     _ arguments: JSONObject
   ) -> (summary: String?, detail: String?, files: [String]) {
@@ -254,13 +219,9 @@ enum AntigravityTranscript {
   }
 }
 
-/// A protobuf message read without its schema: field number → raw values.
-/// Only what the transcript needs — varints and length-delimited fields.
 struct ProtoFields {
   private(set) var varints: [Int: [UInt64]] = [:]
   private(set) var bytes: [Int: [Data]] = [:]
-  /// False when the bytes are not a well-formed message, which is how a
-  /// string is told from a nested message.
   private(set) var isWellFormed = true
 
   init(_ data: Data) {

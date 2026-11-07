@@ -92,8 +92,6 @@ final class AskBolttyConfigurationTests: XCTestCase {
     XCTAssertTrue(text.contains("search the web"))
   }
 
-  /// Ask Boltty was once called Talk, and what was stored under that
-  /// name is still read: a chat marked before it, and the Settings page.
   func testWhatWasStoredUnderTalksNameIsStillRead() throws {
     var conversation = Conversation(title: "Test", workingDirectory: "/tmp")
     conversation.isAskBoltty = true

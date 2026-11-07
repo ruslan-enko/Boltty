@@ -204,7 +204,6 @@ enum OpenCodeDTO {
     var answer: [String: FormValue]
   }
 
-  /// Typed per field: a string field refuses an array (FormInvalidAnswerError).
   enum FormValue: Encodable, Equatable, Sendable {
     case text(String)
     case selections([String])

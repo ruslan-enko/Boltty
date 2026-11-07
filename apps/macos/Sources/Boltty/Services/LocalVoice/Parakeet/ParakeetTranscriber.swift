@@ -1,18 +1,6 @@
-// The windowing follows FluidAudio's ChunkProcessor and AsrManager
-// (github.com/FluidInference/FluidAudio, Apache-2.0), much reduced.
-
 import CoreML
 import Foundation
 
-/// Parakeet TDT 0.6B on Core ML: 16 kHz mono samples in, text out.
-///
-/// The preprocessor and encoder take exactly 15 s; a longer take is read in
-/// windows that overlap by 1.6 s on each side, so every frame decoded has
-/// sound around it. The predictor's memory runs on from window to window,
-/// and each window starts where the last one's decoding stopped.
-///
-/// Loading and predicting block: one of these lives on a serial queue and is
-/// never touched from two threads.
 final class ParakeetTranscriber: @unchecked Sendable {
   enum Failure: LocalizedError {
     case missing(String)
@@ -27,11 +15,8 @@ final class ParakeetTranscriber: @unchecked Sendable {
   }
 
   static let sampleRate = 16_000
-  /// The preprocessor's fixed input: 15 s.
   static let windowSamples = 240_000
-  /// One encoder frame: 80 ms.
   static let frameSamples = 1_280
-  /// Sound kept on each side of what a window decodes: 1.6 s.
   static let contextFrames = 20
 
   private let preprocessor: MLModel
@@ -51,7 +36,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
       options.computeUnits = units
       return try MLModel(contentsOf: url, configuration: options)
     }
-    // The preprocessor is a short DSP graph: the CPU runs it best.
     preprocessor = try load("Preprocessor.mlmodelc", .cpuOnly)
     encoder = try load("Encoder.mlmodelc", .cpuAndNeuralEngine)
     decoder = try load("Decoder.mlmodelc", .cpuAndNeuralEngine)
@@ -65,7 +49,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
     })
   }
 
-  /// The text said in `samples` (16 kHz mono).
   func transcribe(_ samples: [Float]) throws -> String {
     Self.text(of: try tokens(in: samples), vocabulary: vocabulary)
   }
@@ -97,7 +80,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
     return tokens
   }
 
-  /// Pieces joined, `▁` as a space, markers (`<unk>`, `<|…|>`) left out.
   static func text(of tokens: [ParakeetTDT<[Float]>.Token], vocabulary: [Int: String]) -> String {
     tokens.compactMap { vocabulary[$0.id] }
       .filter { !($0.hasPrefix("<") && $0.hasSuffix(">")) }
@@ -124,7 +106,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
     return (frames, count[0].intValue)
   }
 
-  /// The predictor's state is `h` then `c`, each `[2, 1, 640]`, flat.
   private func predict(_ token: Int, _ state: [Float]) throws -> (projection: [Float], state: [Float]) {
     let half = Self.layers * Self.decoderSize
     let output = try run("decoder", decoder, [
@@ -166,7 +147,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
 
   // MARK: - Arrays
 
-  /// Frame `index` of a `[1, 1024, T]` encoder output, whatever its strides.
   private static func column(_ frames: MLMultiArray, _ index: Int) -> [Float] {
     let strides = frames.strides.map(\.intValue)
     let count = frames.shape[1].intValue

@@ -239,9 +239,6 @@ final class PaletteFileRowView: NSView {
     button.setAccessibilityLabel(description)
   }
 
-  /// "MP4 · 1.87 GB": the extension says what it is in fewer letters than
-  /// the type's description ("MPEG-4 movie"), and a folder has no size worth
-  /// a line.
   static func detail(ofPath path: String) -> String {
     let url = URL(fileURLWithPath: path)
     let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
@@ -252,7 +249,6 @@ final class PaletteFileRowView: NSView {
     return [kindWord(ofPath: path), size].compactMap { $0 }.joined(separator: " · ")
   }
 
-  /// What a file is in the fewest letters; nil for a file with no extension.
   static func kindWord(ofPath path: String) -> String? {
     let url = URL(fileURLWithPath: path)
     if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true { return "Folder" }
@@ -373,8 +369,6 @@ final class FileThumbnails {
     return type.conforms(to: .image) || type.conforms(to: .pdf) || type.conforms(to: .movie)
   }
 
-  /// `failed` is told when there will be no picture, so a card that was
-  /// waiting for one can say what it is in words.
   func thumbnail(
     of url: URL,
     side: CGFloat = AgentPaletteMetrics.previewFileIconTileSize,

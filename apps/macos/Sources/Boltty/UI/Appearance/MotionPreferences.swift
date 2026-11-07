@@ -63,7 +63,6 @@ enum Motion {
 
   static let pressSpring = SpringParameters(duration: 0.24, bounce: 0)
 
-  /// AppKit anchors a view's layer at (0, 0) and resets it on layout, so the scale is about the centre by transform.
   static func centredScale(_ scale: CGFloat, size: CGSize) -> CATransform3D {
     let offset = CATransform3DMakeTranslation(
       size.width * (1 - scale) / 2, size.height * (1 - scale) / 2, 0

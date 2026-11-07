@@ -24,8 +24,6 @@ final class FlippedStackView: NSStackView {
 }
 
 @MainActor
-/// A view the list stands alone in that takes at least the visible height,
-/// so what it holds can stand in the middle of the card rather than at its top.
 protocol FillsResultsViewport: NSView {}
 
 final class ResultsListView: NSView {
@@ -271,8 +269,6 @@ final class BolttyAIEmptyResultsView: NSView, FillsResultsViewport {
     addSubview(mascotView)
     addSubview(label)
 
-    // Face and words stand as one group in the middle of whatever height the
-    // list gives (`FillsResultsViewport`); alone, the view hugs them.
     let content = NSLayoutGuide()
     addLayoutGuide(content)
     let hug = heightAnchor.constraint(equalToConstant: 0)

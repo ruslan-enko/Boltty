@@ -610,11 +610,6 @@ final class PaletteAnswerTextTests: XCTestCase {
                    AgentPaletteMetrics.answerHeading2FontSize)
   }
 
-  /// A chat opens on its latest, and for a long answer that is its foot. With
-  /// non-contiguous layout the first display down there finds no glyph and
-  /// draws nothing — a chat with a long answer opens blank until it is left
-  /// and opened again. Whatever lays the text out, the foot of a
-  /// long answer has to be on screen the first time it is asked for.
   func testALongAnswerDrawsWhenItIsFirstShownAtItsFoot() throws {
     final class Flipped: NSView { override var isFlipped: Bool { true } }
     let paragraph = String(repeating: "Диск у стані, запас величезний, знос мінімальний. ", count: 10)
@@ -1552,8 +1547,6 @@ final class PaletteFileRowViewTests: XCTestCase {
     row.layoutSubtreeIfNeeded()
 
     answer?(PaletteEffectsTests.halves(width: 8, height: 8))
-    // The picture reaches the main thread asynchronously; under a full run's
-    // load a fixed 20 ms was sometimes short of it.
     let arrival = Date().addingTimeInterval(1)
     while row.revealForTesting == nil, Date() < arrival {
       RunLoop.main.run(until: Date().addingTimeInterval(0.01))
@@ -1987,7 +1980,6 @@ final class PaletteAnswerCopyTests: XCTestCase {
   }
 
   func testReadAloudSitsBesideCopyAndStaysUpWhileItSpeaks() throws {
-    // Only once Supertonic is here is there anything to read with.
     SpeechOutput.setLanguagesForTesting(["en"])
     addTeardownBlock { await MainActor.run { SpeechOutput.setLanguagesForTesting([]) } }
     let card = BolttyAIPreviewCard()

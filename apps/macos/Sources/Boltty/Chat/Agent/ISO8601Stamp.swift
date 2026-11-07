@@ -1,6 +1,5 @@
 import Foundation
 
-/// Not ISO8601DateFormatter: a formatter costs ~300 µs a stamp, this scan 0.1 µs.
 enum ISO8601Stamp {
   static func date(from value: String) -> Date? {
     scan(value) ?? reference(value)

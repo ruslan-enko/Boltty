@@ -75,8 +75,6 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertEqual(conversations.autoApproveChanges.map(\.enabled), [false])
   }
 
-  /// A chat is opened for the first time with the card not yet in the panel:
-  /// nothing there has a size to scroll by, and a long transcript came up blank.
   func testTheFirstChatOpenedAfterLaunchShowsItsTranscript() throws {
     let (_, controller, conversations) = makeController()
     let chat = conversations.addConversation(title: "rename")
@@ -101,7 +99,6 @@ final class AgentPaletteControllerTests: XCTestCase {
     let row = try XCTUnwrap(view.previewCardForTesting.messageRowForTesting("a29"))
     XCTAssertGreaterThan(row.visibleRect.intersection(row.bounds).height, 0, "the end of the chat is in sight")
 
-    // Resized wider, its words wrap less and the chat gets shorter.
     var sizes = view.surfaceSizes
     sizes.chat.width += 120
     view.surfaceSizes = sizes
@@ -316,7 +313,6 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     view.field.setDraft(PromptDraft("test"))
-
 
     let submitSelector = #selector(NSTextView.insertNewline(_:))
     XCTAssertTrue(view.textView(view.field, doCommandBy: submitSelector))
@@ -672,8 +668,6 @@ final class AgentPaletteControllerTests: XCTestCase {
     wait(for: [chip], timeout: 5)
     XCTAssertEqual(view.addressedSessionIDForTesting, chat.id, "the chat stays open")
     XCTAssertEqual(view.screenSelectionPhase, .idle)
-    // In the panel's own coordinates: it stands on the Dock's top edge where the
-    // Dock is at the foot of the screen.
     let origin = try XCTUnwrap(view.window?.frame.origin)
     XCTAssertEqual(
       view.screenOutlinesForTesting,

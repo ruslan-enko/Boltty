@@ -21,12 +21,8 @@ extension PromptAttachment {
   }
 }
 
-/// One thing that came with the words: in the composer's strip
-/// (`PromptAttachmentStrip`), and, sent, over the bubble it went with. A picture
-/// fills it; anything else says where it is and what it is, in words.
 @MainActor
 final class PromptAttachmentCard: NSView {
-  /// What a card says, worked out without a view.
   struct Look: Equatable {
     enum Words: Equatable {
       case path(String)
@@ -38,7 +34,6 @@ final class PromptAttachmentCard: NSView {
     var tag: String
     var isMissing = false
 
-    /// Words and tag are kept under a picture: they are the card if it never comes.
     var showsWordsAtRest: Bool { picture == nil }
   }
 
@@ -71,7 +66,6 @@ final class PromptAttachmentCard: NSView {
     guard FileManager.default.fileExists(atPath: path) else {
       return Look(picture: nil, words: .path(shownPath(of: url, named: named)), tag: "Missing", isMissing: true)
     }
-    // A paste kept for its card is words to the person who sent it, not a file.
     if isBolttysOwn(path), url.pathExtension == "txt", let text = beginning(of: url) {
       return Look(picture: nil, words: .excerpt(excerpt(of: text)), tag: "Text")
     }
@@ -82,13 +76,10 @@ final class PromptAttachmentCard: NSView {
       tag: tag(forPath: path))
   }
 
-  /// The extension says what a file is in fewer letters than its type's name.
   static func tag(forPath path: String) -> String {
     PaletteFileRowView.kindWord(ofPath: path) ?? "File"
   }
 
-  /// A path where the person can recognise it; a copy in Boltty's own folder
-  /// is no place of theirs, so it goes by its name.
   static func shownPath(of url: URL, named name: String) -> String {
     guard !isBolttysOwn(url.path) else { return name }
     return (url.path as NSString).abbreviatingWithTildeInPath
@@ -98,7 +89,6 @@ final class PromptAttachmentCard: NSView {
     path.contains("/Application Support/Boltty/")
   }
 
-  /// The name a copy kept in a chat's attachments folder was chosen by.
   private static func restoredName(of url: URL) -> String {
     let chat = url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
     return UUID(uuidString: chat).map { ConversationStore.attachedName(of: url, in: $0) }
@@ -109,7 +99,6 @@ final class PromptAttachmentCard: NSView {
     guard let file = try? FileHandle(forReadingFrom: url) else { return nil }
     defer { try? file.close() }
     let bytes = (try? file.read(upToCount: 600)) ?? Data()
-    // Cut anywhere, a character may be cut in two: repaired rather than refused.
     return String(decoding: bytes, as: UTF8.self)
   }
 
@@ -117,9 +106,6 @@ final class PromptAttachmentCard: NSView {
     String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300))
   }
 
-  /// The most of `path` that fits `lines` lines: the leading folders go first,
-  /// since the end of a path is what it is. A name too long alone is cut in
-  /// its middle, where neither its start nor its extension is lost.
   static func fitted(path: String, font: NSFont, width: CGFloat, lines: Int) -> String {
     let room = CGFloat(lines) * AgentPaletteMetrics.attachmentCardLineHeight + 0.5
     func fits(_ candidate: String) -> Bool {
@@ -164,7 +150,6 @@ final class PromptAttachmentCard: NSView {
   private let sentURL: URL?
 
   var onOpen: (() -> Void)?
-  /// Set, the card can be taken back: its × comes with the pointer.
   var onRemove: (() -> Void)? {
     didSet { syncClose() }
   }
@@ -298,8 +283,6 @@ final class PromptAttachmentCard: NSView {
     let labelHeight = ceil(tagLabel.intrinsicContentSize.height)
     tagLabel.frame = NSRect(
       x: tag.minX, y: tag.midY - labelHeight / 2, width: tag.width, height: labelHeight)
-    // A label's cell keeps two points each side: its ink stands on the inset,
-    // and it wraps at the width `fitted` measured.
     let cellPadding = Self.labelCellPadding
     wordsLabel.preferredMaxLayoutWidth = width + cellPadding * 2
     wordsLabel.frame = NSRect(
@@ -312,7 +295,6 @@ final class PromptAttachmentCard: NSView {
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
     if let trackingArea { removeTrackingArea(trackingArea) }
-    // Reaches the ×, which stands past the corner: leaving for it is not leaving.
     let overhang = onRemove == nil ? 0 : AgentPaletteMetrics.attachmentCloseOverhang
     let area = NSTrackingArea(
       rect: NSRect(
@@ -455,7 +437,6 @@ final class PromptAttachmentCard: NSView {
       answeredAtOnce = false
     case let .data(data):
       let pixels = Int(AgentPaletteMetrics.attachmentThumbnailSide * scale)
-      // ImageIO decodes on the caller's thread, and a screenshot is megabytes.
       DispatchQueue.global(qos: .userInitiated).async { [weak self] in
         let image = Self.downsampled(data, maxPixels: pixels)
         DispatchQueue.main.async {
@@ -537,7 +518,6 @@ final class PromptAttachmentCard: NSView {
     CATransaction.commit()
   }
 
-  /// The card as it stands, for the flight to the transcript.
   func snapshot() -> NSImage? {
     guard let bitmap = surface.bitmapImageRepForCachingDisplay(in: surface.bounds) else { return nil }
     surface.cacheDisplay(in: surface.bounds, to: bitmap)
@@ -547,7 +527,6 @@ final class PromptAttachmentCard: NSView {
   }
 }
 
-/// The card's content counts from its top, as the words read.
 private final class CardSurface: NSView {
   override var isFlipped: Bool { true }
   override var allowsVibrancy: Bool { false }

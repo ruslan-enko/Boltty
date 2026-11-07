@@ -120,9 +120,6 @@ class PaletteIconButton: NSButton {
     PaletteHelpPresenter.shared.dismiss(for: self)
   }
 
-  // A button shown under a pointer that is already there gets no
-  // mouseEntered: a reveal on hover would otherwise answer only a pointer
-  // that came in from outside it.
   override func viewDidUnhide() {
     super.viewDidUnhide()
     guard let window, window.isKeyWindow else { return }
@@ -258,7 +255,6 @@ extension NSView {
   }
 }
 
-/// A view that tells help tags where its glass is, in its own coordinates.
 @MainActor
 protocol PaletteHelpRoomProviding: AnyObject {
   var helpRoom: NSRect? { get }
@@ -371,9 +367,6 @@ final class PaletteHelpPresenter {
     return NSRect(x: x, y: y, width: size.width, height: size.height)
   }
 
-  /// The screen's room inside the host, cut to the glass the control stands
-  /// on: the panel's window is wider than its shell, and a tag hanging off
-  /// the glass reads as dropped.
   static func room(in host: NSView, for view: NSView) -> NSRect {
     var room = room(in: host)
     var ancestor = view.superview
@@ -438,14 +431,10 @@ final class PaletteHelpPresenter {
   }
 }
 
-/// What every help tag stands on: the system's glass, with density over it and
-/// never in its tint. The glass brings its own edge and shadow. It takes no
-/// clicks, so a press on a pinned tag still reaches the tag.
 final class PaletteHelpBackdrop: NSView {
   private let glass = NSGlassEffectView()
   private let density = NSView()
 
-  /// Goes in first, so everything the tag adds later stands above it.
   static func install(in tag: NSView) {
     let backdrop = PaletteHelpBackdrop()
     backdrop.translatesAutoresizingMaskIntoConstraints = false
@@ -477,7 +466,6 @@ final class PaletteHelpBackdrop: NSView {
     super.layout()
     glass.frame = bounds
     density.frame = bounds
-    // A glass view loses its corner when its size changes.
     glass.cornerRadius = AgentPaletteMetrics.helpCornerRadius
     density.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpCornerRadius)
   }
@@ -506,8 +494,6 @@ private final class PaletteHelpTag: NSView {
       let keys = NSStackView(views: caps)
       keys.orientation = .horizontal
       keys.spacing = AgentPaletteMetrics.helpKeycapSpacing
-      // A second line wider than the title widens the row; the room goes
-      // between title and keys, never into a keycap.
       keys.setHuggingPriority(.required, for: .horizontal)
       title.setContentHuggingPriority(.defaultLow, for: .horizontal)
       titleRow.setViews([keys], in: .trailing)
@@ -571,8 +557,6 @@ private final class PaletteHelpTag: NSView {
   }
 }
 
-/// One key of a shortcut: a small piece of the system's glass, which brings its
-/// own edge, so nothing is stroked round it.
 private final class PaletteKeycapView: NSView {
   private let glass = NSGlassEffectView()
 
@@ -587,8 +571,6 @@ private final class PaletteKeycapView: NSView {
     var constraints = [
       heightAnchor.constraint(equalToConstant: size),
       widthAnchor.constraint(greaterThanOrEqualToConstant: size),
-      // A plain view has no width of its own: without this a stack hands it
-      // whatever room is left over.
       {
         let snug = widthAnchor.constraint(equalToConstant: size)
         snug.priority = .defaultHigh
@@ -624,7 +606,6 @@ private final class PaletteKeycapView: NSView {
   override func layout() {
     super.layout()
     glass.frame = bounds
-    // A glass view loses its corner when its size changes.
     glass.cornerRadius = AgentPaletteMetrics.helpKeycapCornerRadius
   }
 
@@ -637,8 +618,6 @@ private final class PaletteKeycapView: NSView {
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
-/// A key's letters, centred by their ink: a label centres its line box and its
-/// side bearings, and beside the keys drawn as icons a D stood visibly off.
 private final class PaletteKeyLettersView: NSView {
   private let line: CTLine
   private let ink: CGRect

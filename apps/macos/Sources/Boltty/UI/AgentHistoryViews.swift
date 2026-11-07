@@ -11,8 +11,6 @@ final class AgentHistorySectionHeaderView: NSView {
 
   var title: String { label.stringValue }
 
-  /// `followsRows`: a day's rows stand above it, so it takes
-  /// `historyHeaderSeparation` more air over its words.
   init(section: AgentHistory.Section, followsRows: Bool = false) {
     dayID = section.id
     super.init(frame: .zero)
@@ -90,12 +88,8 @@ final class AgentHistoryTabView: NSView {
   let agent: AgentId?
   private let label = NSTextField(labelWithString: "")
   private var faces: [NSImageView] = []
-  /// Whose faces the tab wears: its own agent's, or — on All — every agent
-  /// that can take a prompt (`setFaceAgents`).
   private(set) var faceAgents: [AgentId]
   private var liveFaces: [MascotNSView] = []
-  /// Whether the tab's faces are the live ones (true) or the pictures; a
-  /// cross-fade may still be on its way there (`handOver`).
   private var showsLive = false
   private var handOverToken = 0
   private(set) var isActive = false
@@ -112,11 +106,8 @@ final class AgentHistoryTabView: NSView {
     applyAppearance()
   }
 
-  /// What All wears while no agent can take a prompt yet (a scan under way,
-  /// none installed): all of them, as the strip's tabs are.
   static var fallbackFaceAgents: [AgentId] { AgentHistory.tabOrder }
 
-  /// All has room for this many faces; the adapters are no more.
   static let clusterCapacity = 5
 
   init(agent: AgentId?, title: String, isEmpty: Bool) {
@@ -129,8 +120,6 @@ final class AgentHistoryTabView: NSView {
     label.stringValue = title
     label.font = roundedAppFont(size: AgentPaletteMetrics.historyTabFontSize)
     label.alignment = .center
-    // A name that still does not fit says so with an ellipsis, rather than
-    // being cut mid-letter ("OpenCod").
     label.lineBreakMode = .byTruncatingTail
     addSubview(label)
     syncFaceViews()
@@ -173,14 +162,11 @@ final class AgentHistoryTabView: NSView {
         let view = MascotNSView(conversationID: UUID(), look: MascotLook.face(for: agent))
         view.reduceMotion = MotionPreferences.reduceMotion
         view.setAccessibilityElement(false)
-        // Its rest is exactly the picture standing under it.
         view.restAsPicture(of: MascotSnapshotCache.identity)
         view.isHidden = true
         addSubview(view, positioned: .below, relativeTo: label)
         return view
       }
-      // A face with no frame is not on screen yet, and joins the clock only
-      // when it is shown — so it is placed before the hand-over unhides it.
       if !bounds.isEmpty { layoutContent() }
       needsLayout = true
     }
@@ -192,18 +178,8 @@ final class AgentHistoryTabView: NSView {
     if poke, window != nil { liveFaces.forEach { $0.poke() } }
   }
 
-  /// How long a face takes to go to rest, or to wake (`MascotNSView.awake`).
   private static let faceSettleDuration = 0.3
 
-  /// **A tab's face goes back to its standard pose, and wakes from it.** The
-  /// picture is the face at rest, in one fixed colour; the live face has its
-  /// own gaze, breath and drift, so any swap or fade between the two shows.
-  /// Instead the live face *is* the picture at rest (`restAsPicture`), and
-  /// a choice only moves it along `awake`: it wakes from the standard pose
-  /// into its motion, and leaving it runs back — pose and colours — to the
-  /// standard pose, drawing the very frame the picture holds, and only then
-  /// does the picture stand in for it. Nothing is swapped while it differs.
-  /// Under Reduce Motion, and with no window to see it, it is a swap.
   private func handOver(toLive live: Bool) {
     guard live != showsLive else { return }
     showsLive = live
@@ -217,9 +193,6 @@ final class AgentHistoryTabView: NSView {
     if live {
       liveFaces.forEach { $0.isHidden = false }
       liveFaces.forEach { $0.transition(toAwake: 1, over: duration) }
-      // The picture goes a moment after the live face has drawn over it: the
-      // two are the same frame, and a picture taken away in the frame the
-      // face is first shown leaves a gap if the face is late.
       DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.06)) { [weak self] in
         guard let self, self.handOverToken == token else { return }
         self.faces.forEach { $0.isHidden = true }
@@ -233,7 +206,6 @@ final class AgentHistoryTabView: NSView {
           if pending == 0, let self, self.handOverToken == token { self.settleHandOver() }
         }
       }
-      // A face that is not drawn (the panel put away mid-way) never finishes.
       DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(duration * 2 + 0.2)) { [weak self] in
         guard let self, self.handOverToken == token else { return }
         self.settleHandOver()
@@ -250,8 +222,6 @@ final class AgentHistoryTabView: NSView {
   }
 
   var faceImagesForTesting: [NSImage?] { faces.map(\.image) }
-  /// The faces that are alive for the chosen tab — what it is going to,
-  /// not where a fade has reached.
   var liveFaceReactionsForTesting: [MascotReaction?] {
     showsLive ? liveFaces.map(\.lastReactionForTesting) : []
   }
@@ -263,9 +233,6 @@ final class AgentHistoryTabView: NSView {
 
   // MARK: Faces
 
-  /// Latest's faces: every agent that can take a prompt (the panel's
-  /// `agentChoices`), however many that is. None yet, and it is all of them.
-  /// A change re-makes the faces; `apply` then draws them.
   func setFaceAgents(_ agents: [AgentId]) {
     guard agent == nil else { return }
     let wanted = Array((agents.isEmpty ? Self.fallbackFaceAgents : agents)
@@ -292,12 +259,6 @@ final class AgentHistoryTabView: NSView {
     }
   }
 
-  /// **The faces stand together like the pips of a die**: one face fills
-  /// the square, two stand on its diagonal,
-  /// three as a pyramid, four as a square, five with the fifth in the
-  /// middle and on top. Each overlaps its neighbours a little, so they read
-  /// as one group rather than a row. Centres and diameters are shares of the
-  /// square, y down; a face later in the list stands over the ones before.
   private static let pips: [[(x: CGFloat, y: CGFloat, d: CGFloat)]] = [
     [(0.5, 0.5, 1.0)],
     [(0.31, 0.31, 0.62), (0.69, 0.69, 0.62)],
@@ -307,7 +268,6 @@ final class AgentHistoryTabView: NSView {
      (0.5, 0.5, 0.46)],
   ]
 
-  /// Where `count` faces stand on a square of `side`, origin at its top left.
   static func faceFrames(count: Int, in side: CGFloat) -> [CGRect] {
     guard count > 0 else { return [] }
     let placed = pips[min(count, pips.count) - 1]
@@ -329,8 +289,6 @@ final class AgentHistoryTabView: NSView {
           height: AgentPaletteMetrics.historyTabMascotSize)]
   }
 
-  /// Every size a face of the cluster is drawn at, for the pictures made
-  /// ahead of time (`AgentHistoryFaces`).
   static var clusterFaceSides: [CGFloat] {
     let sides = (1...clusterCapacity).flatMap {
       faceFrames(count: $0, in: AgentPaletteMetrics.historyTabClusterSide).map(\.width)
@@ -338,8 +296,6 @@ final class AgentHistoryTabView: NSView {
     return Array(Set(sides)).sorted()
   }
 
-  /// What the segment needs: its name or its faces, whichever is wider, and
-  /// the air round it.
   var preferredWidth: CGFloat {
     let name = ceil(label.attributedStringValue.size().width)
     let faces = agent == nil
@@ -492,8 +448,6 @@ final class AgentHistoryTabStripView: NSView {
 
   override var isFlipped: Bool { true }
 
-  /// `everyone` is whom All wears: the agents that can take a prompt. With one
-  /// tab there is no All, and a tab that has gone leaves the strip.
   func apply(tabs: [AgentHistory.Tab], activeAgent: AgentId?, everyone: [AgentId] = []) {
     self.activeAgent = activeAgent
     let entries: [(agent: AgentId?, title: String, isEmpty: Bool)] =
@@ -503,7 +457,6 @@ final class AgentHistoryTabStripView: NSView {
     if kept.count != tabViews.count {
       for view in tabViews where !wanted.contains(view.agent) { view.removeFromSuperview() }
       tabViews = kept
-      // Fewer tabs than the last arrangement: there is nothing to slide from.
       stopClock()
       from = nil
       to = nil
@@ -528,7 +481,6 @@ final class AgentHistoryTabStripView: NSView {
         isActive: entry.agent == activeAgent, reacts: choiceIsAClick
       )
     }
-    // In the order asked for: a tab that came back was added at the end.
     let ordered = wanted.compactMap { agent in tabViews.first { $0.agent == agent } }
     if ordered.map(\.agent) != tabViews.map(\.agent) {
       tabViews = ordered
@@ -577,8 +529,6 @@ final class AgentHistoryTabStripView: NSView {
       dx: AgentPaletteMetrics.historyTabTrackPadding,
       dy: AgentPaletteMetrics.historyTabTrackPadding
     )
-    // Alone it is a heading, its own size in the middle: stretched from wall to
-    // wall it read as a button as wide as the panel.
     let widths = tabViews.count == 1
       ? [min(tabViews[0].preferredWidth, inner.width)]
       : Self.segmentWidths(needs: tabViews.map(\.preferredWidth), available: inner.width)
@@ -596,13 +546,6 @@ final class AgentHistoryTabStripView: NSView {
     return Arrangement(tabs: frames, glass: glassFrame, agent: activeAgent)
   }
 
-  /// **Equal segments, where the names fit**, and what a name needs where
-  /// they do not: at the card's narrowest, six equal shares cut "OpenCode"
-  /// and "Antigravity" mid-letter. A name wider
-  /// than the equal share keeps its width; the others split what is left,
-  /// equally — the strip is still one track from wall to wall. Only when the
-  /// names together outgrow the track do they all shrink, in proportion, and
-  /// the labels end in an ellipsis.
   static func segmentWidths(needs: [CGFloat], available: CGFloat) -> [CGFloat] {
     guard !needs.isEmpty else { return [] }
     let total = needs.reduce(0, +)

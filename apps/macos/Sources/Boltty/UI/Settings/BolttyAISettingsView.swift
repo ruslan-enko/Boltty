@@ -4,8 +4,6 @@ import SwiftUI
 struct BolttyAISettingsView: View {
   @ObservedObject var model: BolttyAISettingsModel
   @ObservedObject var navigation: SettingsNavigation
-  /// The sidebar starts with the focus, as a list did: the arrows walk the pages
-  /// at once, and no control on the page opens wearing a focus ring.
   @FocusState private var sidebarHasFocus: Bool
 
   var body: some View {
@@ -27,8 +25,6 @@ struct BolttyAISettingsView: View {
     }
   }
 
-  /// Drawn here and not a `List`: a list's selection takes the person's system
-  /// accent as soon as it has the focus, and offers no way to change that.
   private var sidebar: some View {
     ScrollView {
       VStack(spacing: 0) {
@@ -61,7 +57,6 @@ struct BolttyAISettingsView: View {
     .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 280)
   }
 
-  /// Selecting the page already shown must not push its top over an agent's page.
   private func select(_ page: SettingsPage) {
     if page != navigation.current { navigation.open(page) }
   }
@@ -156,9 +151,6 @@ private struct SettingsSidebarRow: View {
   }
 }
 
-/// How a chosen thing looks: the accent under black words while the window is
-/// the one in use, and the system's quiet grey while it is not, as a Mac's own
-/// selections and switches go.
 struct SettingsSelection {
   let isSelected: Bool
   let activeState: ControlActiveState
@@ -175,8 +167,6 @@ struct SettingsSelection {
   }
 }
 
-/// A row of choices of which one is on. Drawn here for the same reason as the
-/// sidebar: a system segmented control's selection is the system's accent.
 struct SettingsSegments<Value: Hashable>: View {
   let title: String
   let options: [(value: Value, title: String)]

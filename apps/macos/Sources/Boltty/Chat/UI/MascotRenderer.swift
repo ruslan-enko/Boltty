@@ -90,10 +90,6 @@ final class MascotRenderer {
     #if DEBUG
     if let forced = forcedRays { return forced }
     #endif
-    // Two at every size. Four on a big face cost two and a half times the
-    // GPU of two (the first run's five faces drew at 52 frames a second
-    // with four, 62 with two) and the eye finds no difference.
-    // A still picture (`snapshot`) still takes four.
     return 2
   }
 
@@ -267,9 +263,6 @@ final class MascotRenderer {
     return job.readback.image()
   }
 
-  /// The same picture without holding the main thread while the GPU draws
-  /// it: encoded here, read back on Metal's completion thread. A big face
-  /// (the first run's, ~600 pixels square) is tens of milliseconds of GPU.
   func render(_ uniforms: MascotUniforms, scale: CGFloat = 2) async -> CGImage? {
     guard let job = imageJob(uniforms, scale: scale) else { return nil }
     let readback = job.readback
@@ -364,8 +357,6 @@ final class MascotRenderer {
 final class MascotCanvas: MTKView, MTKViewDelegate {
   private var uniforms = MascotUniforms()
   private var hasUniforms = false
-  /// Pixels per point, when not the screen's — a big face that has to keep
-  /// its frame rate asks for fewer.
   var scaleOverride: CGFloat?
 
   init() {
@@ -442,8 +433,6 @@ final class MascotCanvas: MTKView, MTKViewDelegate {
   private(set) var drawnTopStopForTesting = simd_float4()
 }
 
-/// A rendered texture read back into a picture, on whatever thread the GPU
-/// finished on. The texture is not touched again once handed over.
 final class MascotReadback: @unchecked Sendable {
   private let texture: MTLTexture
   private let width: Int
@@ -484,7 +473,6 @@ final class MascotReadback: @unchecked Sendable {
 }
 
 #if DEBUG
-/// `-boltty.mascot.timing YES`: GPU time per face frame, printed each second.
 final class MascotTimingLog: @unchecked Sendable {
   static let shared = MascotTimingLog()
   private let lock = NSLock()

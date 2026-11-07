@@ -3,20 +3,6 @@ import Metal
 import MetalKit
 import simd
 
-/// What an open chat wears behind its transcript (`ChatBackdrop`), in the
-/// sky of the agent it belongs to (`AgentBackdropSky`).
-///
-/// Stands over the shell's glass and under the transcript, at the shell's
-/// frame. **The corner is the layer's**, set from the glass's rendered corner
-/// and curve: a continuous corner drawn by a formula in the shader parted
-/// company with the glass's own. A Metal layer with no sublayers is clipped by
-/// the compositor, so this costs no offscreen pass. Drawn at 20 frames a
-/// second: nothing in it moves fast, and each frame costs a third less.
-///
-/// **The sky arrives at once and fades out** on the layer's opacity, run by
-/// Core Animation at the display's rate. Faded in the shader it moved only
-/// when the scene drew, seven steps over 0.35 s at 20 fps; faded in on the
-/// layer beside the shell's morph, it still read as lag.
 @MainActor
 final class AgentBackdropView: MTKView, MTKViewDelegate {
   private let renderer: AgentBackdropRenderer?
@@ -27,19 +13,9 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   private var lastTick: CFTimeInterval = 0
   private var link: CADisplayLink?
 
-  /// The size the shell is morphing to, while it morphs. A sky redrawn at
-  /// every size the spring passes through made the morph from the list into
-  /// a chat stutter; one held back until the shell settled popped in late.
-  /// So the sky is drawn once, at the size it is going to, pinned to the
-  /// shell's top (which stays put) and uncovered as the shell grows; its
-  /// clock stops meanwhile, so the live sky that takes over when the shell
-  /// settles is that same frame.
   var morphingTo: CGSize?
-  /// The size the scene is laid out at when it is not the view's own.
   private var sceneSize: CGSize?
 
-  /// Points of scene per point of view. Below 1 a small view shows more of
-  /// the scene rather than a crop of it (Settings' thumbnails).
   var sceneScale: CGFloat = 1
 
   init(frame frameRect: NSRect) {
@@ -69,11 +45,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   override var allowsVibrancy: Bool { false }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-  /// The clock runs only while there is something to show **and** the window
-  /// is on screen. Hiding the panel orders its window out but leaves this view
-  /// in it, and a display link does not stop for that by itself: an open chat
-  /// hidden with ⌥Space would go on drawing its sky, unseen, for as long as
-  /// Boltty ran. The faces stop the same way (`MascotNSView.updateMembership`).
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
     NotificationCenter.default.removeObserver(self, name: NSWindow.didChangeOcclusionStateNotification, object: nil)
@@ -93,7 +64,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     if onScreen, !isHidden { startClock() } else { stopClock() }
   }
 
-  /// Shows `backdrop` in `palette`; `.standard` fades the last scene out.
   func show(_ backdrop: ChatBackdrop, palette: MascotPalette) {
     let target: CGFloat = backdrop == .standard ? 0 : 1
     if backdrop != .standard {
@@ -107,15 +77,12 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     targetOpacity = target
     if target > 0, isHidden {
       isHidden = false
-      // Mid-morph, `layOut` draws the frame the shell is going to.
       if morphingTo == nil { draw() }
     }
     fade(to: target)
     syncClock()
   }
 
-  /// From wherever the last fade had got to, so a chat closed while its sky
-  /// is still arriving turns back without a jump.
   private func fade(to target: CGFloat) {
     guard let layer else { return }
     let from = layer.presentation()?.opacity ?? layer.opacity
@@ -128,8 +95,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       self.stopClock()
     }
     alphaValue = target
-    // In, at once: faded in beside the shell's morph out of the list, the
-    // sky read as lag. Out, the ordinary step.
     if target <= 0, !MotionPreferences.reduceMotion {
       let fade = CABasicAnimation(keyPath: "opacity")
       fade.fromValue = from
@@ -141,8 +106,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     CATransaction.commit()
   }
 
-  /// Called by whoever moves the shell, once per frame of its spring, with the
-  /// corner the glass actually drew.
   func layOut(in rect: CGRect, corner: CGFloat, curve: CALayerCornerCurve) {
     frame = rect
     if let layer {
@@ -150,16 +113,12 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       layer.cornerCurve = curve
     }
     let scale = backdrop.pixelsPerPoint(backing: window?.backingScaleFactor ?? 2)
-    // Pinned to the top, the frame is shown at the layer's scale, not
-    // stretched: left at the display's 2, a sky drawn at ½ came up a quarter
-    // of its size, cut off, and jumped when the live sky took over.
     if layer?.contentsScale != scale { layer?.contentsScale = scale }
     func pixels(_ size: CGSize) -> CGSize {
       CGSize(width: max(1, (size.width * scale).rounded()), height: max(1, (size.height * scale).rounded()))
     }
     if let destination = morphingTo {
       layer?.contentsGravity = .top
-      // A sky on its way out keeps the frame it has.
       guard !isHidden, targetOpacity > 0 else { return }
       let size = pixels(destination)
       if drawableSize != size || sceneSize != destination {
@@ -197,7 +156,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     guard morphingTo == nil else { return }
     if !MotionPreferences.reduceMotion { clock += dt }
     draw()
-    // Still under Reduce Motion: one frame says it all.
     if MotionPreferences.reduceMotion { stopClock() }
   }
 
@@ -220,8 +178,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   }
 }
 
-/// The GPU half of `AgentBackdropView`, apart so a still can be drawn into an
-/// image without a window (`image(of:)`).
 @MainActor
 final class AgentBackdropRenderer {
   let device: MTLDevice
@@ -239,7 +195,6 @@ final class AgentBackdropRenderer {
     descriptor.label = "AgentBackdrop"
     descriptor.vertexFunction = vertex
     descriptor.fragmentFunction = fragment
-    // Premultiplied source-over, as the voice glow.
     let attachment = descriptor.colorAttachments[0]
     attachment?.pixelFormat = pixelFormat
     attachment?.isBlendingEnabled = true
@@ -253,15 +208,9 @@ final class AgentBackdropRenderer {
     self.pipeline = pipeline
   }
 
-  /// One renderer for every still, made on first use.
   private static let shared = AgentBackdropRenderer(pixelFormat: .bgra8Unorm)
   private static var stills: [String: CGImage] = [:]
 
-  /// A still of `backdrop` for a chooser: the lower half of a `scene`-point
-  /// wide, twice as tall scene, drawn into `pixels` pixels square — the half
-  /// where each scene keeps its colour; the top is dark on purpose, for the
-  /// prose, and a thumbnail of it read as a black disc. Cached by scene,
-  /// colours and size.
   static func still(
     of backdrop: ChatBackdrop, palette: MascotPalette, scene: CGFloat, pixels: CGFloat
   ) -> CGImage? {
@@ -313,7 +262,6 @@ final class AgentBackdropRenderer {
     command.commit()
   }
 
-  /// One still, for judging the look by eye without the panel.
   func image(of uniforms: AgentBackdropUniforms, scale: CGFloat = 2) -> CGImage? {
     let width = Int((CGFloat(uniforms.size.x) * scale).rounded())
     let height = Int((CGFloat(uniforms.size.y) * scale).rounded())
@@ -371,18 +319,9 @@ final class AgentBackdropRenderer {
   }
 }
 
-/// Each face's sky, after Messages' presets: a row of the ramp per look, not
-/// the face's gradient laid over clouds. The feeling of the face's colour
-/// rather than the colour itself: the sky walks through a few of its
-/// neighbours, as a real one does from zenith to horizon. Deeper than
-/// Messages' own, for the white prose. Space wears only a breath of it.
-///
-/// Zenith, horizon, the light on the clouds, their undersides, the sky
-/// between zenith and horizon, the sun's glow.
 enum AgentBackdropSky {
   static func ramp(for palette: MascotPalette) -> [NSColor] {
     if let hexes = presets[palette.id] { return hexes.map(HexColor.nsColor) }
-    // A retired face: its first stop overhead, its last low, its palest lit.
     let stops = palette.colors.map { $0.usingColorSpace(.sRGB) ?? $0 }
     guard stops.count >= 5, let first = stops.first, let last = stops.last else {
       return (presets["lagoon"] ?? []).map(HexColor.nsColor)
@@ -398,18 +337,11 @@ enum AgentBackdropSky {
   }
 
   private static let presets: [String: [String]] = [
-    // The face's own: bright blue overhead, a golden dawn low.
     "daybreak": ["#0e3c94", "#d07c48", "#fff2cc", "#34569e", "#2f6ccc", "#f6bc48"],
-    // Teal overhead, through fresh green to amber: a dark yellow is olive,
-    // so the warm end leans gold.
     "citrus": ["#063a3c", "#b2741a", "#ffe08a", "#1c5040", "#1c6a4c", "#e29a28"],
-    // Teal dusk going rose and peach, rosy clouds.
     "candy": ["#0a4250", "#b4687a", "#ffa8b8", "#2a4470", "#3c6478", "#d68a70"],
-    // Plum night over an ember sunset.
     "ember": ["#2a0c28", "#a8443c", "#ffc49a", "#5a1c3a", "#5e1c40", "#d8784a"],
-    // A blue day, paler toward the sun, white clouds.
     "lagoon": ["#0a3888", "#3c80cc", "#f2f7ff", "#4c78bc", "#1c5cb4", "#8ab8e4"],
-    // Violet dusk going mauve, lavender clouds.
     "slate": ["#1a1240", "#7c5ca4", "#f2e6fc", "#3e3074", "#3e2c72", "#b480b4"]
   ]
 }

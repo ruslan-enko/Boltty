@@ -8,8 +8,6 @@ final class SpeechAnalyzerDictationEngine: DictationEngine {
   static let displayName = "Apple (on-device)"
 
   private let tier: DictationTier
-  /// Asks the model for the confidence of its final results — what
-  /// `BilingualTranscript` chooses by. One language needs none.
   private let reportsConfidence: Bool
 
   init(tier: DictationTier, reportsConfidence: Bool = false) {
@@ -35,8 +33,6 @@ final class SpeechAnalyzerDictationEngine: DictationEngine {
     )
   }
 
-  /// Every result as it comes, and `onEnd` once there will be no more. A
-  /// failure ends it without `onEnd`.
   func startReporting(
     locale: Locale,
     inputFormat: AVAudioFormat,
@@ -56,10 +52,6 @@ final class SpeechAnalyzerDictationEngine: DictationEngine {
       }
       let module: SpeechTranscriber
       if reportsConfidence {
-        // Not the progressive preset: its `fastResults` lowers what the model
-        // says it is sure of — a short English phrase 0.53 where this gives
-        // 0.80, and sureness is what two languages are
-        // told apart by.
         module = SpeechTranscriber(
           locale: matched,
           transcriptionOptions: [],
@@ -105,8 +97,6 @@ final class SpeechAnalyzerDictationEngine: DictationEngine {
     }
   }
 
-  /// Both transcribers' results read alike but for where the words are, so one
-  /// loop serves both.
   private static func forward<Module: SpeechModule>(
     _ module: Module,
     text: @escaping @Sendable (Module.Result) -> AttributedString,
@@ -178,8 +168,6 @@ final class SpeechAnalyzerDictationEngine: DictationEngine {
     time.isNumeric ? time.seconds : 0
   }
 
-  /// The mean of the confidences a result's words carry, by their length;
-  /// `nil` when none carries one.
   private static func confidence(of words: AttributedString) -> Double? {
     var weighted = 0.0
     var weight = 0.0
@@ -193,7 +181,6 @@ final class SpeechAnalyzerDictationEngine: DictationEngine {
   }
 }
 
-/// A transcript being built by an escaping closure.
 @MainActor
 private final class AccumulatorBox {
   var value = TranscriptAccumulator()

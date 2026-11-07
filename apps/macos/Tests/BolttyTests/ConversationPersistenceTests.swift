@@ -136,8 +136,6 @@ final class ConversationPersistenceTests: XCTestCase {
     XCTAssertEqual(second.transcript(id: conversation.id).messages.count, 1)
   }
 
-  /// Every state a chat can be stored in, walked through a relaunch: nothing
-  /// comes back blocking the composer, because no process survives to finish it.
   func testEveryStoredStateComesBackSendable() {
     let expected: [(ConversationExecutionState, ConversationExecutionState)] = [
       (.idle, .idle), (.working, .interrupted), (.waiting, .interrupted),

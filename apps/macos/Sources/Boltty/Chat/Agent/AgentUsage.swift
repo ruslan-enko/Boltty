@@ -51,8 +51,6 @@ struct AgentUsageWindow: Equatable, Sendable {
   var kind: Kind
   var usedPercent: Int
   var resetsAt: Date?
-  /// What the window is for, where an agent has several of one length —
-  /// Antigravity keeps a weekly limit per group of models.
   var label: String?
 
   var title: String { label.map { "\($0) · \(kind.title)" } ?? kind.title }
@@ -103,9 +101,6 @@ extension AgentUsage {
     return windows.isEmpty ? nil : AgentUsage(windows: windows)
   }
 
-  /// `agy -p=/usage --output-format json` (1.3.4): a
-  /// `result` whose `command.data.groups` each hold `buckets` with a
-  /// `window` (`weekly`), a `remaining_fraction` and a `reset_time`.
   static func antigravity(_ result: JSONObject) -> AgentUsage? {
     let groups = result.object("command")?.object("data")?.array("groups") ?? []
     let windows: [AgentUsageWindow] = groups.flatMap { group in
@@ -128,7 +123,6 @@ extension AgentUsage {
     return windows.isEmpty ? nil : AgentUsage(windows: windows)
   }
 
-  /// "Gemini Models" → "Gemini"; "Claude and GPT models" → "Claude and GPT".
   private static func shortGroupName(_ name: String?) -> String? {
     guard var name = name?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
     if name.lowercased().hasSuffix(" models") { name = String(name.dropLast(7)) }
@@ -153,8 +147,6 @@ extension AgentUsage {
 }
 
 extension AgentUsageWindow {
-  /// DateFormatter, not Date.FormatStyle: the latter returns "" on regional-override locales.
-  /// "18d 7h", "3h 12m", "42m": how long until a window comes back.
   static func countdown(to date: Date, now: Date = Date()) -> String {
     let minutes = max(1, Int((date.timeIntervalSince(now) / 60).rounded(.up)))
     let days = minutes / 1_440, hours = minutes % 1_440 / 60, rest = minutes % 60

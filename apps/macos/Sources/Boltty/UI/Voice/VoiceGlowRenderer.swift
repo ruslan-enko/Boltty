@@ -4,33 +4,17 @@ import Metal
 import MetalKit
 import simd
 
-/// Builds one frame of the voice glow and hands it to the GPU.
-///
-/// Split in two on purpose. `Frame` → `uniforms(for:)` is a pure function of
-/// numbers, so what the shader will draw can be asserted in a unit test with no
-/// window, no device and no drawable — which is the thing the old Core Image
-/// implementation could not offer at all (`BolttyAIScreenshotTests` had to
-/// capture a real window because `CALayer.render(in:)` skips compositor
-/// filters). `render(_:in:)` is the part that needs a GPU, and it is small.
 @MainActor
 final class VoiceGlowRenderer {
-  /// Everything the CPU decides about one frame.
   struct Frame {
     var size: CGSize
     var pixelSize: CGFloat
     var cornerRadius: CGFloat
     var cornerIsContinuous: Bool
-    /// 0…1, already through the envelope, the idle floor and the breath.
     var intensity: CGFloat
-    /// 0 = listening, 1 = processing, the rays wound into a spiral.
     var beam: CGFloat
-    /// Seconds since the phase began. Drives what moves apart from the voice.
     var clock: CGFloat
-    /// How far the rays have travelled: the integral of a speed that follows
-    /// the voice, kept by the view (`VoiceEdgeGlowLayout.flowSpeed`).
     var flow: CGFloat = 0
-    /// 0 = the rays, 1 = the shell is the orb and no light is drawn
-    /// (`VoiceEdgeGlowView.fillsShell`).
     var orb: CGFloat = 0
     var opacity: CGFloat
     var isLightAppearance: Bool
@@ -41,16 +25,10 @@ final class VoiceGlowRenderer {
   private let device: MTLDevice
   private let queue: MTLCommandQueue
   private let pipeline: MTLRenderPipelineState
-  /// Three, so the CPU can fill frame *n+1* while the GPU still reads *n*.
-  /// Writing into a buffer the GPU has not finished with is the classic way to
-  /// get a picture that tears between two states of the same animation.
   private let uniformBuffers: [MTLBuffer]
   private let inFlight = DispatchSemaphore(value: 3)
   private var bufferIndex = 0
 
-  /// Nil only where there is no Metal device at all. Everything downstream
-  /// treats that as "draw nothing" rather than as an error: a Mac without a GPU
-  /// is not a case worth an alert, and it must not be a case worth a crash.
   init?(pixelFormat: MTLPixelFormat) {
     guard let device = MTLCreateSystemDefaultDevice(),
           let queue = device.makeCommandQueue(),
@@ -79,8 +57,6 @@ final class VoiceGlowRenderer {
       return nil
     }
 
-    // Built once, here. Allocating a buffer or compiling a function per frame
-    // is the failure this whole class is arranged to avoid.
     let length = MemoryLayout<VoiceGlowUniforms>.stride
     var buffers: [MTLBuffer] = []
     for index in 0..<3 {
@@ -101,11 +77,6 @@ final class VoiceGlowRenderer {
 
   // MARK: - The frame, as numbers
 
-  /// Turns one `Frame` into what the shader reads.
-  ///
-  /// Nothing about placement is left to the shader: where the rays start is
-  /// decided here, so `VoiceEdgeGlowLayout` and the tests that pin it describe
-  /// the picture the GPU draws.
   static func uniforms(for frame: Frame) -> VoiceGlowUniforms {
     var u = VoiceGlowUniforms()
     let intensity = min(1, max(0, frame.intensity))
@@ -133,8 +104,6 @@ final class VoiceGlowRenderer {
     u.reach = Float(VoiceEdgeGlowLayout.reach(size: frame.size, intensity: intensity))
     u.orb = Float(min(1, max(0, frame.orb)))
 
-    // The stops run top of the body to its foot. A palette handed fewer than
-    // the shader walks is stretched over what there is; none at all is white.
     let stops = frame.colors.isEmpty ? [NSColor.white] : frame.colors
     for index in 0..<colorCount {
       let source = stops.count == 1
@@ -157,10 +126,6 @@ final class VoiceGlowRenderer {
     return u
   }
 
-  /// A C array of fixed size arrives in Swift as a tuple, which cannot be
-  /// subscripted. Rebinding the memory is the supported way in, and keeping it
-  /// behind two named functions means the `unsafe` spelling appears twice in
-  /// the module rather than at every use.
   static func setColor(_ uniforms: inout VoiceGlowUniforms, at index: Int, _ color: simd_float4) {
     guard index >= 0, index < colorCount else { return }
     withUnsafeMutableBytes(of: &uniforms.colors) { raw in
@@ -209,32 +174,11 @@ final class VoiceGlowRenderer {
     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     encoder.endEncoding()
 
-    // Presented inside the commit, and **not** through
-    // `presentsWithTransaction`.
-    //
-    // That was tried, to put the glow in the same CoreAnimation transaction as
-    // the shell it is clipped to — the shared shell resizes on a spring, and in
-    // principle a drawable on its own schedule can trail the glass by a frame.
-    // It costs a `waitUntilScheduled()` on the main thread *every frame*, and
-    // that is not free: it starved the run loop badly enough that the Ask
-    // Boltty panel lost key and dismissed itself mid-dictation, which
-    // `AgentPaletteControllerTests.testEditingWhileVoiceFinalizes…` caught.
-    //
-    // The seam it was insuring against was never actually observed. Do not
-    // reintroduce this without a capture showing the seam first.
+    // Not through `presentsWithTransaction`: it starved the run loop.
     command.present(drawable)
     command.commit()
   }
 
-  /// Draws one frame into an image instead of onto the screen.
-  ///
-  /// The layer implementation had no equivalent and could not have had one: its
-  /// bloom was a `layer.filters` Core Image pass, which the *compositor*
-  /// applies, so `cacheDisplay` and `CALayer.render(in:)` both returned the
-  /// picture without it. Checking the effect therefore meant photographing a
-  /// real window through a UI test, which is slow enough that nobody tunes a
-  /// gradient that way. Running the real shader against a texture costs
-  /// milliseconds and returns exactly what ships.
   func image(of uniforms: VoiceGlowUniforms, scale: CGFloat = 2) -> CGImage? {
     let width = Int((CGFloat(uniforms.size.x) * scale).rounded())
     let height = Int((CGFloat(uniforms.size.y) * scale).rounded())
@@ -277,11 +221,8 @@ final class VoiceGlowRenderer {
     command.commit()
     command.waitUntilCompleted()
 
-    // A plain allocation rather than `withUnsafeMutableBytes`. The closure form
-    // captures `texture` — a non-Sendable `MTLTexture` — inside a closure the
-    // compiler treats as leaving this actor, which Swift 6 reports as
-    // "Sending 'texture' risks causing data races". Nothing is actually sent
-    // anywhere; removing the closure removes the question.
+    // A plain allocation: `withUnsafeMutableBytes` would capture the non-Sendable
+    // `texture` in a closure leaving this actor, which Swift 6 rejects.
     let rowBytes = width * 4
     let count = rowBytes * height
     let raw = UnsafeMutableRawPointer.allocate(byteCount: count, alignment: 16)

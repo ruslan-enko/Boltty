@@ -1,10 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Settings › Agents › one agent: what its open chats wear behind the
-/// transcript, as round windows onto each scene. The chosen one moves, the
-/// others are stills. All are drawn in the face's colours, so changing the
-/// face recolours them. Read back by the panel each time it lays out a chat.
 struct ChatBackdropPicker: View {
   @ObservedObject var model: BolttyAISettingsModel
   let agent: AgentId
@@ -35,8 +31,6 @@ struct ChatBackdropPicker: View {
   }
 }
 
-/// One round window onto a scene. Standard has no scene: it is the shell's
-/// own glass under its black ramp, and this stands in for it.
 private struct BackdropWindow: View {
   let backdrop: ChatBackdrop
   let palette: MascotPalette
@@ -44,7 +38,6 @@ private struct BackdropWindow: View {
   @Environment(\.displayScale) private var displayScale
 
   static let diameter: CGFloat = 84
-  /// How much of the scene a window shows, in the scene's points.
   private static let scene: CGFloat = 260
 
   var body: some View {
@@ -67,7 +60,6 @@ private struct BackdropWindow: View {
   }
 }
 
-/// `AgentBackdropView` in a window of its own.
 private struct LiveBackdrop: NSViewRepresentable {
   let backdrop: ChatBackdrop
   let palette: MascotPalette
@@ -99,9 +91,6 @@ private final class LiveBackdropHost: NSView {
 
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-  /// Twice as tall and cut off here, so it moves the same lower half the still
-  /// shows (`AgentBackdropRenderer.still`). The overhang stays inside this
-  /// view: given to SwiftUI as a taller frame, it pushed the settings row down.
   override func layout() {
     super.layout()
     let scene = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height * 2)

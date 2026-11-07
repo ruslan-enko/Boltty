@@ -10,30 +10,18 @@ struct AppSettings: Equatable, Sendable {
   var defaultModelByProvider: [String: String]
   var mascotSelections: [String: MascotSelection]
   var defaultEffortByProvider: [String: String]
-  /// Agents whose new chats start in Auto Mode. Each chat keeps its own copy.
   var autoApproveProviderIDs: Set<String>
   var dictationLocaleIdentifier: String
-  /// A second language dictation listens for beside the first; empty is none.
   var dictationSecondLocaleIdentifier: String
-  /// Who dictates: empty is Apple's recognizers, `parakeet` the local model
-  /// where it hears the dictation language (Apple's elsewhere).
   var dictationEngine: String
-  /// A multiple of the voice's own pace.
   var speechRate: Double
-  /// Supertonic's preset (`F1`…`M5`); empty is `SpeechOutput.defaultLocalVoice`.
   var speechLocalVoice: String
-  /// When a finished turn's reply is read aloud (`AnswerReading`); empty is never.
   var speechReadAnswers: String
-  /// Ask Boltty: select an area, ask about it out loud, get the answer beside the face.
-  /// `nil` follows the preferred agent, in its default model.
   var askBolttyProviderID: String?
   var askBolttyModelID: String?
-  /// Ask Boltty looks and answers; it changes nothing unless the person allows it.
   var askBolttyReadOnly: Bool
-  /// Ask Boltty says its answer aloud as well as typing it out.
   var askBolttySpeaksAloud: Bool
   var playsSounds: Bool
-  /// Opening the panel over Finder attaches the files selected there.
   var attachesFinderSelection: Bool
   var checksForUpdates: Bool
 
@@ -50,8 +38,6 @@ struct AppSettings: Equatable, Sendable {
   private static let dictationLocaleKey = "boltty.dictationLocale"
   private static let dictationSecondLocaleKey = "boltty.dictationSecondLocale"
   private static let dictationEngineKey = "boltty.dictation.engine"
-  /// What Settings › Voice stored for "Automatic" while Whisper could hear the
-  /// language. Apple's engine cannot, and it was the system's language there.
   private static let retiredAutomaticLocale = "automatic"
   private static let speechRateKey = "boltty.speech.rate"
   private static let speechLocalVoiceKey = "boltty.speech.localVoice"
@@ -210,7 +196,6 @@ struct AppSettings: Equatable, Sendable {
     }
   }
 
-  /// Writes every key: removed keys stay on disk, untouched, for a downgrade.
   func save(defaults: UserDefaults = .standard) {
     defaults.set(agentPreset?.rawValue, forKey: Self.agentPresetKey)
     defaults.set(Array(enabledProviderIDs).sorted(), forKey: Self.enabledProviderIDsKey)

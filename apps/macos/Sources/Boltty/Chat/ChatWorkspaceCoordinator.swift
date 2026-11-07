@@ -17,7 +17,6 @@ final class ChatWorkspaceCoordinator {
 
   var onStatusSnapshotChange: ((StatusBarSnapshot) -> Void)?
   var notificationDelivery: ((SystemAttentionNotification) -> Void)?
-  /// A chat's turn ended well (working → idle); never an Ask Boltty chat.
   var onTurnFinished: ((Conversation) -> Void)?
 
   var isProviderEnabled: (String) -> Bool = { _ in true }
@@ -59,16 +58,9 @@ final class ChatWorkspaceCoordinator {
     guard let stored = defaultModelID(providerID), !stored.isEmpty else { return nil }
     let listed = engine.modelsByProvider[providerID] ?? []
     if let option = listed.option(stored: stored) { return option.selection }
-    // Listed without it, the agent no longer offers it: asked for it the CLI
-    // would refuse, so the chat goes to the agent's own default. With no list
-    // yet there is nothing to say it has gone. The stored choice stays, in case
-    // it comes back (OpenCode's models follow its providers).
     return listed.isEmpty ? Self.unlistedSelection(stored: stored, agent: providerID) : nil
   }
 
-  /// A stored choice before the list has come, in the first seconds after launch.
-  /// It says its provider, unless stored before it did: OpenCode cannot run a model
-  /// without one, so that chat starts on the default rather than failing.
   private static func unlistedSelection(stored: String, agent: String) -> ModelSelection? {
     if let slash = stored.firstIndex(of: "/") {
       return ModelSelection(
@@ -85,7 +77,6 @@ final class ChatWorkspaceCoordinator {
     return effort
   }
 
-  /// The listed model a session would run: the one named, else the agent's default.
   private func modelOption(for providerID: String, model: ModelSelection?) -> AgentModelOption? {
     let options = engine.modelsByProvider[providerID] ?? []
     return options.option(for: model) ?? options.agentDefault
@@ -116,8 +107,6 @@ final class ChatWorkspaceCoordinator {
 
   // MARK: - Ask Boltty
 
-  /// Ask Boltty's chat is made the moment the region is drawn, and its session
-  /// started then, so the agent is up by the time the person stops speaking.
   func prepareAskBolttyConversation(
     providerID: String, model: ModelSelection?, effort: String?, readOnly: Bool,
     workingDirectory: String? = nil
@@ -128,8 +117,6 @@ final class ChatWorkspaceCoordinator {
       workingDirectory: workingDirectory ?? store.defaultWorkingDirectory(),
       providerID: providerID,
       model: model,
-      // An answer is a sentence or two: as little thinking as the model
-      // allows, not the effort the agent's chats are set to.
       reasoningEffort: effort ?? AskBolttyConfiguration.fastestEffort(
         modelOption(for: providerID, model: model)?.effortOptions ?? []),
       readOnly: readOnly,
@@ -139,17 +126,11 @@ final class ChatWorkspaceCoordinator {
     return conversation
   }
 
-  /// An Ask Boltty that was let go without a word leaves no chat behind.
   func discardAskBolttyConversation(_ id: UUID) {
     guard store.transcript(id: id).messages.isEmpty, pendingPanelPrompts[id] == nil else { return }
     forgetAskBolttyChat(id)
   }
 
-  /// Ask Boltty keeps no history: an Ask Boltty chat lasts as
-  /// long as a follow-up can reach it. Every other one goes — its session
-  /// let go, its record and its screenshots deleted — unless it is still
-  /// working or waiting on the person. Also the chats an early Ask Boltty
-  /// made without marking them, known by the bracket that titled them.
   func forgetAskBolttyChats(except kept: UUID? = nil) {
     for conversation in store.conversations
     where conversation.id != kept && Self.isAskBoltty(conversation)
@@ -187,8 +168,6 @@ final class ChatWorkspaceCoordinator {
     let provider = providerID ?? defaultProviderID()
     var model = resolvedDefaultModel(for: provider)
     let effort = resolvedDefaultEffort(for: provider, model: model)
-    // An effort goes with a model: OpenCode drops it from a session made without
-    // one. So the default is named where the person chose an effort for it.
     if model == nil, effort != nil { model = modelOption(for: provider, model: nil)?.selection }
     let conversation = store.createConversation(
       id: id,
@@ -401,8 +380,6 @@ final class ChatWorkspaceCoordinator {
     previousStates = previousStates.filter { ids.contains($0.key) }
   }
 
-  /// What would be said of the chat's finished turn, and the reply it is
-  /// from (`AnswerReading`).
   func spokenReply(of id: UUID) -> (messageID: String, text: String)? {
     guard let reply = AnswerReading.reply(in: store.transcript(id: id).messages),
           let text = AnswerReading.excerpt(of: reply.copyableText)

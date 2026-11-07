@@ -64,8 +64,6 @@ struct SettingsRefreshButton: View {
   let identifier: String
   let action: () -> Void
 
-  /// The page also refreshes by itself as it comes forward, and that is no
-  /// reason for the toolbar to move: only a press gets the spinner.
   @State private var wasPressed = false
 
   var body: some View {
@@ -76,8 +74,6 @@ struct SettingsRefreshButton: View {
       Label {
         Text(isBusy ? busyTitle : title)
       } icon: {
-        // The system's spinner in place of the arrow. An arrow turned by hand
-        // could stop anywhere, and at rest it then pointed the wrong way.
         if isBusy, wasPressed {
           ProgressView().controlSize(.small)
         } else {

@@ -29,12 +29,6 @@ enum PromptAttachmentKind: String, Sendable, CaseIterable, Equatable, Codable {
     return !(components.host ?? "").isEmpty
   }
 
-  /// The links in a sentence, as ranges of `text` (UTF-16, `NSString`'s).
-  ///
-  /// A link is a word `isLink` agrees with, or one that opens with `www.`,
-  /// with the punctuation a sentence puts round it left out ("(see
-  /// https://a.com/x)." is the address alone). Links are not attachments:
-  /// they stay text in the draft and are only drawn as links.
   static func linkRanges(in text: String) -> [NSRange] {
     guard text.contains("://") || text.localizedCaseInsensitiveContains("www.") else { return [] }
     let source = text as NSString

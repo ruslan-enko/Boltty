@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// A `BolttyIcon` in SwiftUI, coloured by `foregroundStyle` as a symbol would
-/// be. It takes a size rather than a font, since a symbol's font is what it
-/// replaces. Kept per icon and size: a body runs on every hover.
 struct BolttyIconView: View {
   let icon: BolttyIcon
   var size: CGFloat = 16

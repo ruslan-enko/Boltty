@@ -265,10 +265,6 @@ private final class OverlayLayerView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-/// "Drag to ask about an area", beside the pointer while it rests on the
-/// first screen's empty glass. Selecting is a plain drag with no cursor of
-/// its own, so without words the gesture is undiscoverable. Drawn like a help
-/// tag, and never in the way: it takes no clicks.
 final class ScreenSelectionPointerHint: NSView {
   private let label = NSTextField(labelWithString: AgentPaletteMetrics.screenSelectionHintText)
 
@@ -296,8 +292,6 @@ final class ScreenSelectionPointerHint: NSView {
     if label.stringValue != text { label.stringValue = text }
   }
 
-  /// Stands the tag down and right of `pointer`, flipped to the other side
-  /// of it where `room` (the view's bounds, unflipped) runs out.
   func place(at pointer: NSPoint, in room: NSRect) {
     let text = label.intrinsicContentSize
     let size = NSSize(
@@ -329,8 +323,6 @@ final class ScreenSelectionPointerHint: NSView {
     }
   }
 
-  /// At once: the pointer has moved on to something else, and a fading tag
-  /// left over it would read as belonging there.
   func hide() {
     guard !isHidden else { return }
     alphaValue = 0

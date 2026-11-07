@@ -52,26 +52,20 @@ enum BolttyAIFollowUp {
   }
 }
 
-/// What a chat's composer says it runs on: the model and its effort.
 struct BolttyAIModelChip: Equatable, Sendable {
   let title: String
-  /// The agent's list no longer has it: the chat's next turn would fail.
   var isGone = false
   var help: String
 }
 
-/// What the chip's menu offers, read as it opens.
 struct BolttyAIModelMenu: Equatable, Sendable {
   let agent: AgentId
   let models: [AgentModelOption]
   let current: AgentModelOption?
-  /// The chat's model, where the agent's list no longer has it.
   let goneName: String?
   let efforts: [AgentEffortOption]
   let effort: String?
-  /// Whether "Default" can be chosen; the chat that has no level is on it anyway.
   var canResetEffort = true
-  /// `nil` where the agent declares no `.autoApproval`.
   let autoMode: Bool?
 }
 
@@ -87,10 +81,7 @@ struct BolttyAISessionPreview: Equatable, Sendable {
   var canStop = false
   var stopIsAbrupt = false
   var canSteer = false
-  /// The chat's Auto Mode, or `nil` where its agent declares no
-  /// `.autoApproval` — then the composer offers no switch for it.
   var autoMode: Bool? = nil
-  /// `nil` where the chat's agent has nothing to offer here.
   var modelChip: BolttyAIModelChip? = nil
   var notice: String? = nil
   var retryPrompt: String? = nil

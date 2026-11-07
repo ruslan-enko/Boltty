@@ -253,8 +253,6 @@ final class PaletteServiceStack: NSStackView {
   }
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-  /// Every styled card opens on an eyebrow, so its top is measured to the
-  /// eyebrow's caps; `bottom` is the caller's, measured to whatever ends it.
   func setStyled(_ styled: Bool, bottom: CGFloat? = nil) {
     let inset = styled ? AgentPaletteMetrics.failureCardPadding : 0
     edgeInsets = NSEdgeInsets(

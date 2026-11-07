@@ -1,15 +1,10 @@
 import AppKit
 
-/// What came with the words, side by side over them. It scrolls sideways when
-/// there is more than fits, and its ends dissolve only where there is more.
 @MainActor
 final class PromptAttachmentStrip: NSView {
-  /// Where the cards stand in a shell, so that their corners are concentric with it.
   struct Placement: Equatable {
     var inset: CGFloat
     var corner: CGFloat
-    /// The band the strip takes out of the composer: the inset over the cards
-    /// and the cards. The inset is room too: a card's × stands in it.
     var band: CGFloat { inset + AgentPaletteMetrics.attachmentCardSide }
   }
 
@@ -73,8 +68,6 @@ final class PromptAttachmentStrip: NSView {
 
   override var allowsVibrancy: Bool { false }
 
-  /// Follows the draft, card by card, so a card that stays keeps its picture
-  /// and its place, and only one that came or went moves.
   func show(_ next: [PromptAttachment], animated: Bool) {
     let moves = animated && window?.isVisible == true && !MotionPreferences.reduceMotion
     let stays = Set(next.map(\.id))
@@ -108,7 +101,6 @@ final class PromptAttachmentStrip: NSView {
     scrollToEnd(animated: moves)
   }
 
-  /// Each card that shows, where it stands in the window and how it looks now.
   func cardSnapshots() -> [UUID: (frame: NSRect, image: NSImage?)] {
     var snapshots: [UUID: (frame: NSRect, image: NSImage?)] = [:]
     let visible = scroll.contentView.bounds
@@ -157,7 +149,6 @@ final class PromptAttachmentStrip: NSView {
     } else {
       glides.forEach { place($0, animator: false) }
     }
-    // A card gone, or the strip wider than when it scrolled: no space past the end.
     let overflow = max(0, width - scroll.contentView.bounds.width)
     if scroll.contentView.bounds.minX > overflow {
       scroll.contentView.setBoundsOrigin(NSPoint(x: overflow, y: 0))
@@ -182,8 +173,6 @@ final class PromptAttachmentStrip: NSView {
     }
   }
 
-  /// The same rule the prompt's own edges follow: a fade only as deep as what
-  /// has scrolled out, so an end at rest is never dimmed for nothing.
   private func syncEdgeFade() {
     guard let layer = scroll.layer else { return }
     let visible = scroll.contentView.bounds
@@ -216,7 +205,6 @@ private final class StripDocumentView: NSView {
 }
 
 private final class AttachmentStripScrollView: NSScrollView {
-  /// A mouse has only the one wheel, and this strip only the one way to go.
   override func scrollWheel(with event: NSEvent) {
     let vertical = event.scrollingDeltaY
     let overflow = (documentView?.frame.width ?? 0) - contentView.bounds.width

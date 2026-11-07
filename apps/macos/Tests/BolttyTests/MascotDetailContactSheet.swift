@@ -81,9 +81,6 @@ final class MascotDetailContactSheet: XCTestCase {
   }
 }
 
-/// Each agent's chosen face alone on a transparent canvas, for artwork such as
-/// the app icon. `BOLTTY_MASCOT_STILLS=<dir>`; `BOLTTY_MASCOT_STILLS_FINISH`
-/// overrides the stored finish (fur by default), `…_SIDE` the face's pixels.
 @MainActor
 final class MascotStillsRender: XCTestCase {
   func testRenderEveryChosenFace() throws {
@@ -96,7 +93,6 @@ final class MascotStillsRender: XCTestCase {
     let renderer = try XCTUnwrap(MascotRenderer.shared)
     let finish = MascotFinish(rawValue: environment["BOLTTY_MASCOT_STILLS_FINISH"] ?? "fur") ?? .fur
     let side = CGFloat(Double(environment["BOLTTY_MASCOT_STILLS_SIDE"] ?? "") ?? 1600)
-    // The real app's choices, read only: the test host's own defaults may be isolated.
     let stored = UserDefaults.standard.persistentDomain(forName: "com.boltty.app")?[MascotRoster.storageKey] as? Data
     let selections = try stored.map { try JSONDecoder().decode([String: MascotSelection].self, from: $0) } ?? [:]
     let looks = MascotRoster(selections: selections).looks()
@@ -113,7 +109,6 @@ final class MascotStillsRender: XCTestCase {
       frame.size = CGSize(width: side, height: side)
       frame.overscan = MascotNSView.overscan
       frame.finish = finish
-      // Twice the pixels, then halved, on top of the shader's four rays.
       let large = try XCTUnwrap(renderer.image(of: MascotRenderer.uniforms(for: frame, rays: 4), scale: 2))
       let width = large.width / 2, height = large.height / 2
       let context = try XCTUnwrap(CGContext(
@@ -131,12 +126,6 @@ final class MascotStillsRender: XCTestCase {
   }
 }
 
-/// The five agents in a pile on black, like a poster of plush faces, each
-/// going through its emotions. 2000 × 2000.
-/// `BOLTTY_POSTER=<dir>`; `BOLTTY_POSTER_STILLS=0,6.5` writes stills at
-/// those seconds, `BOLTTY_POSTER_VIDEO=1` pipes every frame to ffmpeg.
-/// `BOLTTY_POSTER_FUR=<agent>` dresses one in fur (Grok by default),
-/// `BOLTTY_POSTER_SS` supersamples each face (2 by default).
 @MainActor
 final class MascotPosterRender: XCTestCase {
   private struct Cue {
@@ -164,7 +153,6 @@ final class MascotPosterRender: XCTestCase {
   private static let height: CGFloat = 1920
   private static let fps = 60.0
   private static let duration = 6.0
-  /// The last stretch crossfades into the first, so the film loops.
   private static let loopFade = 0.8
   private static let warmUp = 2.0
 
@@ -173,7 +161,6 @@ final class MascotPosterRender: XCTestCase {
                finish: fur ? .fur : .velvet)
   }
 
-  /// Back to front, one roster of looks.
   private func cast(fur: AgentId) throws -> [Player] {
     func player(
       _ agent: AgentId, _ shape: MascotShape, _ palette: String, _ x: CGFloat, _ y: CGFloat,
@@ -220,8 +207,6 @@ final class MascotPosterRender: XCTestCase {
         if let watch = cue.watch { players[index].watching = (watch, time + cue.watchFor) }
       }
     }
-    // Watch whoever is named: a direction in the picture, y down, as the
-    // view's pointer would read it.
     for index in players.indices {
       guard let watching = players[index].watching, watching.until > time,
             let target = players.first(where: { $0.agent == watching.agent })
@@ -274,7 +259,6 @@ final class MascotPosterRender: XCTestCase {
     let clear = CIImage(color: .clear).cropped(to: extent)
     var faces = clear
     for (index, player) in players.enumerated() {
-      // A looping film sways its colours on the loop's own period.
       let clock = loop.map { player.phase + 4 * sin(time * 2 * .pi / $0) }
         ?? player.phase + (Self.warmUp + time) * MascotSpec.speed * MascotSpec.gradientRate
       let pose = poses?[index] ?? player.motion.pose
@@ -290,7 +274,6 @@ final class MascotPosterRender: XCTestCase {
       let origin = CGPoint(x: player.center.x - width / 2, y: Self.height - player.center.y - width / 2)
       face = face.transformed(by: CGAffineTransform(translationX: origin.x - face.extent.minX,
                                                     y: origin.y - face.extent.minY))
-      // A soft shadow on whoever stands behind — invisible on the black.
       let shadow = face
         .applyingFilter("CIColorMatrix", parameters: [
           "inputRVector": CIVector(x: 0, y: 0, z: 0, w: 0),
@@ -312,7 +295,6 @@ final class MascotPosterRender: XCTestCase {
       .applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: scaled(blurred(34), 0.1)])
     let outerGlow = glow.applyingFilter("CISourceOutCompositing", parameters: [kCIInputBackgroundImageKey: faces])
     let sRGB = try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB))
-    // Brighter and more contrasty than the first run's own sky.
     let black = CIImage(cgImage: try sunset(in: sRGB))
       .applyingFilter("CIColorControls", parameters: [
         kCIInputSaturationKey: 1.45, kCIInputContrastKey: 1.18, kCIInputBrightnessKey: 0.04,
@@ -324,8 +306,6 @@ final class MascotPosterRender: XCTestCase {
       final, from: extent, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)))
   }
 
-  /// The first run's sky (`SunsetView`): its stops top to bottom, and its
-  /// three soft lights screened over it, held still so the film loops.
   private func sunset(in space: CGColorSpace) throws -> CGImage {
     let width = Int(Self.width), height = Int(Self.height)
     let context = try XCTUnwrap(CGContext(
@@ -422,8 +402,6 @@ final class MascotPosterRender: XCTestCase {
       for player in players.indices { players[player].motion.update(step) }
       let wantsStill = pendingStills.first.map { time + step / 2 >= $0 } ?? false
       guard video || wantsStill else { continue }
-      // The tail walks each face's pose into the head's, so the last frame
-      // is the first again.
       if video, index < fadeFrames {
         head.append(players.map(\.motion.pose))
         continue

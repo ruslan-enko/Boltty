@@ -30,10 +30,7 @@ final class ConversationEngine: ObservableObject {
   private var modelRefresh: Task<Void, Never>?
   private var modelsReadAtByProvider: [String: Date] = [:]
   private var modelReads: [String: Task<Void, Never>] = [:]
-  /// What each session was last told to run as. Empty after a relaunch, so the
-  /// first send to a session restored from disk tells it (`deliver`).
   private var settingsInForce: [String: AgentSessionOptions] = [:]
-  /// The version each CLI was last seen at, for `restartOutdatedProcesses`.
   private var seenVersions: [String: String] = [:]
   nonisolated static let modelListLifetime: TimeInterval = 60 * 60
   private static let modelReadDelay: UInt64 = 1_000_000_000
@@ -113,8 +110,6 @@ final class ConversationEngine: ObservableObject {
     return (options.option(for: conversation.model) ?? options.agentDefault)?.effortOptions ?? []
   }
 
-  /// The chat's next turn runs this model. Its effort goes with it where the
-  /// model has that level; `deliver` tells the agent, never during a turn.
   func chooseModel(_ option: AgentModelOption, for conversationID: UUID) {
     guard let conversation = store.conversation(id: conversationID) else { return }
     let effort = conversation.reasoningEffort.flatMap { level in
@@ -125,8 +120,6 @@ final class ConversationEngine: ObservableObject {
 
   func chooseEffort(_ effort: String?, for conversationID: UUID) {
     guard let conversation = store.conversation(id: conversationID) else { return }
-    // No model named means the agent's default, and OpenCode takes an effort only
-    // with a model: name the one the chat is on.
     if conversation.model == nil, let current = models(for: conversationID).agentDefault {
       store.setModel(current.selection, effort: effort, for: conversationID)
     } else {
@@ -134,8 +127,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// A chat whose model the agent's list no longer has. With no list, nothing
-  /// says so.
   func modelIsGone(for conversationID: UUID) -> Bool {
     guard let model = store.conversation(id: conversationID)?.model else { return false }
     let options = models(for: conversationID)
@@ -199,7 +190,6 @@ final class ConversationEngine: ObservableObject {
         if options == nil {
           log.notice("\(providerID, privacy: .public) did not list its models within \(deadline, privacy: .public) s")
         }
-        // A list that did not come is no news: the last one stands.
         if let options, !options.isEmpty {
           modelsByProvider[providerID] = options
         } else if modelsByProvider[providerID] == nil {
@@ -211,8 +201,6 @@ final class ConversationEngine: ObservableObject {
     if providers == nil { modelsReadAt = Date() }
   }
 
-  /// A CLI adds and drops models while Boltty sits in the menu bar. Asked as the
-  /// panel opens, and read in the background: nothing waits for it.
   func refreshModelsIfStale(now: Date = Date()) {
     guard modelRefresh == nil, let modelsReadAt else { return }
     if now.timeIntervalSince(modelsReadAt) >= Self.modelListLifetime {
@@ -222,7 +210,6 @@ final class ConversationEngine: ObservableObject {
       }
       return
     }
-    // A list that is cheap to read need not wait the hour, and needs no probe.
     for client in registry.clients where client.modelListLifetime < Self.modelListLifetime {
       let readAt = modelsReadAtByProvider[client.providerID] ?? modelsReadAt
       if now.timeIntervalSince(readAt) >= client.modelListLifetime {
@@ -231,8 +218,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// Soon, and once however many times it is asked: OpenCode says `model.updated`
-  /// once for each folder it opens, in bursts.
   private func readModels(of providerID: String) {
     guard modelReads[providerID] == nil else { return }
     modelReads[providerID] = Task { [weak self] in
@@ -242,18 +227,12 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// A turn failed, perhaps because its model has gone: at most once a minute,
-  /// since a failing chat can be retried again and again.
   private func readModelsAfterFailure(of providerID: String?) {
     guard let providerID else { return }
     if let readAt = modelsReadAtByProvider[providerID], Date().timeIntervalSince(readAt) < 60 { return }
     readModels(of: providerID)
   }
 
-  /// Codex's app-server, Grok's stdio and Boltty's own OpenCode server outlive an
-  /// update of their CLI, and go on answering as the old version, old models
-  /// included. One whose CLI has changed is restarted once nothing of its is
-  /// running or waiting; until then it is looked at again next time.
   private func restartOutdatedProcesses() async {
     for installation in registry.installations {
       guard case let .available(version?) = installation.availability,
@@ -301,7 +280,6 @@ final class ConversationEngine: ObservableObject {
       return
     }
     usageReadAt = Date()
-    // Limits read before a sign-out are not the account's any more.
     for installation in registry.installations
     where !installation.isReady && usageByProvider[installation.provider.rawValue] != nil {
       usageByProvider.removeValue(forKey: installation.provider.rawValue)
@@ -380,7 +358,6 @@ final class ConversationEngine: ObservableObject {
     if case let .connection(state) = envelope.event {
       store.apply(envelope)
       if case .connected = state {
-        // A server come back can be a new one, reading a changed config.
         if let providerID = envelope.providerID,
            let client = registry.client(forProviderID: providerID),
            client.modelListLifetime < Self.modelListLifetime {
@@ -429,8 +406,6 @@ final class ConversationEngine: ObservableObject {
 
   // MARK: - Naming
 
-  /// A turn has ended well in a chat with no name of its own. In the
-  /// background: it can take the CLI half a minute, and nothing waits on it.
   private func nameIfDue(_ id: UUID) {
     guard !store.isReadOnly, !namingChats.contains(id),
           let conversation = store.conversation(id: id),
@@ -533,7 +508,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// Whether the agent's record was read; a gone session counts as read.
   @discardableResult
   func refresh(conversationID: UUID) async -> Bool {
     guard let conversation = store.conversation(id: conversationID),
@@ -620,9 +594,6 @@ final class ConversationEngine: ObservableObject {
     )
   }
 
-  /// An Ask Boltty chat the person goes on with. If it could only look, its
-  /// process was started without the tools that write: let go of before the next
-  /// send, which resumes it with all of them.
   func keepAskBolttyChat(id: UUID) {
     guard let conversation = store.conversation(id: id), conversation.isAskBoltty else { return }
     store.keepAskBolttyChat(id: id)
@@ -669,8 +640,6 @@ final class ConversationEngine: ObservableObject {
     }
 
     do {
-      // Before the message, so the turn's first ask already finds the chat's
-      // Auto Mode, and its first word comes from the model it shows.
       if let wanted = store.conversation(id: conversationID).map(Self.sessionOptions(for:)),
          settingsInForce[remote] != wanted {
         try await client.prepareSession(remote, options: wanted)
@@ -804,7 +773,6 @@ final class ConversationEngine: ObservableObject {
       throw AgentClientError.sessionNotFound
     }
     if let remote = conversation.remoteSessionID { return remote }
-    // A copy that cannot save the chat must not start work it would lose.
     guard !store.isReadOnly else { throw AgentClientError.serverStartFailed(Self.secondCopyRefusal) }
     if let pending = creatingSessions[conversationID] { return try await pending.value }
     let task = Task { try await self.createRemoteSession(for: conversationID) }
@@ -862,12 +830,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// A chat that is done with goes for good — Ask Boltty's, which keeps no
-  /// history: its record deleted at once, not trashed; then a running turn
-  /// stopped and its session let go (Claude Code and Antigravity hold a
-  /// process per conversation until Boltty quits). A session still starting
-  /// lets itself go when it finds the chat gone (`createRemoteSession`). The
-  /// CLI's own record stays.
   func forgetConversation(id: UUID) {
     guard let conversation = store.conversation(id: id) else { return }
     notices[id] = nil
@@ -944,7 +906,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// No timeout: an unanswered permission is not consent.
   @discardableResult
   func reply(
     permissionID: String,
@@ -1032,12 +993,9 @@ final class ConversationEngine: ObservableObject {
   // MARK: - Helpers
 
   nonisolated static let untitled = "New conversation"
-  /// What a second Boltty says when asked to start work: the first one owns
-  /// the conversations, and this one would lose whatever it started.
   static let secondCopyRefusal =
     "Another Boltty is already running and owns your conversations. Use that one to send."
 
-  /// What a read-only chat's agent hears when it asks to change something.
   static let readOnlyRefusal =
     "This chat is read-only: answer from what you can see, without changing files or running commands."
 
@@ -1048,11 +1006,6 @@ final class ConversationEngine: ObservableObject {
     return String((0..<24).map { _ in alphabet.randomElement()! })
   }
 
-  /// The stored title: the request's opening words, at most 40 characters —
-  /// short for the notch, the banners and the tray. The history row reads
-  /// the whole request instead (`ChatTitle.forRow`). Cleaned the same way,
-  /// so a screen region's bracket or Boltty's own copy of a picture never
-  /// names a chat.
   static func title(from prompt: String) -> String {
     let cleaned = ChatTitle.clean(prompt)
     guard !cleaned.isEmpty else { return untitled }

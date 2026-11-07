@@ -5,8 +5,6 @@ final class ParakeetTDTTests: XCTestCase {
   typealias TDT = ParakeetTDT<Int>
   private let blank = TDT.blank
 
-  /// A joint that answers from a script by frame; the predictor's state
-  /// counts the tokens fed to it, and its projection carries that count.
   private func tdt(
     _ script: @escaping (_ frame: Int, _ said: Int) -> TDT.Decision, fed: @escaping (Int) -> Void = { _ in }
   ) -> TDT {
@@ -58,7 +56,6 @@ final class ParakeetTDTTests: XCTestCase {
   }
 
   func testTheLastWindowsTailIsAskedForWhatRemains() throws {
-    // A jump from frame 0 passes the word at frame 3; only the tail finds it.
     let decoder = tdt { frame, said in
       frame >= 3 && said == 1 ? .init(token: 9, duration: 0) : .init(token: self.blank, duration: 4)
     }

@@ -55,7 +55,6 @@ enum FileHead {
   ) throws {
     var dropping = dropFirstLine
 
-    // memchr, not firstIndex(of:): the Swift scan was ~400× slower on multi-MB files.
     var buffer: [UInt8] = []
     var start = 0
     var scanned = 0

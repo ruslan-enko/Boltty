@@ -1,8 +1,6 @@
 import XCTest
 @testable import Boltty
 
-/// The rule this pins: nothing a CLI wrote is the first thing a person reads,
-/// and nothing a CLI wrote is thrown away either.
 final class AgentFailureReportTests: XCTestCase {
   private func preview(
     state: AgentReportedState?,
@@ -110,7 +108,6 @@ final class AgentFailureReportTests: XCTestCase {
     XCTAssertEqual(report.details, "ProviderError: 429")
   }
 
-  /// The user pressed Stop. That is an outcome, not a fault.
   func testAnInterruptIsNotAFailure() {
     XCTAssertNil(
       AgentFailureReport.make(
@@ -122,9 +119,6 @@ final class AgentFailureReportTests: XCTestCase {
     )
   }
 
-  /// OpenCode 2.0 names an interrupted turn `aborted` — read off its own
-  /// database on 2.0.24. Read as a failure, it draws the card with
-  /// "aborted: Step interrupted" in Details.
   func testAnInterruptedOpenCode2TurnIsNotAFailure() {
     XCTAssertNil(
       AgentFailureReport.make(
@@ -180,10 +174,6 @@ final class AgentFailureReportTests: XCTestCase {
     XCTAssertEqual(with.retryPrompt, "Check my SSD")
   }
 
-  /// A failure belongs to the turn that produced it. Once the agent has
-  /// spoken again, the failure is history: drawing it under newer replies
-  /// reads as the latest turn failing, while OpenCode's own record shows it
-  /// inline, mid-history, with a healthy end.
   func testAFailureFollowedByALaterReplyDrawsNoCard() {
     XCTAssertNil(
       AgentFailureReport.make(
@@ -202,8 +192,6 @@ final class AgentFailureReportTests: XCTestCase {
     )
   }
 
-  /// A stop after a failure is moving on too: the old turn's card must not
-  /// stand under it either.
   func testAStopAfterAFailureDrawsNoCard() {
     XCTAssertNil(
       AgentFailureReport.make(
@@ -218,9 +206,6 @@ final class AgentFailureReportTests: XCTestCase {
     )
   }
 
-  /// A newer user message alone changes nothing: the agent has not spoken
-  /// since the failure, so the turn it belongs to is still the latest one
-  /// with a reply.
   func testANewerUserMessageAloneKeepsTheCard() throws {
     let report = try XCTUnwrap(
       AgentFailureReport.make(
@@ -236,8 +221,6 @@ final class AgentFailureReportTests: XCTestCase {
     XCTAssertEqual(report.details, "provider.invalid-output: ended")
   }
 
-  /// The failure on the latest agent turn still draws, even with older
-  /// turns — failed or not — before it.
   func testAFailureOnTheLatestTurnStillDrawsTheCard() throws {
     let report = try XCTUnwrap(
       AgentFailureReport.make(

@@ -18,8 +18,6 @@ enum BolttyBrandMark {
       )
     }
 
-    // Each corner starts this far along its edges, so the sides stay long enough
-    // to read as a hexagon. Rounder than this and it was a plain circle.
     let corners = outlineCorners
     for index in corners.indices {
       let before = corners[(index + corners.count - 1) % corners.count]
@@ -39,7 +37,6 @@ enum BolttyBrandMark {
     builder.close()
   }
 
-  /// The hexagon's corners, tilted and a little uneven on purpose: it is a character.
   private static let outlineCorners: [CGPoint] = [
     CGPoint(x: 82.9, y: 69.2), CGPoint(x: 211, y: 45.1), CGPoint(x: 302.8, y: 151.6),
     CGPoint(x: 256.7, y: 286.4), CGPoint(x: 97.9, y: 291.4), CGPoint(x: 29.1, y: 180.5),

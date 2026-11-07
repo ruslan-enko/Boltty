@@ -1,7 +1,5 @@
 import Foundation
 
-/// Which agent Ask Boltty asks, in which model: what Settings chose, else the
-/// preferred agent in its default model, at the model's fastest effort.
 struct AskBolttyTarget: Equatable, Sendable {
   var providerID: String
   var model: ModelSelection?
@@ -10,11 +8,6 @@ struct AskBolttyTarget: Equatable, Sendable {
 }
 
 enum AskBolttyConfiguration {
-  /// An answer is one or two spoken sentences, so it thinks as little as the
-  /// model allows short of switching thinking off: a CLI's own default is its
-  /// highest (Antigravity's Flash took 14 s at high, 7 s at low, 1.4.12).
-  /// `minimal` and `none` are passed over while `low` is offered: they lose
-  /// the pointing and drawing.
   static func fastestEffort(_ options: [AgentEffortOption]) -> String? {
     let values = options.map(\.value)
     return effortOrder.first { values.contains($0) } ?? values.first
@@ -22,7 +15,6 @@ enum AskBolttyConfiguration {
 
   private static let effortOrder = ["low", "minimal", "none", "medium", "high", "xhigh", "max"]
 
-  /// Ask Boltty sends a picture of the screen, so only an agent that takes one.
   static func canAnswer(_ capabilities: AgentCapabilities) -> Bool {
     capabilities.contains(.images) || capabilities.contains(.attachments)
   }
@@ -46,14 +38,11 @@ enum AskBolttyConfiguration {
   }
 }
 
-/// What an Ask Boltty question carries to the agent besides the person's words.
 enum AskBolttyPrompt {
   static func text(question: String, region: AskBolttyRegion, readOnly: Bool) -> String {
     bracket(region: region, readOnly: readOnly) + question
   }
 
-  /// Everything before the question, the blank line after it included — what
-  /// the chat card lifts back to the region's picture (`SentFile.expansion`).
   static func bracket(region: AskBolttyRegion, readOnly: Bool) -> String {
     let what = region.isWholeScreen ? "their whole screen" : "their screen"
     let screen = region.context.map { "\(what), in \($0)" } ?? what
@@ -101,17 +90,12 @@ enum AskBolttyPrompt {
   }
 }
 
-/// The part of the screen a question is about, as written for the agent.
 struct AskBolttyRegion: Equatable, Sendable {
-  /// The screen at `ScreenRegionCapture.screenLongEdge`, the area outlined and
-  /// all but its window hidden: what a point's 0–1000 is measured across.
   var screenPath: String
-  /// The area up close.
   var areaPath: String
   var context: String?
   var recognizedText: String?
   var isWholeScreen: Bool
   var finderPlace: FinderPlace? = nil
-  /// Over Finder, with no folder to name: refused, too slow, or Recents.
   var isOverUnreadFinder = false
 }

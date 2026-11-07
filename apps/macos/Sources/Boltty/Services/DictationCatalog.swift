@@ -25,8 +25,6 @@ enum DictationCatalog {
     return LegacyDictationEngine()
   }
 
-  /// The engine for one language, or for two when a second is chosen: both
-  /// listen to the same audio and the words of whichever heard it are kept.
   static func engine(for primary: DictationLanguage, second: DictationLanguage?) -> DictationEngine {
     guard let second, primary.tier != .legacy, second.tier != .legacy else {
       return engine(for: primary.tier)

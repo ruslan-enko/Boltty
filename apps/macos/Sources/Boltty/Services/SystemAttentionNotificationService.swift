@@ -8,8 +8,6 @@ final class SystemAttentionNotificationService: NSObject, UNUserNotificationCent
   nonisolated private static let categoryID = "boltty.agent.attention"
   nonisolated private static let replyActionID = "boltty.agent.reply"
   nonisolated private static let openActionID = "boltty.agent.open"
-  /// One line of title and one of status, as a banner reads best. Claude's own
-  /// cap is 100 for both; their body is a short fixed sentence, ours a status.
   nonisolated static let titleLimit = 50
   nonisolated static let bodyLimit = 100
   private let center: UNUserNotificationCenter

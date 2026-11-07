@@ -52,8 +52,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   private var pending: [Int: CheckedContinuation<JSONObject, Error>] = [:]
   private var rpcCounter = 0
   private var sessions: [String: LiveSession] = [:]
-  /// What each chat asked for last. `session/load` needs its folder, and a
-  /// process started again takes these back up (`ensureLoaded`).
   private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var permissions: [String: PendingPermission] = [:]
   private var plans: [String: PendingPlan] = [:]
@@ -79,7 +77,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     var messages: [ConversationMessage] = []
     var textSegment = 0
     var planToolCalls: Set<String> = []
-    /// Auto Mode: an edit's permission is answered "allow once" as it comes.
     var autoApprove = false
 
     init(id: String, directory: String, model: ModelSelection?) {
@@ -202,7 +199,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  /// As a session starts: one the agent would not take runs on its own default.
   private func applyLeniently(model: ModelSelection?, effort: String?, to sessionID: String) async {
     if let model { try? await set(model: model, on: sessionID) }
     if let effort { try? await set(effort: effort, on: sessionID) }
@@ -220,8 +216,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     ])
   }
 
-  /// A session keeps its model across a load (1.0.77: `session/load` names the
-  /// one last used). Taken here, a model the agent refuses is said to the person.
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
     lock.withLock { wantedOptions[id] = options }
     _ = try await connect()
@@ -244,7 +238,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     lock.withLock { sessions[id]?.effort = options.effort }
   }
 
-  /// Answered as each edit asks (`autoApprove`), so it reaches a running turn.
   func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
     lock.withLock {
       wantedOptions[sessionID]?.autoApprove = enabled
@@ -503,8 +496,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// The same ending as a quit: `connect` starts it again, and `ensureLoaded`
-  /// loads each session as it is next used.
   func restartIdleProcess() async { await shutdown() }
 
   // MARK: - Transport
@@ -630,7 +621,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       }
     }
 
-    // Auto Mode is edits only: a command still asks.
     if params.object("toolCall")?.string("kind") == "edit",
        lock.withLock({ sessions[sessionID]?.autoApprove == true }),
        let allow = byDecision[.once] {
@@ -668,11 +658,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     )))
   }
 
-  /// What a permission is about, for the card. The title is the whole ask
-  /// ("Execute `ssh … ; df -h ; docker ps …`"), which made a heading of the
-  /// command; the kind says what sort of thing it is and `rawInput` or
-  /// `locations` what it touches. The options' names are buttons, not
-  /// resources: listed in the well they read as a second set of answers.
   static func permissionSubject(of tool: JSONObject?) -> (action: String, resources: [String]) {
     let command = tool?.object("rawInput")?.string("command")
     let paths = (tool?.array("locations") ?? []).compactMap { $0.string("path") }

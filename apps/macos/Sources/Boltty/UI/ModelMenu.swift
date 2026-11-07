@@ -1,9 +1,6 @@
 import AppKit
 
-/// What a chat runs as: its model, that model's effort, and Auto Mode. The system's
-/// own menu, in the panel's dark appearance, like the folder's.
 enum ModelMenu {
-  /// Past this many, one provider's models go in a submenu of their own.
   private static let flatLimit = 14
 
   static func make(
@@ -47,8 +44,6 @@ enum ModelMenu {
     return menu
   }
 
-  /// One provider is a plain list. OpenCode's several stand under their names, in
-  /// the order listed, and in submenus once there are too many to read.
   private static func addModels(
     _ content: BolttyAIModelMenu,
     to menu: NSMenu,

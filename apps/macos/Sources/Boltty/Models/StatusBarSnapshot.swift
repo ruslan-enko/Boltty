@@ -37,8 +37,6 @@ struct BolttyAISessionItem: Equatable, Identifiable, Sendable {
   let isCurrent: Bool
   var updatedAt: Date
   var state: AgentReportedState? = nil
-  /// A reply arrived while this chat was not open (`Conversation.hasUnread`,
-  /// cleared when the chat is opened).
   var hasUnread: Bool = false
 }
 
@@ -50,9 +48,6 @@ enum BolttyAISessionList {
     selectedID: UUID?,
     query: String = ""
   ) -> [BolttyAISessionItem] {
-    // Ask Boltty keeps no history, but what it said is gone from beside the
-    // pointer in seconds: a chat asked in is a row, to be read and copied from,
-    // for as long as it lives. One only warmed up for a question is not.
     let rows = conversations.filter {
       !$0.isAskBoltty || transcripts[$0.id]?.messages.isEmpty == false
     }.map { conversation in
@@ -95,7 +90,6 @@ enum BolttyAISessionList {
     case .idle: break
     }
     if conversation.isAskBoltty {
-      // Its question is filed with the bracket; its answer with the tags.
       let answer = transcript.messages.last { $0.role == .agent && !$0.plainText.isEmpty }
       return plainPreview(AskBolttyMark.stripped(answer?.plainText ?? ""), limit: previewLimit)
     }
@@ -105,10 +99,6 @@ enum BolttyAISessionList {
     return plainPreview(message.plainText, limit: previewLimit)
   }
 
-  /// What a working chat is doing now, for its row: the step running
-  /// (`AgentActivityGroup.progress`), "Thinking…" while it reasons, or `nil`
-  /// between steps, when the row says "Working…". Read off the turn's own
-  /// reply only: a step the last turn finished is not what it is doing.
   static func liveStep(in transcript: ConversationTranscript) -> String? {
     guard let reply = transcript.messages.last, reply.role == .agent,
           reply.completedAt == nil, let part = reply.parts.last
@@ -136,8 +126,6 @@ enum BolttyAISessionList {
       guard !raw.isEmpty else { continue }
       var line = raw.trimmingCharacters(in: .whitespaces)
       if line.hasPrefix("```") || line.hasPrefix("~~~") { continue }
-      // A rule and a table's dashes are drawing, not words; a table's row
-      // is its cells.
       if PreviewMarkup.rule.hasMatch(in: line) { continue }
       if line.hasPrefix("|") {
         line = line.split(separator: "|")
@@ -162,7 +150,6 @@ enum BolttyAISessionList {
     static let leadingMarker = compile(#"^(#{1,6}\s+|>\s?|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+)"#)
     static let link = compile(#"!?\[([^\]]*)\]\([^)]*\)"#)
     static let emphasis = compile(#"(?<![\w*])\*(?=\S)([^*\n]+?)(?<=\S)\*(?![\w*])"#)
-    /// `---`, `***`, `___`, and a table's `|---|:--:|` under its head.
     static let rule = compile(
       #"^\|?(?:\s*:?-{3,}:?\s*\|)*\s*:?-{3,}:?\s*\|?$|^(?:[*_]\s*){3,}$"#
     )
@@ -228,20 +215,7 @@ extension ConversationExecutionState {
 
 // MARK: - A chat's title, as a row shows it
 
-/// **A row's title is the request, whole and in the person's words.** The
-/// stored title is cut at 40 characters (`ConversationEngine.title(from:)`,
-/// kept short for the notch, the banners and the tray), which in a row stops
-/// half way across while the reply under it runs to the edge. And the
-/// prompt as sent carries what the person never typed: a screen
-/// selection's bracket, a path where a file was sent.
-///
-/// So the row reads the first request off the transcript when the stored
-/// title is only a cut of it, and the label truncates by its own width.
-/// A name given to the chat (`ChatNaming`) replaces it, whatever its words.
-/// A stored title that is not a cut — a CLI's own name for an adopted
-/// session — is kept. Either is cleaned the same way (`clean`).
 enum ChatTitle {
-  /// What the history row shows for this chat.
   static func forRow(_ conversation: Conversation, transcript: ConversationTranscript) -> String {
     let files = conversation.sentFiles
     let stored = clean(conversation.title, files: files)
@@ -254,24 +228,11 @@ enum ChatTitle {
       }
     }
     if !stored.isEmpty, !untitled { return stored }
-    // A request that was only files: the first file's name ("image1.png"),
-    // rather than "New conversation" or nothing.
     return files.first?.name ?? conversation.title
   }
 
-  /// The request the person typed, with each attachment as only a file they chose
-  /// keeps it: its own name. A picture pasted or a region of the screen —
-  /// one Boltty named, "image1" — leaves nothing, nor does pasted text;
-  /// any other path is its last part. Whitespace is one space; past
-  /// `displayLimit` it is cut at a word. Empty when nothing typed is left.
   static func clean(_ text: String, files: [SentFile] = []) -> String {
-    // The files first, on the whole request: a screen region's bracket
-    // carries the text read off it and can run to kilobytes. Then enough
-    // for any title a row can show; a construct cut there is caught by the
-    // unterminated forms below.
     var text = String(liftingFiles(in: text, files: files).prefix(rawLimit))
-    // Most requests are words alone; the expressions are for the rest. The
-    // list builds every row's title on each change while it is open.
     if text.contains(where: { "[<\"/~".contains($0) }) {
       for removal in Pattern.removals {
         text = removal.replacing(in: text, with: "")
@@ -292,9 +253,6 @@ enum ChatTitle {
   static let rawLimit = 600
   static let displayLimit = 240
 
-  /// What a chat's name is made from: its first request as the person typed it
-  /// and the last thing the agent said. nil until the agent has said something:
-  /// a turn stopped at once has told nothing about what the chat is.
   static func namingMaterial(
     _ conversation: Conversation,
     transcript: ConversationTranscript
@@ -314,16 +272,12 @@ enum ChatTitle {
     return text.isEmpty ? nil : text
   }
 
-  /// The stored title is the request's opening words, cut — what
-  /// `ConversationEngine.title(from:)` and the CLI stores' titles are.
   private static func isCut(_ stored: String, of whole: String) -> Bool {
     let opening = stored.hasSuffix("…") ? String(stored.dropLast()) : stored
     let trimmed = opening.trimmingCharacters(in: .whitespaces)
     return !trimmed.isEmpty && whole.hasPrefix(trimmed)
   }
 
-  /// Every spelling a sent file took in the prompt, longest first: a screen
-  /// region's whole bracket, then its paths, quoted and bare.
   private static func liftingFiles(in text: String, files: [SentFile]) -> String {
     guard !files.isEmpty else { return text }
     let byPath = files.sorted { $0.path.count > $1.path.count }
@@ -338,21 +292,15 @@ enum ChatTitle {
     return text
   }
 
-  /// A file the person chose is named by itself; one Boltty wrote out
-  /// (a picture, a screen region, a long paste) is named by Boltty after
-  /// its attachment, and says nothing in a title.
   private static func name(of file: SentFile) -> String {
     let own = URL(fileURLWithPath: file.path).lastPathComponent
     return file.expansion == nil && own == file.name ? file.name : ""
   }
 
-  /// What is left of a path: a quoted one in Boltty's own folder is a copy
-  /// Boltty made and goes; any other keeps its last part.
   private static func shorteningPaths(in text: String) -> String {
     let text = NSMutableString(string: text)
     for (pattern, quoted) in [(Pattern.quotedPath, true), (Pattern.barePath, false)] {
       let matches = pattern.matches(in: text as String, range: NSRange(location: 0, length: text.length))
-      // From the end, so the ranges still ahead stay where they were.
       for match in matches.reversed() {
         let found = text.substring(with: match.range(at: 1))
         let ours = quoted && found.contains("/Application Support/Boltty/")
@@ -365,16 +313,12 @@ enum ChatTitle {
 
   private enum Pattern {
     static let removals = [
-      // A screen region's bracket, whole: it ends with the text read off
-      // it, or with the whole screen's picture.
       compile(#"\[Selected on screen[\s\S]*?(?:</screen-text>\]|\.png"?\])"#),
-      // …or cut short, as a stored title cut it.
       compile(#"\[Selected on[^\]]*$"#),
       compile(#"<pasted-text>[\s\S]*?</pasted-text>"#),
       compile(#"<pasted-text>[\s\S]*$"#),
       compile(#"<screen-text>[\s\S]*?</screen-text>"#),
       compile(#"<screen-text>[\s\S]*$"#),
-      // A quoted path the cut left open.
       compile(#""(?:~|/)[^"\n]*$"#),
     ]
     static let quotedPath = compile(#""((?:~|/)[^"\n]+)""#)

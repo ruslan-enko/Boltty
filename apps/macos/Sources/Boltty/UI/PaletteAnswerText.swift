@@ -555,15 +555,8 @@ final class PaletteAnswerTextView: NSTextView {
     let storage = NSTextStorage()
     let layout = PaletteAnswerLayoutManager()
     storage.addLayoutManager(layout)
-    // **Contiguous, on purpose.** Non-contiguous layout lays out only what it
-    // is asked to draw and *estimates* where the rest stands. This view's
-    // height is not the layout manager's: it is measured (`fit`) and forced,
-    // so a long answer first shown at its foot — which is where a chat opens,
-    // on its latest — asks for a rect past anything the estimate knows, finds
-    // no glyph there and draws nothing, and never asks again. A chat with a
-    // long answer opens blank until it is left and opened a second time.
-    // Only laying the whole text out cures it; measured, that
-    // costs no more per resize step than the estimate did.
+    // Contiguous: this view's height is forced, so with non-contiguous layout a
+    // long answer first shown at its foot finds no glyph and draws blank.
     layout.allowsNonContiguousLayout = false
     let container = NSTextContainer(size: NSSize(width: 1, height: CGFloat.greatestFiniteMagnitude))
     container.lineFragmentPadding = 0

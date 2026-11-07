@@ -1,7 +1,6 @@
 import AppKit
 import os
 
-/// The folder Finder shows somewhere on the screen, and what is selected in it.
 struct FinderPlace: Equatable, Sendable {
   var folder: String
   var selected: [String] = []
@@ -10,11 +9,8 @@ struct FinderPlace: Equatable, Sendable {
 @MainActor
 final class FinderSelectionService {
   nonisolated static let finderBundleID = "com.apple.finder"
-  /// How long Finder is given to answer, when it needs no asking.
   static let answerDeadline: TimeInterval = 1.5
-  /// And while the person is answering macOS's question about it.
   static let consentDeadline: TimeInterval = 30
-  /// Names passed on with a question: a whole folder selected is not a prompt.
   nonisolated static let selectedLimit = 30
 
   enum Authorization: Equatable {
@@ -61,8 +57,6 @@ final class FinderSelectionService {
     return await Self.answer(within: deadline) { Self.runSelectionScript(within: deadline) } ?? []
   }
 
-  /// The folder at `spot`. A timer rather than a wait: a Finder that does not
-  /// answer costs the question its folder, not the question.
   func place(of spot: FinderSpot) async -> FinderPlace? {
     guard let deadline = deadline() else { return nil }
     return await Self.answer(within: deadline) {
@@ -70,8 +64,6 @@ final class FinderSelectionService {
     }
   }
 
-  /// Where a new item in Finder would go: its front window's folder, or the
-  /// desktop's. What a chat opened over Finder works in.
   func frontFolder() async -> String? {
     if let readFrontFolder { return await readFrontFolder() }
     guard let deadline = deadline() else { return nil }
@@ -80,7 +72,6 @@ final class FinderSelectionService {
     }
   }
 
-  /// How long Finder may take, nil when it may not be asked at all.
   private func deadline() -> TimeInterval? {
     switch authorization() {
     case .authorized: Self.answerDeadline
@@ -89,9 +80,6 @@ final class FinderSelectionService {
     }
   }
 
-  /// `NSAppleScript` blocks its thread, so it runs on one of Dispatch's, not the
-  /// cooperative pool's; `run` gives Finder the same time, and the thread comes
-  /// back with the script.
   nonisolated private static func answer<Value: Sendable>(
     within deadline: TimeInterval, _ read: @escaping @Sendable () -> Value?
   ) async -> Value? {
@@ -130,10 +118,6 @@ final class FinderSelectionService {
     end tell
     """
 
-  /// A window that shows no folder (Recents, a search) is no place: the one
-  /// behind it, or the desktop, is not what the person is looking at. Of what is
-  /// selected only what lies in the folder counts: Finder's selection is its
-  /// front window's.
   nonisolated static func parsePlace(_ lines: [String], for spot: FinderSpot) -> FinderPlace? {
     guard let desktop = lines.first else { return nil }
     let rows = lines.dropFirst().map { $0.split(separator: "\t", omittingEmptySubsequences: false).map(String.init) }

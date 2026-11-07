@@ -1,12 +1,6 @@
 import Foundation
 
-/// An answer as it should be heard: markdown's marks gone, code left to the
-/// screen, a link said by its words, a list item or a heading a sentence.
 enum SpokenText {
-  /// `keepingPoints` leaves a marker (`AskBolttyPoint.marker`) where each
-  /// mark stood — a `<point …/>`, a shape, a `<board>` — so a piece of the
-  /// answer carries what it shows to the moment it is said; otherwise the
-  /// marks are dropped.
   static func speakable(_ markdown: String, keepingPoints: Bool = false) -> String {
     var lines: [String] = []
     var inFence = false
@@ -47,7 +41,6 @@ enum SpokenText {
     return out + text[cursor...]
   }
 
-  /// `nil` for a line that is only markup, such as a table's rule.
   private static func line(_ text: String) -> String? {
     if text.isEmpty { return "" }
     if text.range(of: #"^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$"#, options: .regularExpression) != nil {
@@ -113,12 +106,7 @@ enum SpokenText {
   }
 }
 
-/// Cuts text that is still arriving into pieces worth handing to a voice: a
-/// sentence once it has closed, a line once it has ended. What is left open
-/// waits for more, or for `finish()`.
 struct SentenceChunker {
-  /// A run with no stop longer than this is cut at a comma or a space, so a
-  /// voice never waits on a paragraph.
   static let longestPiece = 220
   private static let abbreviations: Set<String> = [
     "e.g", "i.e", "vs", "cf", "mr", "mrs", "ms", "dr", "fig", "approx", "no",

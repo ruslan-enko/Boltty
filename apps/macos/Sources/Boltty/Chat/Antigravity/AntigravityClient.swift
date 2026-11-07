@@ -1,45 +1,14 @@
 import Foundation
 
-/// Google Antigravity's `agy`, one process per conversation.
-///
-/// `--input-format stream-json` keeps `agy` alive and runs a turn per line on
-/// stdin, `{"event": "user", "message": {"content": …}}`; it answers in
-/// NDJSON keyed on `event`: `init`, `step_update`*, `result` (agy 1.3.4 and
-/// 1.4.0). Inbound there is the user message and
-/// nothing else (`StreamInputUserMessage` is the binary's only input type),
-/// which decides most of `capabilities`.
 final class AntigravityClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.antigravity
 
-  /// - **`.permissions` through Boltty's own gate** (`AntigravityPermissionGate`):
-  ///   print mode cannot ask, so the process runs with
-  ///   `--dangerously-skip-permissions` and a `PreToolUse` hook asks Boltty
-  ///   before each call. A refusal's words reach the model as the hook's
-  ///   `reason` (`.permissionMessage`). Where the gate cannot be installed the
-  ///   process runs as print mode does — refusing — and the reply says so.
-  /// - **No `.questions`**: `ask_question` has no way back in print mode.
-  /// - **`.interrupt`**: SIGINT ends the turn with a `result` ("interrupted")
-  ///   and the process exits; the next send resumes with `--conversation`,
-  ///   the conversation intact.
-  /// - **`.workingDirectory`**: since 1.3 the process's directory is where it
-  ///   writes. Until then it wrote under its own `scratch/`.
-  /// - **`.attachments`, not `.images`**: a content block other than text
-  ///   ends the run (1.4.0: `stream input content block type "image" is not
-  ///   supported`), so a file goes as its path in the words and `agy` opens
-  ///   it with `view_file` — which sees a picture. The gate lets that read
-  ///   through without a card (`AntigravityToolPolicy.readGrants`); print
-  ///   mode alone refuses a read outside the folder.
-  /// - **`.autoApproval`** lets edits inside the chat's folder through the
-  ///   gate without a card; commands still ask. Without the gate it is
-  ///   `--mode accept-edits`, a launch flag for the next process.
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
     .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
     .usageLimits,
   ]
 
-  /// `init` is the handshake: it costs no model call and carries the id
-  /// Antigravity minted. A process that has said nothing by then is stuck.
   static let initDeadline: TimeInterval = 25
 
   private let lock = NSLock()
@@ -79,10 +48,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     let always: String
   }
 
-  /// Guarded by the client's lock.
   private final class LiveSession: @unchecked Sendable {
-    /// Antigravity's own id: `--conversation` takes nothing else, and a new
-    /// one exists only once `init` has named it.
     var id: String?
     var directory: String
     var model: ModelSelection?
@@ -93,9 +59,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     var sentMessageIDs: Set<String> = []
     var stopping = false
     var initWaiter: CheckedContinuation<String, Error>?
-    /// Whether the current process has said `init` — it can before anyone waits.
     var initialized = false
-    /// What "Always allow" granted in this chat, while Boltty runs.
     var granted: Set<String> = []
 
     init(id: String?, directory: String, model: ModelSelection?, effort: String?, autoApprove: Bool) {
@@ -122,12 +86,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     return .available(version: version)
   }
 
-  /// `agy models` prints `<id>\t<label>` per line and reaches no model.
-  ///
-  /// **Effort is spelled into the id** — `gemini-3.8-flash-high`, `-medium`,
-  /// `-low` — while `--model` takes the base name with `--effort` beside it
-  /// (1.3.4's changelog). So the suffix is folded into `effortOptions` and one
-  /// model stays on the menu.
   func availableModels() async throws -> [AgentModelOption] {
     guard let executable = locate() else { throw AgentClientError.notInstalled }
     guard let answer = await OneShotCommand.run(
@@ -170,8 +128,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     return (id, nil)
   }
 
-  /// `/usage` in print mode: answered from the account, no model call and
-  /// no conversation written (~4 s).
   func usageLimits() async -> AgentUsage? {
     guard let executable = locate(),
           let answer = await OneShotCommand.run(
@@ -187,8 +143,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   // MARK: - Sessions
 
-  /// Starts the conversation's process and waits for `init`, which names it.
-  /// No turn runs, and the conversation's file is on disk from then on.
   func createSession(id: String, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
     guard let executable = locate() else { throw AgentClientError.notInstalled }
     let session = LiveSession(
@@ -231,10 +185,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  /// Model and effort are launch flags: an idle process is let go, and the next
-  /// send starts one with them (1.5.2: `--conversation <id> --model <other>`
-  /// went on in the conversation on the other model). A conversation from before
-  /// a relaunch gets back its folder here too.
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
     let idle = try lock.withLock { () -> JSONLineProcess? in
       let session: LiveSession
@@ -251,7 +201,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       let flagsChanged = session.model?.modelID != options.model?.modelID
         || session.effort != options.effort
         || session.directory != options.directory
-        // With the gate the mode is Boltty's, and reaches a running process.
         || (gate == nil && session.autoApprove != options.autoApprove)
       session.directory = options.directory
       session.model = options.model
@@ -281,7 +230,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       guard FileManager.default.fileExists(
         atPath: AntigravityTranscript.url(sessionID: sessionID, in: transcriptRoot).path
       ) else { throw AgentClientError.sessionNotFound }
-      // A conversation from before a relaunch: the next process resumes it.
       let session = LiveSession(
         id: sessionID, directory: NSHomeDirectory(), model: nil, effort: nil, autoApprove: false
       )
@@ -320,9 +268,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// Starts `agy` for a conversation — resuming it when it has an id — and
-  /// answers once `init` has named it. A CLI that refuses its arguments says
-  /// so on stderr and exits; that line is the error.
   private func start(_ session: LiveSession, executable: String) async throws -> String {
     let gate = preparedGate()
     let (arguments, directory) = lock.withLock {
@@ -339,7 +284,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       session.process = process
       session.initialized = false
     }
-    // The exit, not the end of stdout, carries what the CLI said on stderr.
     process.onExit = { [weak self] status, stderr in
       guard let self else { return }
       let waiter = self.lock.withLock { () -> CheckedContinuation<String, Error>? in
@@ -377,11 +321,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// `--print=`, attached and empty: `--print` takes an optional value, and a
-  /// bare one swallows the next flag as the prompt.
-  ///
-  /// `--dangerously-skip-permissions` only with the gate in place: then the
-  /// gate is what asks, and nothing runs that it did not allow.
   private static func arguments(for session: LiveSession, gated: Bool) -> [String] {
     var arguments = ["--input-format", "stream-json", "--output-format", "stream-json"]
     if let model = session.model { arguments += ["--model", model.modelID] }
@@ -398,8 +337,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   // MARK: - Reading
 
-  /// **Text arrives twice**: `step_update.text_delta` streams it and
-  /// `result.response` repeats it whole. Only the deltas are taken.
   private func read(_ process: JSONLineProcess, session: LiveSession) async {
     var reply: ConversationMessage?
 
@@ -485,7 +422,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       }
     }
 
-    // The process ended. A turn it never finished must not stay "working".
     let (sessionID, interrupted) = lock.withLock { () -> (String?, Bool) in
       let interrupted = session.pendingMessageID != nil && !session.stopping
       session.pendingMessageID = nil
@@ -510,9 +446,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   static let deniedName = "AntigravityDenied"
   static let turnErrorName = "AntigravityTurnError"
 
-  /// What a `result` says went wrong, if anything. A refusal print mode made
-  /// on the person's behalf is said in the agent's terms, with the two ways
-  /// round it.
   static func failure(of result: JSONObject, stopped: Bool) -> MessageFailure? {
     if result.string("status") != "SUCCESS" {
       let error = result.string("error") ?? "Antigravity ended the turn without a result."
@@ -522,8 +455,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     let actions = result.array("denied_actions")
     let denied = actions.compactMap { $0.string("display_name") ?? $0.string("action") }
     guard !denied.isEmpty else { return nil }
-    // Auto Mode is `--mode accept-edits`: it lets file writes through and
-    // still refuses commands, so it is offered only where it would help.
     let onlyEdits = actions.allSatisfy { $0.string("action") == "write_file" }
     let remedy = onlyEdits
       ? "Turn on Auto Mode for this chat to allow edits, or allow them in Antigravity's settings (permissions.allow)."
@@ -537,8 +468,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   // MARK: - Control
 
-  /// SIGINT: `agy` ends the turn with a `result` and exits. The next send
-  /// resumes the conversation in a new process.
   func stop(sessionID: String) async throws {
     let process = lock.withLock { () -> JSONLineProcess? in
       guard let session = sessions[sessionID], session.pendingMessageID != nil else { return nil }
@@ -591,8 +520,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   // MARK: - The gate
 
-  /// Installs the hook and starts the hand-over folder, once. `nil` when that
-  /// failed — the process then runs without the bypass and print mode refuses.
   private func preparedGate() -> AntigravityPermissionGate? {
     lock.lock()
     if gateTried { defer { lock.unlock() }; return gate }
@@ -661,7 +588,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// Refuses every open ask of a session — a stop, or its process gone.
   private func settleAsks(of sessionID: String, reason: String) {
     let (open, gate) = lock.withLock { () -> ([String], AntigravityPermissionGate?) in
       let open = asks.filter { $0.value.sessionID == sessionID }.map(\.key)
@@ -674,13 +600,10 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// The mode is a launch flag, so an idle process is let go and the next
-  /// send starts one under the new mode. A running turn keeps the old one.
   func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
     let idle = lock.withLock { () -> JSONLineProcess? in
       guard let session = sessions[sessionID], session.autoApprove != enabled else { return nil }
       session.autoApprove = enabled
-      // With the gate the mode is Boltty's and reaches the running turn.
       guard gate == nil, session.pendingMessageID == nil else { return nil }
       defer { session.process = nil }
       return session.process
@@ -703,9 +626,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   // MARK: - A chat's name
 
-  /// Its record names nothing, so a name is asked for: Flash at its lowest
-  /// effort where it is listed (1.5.2: 5.4 s). `agy` has no way to keep no
-  /// record, so each name leaves one conversation behind, in a folder of its own.
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     guard let executable = locate(),
           let models = try? await availableModels(),
@@ -733,7 +653,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     return Self.response(inStream: answer.output)
   }
 
-  /// The words of the `result` frame, which repeats what the deltas said.
   static func response(inStream output: String) -> String? {
     for line in output.split(whereSeparator: \.isNewline).reversed() {
       guard let frame = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],

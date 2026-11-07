@@ -19,13 +19,11 @@ struct DictationLanguage: Sendable, Equatable, Identifiable {
     Locale.current.localizedString(forIdentifier: identifier) ?? identifier
   }
 
-  /// `uk` for `uk-UA`: what two dictation languages may not share.
   var languageCode: String { DictationLanguageCatalog.languageCode(of: identifier) }
 }
 
 enum DictationLanguageCatalog {
   static let followSystemIdentifier = ""
-  /// The second language is optional; this is the choice of having none.
   static let noSecondLanguageIdentifier = ""
 
   static func normalize(_ identifier: String) -> String {
@@ -94,9 +92,6 @@ enum DictationLanguageCatalog {
     return sameLanguage.first { $0.isInstalled } ?? sameLanguage.first
   }
 
-  /// The language chosen as a second one: `nil` for none, for one this Mac
-  /// does not offer, and for the primary's own language in another region —
-  /// two recognizers of one language would only agree.
   static func resolveSecond(
     identifier: String,
     primary: DictationLanguage,
@@ -110,7 +105,6 @@ enum DictationLanguageCatalog {
     return second
   }
 
-  /// `uk` for `uk-UA`, `zh` for `zh-Hans-CN`.
   static func languageCode(of identifier: String) -> String {
     Locale(identifier: identifier).language.languageCode?.identifier
       ?? String(normalize(identifier).prefix(while: { $0 != "-" }))

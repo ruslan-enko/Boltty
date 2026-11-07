@@ -2,10 +2,6 @@ import AppKit
 import XCTest
 @testable import Boltty
 
-/// Puts Ask Boltty's overlay on the real screen and photographs it: glass and a live
-/// face do not draw offscreen. `TEST_RUNNER_BOLTTY_TALK_SHOT=<dir>` writes
-/// `talk-listening.png` (the face beside a pointer tracing a loop) and
-/// `talk-pointing.png` (the face landed beside a spot, the sentence beside it).
 @MainActor
 final class AskBolttyOverlayOnScreen: XCTestCase {
   func testPhotographTheFaceBesideThePointer() async throws {

@@ -8,17 +8,12 @@ protocol DictationSession: AnyObject, Sendable {
   func cancel()
 }
 
-/// One result of a recognizer, with what choosing between two of them needs
-/// (`BilingualTranscript`). Times are seconds on the take's own clock.
 struct DictationUpdate: Sendable, Equatable {
   var text: String
   var isFinal: Bool
   var start: Double
   var end: Double
-  /// `nil` where the model reports none — Apple's Ukrainian dictation model,
-  /// and every volatile result of every model.
   var confidence: Double?
-  /// Everything up to here is final.
   var finalizedThrough: Double
 }
 

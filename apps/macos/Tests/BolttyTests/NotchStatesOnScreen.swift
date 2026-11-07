@@ -2,11 +2,6 @@ import AppKit
 import XCTest
 @testable import Boltty
 
-/// Photographs the notch face in every state it can be in, on the real screen: a
-/// live face does not draw offscreen with its line, rims and badges. The dock
-/// stands beside a stand-in notch drawn 300 pt below the menu bar, so a Boltty
-/// running on this Mac does not show through. `TEST_RUNNER_BOLTTY_NOTCH_SHOTS=<dir>`
-/// writes one PNG per state, named in order.
 @MainActor
 final class NotchStatesOnScreen: XCTestCase {
   private let drop: CGFloat = 300
@@ -109,7 +104,6 @@ final class NotchStatesOnScreen: XCTestCase {
     return scenes
   }
 
-  /// A menu-bar band and a black notch where the dock expects them.
   private func standIn(for notch: CGRect, band: CGFloat, on screen: NSScreen) -> NSWindow {
     let frame = CGRect(x: screen.frame.minX, y: notch.minY, width: screen.frame.width, height: band)
     let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)

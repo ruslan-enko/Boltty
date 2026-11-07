@@ -1,34 +1,20 @@
 import AppKit
 
-/// Ask Boltty on the screen, beside the pointer, as heyclicky draws it: the
-/// answering agent's face rides just past the arrow with the sentence being
-/// said in a bubble beside it; and when the answer
-/// points somewhere the face flies there on an arc with a small pointer of its
-/// own, whose tip lands on the spot. Nothing here takes a click or the keyboard
-/// — one passive panel over the screen the pointer is on.
 @MainActor
 final class AskBolttyOverlayController {
   // MARK: Geometry, in points
 
   static let faceSide: CGFloat = 40
-  /// From the pointer's tip to the face's centre: right of the arrow, under it.
   static let pointerOffset = CGVector(dx: 30, dy: -30)
-  /// The chase's time constant: the face trails the pointer by about this.
   static let followTime: CFTimeInterval = 0.06
   static let edgeMargin: CGFloat = 8
   static let bubbleGap: CGFloat = 6
-  /// One sentence is in the bubble at a time (`AskBolttySession.caption`);
-  /// this is room for a long one at the bubble's size.
   static let bubbleMaxTextWidth: CGFloat = 340
   static let bubbleMaxLines = 5
   static let bubblePadding = CGSize(width: 14, height: 10)
   static let bubbleCornerRadius: CGFloat = 18
-  /// Over the glass, under the words: bare glass over a bright page reads
-  /// grey on grey. Density goes over the
-  /// glass, never into its tint (*Design contract*).
   static let bubbleShade = NSColor.black.withAlphaComponent(0.5)
 
-  /// From the spot pointed at to the face's centre: beside it, never over it.
   static let landingOffset = CGVector(dx: 30, dy: -30)
 
   static let lingerAfterAnswer: TimeInterval = 1
@@ -44,116 +30,73 @@ final class AskBolttyOverlayController {
   private enum Mode: Equatable {
     case following
     case flying(from: CGPoint, to: CGPoint, start: CFTimeInterval, duration: CFTimeInterval)
-    /// From the panel to the pointer, which may move on the way.
     case arriving(from: CGPoint, start: CFTimeInterval, duration: CFTimeInterval)
     case parked(CGPoint)
   }
 
-  /// Where the pointer is; tests hand in their own.
   var pointer: () -> CGPoint = { NSEvent.mouseLocation }
 
   private var panel: PassivePanel?
   private let root = AskBolttyOverlayRootView()
   private let marker = AskBolttyPointerMark()
-  /// From the pointer mark's tip to the face's centre, while it points.
   private var markerReach: CGVector?
-  /// What the answers drew on the screen, until the next question.
   private let drawing = AskBolttyDrawingLayer()
-  /// And what they drew on a board beside the face.
   private var board: PaletteGlassHost?
   private let boardDrawing = AskBolttyDrawingLayer()
   private var drawnCount = 0
-  /// The face and its words have gone; the drawings stay until a click,
-  /// Escape or the next question.
   private var settled = false
   private var dismissMonitor: Any?
   private var face: MascotNSView?
   private var bubble: PaletteGlassHost?
-  /// "Thinking…", a problem: words that are there at once.
   private let label = NSTextField(wrappingLabelWithString: "")
-  /// The answer: its words arrive as the listening capsule's do.
   private let answerWords = ListeningWordsView(frame: .zero)
 
   private var phase: AskBolttySession.Phase = .idle
   private var agent: AgentId?
   private var mode = Mode.following
-  /// The face's centre, in AppKit's global coordinates.
   private var position: CGPoint?
   private var screenFrame: CGRect = .zero
   private var backingScale: CGFloat = 2
   private var link: CADisplayLink?
   private var lastTick: CFTimeInterval = 0
   private var hideWork: DispatchWorkItem?
-  /// The words beside the face at rest, which go before the face does.
   private var restHintWork: DispatchWorkItem?
   private var text = ""
   private var shade: NSView?
-  /// How much of `text` is on screen: an answer types out, as a character's
-  /// words do in Zelda or Animal Crossing, with a blip a letter or two and
-  /// the face bobbing as if it spoke.
   private var typed: Double = 0
   private var typesOut = false
-  /// The bubble as drawn, chasing `bubbleSize` as the words come.
   private var shownBubbleSize: CGSize = .zero
-  /// The chase's time constant.
   static let bubbleGrowthTime: CFTimeInterval = 0.09
-  /// The size the whole sentence will take, known before its words have come.
   private var wholeBubbleSize: CGSize = .zero
   private var bubbleSide = BubbleSide.right
-  /// From the face's left edge to the bubble's, as drawn: gliding after a
-  /// change of side; nil until first laid out, when it starts where it belongs.
   private var shownBubbleLead: CGFloat?
-  /// The glide to the face's other side.
   static let bubbleSideTime: CFTimeInterval = 0.12
   private var lastBlip = 0
   private let blips = AskBolttyBlips()
-  /// Settings › General › Sounds.
   var makesSounds = true
-  /// A voice is saying this answer: the words still type out, without blips
-  /// over it.
   var isSaidAloud = false
-  /// The panel came or went: Escape is held only while it is here.
   var onVisibleChange: (() -> Void)?
-  /// The answer is over and the face waits a moment, words gone.
   private var resting = false
-  /// What can be done while it waits (`AskBolttyController.restHint`).
   var restHint: (() -> String?)?
-  /// How long those words stay: the face rides beside the pointer, and a
-  /// bubble that rode with it for all of `restAfterAnswer` would be in the way.
   static let restHintTime: TimeInterval = 5
-  /// The question has gone and the panel's face is still going: nothing shows
-  /// until it has (`arrive`).
   private var holdsForArrival = false
-  /// Where the next face to appear flies in from.
   private var arrival: CGPoint?
-  /// The words are going back into the face; the bubble empties once they have.
   private var retractWork: DispatchWorkItem?
-  /// The last "Thinking…" state, for laying the shimmer out once there is a bubble.
   private var wordsAreQuiet = false
-  /// How long the face waits after an answer. Not for good: Escape is held
-  /// from other apps while it is here.
   static let restAfterAnswer: TimeInterval = 12
-  /// The panel's face against this one, which it starts the flight as.
   static var arrivalScale: CGFloat { AgentPaletteMetrics.listeningFaceSize / faceSide }
-  /// How much bigger it is at the top of the arc.
   static let flightSwell: CGFloat = 0.15
   static let typingSpeed: Double = 38
   static let bobHeight: CGFloat = 2.5
-  /// Measured when the words change, never per frame.
   private var bubbleSize: CGSize = .zero
-  /// "Thinking…" wears a band of the face's light sweeping
-  /// across them, as a working chat's row does in the list: something is
-  /// under way. Masked by the words' silhouette, cut when the words change.
   private let shimmer = CALayer()
   private let shimmerWords = CALayer()
   private let shimmerBand = CAGradientLayer()
   private var shimmerCut: String?
 
   var isVisible: Bool { panel?.isVisible == true }
-  /// The face itself is here: not only what it drew, and not on its way out.
   var isFaceUp: Bool { isVisible && !settled && panel?.alphaValue == 1 }
   var textForTesting: String { typesOut ? answerWords.text : label.stringValue }
-  /// What is really to be seen of the bubble: it can hold words and be clear.
   var bubbleForTesting: (isHidden: Bool, alpha: CGFloat, wordsAlpha: CGFloat, frame: CGRect) {
     (bubble?.isHidden ?? true, bubble?.alphaValue ?? 0, label.alphaValue, bubble?.frame ?? .zero)
   }
@@ -161,7 +104,6 @@ final class AskBolttyOverlayController {
   // MARK: - What Ask Boltty says
 
   func show(_ phase: AskBolttySession.Phase, caption: String, agent: AgentId?, step: String? = nil) {
-    // Already over: a repeat of it must not cut the rest short.
     if phase == .idle, resting { return }
     let previous = self.phase
     self.phase = phase
@@ -181,8 +123,6 @@ final class AskBolttyOverlayController {
     case .thinking:
       next = step ?? "Thinking…"
       emotion = .thinking
-      // A new question: the last answer's place and drawings go. Not when it is
-      // at work again inside this answer.
       if previous == .idle {
         release()
         clearDrawings()
@@ -191,7 +131,6 @@ final class AskBolttyOverlayController {
       next = caption.isEmpty ? text : caption
       emotion = .focused
     case let .needsYou(message):
-      // Said, then gone: the chat waits in Boltty, not beside the pointer.
       next = message
       emotion = .concerned
       lingering = Self.lingerAfterProblem
@@ -202,7 +141,6 @@ final class AskBolttyOverlayController {
     }
     build(agent: agent)
     face?.emotion = emotion
-    // Speaking with no sentence reached yet: "Thinking…" stands until one is.
     let waiting = phase == .thinking || (phase == .speaking && caption.isEmpty)
     typesOut = phase == .speaking && !caption.isEmpty
     setText(next, quiet: waiting)
@@ -210,7 +148,6 @@ final class AskBolttyOverlayController {
     if let lingering { linger(lingering) }
   }
 
-  /// Flies the face to `location` (AppKit's global coordinates) and marks it.
   func point(at location: CGPoint) {
     guard isVisible else { return }
     if !screenFrame.contains(location), let screen = Self.screen(containing: location) {
@@ -233,7 +170,6 @@ final class AskBolttyOverlayController {
 
   private var hasDrawings: Bool { drawnCount > 0 }
 
-  /// Everything the answers have drawn, in order: the new ones go up.
   func draw(_ strokes: [AskBolttyStroke]) {
     if strokes.count < drawnCount { clearDrawings() }
     guard isVisible || strokes.isEmpty else { return }
@@ -261,7 +197,6 @@ final class AskBolttyOverlayController {
     stopDismissMonitor()
   }
 
-  /// The board, put up beside the face where there is room, and kept there.
   private func showBoard() -> PaletteGlassHost? {
     if let board, !board.isHidden { return board }
     let host: PaletteGlassHost
@@ -293,7 +228,6 @@ final class AskBolttyOverlayController {
       y: min(max(y, Self.edgeMargin), space.maxY - Self.edgeMargin - side),
       width: side, height: side)
     host.frame = CGRect(x: snap(frame.minX), y: snap(frame.minY), width: side, height: side)
-    // A glass host takes its corner when it is set: set it again on a new size.
     host.cornerRadius = Self.boardCornerRadius
     CATransaction.begin()
     CATransaction.setDisableActions(true)
@@ -310,8 +244,6 @@ final class AskBolttyOverlayController {
     return host
   }
 
-  /// The answer is over and it drew: the face and its words go, the
-  /// drawings stay, and a click or Escape anywhere takes them away.
   private func settle() {
     guard !settled, let panel, panel.isVisible else { return }
     settled = true
@@ -340,10 +272,6 @@ final class AskBolttyOverlayController {
     stopDismissMonitor()
   }
 
-  /// The answer is over and the face waits a moment: its words go, a line says
-  /// what can be done, and a click or Escape takes it away. It comes back to the
-  /// pointer, unless it was pointing at something: then the place is the answer
-  /// and it stays there.
   private func rest() {
     resting = true
     if !isPointing { release() }
@@ -375,7 +303,6 @@ final class AskBolttyOverlayController {
     DispatchQueue.main.asyncAfter(deadline: .now() + Self.restHintTime, execute: work)
   }
 
-  /// Into the face: the bubble draws back to it as its words fade.
   private func retractBubble(then done: (() -> Void)? = nil) {
     let seed = Self.bubbleFirstLineHeight
     bubbleSize = CGSize(width: seed, height: seed)
@@ -398,7 +325,6 @@ final class AskBolttyOverlayController {
     DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: work)
   }
 
-  /// Calls off a bubble going back into the face, and stands it up again.
   private func restoreBubble() {
     retractWork?.cancel()
     retractWork = nil
@@ -424,8 +350,6 @@ final class AskBolttyOverlayController {
     dismissMonitor = nil
   }
 
-  /// Back to the pointer: a new question began, or a resting face that was
-  /// pointing at nothing.
   func release() {
     if case .arriving = mode {} else { mode = .following }
     hideMarker()
@@ -438,8 +362,6 @@ final class AskBolttyOverlayController {
     }
   }
 
-  /// The panel came up: the face gives way to it, and what it drew stays until
-  /// a click or Escape.
   func giveWay() {
     hideWork?.cancel()
     hideWork = nil
@@ -478,14 +400,11 @@ final class AskBolttyOverlayController {
     onVisibleChange?()
   }
 
-  /// A question is going in: whatever it says waits for `arrive`.
   func holdForArrival() {
     holdsForArrival = true
     arrival = nil
   }
 
-  /// The panel's face has gone: this one takes up from `point` (AppKit's
-  /// global coordinates) and flies to the pointer, with whatever was held back.
   func arrive(from point: CGPoint?) {
     holdsForArrival = false
     arrival = point
@@ -495,8 +414,6 @@ final class AskBolttyOverlayController {
 
   // MARK: - Pure geometry
 
-  /// Where the face wants to be for a pointer at `pointer`: past the arrow,
-  /// turned to the other side of it near an edge so it stays on the screen.
   static func followGoal(for pointer: CGPoint, in screen: CGRect) -> CGPoint {
     let reach = faceSide / 2 + edgeMargin
     var x = pointer.x + pointerOffset.dx
@@ -506,7 +423,6 @@ final class AskBolttyOverlayController {
     return clamp(CGPoint(x: x, y: y), inset: reach, in: screen)
   }
 
-  /// Beside the spot, as the face stands beside the pointer; never over it.
   static func landing(beside target: CGPoint, in screen: CGRect) -> CGPoint {
     let reach = faceSide / 2 + edgeMargin
     var x = target.x + landingOffset.dx
@@ -518,16 +434,11 @@ final class AskBolttyOverlayController {
 
   enum BubbleSide { case right, left }
 
-  /// The widest a bubble can be, with room for any sentence.
   static var bubbleMaxWidth: CGFloat { bubbleMaxTextWidth + bubblePadding.width * 2 }
-  /// A bubble of one line of the answer's words.
   static let bubbleFirstLineHeight =
     ceil(AgentPaletteMetrics.listeningWordsFontSize * AgentPaletteMetrics.listeningWordsLineSpacing)
     + bubblePadding.height * 2
 
-  /// The side the bubble stands on: it stays until the widest bubble no longer
-  /// fits there, whatever this sentence's length, so it does not swap sides
-  /// from one sentence to the next or as the pointer wanders near an edge.
   static func bubbleSide(current: BubbleSide, beside face: CGRect, in screen: CGRect) -> BubbleSide {
     let fitsRight = face.maxX + bubbleGap + bubbleMaxWidth <= screen.maxX - edgeMargin
     let fitsLeft = face.minX - bubbleGap - bubbleMaxWidth >= screen.minX + edgeMargin
@@ -537,9 +448,6 @@ final class AskBolttyOverlayController {
     }
   }
 
-  /// From the face's left edge to the bubble's. On the left the bubble stands
-  /// at its whole sentence's width, since the words hang from its left edge
-  /// and an edge that grew would carry them along.
   static func bubbleLead(on side: BubbleSide, wholeWidth: CGFloat) -> CGFloat {
     switch side {
     case .right: return faceSide + bubbleGap
@@ -547,9 +455,6 @@ final class AskBolttyOverlayController {
     }
   }
 
-  /// The bubble beside the face: its first line level with the face and its
-  /// top where it stays as lines are added below. Kept on the screen by the
-  /// whole sentence's size, so it does not move as the words reach an edge.
   static func bubbleFrame(
     size: CGSize, whole: CGSize, lead: CGFloat, beside face: CGRect, in screen: CGRect
   ) -> CGRect {
@@ -562,12 +467,8 @@ final class AskBolttyOverlayController {
     return CGRect(x: x, y: top - size.height, width: size.width, height: size.height)
   }
 
-  /// Slow away, slow in: how far along a flight it is at `t` of its time.
   static func flightEase(_ t: CGFloat) -> CGFloat { t * t * (3 - 2 * t) }
 
-  /// A flight's arc: a quadratic curve lifted above the straight line by a
-  /// share of its length, so the face hops there rather than slides. A low
-  /// one: lifted further, a long flight looped up off the page and back.
   static func flightPoint(from: CGPoint, to: CGPoint, progress t: CGFloat) -> CGPoint {
     let distance = hypot(to.x - from.x, to.y - from.y)
     let lift = min(80, distance * 0.2)
@@ -708,8 +609,6 @@ final class AskBolttyOverlayController {
     return screenFrame.contains(arrival)
   }
 
-  /// The panel's face has just gone: this one takes up where it stood, at its
-  /// size there, and is on its way. Its words come once it has landed.
   private func flyIn() {
     defer { arrival = nil }
     guard willFlyIn, let origin = arrival else { return }
@@ -722,8 +621,6 @@ final class AskBolttyOverlayController {
     syncShimmer(wordsAreQuiet)
   }
 
-  /// A transform, not a new frame: a new size would reallocate the face's
-  /// drawable on every frame of the flight.
   private func setFaceScale(_ scale: CGFloat) {
     guard let layer = face?.layer else { return }
     let side = Self.faceSide
@@ -738,7 +635,6 @@ final class AskBolttyOverlayController {
     CATransaction.commit()
   }
 
-  /// Landed: the bubble comes out of the face.
   private func popBubble() {
     guard !text.isEmpty, let bubble else { return }
     let seed = Self.bubbleFirstLineHeight
@@ -793,20 +689,14 @@ final class AskBolttyOverlayController {
 
   // MARK: - The bubble
 
-  /// A step up the ramp from the chat's — read at a glance beside the
-  /// pointer.
   static let bubbleFont = roundedAppFont(size: AgentPaletteMetrics.typePrimary, weight: .medium)
 
-  /// The line beside a resting face: a help tag's size, not an answer's.
   static let restHintFont = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
 
-  /// Up to `bubbleMaxLines`, wrapped. A hint stands still: "Thinking…" is the
-  /// quiet line that wears the shimmer.
   private func setText(_ next: String, quiet: Bool, isHint: Bool = false) {
     wordsAreQuiet = quiet && !isHint
     let lines = Self.bubbleMaxLines
     label.font = isHint ? Self.restHintFont : Self.bubbleFont
-    // Dim at this size it was not read at all.
     label.textColor = quiet && !isHint ? PaletteInk.secondary : PaletteInk.primary
     let wasTyping = !answerWords.isHidden
     label.isHidden = typesOut
@@ -816,7 +706,6 @@ final class AskBolttyOverlayController {
     if typesOut {
       typed = Double(Self.carried(from: text, into: next))
       lastBlip = Int(typed)
-      // A new sentence takes the last one's place: its words arrive afresh.
       if isNewSentence { answerWords.setText("", animated: false) }
     } else {
       typed = Double(next.count)
@@ -837,8 +726,6 @@ final class AskBolttyOverlayController {
         width: whole.widest + Self.bubblePadding.width * 2,
         height: CGFloat(max(1, whole.lines)) * answerWords.lineHeight + Self.bubblePadding.height * 2)
       revealWords()
-      // On the left the bubble's edge is where the words hang: it is in its
-      // place before the first of them comes.
       if isNewSentence, bubbleSide == .left {
         shownBubbleSize = bubbleGoal
         shownBubbleLead = nil
@@ -855,7 +742,6 @@ final class AskBolttyOverlayController {
     syncShimmer(wordsAreQuiet)
   }
 
-  /// An answer here is in no window VoiceOver is reading: it is said for it.
   private static func announce(_ words: String) {
     guard NSWorkspace.shared.isVoiceOverEnabled else { return }
     NSAccessibility.post(
@@ -863,8 +749,6 @@ final class AskBolttyOverlayController {
       userInfo: [.announcement: words, .priority: NSAccessibilityPriorityLevel.high.rawValue])
   }
 
-  /// The words reached so far, whole: the word being typed arrives as it
-  /// begins. The bubble is as big as they are, and grows as they come.
   private func revealWords() {
     let shown = text.index(text.startIndex, offsetBy: min(Int(typed), text.count))
     let end = text[shown...].firstIndex(where: \.isWhitespace) ?? text.endIndex
@@ -878,16 +762,12 @@ final class AskBolttyOverlayController {
     if shownBubbleSize == .zero { shownBubbleSize = bubbleSize }
   }
 
-  /// The size the bubble is making for: as big as its words, and on the left
-  /// as wide as its whole sentence (`bubbleLead`).
   private var bubbleGoal: CGSize {
     CGSize(
       width: bubbleSide == .left ? wholeBubbleSize.width : bubbleSize.width,
       height: bubbleSize.height)
   }
 
-  /// One frame of the bubble's chase toward the size of its words and, after
-  /// a change of side, across the face.
   private func growBubble(_ elapsed: CFTimeInterval) {
     let goal = bubbleGoal
     let leadGoal = Self.bubbleLead(on: bubbleSide, wholeWidth: wholeBubbleSize.width)
@@ -907,8 +787,6 @@ final class AskBolttyOverlayController {
 
   // MARK: - The shimmer
 
-  /// On while the words are the quiet ones: the band crosses the words'
-  /// own width, then rests, over and over. Under Reduce Motion nothing moves.
   private func syncShimmer(_ quiet: Bool) {
     guard quiet, !MotionPreferences.reduceMotion, let shade else {
       shimmer.isHidden = true
@@ -942,7 +820,6 @@ final class AskBolttyOverlayController {
     shimmerBand.add(cycle, forKey: "sweep")
   }
 
-  /// The face's arrival light, fading out at both ends of the band.
   private func paintShimmer(_ look: MascotLook) {
     let light = look.palette.arrivalLight
     guard let first = light.first, let last = light.last else { return }
@@ -955,7 +832,6 @@ final class AskBolttyOverlayController {
     } + [1]).map { NSNumber(value: Double($0)) }
   }
 
-  /// The words in white, drawn by the label itself, as the band's mask.
   private func cutShimmerWords() {
     let text = label.stringValue
     guard shimmerCut != text, label.bounds.width > 0, label.bounds.height > 0,
@@ -973,8 +849,6 @@ final class AskBolttyOverlayController {
     shimmerCut = text
   }
 
-  /// How much of `new` was already on screen in `old`: all of it when the
-  /// caption grew, the sentence carried over when it moved on.
   static func carried(from old: String, into new: String) -> Int {
     guard !old.isEmpty else { return 0 }
     if new.hasPrefix(old) { return old.count }
@@ -987,15 +861,11 @@ final class AskBolttyOverlayController {
     return 0
   }
 
-  /// The face's own pitch: the same agent always sounds the same.
   static func basePitch(for agent: AgentId?) -> Double {
     let seed = (agent?.rawValue ?? "boltty").unicodeScalars.reduce(0) { $0 &* 31 &+ Int($1.value) }
     return 420 + Double(abs(seed) % 220)
   }
 
-  /// The bubble round `text` at most `lines` tall. Measured by a cell set
-  /// up as the label is, so the bubble and the label's own wrapping agree to
-  /// the point — a size worked out apart cut the third line short.
   static func bubbleSize(for text: String, lines: Int, font: NSFont = bubbleFont) -> CGSize {
     guard !text.isEmpty else { return .zero }
     let cell = NSTextFieldCell(textCell: text)
@@ -1011,7 +881,6 @@ final class AskBolttyOverlayController {
                   height: max(height, bubbleLineHeight) + bubblePadding.height * 2)
   }
 
-  /// One line of the bubble's words, as the same cell measures it.
   static let bubbleLineHeight: CGFloat = {
     let cell = NSTextFieldCell(textCell: "Ag")
     cell.font = bubbleFont
@@ -1066,7 +935,6 @@ final class AskBolttyOverlayController {
       let goal = Self.followGoal(for: pointer, in: screenFrame)
       let eased = Self.flightEase(progress)
       position = Self.flightPoint(from: from, to: goal, progress: eased)
-      // From the panel's size to its own, a little bigger at the top of the arc.
       setFaceScale(
         Self.arrivalScale + (1 - Self.arrivalScale) * eased + Self.flightSwell * sin(progress * .pi))
       if progress >= 1 {
@@ -1094,9 +962,6 @@ final class AskBolttyOverlayController {
 
   private var isTyping: Bool { typesOut && !isArriving && Int(typed) < text.count }
 
-  /// Frames are snapped to the screen's pixels and keep their sizes: a face
-  /// whose frame rounded outward to 41 one frame and 40 the next reallocated
-  /// its Metal drawable as it moved, and the glass relaid itself out.
   private func layoutFace() {
     guard let position, let face, let bubble else { return }
     let side = Self.faceSide
@@ -1111,8 +976,6 @@ final class AskBolttyOverlayController {
     placeMarker(from: position)
     bubble.isHidden = text.isEmpty || isArriving
     guard !text.isEmpty else { return }
-    // Beside the face at rest: only the face bobs as it speaks, or the words
-    // being read would shake with it.
     let space = CGRect(origin: .zero, size: screenFrame.size)
     bubbleSide = Self.bubbleSide(current: bubbleSide, beside: resting, in: space)
     var bubbleFrame = Self.bubbleFrame(
@@ -1133,10 +996,6 @@ final class AskBolttyOverlayController {
     }
   }
 
-  /// Hung from the bubble's top left, with room round the words for their
-  /// blur. Always as tall as the most lines: the words are placed from the
-  /// view's foot, so a view that grew by a line sent every word gliding back
-  /// to where it already stood.
   private func layoutAnswerWords(in size: CGSize) {
     guard !answerWords.isHidden else { return }
     let blur = AgentPaletteMetrics.listeningWordBlur
@@ -1155,8 +1014,6 @@ final class AskBolttyOverlayController {
 
   // MARK: - The pointer mark
 
-  /// Which way the mark turns so its tail lies toward the face, whichever side
-  /// of the spot the face had room on.
   static func pointerTurn(reach: CGVector) -> CGFloat {
     atan2(reach.dy, reach.dx) - AskBolttyPointerMark.restingAngle
   }
@@ -1175,8 +1032,6 @@ final class AskBolttyOverlayController {
     if !wasShown, !MotionPreferences.reduceMotion { marker.arrive() }
   }
 
-  /// The tip stands where the face's reach puts it, so the mark travels with
-  /// the face and lands on the spot as the face lands beside it.
   private func placeMarker(from face: CGPoint) {
     guard let markerReach, !marker.isHidden else { return }
     let tip = CGPoint(
@@ -1199,14 +1054,9 @@ final class AskBolttyOverlayController {
   }
 }
 
-/// What the face points with: a small arrow in its colours, soft at every corner
-/// as Boltty's icons are, its tip on the spot. The white edge and the shadow keep
-/// it readable on any page, as a Mac's own pointer's do. The edge is a filled
-/// shape: a wide stroke would reach Core Animation's wide-line renderer.
 final class AskBolttyPointerMark: CALayer {
   static let side: CGFloat = 18
   static let edgeWidth: CGFloat = 3
-  /// Where the tail lies before any turn: down and to the right of the tip.
   static let restingAngle = -CGFloat.pi / 4
 
   private let edge = CAShapeLayer()
@@ -1224,7 +1074,6 @@ final class AskBolttyPointerMark: CALayer {
     super.init()
     let side = Self.side
     bounds = CGRect(x: 0, y: 0, width: side, height: side)
-    // The tip: what stands on the spot, and what the mark turns about.
     anchorPoint = CGPoint(x: 0, y: 1)
     let outline = Self.outline(side: side)
     edge.frame = bounds
@@ -1256,7 +1105,6 @@ final class AskBolttyPointerMark: CALayer {
     for layer in [self, edge, fill, fillShape] { layer.contentsScale = scale }
   }
 
-  /// Out of nothing, as it sets off with the face.
   func arrive() {
     let grow = CABasicAnimation(keyPath: "transform.scale")
     grow.fromValue = 0.4
@@ -1266,7 +1114,6 @@ final class AskBolttyPointerMark: CALayer {
     add(grow, forKey: "arrive")
   }
 
-  /// One press, on landing: here.
   func tap() {
     let press = CAKeyframeAnimation(keyPath: "transform.scale")
     press.values = [1, 0.84, 1]
@@ -1276,8 +1123,6 @@ final class AskBolttyPointerMark: CALayer {
     add(press, forKey: "tap")
   }
 
-  /// The arrow, its tip at the top left of `side` (y runs up): a kite with a
-  /// notch in its tail, every corner rounded.
   static func outline(side: CGFloat) -> CGPath {
     func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * side, y: (1 - y) * side) }
     let corners: [(at: CGPoint, radius: CGFloat)] = [
@@ -1298,8 +1143,6 @@ final class AskBolttyPointerMark: CALayer {
   }
 }
 
-/// The panel's content: AppKit's own coordinates, origin at the bottom left,
-/// so a global point less the screen's origin is a place in it.
 final class AskBolttyOverlayRootView: NSView {
   override var isFlipped: Bool { false }
   override func hitTest(_ point: NSPoint) -> NSView? { nil }

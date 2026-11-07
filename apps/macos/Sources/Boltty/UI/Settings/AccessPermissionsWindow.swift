@@ -126,8 +126,6 @@ struct AccessPermissionsView: View {
   }
 }
 
-/// The four rows and the note under them — the permissions window's, and
-/// the first run's setup step's.
 struct AccessPermissionList: View {
   @ObservedObject var model: AccessPermissionsModel
 

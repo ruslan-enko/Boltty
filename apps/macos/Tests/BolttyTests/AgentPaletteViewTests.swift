@@ -818,7 +818,6 @@ final class AgentPaletteViewTests: XCTestCase {
     }
   }
 
-
   func testTheShellKeepsThePromptCapsuleAndWearsTheMocksCornerForExpandedChat() {
     let view = makeScreenSizedView()
     view.layoutSubtreeIfNeeded()
@@ -2168,7 +2167,6 @@ final class AgentPaletteViewTests: XCTestCase {
     view.setSessions([.row("claude", .claude)], activeSessionID: nil)
     view.openSwitcher()
 
-    // Taken and dropped: left to the field, a Tab typed itself and turned the list into a search.
     XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertTab(_:))))
     XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:))))
     XCTAssertEqual(view.agentForNewPrompt, .claude)
@@ -2187,7 +2185,6 @@ final class AgentPaletteViewTests: XCTestCase {
     view.layoutSubtreeIfNeeded()
     let typed = try XCTUnwrap(view.typedBaselineInWindowForTesting, "nothing laid out")
 
-    // A pixel: at 1× each snaps to its own whole point.
     XCTAssertEqual(placeholder, typed, accuracy: 1 / (NSScreen.main?.backingScaleFactor ?? 1))
   }
 
@@ -3325,9 +3322,6 @@ final class AgentPaletteViewTests: XCTestCase {
 
   // MARK: - Unread rows
 
-  /// An unread chat wears a dot and a semibold title, on every tab alike —
-  /// the dot stands on the trailing edge because Latest's face owns the
-  /// leading one.
   private func unreadRowItem(_ title: String, id: UUID, unread: Bool) -> BolttyAISessionItem {
     BolttyAISessionItem(
       id: id,
@@ -4074,8 +4068,6 @@ extension AgentPaletteViewTests {
     }
   }
 
-  /// All wears the agents that can take a prompt — the panel's choices — and
-  /// is composed again when they change.
   func testLatestIsComposedOfTheAgentsThatAreOn() throws {
     let view = hostOffscreen(makeScreenSizedView(targets: [.claude, .opencode, .grok]))
     view.setSessions([.row("claude work", .claude)], activeSessionID: nil)
@@ -4231,7 +4223,6 @@ extension AgentPaletteViewTests {
     XCTAssertEqual(strip.glassFrameForTesting, try tab(nil, in: view).frame)
   }
 }
-
 
 extension AgentPaletteViewTests {
   func testOnlyLatestsRowsWearTheirAgentsFace() throws {

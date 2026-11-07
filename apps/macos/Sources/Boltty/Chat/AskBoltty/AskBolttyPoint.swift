@@ -1,20 +1,13 @@
 import CoreGraphics
 import Foundation
 
-/// A place on the screen an answer points at: `<point x="…" y="…" label="…"/>`,
-/// x and y from 0 to 1000 across the picture Ask Boltty sent (0 0 its top left) —
-/// the one scale phase 0 found every agent answers well in.
 struct AskBolttyPoint: Equatable, Sendable {
-  /// Across the picture, 0…1 from its left.
   var x: CGFloat
-  /// Down the picture, 0…1 from its top.
   var y: CGFloat
   var label: String?
 
   static let pattern = #"<point\b[^>]*>"#
 
-  /// Every complete tag in `text`, in order. A tag that does not say where is
-  /// skipped, so the n-th of these is the n-th tag that can be flown to.
   static func all(in text: String) -> [AskBolttyPoint] {
     guard text.contains("<point") else { return [] }
     var points: [AskBolttyPoint] = []
@@ -40,7 +33,6 @@ struct AskBolttyPoint: Equatable, Sendable {
     guard let x = value("x").flatMap(Double.init), let y = value("y").flatMap(Double.init),
           x.isFinite, y.isFinite
     else { return nil }
-    // Asked for 0–1000; a model that answers in fractions is taken at its word.
     let scale = (x <= 1 && y <= 1) ? 1.0 : 1000.0
     let label = value("label")?.trimmingCharacters(in: .whitespacesAndNewlines)
     return AskBolttyPoint(
@@ -48,18 +40,14 @@ struct AskBolttyPoint: Equatable, Sendable {
       label: label?.isEmpty == false ? label : nil)
   }
 
-  /// Where on screen, in AppKit's global coordinates, given where the picture
-  /// was taken (`displayFrame`, also AppKit's: its origin at the bottom left).
   func location(in displayFrame: CGRect) -> CGPoint {
     CGPoint(x: displayFrame.minX + x * displayFrame.width,
             y: displayFrame.maxY - y * displayFrame.height)
   }
 
-  /// The text with every tag gone, for anything that shows an answer.
   static func stripped(_ text: String) -> String {
     guard text.contains("<point") else { return text }
     let tag = #"[ \t]*"# + pattern + #"[ \t]*"#
-    // At a line's edge a tag goes with its spaces; between words it leaves one.
     var out = text.replacingOccurrences(of: #"(?m)^"# + tag, with: "", options: .regularExpression)
     out = out.replacingOccurrences(of: #"(?m)"# + tag + "$", with: "", options: .regularExpression)
     return out.replacingOccurrences(of: tag, with: " ", options: .regularExpression)
@@ -75,7 +63,6 @@ struct AskBolttyPoint: Equatable, Sendable {
 
   static func marker(_ index: Int) -> String { "\(markerOpen)\(index)\(markerClose)" }
 
-  /// A piece the chunker handed out: its words, and the tags it carried.
   static func split(_ piece: String) -> (text: String, points: [Int]) {
     guard piece.contains(markerOpen) else { return (piece, []) }
     var text = ""

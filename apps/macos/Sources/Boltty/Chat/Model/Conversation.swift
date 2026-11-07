@@ -30,20 +30,13 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var providerID: String
   var remoteSessionID: String?
   var title: String
-  /// The title is a name for the chat (`ChatNaming`), not the request cut. It
-  /// is given once and stays when the talk moves on.
   var hasOwnName: Bool = false
   var workingDirectory: String
   var canChangeWorkingDirectory: Bool { remoteSessionID == nil }
   var model: ModelSelection?
   var reasoningEffort: String?
   var autoApprove: Bool
-  /// A chat that may look but not change anything (Ask Boltty's default): every
-  /// permission it is asked is refused, and the CLIs that can be started
-  /// without write tools are.
   var readOnly: Bool = false
-  /// A chat Ask Boltty asked out loud: its answer is heard, so it raises no
-  /// banner, no unread mark and no line beside the notch.
   var isAskBoltty: Bool = false
   var createdAt: Date
   var updatedAt: Date

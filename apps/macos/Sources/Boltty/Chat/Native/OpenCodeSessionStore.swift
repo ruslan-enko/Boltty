@@ -11,7 +11,6 @@ struct OpenCodeSessionStore: NativeSessionStore {
       .appendingPathComponent(".local/share/opencode/opencode.db")
   }
 
-  /// The table is not a constant: 2.0 uses session_v2, 1.18's `session` stays behind, frozen.
   private static func query(tables: Set<String>) -> String? {
     let chats = { (table: String) in
       """

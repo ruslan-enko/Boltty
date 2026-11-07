@@ -46,12 +46,10 @@ protocol BolttyAIConversations: AnyObject {
 
   func canSteer(_ id: UUID) -> Bool
 
-  /// Turns the chat's Auto Mode on or off, reaching a running session.
   func setAutoApprove(_ enabled: Bool, for id: UUID)
 
   func modelMenu(for id: UUID) -> BolttyAIModelMenu?
 
-  /// The chat's next turn runs this, in its open session.
   func chooseModel(_ option: AgentModelOption, for id: UUID)
 
   func chooseEffort(_ effort: String?, for id: UUID)
@@ -292,7 +290,6 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     engine.chooseEffort(effort, for: id)
   }
 
-  /// A turn refused for its model never ran, so what was asked is still to do.
   private func requestToRetryOnAnotherModel(in id: UUID) -> String? {
     let messages = store.transcript(id: id).messages
     guard store.conversation(id: id)?.lastKnownState == .failed,
@@ -328,7 +325,6 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       .eraseToAnyPublisher()
   }
 
-  /// Signed out still counts: it is on this Mac, and its chats are the person's.
   func listedProviderIDs() -> [String] {
     let enabled = Set(AgentHistory.tabOrder.map(\.rawValue).filter(isProviderEnabled))
     let installed = engine.hasProbed

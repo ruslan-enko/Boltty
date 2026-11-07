@@ -2,8 +2,6 @@ import Foundation
 import XCTest
 @testable import Boltty
 
-/// One real turn through the installed `agy`, then the conversation read back
-/// off its own `.db` — the protobuf reader against a file `agy` wrote.
 final class AntigravityLiveTests: XCTestCase {
   func testATurnIsAnsweredAndReadBackOffTheRecord() async throws {
     try XCTSkipUnless(
@@ -46,8 +44,6 @@ final class AntigravityLiveTests: XCTestCase {
     XCTAssertEqual(snapshot.messages.map(\.role), [.user, .agent])
   }
 
-  /// The real hook, installed where the product installs it, asked before a
-  /// real command: allowed once, the command runs.
   func testACommandAsksAndRunsOnceAllowed() async throws {
     try XCTSkipUnless(
       ProcessInfo.processInfo.environment["BOLTTY_LIVE_AGY"] != nil,
@@ -95,7 +91,6 @@ final class AntigravityLiveTests: XCTestCase {
     XCTAssertEqual(written?.trimmingCharacters(in: .whitespacesAndNewlines), "GATED")
   }
 
-  /// `/usage` answered by the installed `agy`, with no model call.
   func testThePlanLimitsAreRead() async throws {
     try XCTSkipUnless(
       ProcessInfo.processInfo.environment["BOLTTY_LIVE_AGY"] != nil,

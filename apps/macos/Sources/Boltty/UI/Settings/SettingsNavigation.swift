@@ -6,8 +6,6 @@ enum SettingsPage: String, CaseIterable, Identifiable {
   case agents
   case usage
   case voice
-  /// Stored as "talk", its name before it was Ask Boltty: the raw value is a
-  /// storage format.
   case askBoltty = "talk"
   case shortcuts
 
@@ -27,7 +25,6 @@ enum SettingsPage: String, CaseIterable, Identifiable {
   var icon: BolttyIcon {
     switch self {
     case .general: .settings
-    // The agents are command-line tools; sparkles said "AI" and nothing more.
     case .agents: .terminal
     case .usage: .chart
     case .voice: .mic
@@ -37,8 +34,6 @@ enum SettingsPage: String, CaseIterable, Identifiable {
   }
 }
 
-/// Where the window stands: a page, and on Agents, perhaps one agent's own
-/// page under it.
 struct SettingsLocation: Equatable {
   var page: SettingsPage
   var agent: AgentId?
@@ -52,8 +47,6 @@ struct SettingsLocation: Equatable {
 @MainActor
 final class SettingsNavigation: ObservableObject {
   static let lastPageKey = "boltty.settings.page"
-  /// Read from the arguments only (`-boltty.settings.agent claude`), so a
-  /// screenshot can open on an agent's page. Never written.
   static let agentArgumentKey = "boltty.settings.agent"
 
   @Published private(set) var history: [SettingsLocation]
@@ -77,7 +70,6 @@ final class SettingsNavigation: ObservableObject {
 
   var location: SettingsLocation { history[position] }
   var current: SettingsPage { location.page }
-  /// The agent whose own page is open, if one is.
   var agent: AgentId? { location.agent }
   var canGoBack: Bool { position > 0 }
   var canGoForward: Bool { position < history.count - 1 }
@@ -111,7 +103,6 @@ final class SettingsNavigation: ObservableObject {
     remember()
   }
 
-  /// Only the page: Settings opened again starts on its top, not on an agent.
   private func remember() {
     defaults.set(current.rawValue, forKey: Self.lastPageKey)
   }
