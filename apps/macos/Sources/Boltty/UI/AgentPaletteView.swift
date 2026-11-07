@@ -158,35 +158,30 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// zero wide when it is not offered.
   private let attachRestSlot = NSView()
   private lazy var attachRestWidth = attachRestSlot.widthAnchor.constraint(equalToConstant: 0)
-  /// The open chat's Auto Mode — the indicator and the switch in one word.
-  /// **"Auto", not a glyph**: an A in a circle had to be learned, the word
-  /// says it. Lit (full ink) while Auto Mode is on, at the group's resting
-  /// ink while every permission asks; never filled. Only in a chat whose
-  /// agent declares `.autoApproval` (`BolttyAISessionPreview.autoMode`), so
-  /// a switch is never drawn for a CLI that would not honour it.
-  private let autoModeButton: PaletteIconButton = {
+  /// What the open chat runs on, in words ("Opus · High"), and its menu: the
+  /// model, its effort and Auto Mode. Only in a chat whose agent
+  /// offers something here (`BolttyAISessionPreview.modelChip`), so a control is
+  /// never drawn for a CLI that would not honour it. Its menu holds Auto Mode too.
+  private let modelChipButton: PaletteIconButton = {
     let button = PaletteIconButton()
     button.translatesAutoresizingMaskIntoConstraints = false
     button.isBordered = false
     button.bezelStyle = .regularSquare
     button.imagePosition = .noImage
-    button.title = AgentPaletteView.autoModeWord
-    button.font = AgentPaletteView.autoModeFont
+    button.font = AgentPaletteView.modelChipFont
+    (button.cell as? NSButtonCell)?.lineBreakMode = .byTruncatingMiddle
     return button
   }()
-  static let autoModeWord = "Auto"
   /// The folder name's size beside it, at the glyphs' weight.
-  private static let autoModeFont = roundedAppFont(size: AgentPaletteMetrics.typeSecondary, weight: .medium)
-  /// The word's target: its width and the group's gap, as a glyph's is.
-  private static let autoModeTargetWidth = ceil(
-    NSAttributedString(string: autoModeWord, attributes: [.font: autoModeFont]).size().width
-  ) + ComposerControlGroup.gap
-  private let autoModeSlot = NSView()
-  private lazy var autoModeWidth = autoModeSlot.widthAnchor.constraint(equalToConstant: 0)
-  /// What the word last drew — `nil` while it is not offered.
-  private var shownAutoMode: (on: Bool, agent: AgentId)?
-  /// Turns the open chat's Auto Mode on or off.
-  var onSetAutoMode: ((UUID, Bool) -> Void)?
+  private static let modelChipFont = roundedAppFont(size: AgentPaletteMetrics.typeSecondary, weight: .medium)
+  /// A long model name gives way in its middle, before it moves the folder off.
+  private static let modelChipMaxWidth: CGFloat = 164
+  private let modelChipSlot = NSView()
+  private lazy var modelChipWidth = modelChipSlot.widthAnchor.constraint(equalToConstant: 0)
+  /// What the chip last drew — `nil` while it is not offered.
+  private var shownModelChip: BolttyAIModelChip?
+  /// Opens the open chat's model menu.
+  var onModelMenu: (() -> Void)?
   /// Latest floats independently over the composer. Folder and plan usage
   /// stay in the composer's trailing controls in both prompt and chat states.
   private lazy var latestPillConstraints: [NSLayoutConstraint] = [
@@ -222,7 +217,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
   private let historySettingsButton = GlassCircleButton(
-    icon: .gear,
+    icon: .settings,
     accessibilityDescription: "Settings",
     diameter: AgentPaletteMetrics.previewCloseDiameter,
     size: AgentPaletteMetrics.previewCloseGlyphPointSize
@@ -301,7 +296,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   /// Enter queues it, and the button has to say what Enter does.
   private var sendSlotStops = false
   private let returnGlyph = ComposerControlGroup.sendIcon(.keyReturn, description: "Send message")
-  private let stopGlyph = ComposerControlGroup.sendIcon(.stopFill, description: "Stop")
+  private let stopGlyph = ComposerControlGroup.sendIcon(.stop, description: "Stop")
   /// The composer's glyphs at the size of the screen they stand on — 22 on
   /// the first, 16 in a chat (`ComposerControlGroup`). The views travel
   /// between the two, so their symbols are re-made when the screen changes.
@@ -1405,7 +1400,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if directorySlotWidth.constant != folderWidth { directorySlotWidth.constant = folderWidth }
     let folderStack = composerGlyphsAreChat ? leadingControls : trailingControls
     folderStack.setCustomSpacing(folderWidth == 0 ? 0 : folderStack.spacing, after: directorySlot)
-    syncAutoModeButton()
+    syncModelChip()
     let usageHidden = !composerIsUp || !planRing.hasReading || asksAboutRegion
     planRing.chatIsOpen = addressedPreview != nil
     if planRing.isHidden != usageHidden {
@@ -1422,59 +1417,54 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   /// Drawn in an open chat whose agent offers Auto Mode, lit while it is on.
-  private func syncAutoModeButton() {
-    let mode = composerIsUp && composerGlyphsAreChat ? addressedPreview?.autoMode : nil
-    let hidden = mode == nil
-    if autoModeButton.isHidden != hidden { autoModeButton.isHidden = hidden }
-    let width = hidden ? 0 : Self.autoModeTargetWidth
-    if autoModeWidth.constant != width {
-      autoModeWidth.constant = width
+  private func syncModelChip() {
+    let chip = composerIsUp && composerGlyphsAreChat ? addressedPreview?.modelChip : nil
+    let hidden = chip == nil
+    if modelChipButton.isHidden != hidden { modelChipButton.isHidden = hidden }
+    let width = chip.map {
+      let words = NSAttributedString(string: $0.title, attributes: [.font: Self.modelChipFont])
+      return min(ceil(words.size().width) + ComposerControlGroup.gap, Self.modelChipMaxWidth)
+    } ?? 0
+    if modelChipWidth.constant != width {
+      modelChipWidth.constant = width
       needsLayout = true
     }
-    leadingControls.setCustomSpacing(hidden ? 0 : leadingControls.spacing, after: autoModeSlot)
-    let agent = addressedPreview?.agent ?? .custom
-    guard mode != shownAutoMode?.on || agent != shownAutoMode?.agent else { return }
-    let wasShown = shownAutoMode?.agent == agent
-    shownAutoMode = mode.map { ($0, agent) }
-    guard let on = mode else { return }
-    let button = autoModeButton
-    // A switch the pointer just pressed answers in a beat, not a cut.
+    leadingControls.setCustomSpacing(hidden ? 0 : leadingControls.spacing, after: modelChipSlot)
+    guard chip != shownModelChip else { return }
+    let wasShown = shownModelChip != nil
+    shownModelChip = chip
+    guard let chip else { return }
+    let button = modelChipButton
+    // A choice the menu just made answers in a beat, not a cut.
     if wasShown, !MotionPreferences.reduceMotion, let layer = button.layer {
       let fade = CATransition()
       fade.type = .fade
       fade.duration = Motion.quick
       fade.timingFunction = Motion.standardCurve
-      layer.add(fade, forKey: "autoMode")
+      layer.add(fade, forKey: "modelChip")
     }
-    button.restingTint = on ? ComposerControlGroup.hoverInk : ComposerControlGroup.restingInk
-    button.toolTip = Self.autoModeHelp(on: on, agent: agent)
-    button.setAccessibilityLabel("Auto Mode")
-    button.setAccessibilityValue(on ? "On" : "Off")
+    button.title = chip.title
+    button.restingTint = chip.isGone ? AgentPaletteMetrics.failureCardAccent : ComposerControlGroup.restingInk
+    button.toolTip = chip.help
+    button.setAccessibilityLabel("Model")
+    button.setAccessibilityValue(chip.title)
   }
 
-  /// The help tag: the state, what it lets through for this agent, and
-  /// what a click does.
-  static func autoModeHelp(on: Bool, agent: AgentId) -> String {
-    let reach = AgentsSettingsPage.autoModeReach(for: agent)
-    let line = reach.prefix(1).uppercased() + reach.dropFirst()
-    return on
-      ? "Auto Mode is on\n\(line)\nClick to ask before every action."
-      : "Auto Mode is off\nEvery action asks first. Click to turn on Auto Mode: \(reach)"
+  @objc private func modelChipPressed() { onModelMenu?() }
+
+  /// The model menu, dropped from the chip's lower edge, as the folder's is.
+  func showModelMenu(_ menu: NSMenu) {
+    menu.appearance = NSAppearance(named: .darkAqua)
+    let gap: CGFloat = 4
+    let below = NSPoint(
+      x: 0,
+      y: modelChipButton.isFlipped ? modelChipButton.bounds.maxY + gap : -gap)
+    menu.popUp(positioning: nil, at: below, in: modelChipButton)
   }
 
-  @objc private func autoModeButtonPressed() {
-    guard let preview = addressedPreview, let on = preview.autoMode else { return }
-    var toggled = preview
-    toggled.autoMode = !on
-    // Drawn at once; the store's change comes back as the same value.
-    addressedPreview = toggled
-    syncAutoModeButton()
-    onSetAutoMode?(preview.id, !on)
-  }
-
-  var autoModeButtonForTesting: PaletteIconButton { autoModeButton }
-  var isAutoModeVisibleForTesting: Bool { !autoModeButton.isHidden }
-  func pressAutoModeForTesting() { autoModeButtonPressed() }
+  var modelChipButtonForTesting: PaletteIconButton { modelChipButton }
+  var isModelChipVisibleForTesting: Bool { !modelChipButton.isHidden }
+  func pressModelChipForTesting() { modelChipPressed() }
 
   /// ↓ Latest gives its place to a notice while one is up.
   private func syncLatestPill() {
@@ -1906,7 +1896,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
     collapseResults(animated: false)
     addressedPreview = preview
-    syncAutoModeButton()
+    syncModelChip()
     stopIsAvailable = preview.isBusy && preview.canStop
     applyStopAffordance(preview)
     syncSendButton()
@@ -1947,7 +1937,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       announce(line)
     }
     addressedPreview = preview
-    syncAutoModeButton()
+    syncModelChip()
     stopIsAvailable = preview.isBusy && preview.canStop
     applyStopAffordance(preview)
     syncSendButton()
@@ -2022,7 +2012,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       return
     }
     addressedPreview = nil
-    syncAutoModeButton()
+    syncModelChip()
     onLeaveAddressing?(left)
     stopIsAvailable = false
     hidePreview(animated: animated)
@@ -2074,6 +2064,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         guard let self, let id = self.addressedPreview?.id else { return }
         self.onRetryPrompt?(id, prompt)
       }
+      previewCard.onChooseModel = { [weak self] in self?.onModelMenu?() }
       previewCard.onCancelQueued = { [weak self] prompt in
         guard let self, let id = self.addressedPreview?.id else { return }
         // Back into the composer first, then forgotten by the layer below: the
@@ -3082,11 +3073,13 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     case .dictate: micButton
     case .folder: directoryChip
     case .attach: attachRestDisc.button
+    case .model: modelChipButton
     }
     let standing = switch chord {
     case .dictate: !micButton.isHidden
     case .folder: !directoryChip.isHidden
     case .attach: !attachRestDisc.isHidden
+    case .model: !modelChipButton.isHidden
     }
     guard standing, button.isEnabled else { return false }
     button.performClick(nil)
@@ -3361,20 +3354,21 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       directoryChip.centerXAnchor.constraint(equalTo: directorySlot.centerXAnchor),
       directoryChip.centerYAnchor.constraint(equalTo: directorySlot.centerYAnchor),
     ])
-    autoModeSlot.translatesAutoresizingMaskIntoConstraints = false
-    autoModeSlot.addSubview(autoModeButton)
-    autoModeButton.target = self
-    autoModeButton.action = #selector(autoModeButtonPressed)
-    autoModeButton.setAccessibilityIdentifier("boltty.ask.autoMode")
-    autoModeButton.isHidden = true
-    // The word fills its slot: a glyph's target, as wide as the word.
+    modelChipSlot.translatesAutoresizingMaskIntoConstraints = false
+    modelChipSlot.addSubview(modelChipButton)
+    modelChipButton.target = self
+    modelChipButton.action = #selector(modelChipPressed)
+    modelChipButton.setAccessibilityIdentifier("boltty.ask.model")
+    modelChipButton.helpShortcut = ComposerChord.model.display
+    modelChipButton.isHidden = true
+    // The words fill their slot: a glyph's target, as wide as the words.
     NSLayoutConstraint.activate([
-      autoModeWidth,
-      autoModeSlot.heightAnchor.constraint(equalToConstant: ComposerControlGroup.target),
-      autoModeButton.leadingAnchor.constraint(equalTo: autoModeSlot.leadingAnchor),
-      autoModeButton.trailingAnchor.constraint(equalTo: autoModeSlot.trailingAnchor),
-      autoModeButton.topAnchor.constraint(equalTo: autoModeSlot.topAnchor),
-      autoModeButton.bottomAnchor.constraint(equalTo: autoModeSlot.bottomAnchor),
+      modelChipWidth,
+      modelChipSlot.heightAnchor.constraint(equalToConstant: ComposerControlGroup.target),
+      modelChipButton.leadingAnchor.constraint(equalTo: modelChipSlot.leadingAnchor),
+      modelChipButton.trailingAnchor.constraint(equalTo: modelChipSlot.trailingAnchor),
+      modelChipButton.topAnchor.constraint(equalTo: modelChipSlot.topAnchor),
+      modelChipButton.bottomAnchor.constraint(equalTo: modelChipSlot.bottomAnchor),
     ])
     trailingControls.setViews([planRing, directorySlot, micButton, sendSlot], in: .leading)
     // One group on both screens: the same targets and the same three inks.
@@ -3382,7 +3376,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     ComposerControlGroup.style(planRing)
     ComposerControlGroup.style(directoryChip)
     ComposerControlGroup.style(attachRestDisc.button)
-    ComposerControlGroup.style(autoModeButton)
+    ComposerControlGroup.style(modelChipButton)
     ComposerControlGroup.styleSendDisc(sendButton.button)
     recordingControls.translatesAutoresizingMaskIntoConstraints = false
     recordingControls.isHidden = true
@@ -3395,7 +3389,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
     promptForeground.addSubview(trailingControls)
     // **A chat's foot is two groups**: on the left what shapes the request —
-    // +, Auto, folder; on the right what is read and pressed — ring,
+    // +, model, folder; on the right what is read and pressed — ring,
     // microphone, Send. The +'s ink is the box's one inset from the rim, as
     // the words' is above it. Empty (zero wide) on the first screen.
     leadingControls.orientation = .horizontal
@@ -3403,7 +3397,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     leadingControls.spacing = AgentPaletteMetrics.restingControlsSpacing
     leadingControls.translatesAutoresizingMaskIntoConstraints = false
     leadingControls.detachesHiddenViews = false
-    leadingControls.setViews([attachRestSlot, autoModeSlot], in: .leading)
+    leadingControls.setViews([attachRestSlot, modelChipSlot], in: .leading)
     promptForeground.addSubview(leadingControls)
     NSLayoutConstraint.activate([
       leadingControls.leadingAnchor.constraint(

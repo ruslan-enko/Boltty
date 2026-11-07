@@ -707,8 +707,6 @@ final class PaletteCodeBlockView: NSView {
     translatesAutoresizingMaskIntoConstraints = false
     wantsLayer = true
     layer?.backgroundColor = AgentPaletteMetrics.answerCodeBlockFill.cgColor
-    layer?.borderColor = AgentPaletteMetrics.answerCodeBlockBorder.cgColor
-    layer?.borderWidth = 1
     addSubview(text)
     copyButton.translatesAutoresizingMaskIntoConstraints = false
     copyButton.isBordered = false

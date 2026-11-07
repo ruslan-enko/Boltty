@@ -5,7 +5,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.opencode
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .questions, .attachments, .images,
+    .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval
   ]
@@ -82,6 +82,9 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
     return .available(version: version)
   }
+
+  /// One HTTP request, so it can be read often; `model.updated` says when sooner.
+  var modelListLifetime: TimeInterval { 5 * 60 }
 
   func availableModels() async throws -> [AgentModelOption] {
     do {
@@ -181,11 +184,10 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   ) async throws -> RemoteSessionInfo {
     let directory = options.directory
     let model = options.model
-    // The free tier refuses a session id in Boltty's spelling; let the server name free sessions.
-    // No model is the server's default, which is often free (Big Pickle on 2.2.5).
-    let free = model == nil ? true : await isFree(model)
+    // The server names every session: the free tier refuses an id in Boltty's spelling, and
+    // any chat can be switched onto a free model later.
     let body = OpenCodeDTO.CreateSessionRequest(
-      id: free ? nil : id,
+      id: nil,
       location: OpenCodeDTO.LocationRef(directory: directory, workspaceID: nil),
       model: model.map {
         OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: options.effort)
@@ -203,9 +205,41 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       if own { startOwnStreamIfNeeded() }
       return info(from: response.data, fallbackDirectory: directory)
     } catch AgentClientError.indeterminate {
-      guard !free else { throw AgentClientError.indeterminate("session creation") }
-      if let existing = try? await loadSession(id: id) { return existing.info }
       throw AgentClientError.indeterminate("session creation")
+    }
+  }
+
+  /// `POST …/model` is "the model used by subsequent provider turns" (2.2.5: two
+  /// switches on one session, each next turn on the new model). Each switch leaves
+  /// a `model-switched` record, so an unchanged chat sends none. No model is the
+  /// session's own.
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    lock.withLock {
+      if options.autoApprove, !options.readOnly {
+        autoApproved.insert(id)
+      } else {
+        autoApproved.remove(id)
+      }
+    }
+    guard let model = options.model else { return }
+    let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await get("/api/session/\(id)")
+    let current = session.data.model
+    if current?.id == model.modelID, current?.providerID == model.providerID,
+       (current?.variant ?? "default") == (options.effort ?? "default") {
+      return
+    }
+    do {
+      try await postIgnoringResponse(
+        "/api/session/\(id)/model",
+        body: OpenCodeDTO.SwitchModelRequest(model: OpenCodeDTO.ModelRef(
+          id: model.modelID, providerID: model.providerID, variant: options.effort))
+      )
+    } catch AgentClientError.sessionNotFound {
+      // The session was just read, so it is the route that is missing: 1.18 has
+      // none, and the chat goes on with the model it has.
+      log.notice("this OpenCode cannot change a session's model")
+    } catch let AgentClientError.indeterminate(detail) {
+      throw AgentClientError.transport(detail)
     }
   }
 
@@ -719,6 +753,9 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       else { return [] }
       return [.partRemoved(sessionID: sessionID, messageID: messageID, partID: partID)]
 
+    case "model.updated", "provider.updated":
+      return [.modelsChanged]
+
     case "session.idle":
       guard let sessionID = event.data?["sessionID"]?.stringValue else { return [] }
       return [.executionStateChanged(sessionID: sessionID, state: .idle)]
@@ -1016,6 +1053,20 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
     case "session.retried", "session.execution.started":
       return [.executionStateChanged(sessionID: sessionID, state: .working)]
+
+    // How a turn ends with no step to fail: a model that has gone says
+    // `provider.no-route` here and nowhere else (2.2.5), and unread, the chat
+    // stood at Working until the person pressed Stop.
+    case "session.execution.failed":
+      return [
+        .sessionFailed(
+          sessionID: sessionID,
+          failure: OpenCodeMapper.failure(fromError: data["error"])
+        )
+      ]
+
+    case "session.execution.interrupted":
+      return [.executionStateChanged(sessionID: sessionID, state: .idle)]
 
     default:
       return []

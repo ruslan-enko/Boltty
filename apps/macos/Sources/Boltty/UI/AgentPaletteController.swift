@@ -231,8 +231,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       self?.isSubmitting = false
       self?.syncWorkingDirectoryToPanel()
     }
-    panelView.onSetAutoMode = { [weak self] id, enabled in
-      self?.conversations?.setAutoApprove(enabled, for: id)
+    panelView.onModelMenu = { [weak self] in
+      self?.showModelMenu()
     }
     panelView.onCompact = { [weak self] in
       guard let self, let id = self.panelView.addressedSessionID else { return }
@@ -1134,6 +1134,28 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     suppressResignHide = true
     panelView.showWorkingDirectoryMenu(menu)
     suppressResignHide = false
+  }
+
+  private func showModelMenu() {
+    guard let menu = modelMenu() else { return }
+    conversations?.refreshModelsIfStale()
+    PaletteHelpPresenter.shared.dismiss()
+    suppressResignHideWorkItem?.cancel()
+    suppressResignHide = true
+    panelView.showModelMenu(menu)
+    suppressResignHide = false
+  }
+
+  func modelMenu() -> NSMenu? {
+    guard let conversations, let id = panelView.addressedSessionID,
+          let content = conversations.modelMenu(for: id)
+    else { return nil }
+    return ModelMenu.make(
+      content,
+      chooseModel: { [weak self] option in self?.conversations?.chooseModel(option, for: id) },
+      chooseEffort: { [weak self] effort in self?.conversations?.chooseEffort(effort, for: id) },
+      setAutoMode: { [weak self] enabled in self?.conversations?.setAutoApprove(enabled, for: id) }
+    )
   }
 
   func workingDirectoryMenu() -> NSMenu? {

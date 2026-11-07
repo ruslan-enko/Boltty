@@ -1137,7 +1137,6 @@ enum AgentPaletteMetrics {
   /// edge was tried when the fill read as nothing, but what hid it was the
   /// fill drawn in Light's colours (see the row's
   /// `viewDidChangeEffectiveAppearance`); in the panel's own it reads alone.
-  static let resultsRowSelectedBorderWidth: CGFloat = 0
   /// A working chat's row: the shimmer over the words under its title
   /// (`BolttyAISessionRowView.layoutShimmer`). One sweep across the words,
   /// then a rest — about the two-second beat the CLIs' own shimmers keep;
@@ -1419,12 +1418,11 @@ enum AgentPaletteMetrics {
   static let answerInlineCodeFill = PaletteInk.fill
   static let answerInlineCodeCornerRadius: CGFloat = 6
   static let answerInlineCodeInset: CGFloat = 4
-  /// A fenced block (`PaletteCodeBlockView`): a box with a hairline at white
-  /// 8% on white 5%, a corner of 10, the code 14 under its top and 16 in,
+  /// A fenced block (`PaletteCodeBlockView`): a box of white 8% with no edge,
+  /// a corner of 10, the code 14 under its top and 16 in,
   /// with room at the trailing edge for the copy button, on a line of 1.5.
   static let answerCodeBlockCornerRadius: CGFloat = 10
-  static let answerCodeBlockFill = PaletteInk.tertiaryFill
-  static let answerCodeBlockBorder = PaletteInk.secondaryFill
+  static let answerCodeBlockFill = PaletteInk.secondaryFill
   static let answerCodeBlockVerticalPadding: CGFloat = 14
   static let answerCodeBlockLeadingPadding: CGFloat = 16
   static let answerCodeBlockTrailingPadding: CGFloat = 40
@@ -1890,7 +1888,7 @@ enum AgentPaletteMetrics {
   }
   /// **A help tag is drawn as a Mac menu row**: text at the menu's 13
   /// (`typeMeta`), a corner of 10, the padding a menu row has, and each key of
-  /// a shortcut in its own outlined cap at 11. It wears the system's glass with
+  /// a shortcut on its own piece of glass at 11. It wears the system's glass with
   /// `helpDensity` over it: bare glass let the words beneath read through 13 pt.
   static let helpDensity = NSColor.black.withAlphaComponent(0.55)
   static let helpCornerRadius: CGFloat = 10
@@ -1901,10 +1899,12 @@ enum AgentPaletteMetrics {
   static let helpTextMaxWidth: CGFloat = 280
   /// Between the words and the keys that do the same thing.
   static let helpKeysGap: CGFloat = 16
-  static let helpKeycapSize: CGFloat = 17
+  static let helpKeycapSize: CGFloat = 18
+  /// Concentric with the tag: 10 outside, 6 of padding.
   static let helpKeycapCornerRadius: CGFloat = 4
   static let helpKeycapSpacing: CGFloat = 3
-  static let helpKeycapEdge = NSColor.white.withAlphaComponent(0.14)
+  /// Either side of a key's letters, when they are wider than the cap ("Esc").
+  static let helpKeycapInset: CGFloat = 5
   /// Above the one button a pinned tag can carry (Compact), and its height —
   /// a regular-size control at the tag's 13, not a chip-sized pill.
   static let helpActionSpacing: CGFloat = 8

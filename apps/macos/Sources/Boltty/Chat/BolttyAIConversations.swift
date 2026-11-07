@@ -49,6 +49,13 @@ protocol BolttyAIConversations: AnyObject {
   /// Turns the chat's Auto Mode on or off, reaching a running session.
   func setAutoApprove(_ enabled: Bool, for id: UUID)
 
+  func modelMenu(for id: UUID) -> BolttyAIModelMenu?
+
+  /// The chat's next turn runs this, in its open session.
+  func chooseModel(_ option: AgentModelOption, for id: UUID)
+
+  func chooseEffort(_ effort: String?, for id: UUID)
+
   @discardableResult
   func cancelQueuedFollowUp(for id: UUID) -> String?
 
@@ -111,6 +118,9 @@ extension BolttyAIConversations {
   }
   func canSteer(_ id: UUID) -> Bool { false }
   func setAutoApprove(_ enabled: Bool, for id: UUID) {}
+  func modelMenu(for id: UUID) -> BolttyAIModelMenu? { nil }
+  func chooseModel(_ option: AgentModelOption, for id: UUID) {}
+  func chooseEffort(_ effort: String?, for id: UUID) {}
 
   func startConversation(prompt: String, id: UUID, workingDirectory: String) -> UUID? {
     startConversation(
@@ -255,6 +265,62 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     Task { @MainActor [engine] in await engine.setAutoApprove(enabled, for: id) }
   }
 
+  func modelMenu(for id: UUID) -> BolttyAIModelMenu? {
+    guard let conversation = store.conversation(id: id),
+          let agent = AgentId(rawValue: conversation.providerID)
+    else { return nil }
+    let capabilities = engine.capabilities(for: id)
+    let models = capabilities.contains(.modelSwitching) ? engine.models(for: id) : []
+    let isGone = engine.modelIsGone(for: id)
+    return BolttyAIModelMenu(
+      agent: agent,
+      models: models,
+      current: isGone ? nil : models.option(for: conversation.model) ?? models.agentDefault,
+      goneName: isGone ? conversation.model?.displayName : nil,
+      efforts: capabilities.contains(.modelSwitching) ? engine.effortOptions(for: id) : [],
+      effort: conversation.reasoningEffort,
+      canResetEffort: capabilities.contains(.effortReset),
+      autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil
+    )
+  }
+
+  func chooseModel(_ option: AgentModelOption, for id: UUID) {
+    engine.chooseModel(option, for: id)
+  }
+
+  func chooseEffort(_ effort: String?, for id: UUID) {
+    engine.chooseEffort(effort, for: id)
+  }
+
+  /// A turn refused for its model never ran, so what was asked is still to do.
+  private func requestToRetryOnAnotherModel(in id: UUID) -> String? {
+    let messages = store.transcript(id: id).messages
+    guard store.conversation(id: id)?.lastKnownState == .failed,
+          messages.last?.failure.map(AgentFailureReport.saysModelIsGone) == true
+    else { return nil }
+    return messages.last { $0.role == .user }?.plainText
+  }
+
+  private func modelChip(for conversation: Conversation) -> BolttyAIModelChip? {
+    guard let menu = modelMenu(for: conversation.id),
+          !menu.models.isEmpty || conversation.model != nil || menu.autoMode != nil
+    else { return nil }
+    let name = menu.goneName ?? menu.current?.selection.displayName
+      ?? conversation.model?.displayName ?? "Default"
+    let effort = conversation.reasoningEffort.map { level in
+      menu.efforts.first { $0.value == level }?.label ?? AgentEffortOption.title(for: level)
+    }
+    var help = menu.goneName == nil
+      ? "Model and permissions for this chat"
+      : "\(menu.agent.shortDisplayName) no longer offers this model. Choose another."
+    if menu.autoMode == true { help += "\nAuto Mode is on" }
+    return BolttyAIModelChip(
+      title: [name, effort].compactMap { $0 }.joined(separator: " · "),
+      isGone: menu.goneName != nil,
+      help: help
+    )
+  }
+
   var usageChanged: AnyPublisher<Void, Never> {
     engine.$usageByProvider.map { _ in () }
       .merge(with: engine.$contextByConversation.map { _ in () })
@@ -322,8 +388,11 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       stopIsAbrupt: capabilities.endingTurnIsAbrupt,
       canSteer: pending == nil && engine.canSteer(id),
       autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil,
+      modelChip: modelChip(for: conversation),
       notice: engine.notices[id]?.text,
-      retryPrompt: failedPanelPrompts[id] ?? (pending == nil && !conversation.draft.isEmpty ? conversation.draft : nil),
+      retryPrompt: failedPanelPrompts[id]
+        ?? (pending == nil && !conversation.draft.isEmpty ? conversation.draft : nil)
+        ?? requestToRetryOnAnotherModel(in: id),
       queuedPrompt: queuedPanelPrompts[id]
     )
   }

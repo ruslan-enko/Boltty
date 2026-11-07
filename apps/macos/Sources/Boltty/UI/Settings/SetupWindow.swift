@@ -192,10 +192,6 @@ private struct SetupTile<Content: View>: View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
           .fill(.white.opacity(isOn ? (isHovered ? 0.17 : 0.12) : (isHovered ? 0.07 : 0.04)))
       )
-      .overlay(
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-          .strokeBorder(.white.opacity(isOn ? 0.18 : 0.06), lineWidth: 1)
-      )
       .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
   }
 }
@@ -615,10 +611,10 @@ private struct SetupVoiceVisual: View {
   var body: some View {
     VStack(spacing: 12) {
       SetupVoiceTile(
-        model: model, id: .parakeetUltra, icon: .micFill, title: "Natural dictation",
+        model: model, id: .parakeetUltra, icon: .mic, title: "Natural dictation",
         detail: "Parakeet hears Ukrainian, English and 23 more, even mixed in one sentence.")
       SetupVoiceTile(
-        model: model, id: .supertonic3, icon: .speakerFill, title: "Natural voice",
+        model: model, id: .supertonic3, icon: .speaker, title: "Natural voice",
         detail: "Supertonic reads answers aloud in 31 languages.")
       Text(summary)
         .font(.system(size: 12, design: .rounded))
@@ -664,7 +660,7 @@ private struct SetupVoiceTile: View {
             .foregroundStyle(.tertiary)
         }
         Spacer(minLength: 8)
-        BolttyIconView(icon: isOn || isHere ? .checkCircleFill : .circle, size: 24)
+        BolttyIconView(icon: isOn || isHere ? .checkCircle : .circle, size: 24)
           .foregroundStyle(isOn || isHere ? .primary : .tertiary)
       }
       .padding(.horizontal, 18)

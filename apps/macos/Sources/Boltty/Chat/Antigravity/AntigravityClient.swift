@@ -33,7 +33,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   ///   gate without a card; commands still ask. Without the gate it is
   ///   `--mode accept-edits`, a launch flag for the next process.
   let capabilities: AgentCapabilities = [
-    .modelSelection, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
+    .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
     .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
     .usageLimits,
   ]
@@ -229,6 +229,40 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       state: working ? .working : .idle,
       openInteractions: []
     )
+  }
+
+  /// Model and effort are launch flags: an idle process is let go, and the next
+  /// send starts one with them (1.5.2: `--conversation <id> --model <other>`
+  /// went on in the conversation on the other model). A conversation from before
+  /// a relaunch gets back its folder here too.
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let idle = try lock.withLock { () -> JSONLineProcess? in
+      let session: LiveSession
+      if let live = sessions[id] {
+        session = live
+      } else {
+        guard FileManager.default.fileExists(
+          atPath: AntigravityTranscript.url(sessionID: id, in: transcriptRoot).path
+        ) else { throw AgentClientError.sessionNotFound }
+        session = LiveSession(
+          id: id, directory: options.directory, model: nil, effort: nil, autoApprove: false)
+        sessions[id] = session
+      }
+      let flagsChanged = session.model?.modelID != options.model?.modelID
+        || session.effort != options.effort
+        || session.directory != options.directory
+        // With the gate the mode is Boltty's, and reaches a running process.
+        || (gate == nil && session.autoApprove != options.autoApprove)
+      session.directory = options.directory
+      session.model = options.model
+      session.effort = options.effort
+      session.autoApprove = options.autoApprove
+      guard flagsChanged, session.pendingMessageID == nil else { return nil }
+      defer { session.process = nil }
+      return session.process
+    }
+    idle?.closeInput()
+    idle?.terminate()
   }
 
   func messageExists(id: String, in sessionID: String) async throws -> Bool {

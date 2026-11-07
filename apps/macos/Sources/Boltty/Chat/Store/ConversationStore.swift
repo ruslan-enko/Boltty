@@ -219,6 +219,13 @@ final class ConversationStore: ObservableObject {
     }
   }
 
+  func setModel(_ model: ModelSelection?, effort: String?, for id: UUID) {
+    update(id) {
+      $0.model = model
+      $0.reasoningEffort = effort
+    }
+  }
+
   func setReasoningEffort(_ effort: String?, for id: UUID) {
     update(id) { $0.reasoningEffort = effort }
   }
@@ -309,7 +316,9 @@ final class ConversationStore: ObservableObject {
   func attachRemoteSession(_ remoteID: String, to id: UUID, model: ModelSelection?) {
     update(id) {
       $0.remoteSessionID = remoteID
-      if let model { $0.model = model }
+      // Only what the chat did not name: chosen while the session started, the
+      // person's choice stands and the next send applies it.
+      if $0.model == nil, let model { $0.model = model }
     }
   }
 
@@ -518,7 +527,7 @@ final class ConversationStore: ObservableObject {
 
     let id = conversation.id
     switch envelope.event {
-    case .connection:
+    case .connection, .modelsChanged:
       break
 
     case let .messageUpdated(_, message):
@@ -556,6 +565,13 @@ final class ConversationStore: ObservableObject {
         last.failure = failure
         last.completedAt = last.completedAt ?? clock()
         upsert(last, in: id)
+      } else if !failure.isAbort {
+        // Failed before the agent said anything: the failure's words still need
+        // a place, or the card has nothing to say about what went wrong.
+        var empty = ConversationMessage(
+          id: "failure-\(UUID().uuidString)", role: .agent, createdAt: clock(), completedAt: clock())
+        empty.failure = failure
+        upsert(empty, in: id)
       }
       saveTranscriptNow(id)
 

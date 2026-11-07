@@ -48,7 +48,7 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     nameLabel.isHidden = true
     addSubview(nameLabel)
 
-    warningIcon.image = BolttyIcon.warningFill.image(size: AgentPaletteMetrics.directoryChipGlyphPointSize)
+    warningIcon.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.directoryChipGlyphPointSize)
     warningIcon.contentTintColor = AgentPaletteMetrics.directoryChipWarningTint
     warningIcon.imageScaling = .scaleProportionallyUpOrDown
     warningIcon.isHidden = true

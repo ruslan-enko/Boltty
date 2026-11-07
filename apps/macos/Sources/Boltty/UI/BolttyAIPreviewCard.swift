@@ -80,6 +80,7 @@ final class BolttyAIPreviewCard: NSView {
     }
   }
   var onRetry: ((String) -> Void)?
+  var onChooseModel: (() -> Void)?
   private let recoverButton = GlassPillButton.titled("Restore unsent message")
   private let failureCard = BolttyAIFailureCard()
   var onCancelQueued: ((String) -> Void)?
@@ -285,6 +286,7 @@ final class BolttyAIPreviewCard: NSView {
     recoverButton.isHidden = true
     failureCard.isHidden = true
     failureCard.onRetry = { [weak self] prompt in self?.onRetry?(prompt) }
+    failureCard.onChooseModel = { [weak self] in self?.onChooseModel?() }
     scroll.documentView = content
     scroll.contentView.scroll(to: restingScrollOrigin)
     scroll.translatesAutoresizingMaskIntoConstraints = false

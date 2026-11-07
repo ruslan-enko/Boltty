@@ -2,10 +2,12 @@ import AppKit
 
 final class BolttyAIFailureCard: NSView {
   var onRetry: ((String) -> Void)?
+  var onChooseModel: (() -> Void)?
 
   private let symbol = NSImageView()
   private let sentence = NSTextField(wrappingLabelWithString: "")
   private let retryButton = GlassPillButton.titled("Retry")
+  private let chooseModelButton = GlassPillButton.titled("Choose Model")
   private let disclosure = PaletteDisclosureButton()
   private let detailsText = NSTextField(wrappingLabelWithString: "")
   private let copyButton = PaletteIconButton()
@@ -19,6 +21,7 @@ final class BolttyAIFailureCard: NSView {
   var isShowingDetailsForTesting: Bool { !detailsBox.isHidden }
   var detailsTextForTesting: String { detailsText.stringValue }
   var isRetryVisibleForTesting: Bool { !retryButton.isHidden }
+  var isChooseModelVisibleForTesting: Bool { !chooseModelButton.isHidden }
   func toggleDetailsForTesting() { toggleDetails(disclosure) }
   func retryForTesting() { retry(retryButton.button) }
   func copyDetailsForTesting() { copyDetails(copyButton) }
@@ -29,8 +32,6 @@ final class BolttyAIFailureCard: NSView {
     wantsLayer = true
     layer?.cornerCurve = .continuous
     layer?.applyPaletteCorner(radius: AgentPaletteMetrics.failureCardCornerRadius)
-    layer?.borderWidth = 1
-    layer?.borderColor = PaletteInk.fill.cgColor
     layer?.backgroundColor = AgentPaletteMetrics.failureCardFill.cgColor
 
     symbol.translatesAutoresizingMaskIntoConstraints = false
@@ -43,12 +44,16 @@ final class BolttyAIFailureCard: NSView {
     sentence.textColor = PaletteInk.primary
     sentence.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-    for button in [retryButton, disclosure, copyButton] as [NSView] {
+    for button in [retryButton, chooseModelButton, disclosure, copyButton] as [NSView] {
       button.translatesAutoresizingMaskIntoConstraints = false
     }
     retryButton.button.target = self
     retryButton.button.action = #selector(retry(_:))
     retryButton.setAccessibilityIdentifier("boltty.ask.failure.retry")
+    chooseModelButton.button.target = self
+    chooseModelButton.button.action = #selector(chooseModel(_:))
+    chooseModelButton.setAccessibilityIdentifier("boltty.ask.failure.model")
+    chooseModelButton.isHidden = true
     disclosure.font = roundedAppFont(size: AgentPaletteMetrics.previewActivityNameFontSize)
     disclosure.imagePosition = .imageTrailing
     disclosure.contentTintColor = PaletteInk.secondary
@@ -99,7 +104,7 @@ final class BolttyAIFailureCard: NSView {
     controls.alignment = .centerY
     controls.spacing = 8
     controls.translatesAutoresizingMaskIntoConstraints = false
-    controls.setViews([retryButton, disclosure], in: .leading)
+    controls.setViews([chooseModelButton, retryButton, disclosure], in: .leading)
 
     column.orientation = .vertical
     column.alignment = .leading
@@ -176,6 +181,7 @@ final class BolttyAIFailureCard: NSView {
     detailsText.stringValue = report.details
     retryButton.isHidden = !report.canRetry
     retryButton.button.isEnabled = report.canRetry
+    chooseModelButton.isHidden = !report.offersModelChoice
     if isNewFailure { collapseDetails() }
     applyCopyGlyph(.copy)
     setAccessibilityLabel(report.sentence)
@@ -220,6 +226,8 @@ final class BolttyAIFailureCard: NSView {
     onRetry?(prompt)
   }
 
+  @objc private func chooseModel(_ sender: NSButton) { onChooseModel?() }
+
   @objc private func copyDetails(_ sender: NSButton) {
     guard let details = report?.details else { return }
     let pasteboard = NSPasteboard.general
@@ -253,8 +261,6 @@ final class PaletteServiceStack: NSStackView {
       top: styled ? Self.eyebrowTopInset : 0, left: inset,
       bottom: styled ? bottom ?? inset : 0, right: inset)
     layer?.backgroundColor = (styled ? AgentPaletteMetrics.failureCardFill : .clear).cgColor
-    layer?.borderWidth = styled ? 1 : 0
-    layer?.borderColor = PaletteInk.fill.cgColor
     layer?.applyPaletteCorner(radius: AgentPaletteMetrics.failureCardCornerRadius)
   }
 

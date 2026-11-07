@@ -35,6 +35,10 @@ enum OpenCodeDTO {
     var variant: String?
   }
 
+  struct SwitchModelRequest: Encodable {
+    var model: ModelRef
+  }
+
   struct SessionInfo: Decodable {
     let id: String
     var title: String?

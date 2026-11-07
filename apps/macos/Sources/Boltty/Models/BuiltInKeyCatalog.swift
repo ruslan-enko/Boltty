@@ -99,6 +99,10 @@ enum BuiltInKeyCatalog {
           id: "attach", title: "Attach a file", keys: "⇧⌘A",
           detail: "Where the agent reads files"
         ),
+        BuiltInKey(
+          id: "model", title: "Choose the model", keys: "⇧⌘M",
+          detail: "Applies from the next message"
+        ),
         BuiltInKey(id: "chatBack", title: "Back to the chat list", keys: "Esc", detail: nil),
       ]),
       BuiltInKeySection(title: "Questions and approvals", keys: [

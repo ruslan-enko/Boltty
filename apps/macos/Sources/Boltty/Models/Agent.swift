@@ -73,7 +73,7 @@ enum AgentId: String, CaseIterable, Codable, Sendable, Equatable {
     case .pi: .hexGrid
     case .codex: .code
     case .claude: .brain
-    case .grok: .boltFill
+    case .grok: .bolt
     case .antigravity: .arrowUpCircle
     case .custom: .sparkles
     }

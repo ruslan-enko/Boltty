@@ -5,7 +5,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.codex
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .questions, .attachments, .images,
+    .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
     .contextUsage, .compaction, .steering, .activityHistory
@@ -158,6 +158,25 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         ModelSelection(providerID: provider.rawValue, modelID: $0)
       } ?? model
     )
+  }
+
+  /// `turn/start` carries the model and effort, turn by turn (0.167: two turns
+  /// on one thread, each with its own model in the rollout's `turn_context`).
+  /// A chat that chose no effort keeps the thread's; another model's turn goes
+  /// without one, since that level may not be the new model's.
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let server = try await server()
+    try await ensureThread(id: id, on: server)
+    lock.withLock {
+      let changesModel = options.model.map { $0.modelID != threads[id]?.model?.modelID } ?? false
+      if let model = options.model { threads[id]?.model = model }
+      if let effort = options.effort {
+        threads[id]?.effort = effort
+      } else if changesModel {
+        threads[id]?.effort = nil
+      }
+      threads[id]?.autoApprove = options.autoApprove
+    }
   }
 
   /// Read off the rollout: thread/resume writes to it.

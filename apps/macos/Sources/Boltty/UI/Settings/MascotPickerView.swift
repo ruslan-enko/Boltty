@@ -278,12 +278,8 @@ private struct MascotCellStyle: ButtonStyle {
       .padding(3)
       .background(
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .fill(Color.primary.opacity(isPressed ? 0.14 : (isHovered ? 0.08 : 0)))
+          .fill(Color.primary.opacity(isPressed ? 0.2 : (isChosen ? 0.16 : (isHovered ? 0.08 : 0))))
           .animation(isPressed ? nil : SettingsMotion.quick, value: isPressed)
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .strokeBorder(Color.bolttyAccent, lineWidth: isChosen ? 2 : 0)
           .animation(SettingsMotion.quick, value: isChosen)
       )
       .contentShape(Rectangle())

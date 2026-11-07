@@ -168,12 +168,10 @@ final class BolttyAIOptionRow: NSView {
     guard let layer else { return }
     let lit = isFocused || isPressed
     let target = (lit
-      ? PaletteInk.secondaryFill
+      ? PaletteInk.selectedFill
       : isHovered ? PaletteInk.tertiaryFill : NSColor.clear).cgColor
     let previous = layer.presentation()?.backgroundColor ?? layer.backgroundColor
     layer.backgroundColor = target
-    layer.borderWidth = lit ? 1 / max(window?.backingScaleFactor ?? 2, 1) : 0
-    layer.borderColor = PaletteInk.selectedFill.cgColor
     guard animated, !MotionPreferences.reduceMotion else { return }
     let fade = CABasicAnimation(keyPath: "backgroundColor")
     fade.fromValue = previous

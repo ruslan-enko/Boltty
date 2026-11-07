@@ -26,7 +26,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
   var icon: BolttyIcon {
     switch self {
-    case .general: .gear
+    case .general: .settings
     // The agents are command-line tools; sparkles said "AI" and nothing more.
     case .agents: .terminal
     case .usage: .chart

@@ -32,6 +32,14 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let permissionMessage = AgentCapabilities(rawValue: 1 << 18)
 
+  /// A chat's model and effort can change after its session exists, from its
+  /// next turn (`AgentClient.prepareSession`).
+  static let modelSwitching = AgentCapabilities(rawValue: 1 << 19)
+
+  /// A chat can go back to the model's default effort. Codex and Grok take a level
+  /// and keep it, with no way to say "none" (`turn/start`, `set_config_option`).
+  static let effortReset = AgentCapabilities(rawValue: 1 << 20)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }

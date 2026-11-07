@@ -12,6 +12,9 @@ extension ClaudeCodeClient {
     let id: String
     let directory: String
     var model: ModelSelection?
+    /// What the process was started with; another effort or read-only needs
+    /// another process (`prepareSession`).
+    let options: AgentSessionOptions
     let process: JSONLineProcess
     var readerTask: Task<Void, Never>?
 
@@ -24,10 +27,11 @@ extension ClaudeCodeClient {
     private var control: [String: CheckedContinuation<JSONObject, Error>] = [:]
     private var controlCounter = 0
 
-    init(id: String, directory: String, model: ModelSelection?, process: JSONLineProcess) {
+    init(id: String, options: AgentSessionOptions, process: JSONLineProcess) {
       self.id = id
-      self.directory = directory
-      self.model = model
+      self.directory = options.directory
+      self.model = options.model
+      self.options = options
       self.process = process
     }
 

@@ -56,16 +56,25 @@ final class ChatWorkspaceCoordinator {
   // MARK: - Conversations
 
   func resolvedDefaultModel(for providerID: String) -> ModelSelection? {
-    guard let modelID = defaultModelID(providerID), !modelID.isEmpty else { return nil }
+    guard let stored = defaultModelID(providerID), !stored.isEmpty else { return nil }
     let listed = engine.modelsByProvider[providerID] ?? []
-    if let option = listed.first(where: { $0.selection.modelID == modelID }) {
-      return option.selection
-    }
+    if let option = listed.option(stored: stored) { return option.selection }
     // Listed without it, the agent no longer offers it: asked for it the CLI
     // would refuse, so the chat goes to the agent's own default. With no list
     // yet there is nothing to say it has gone. The stored choice stays, in case
     // it comes back (OpenCode's models follow its providers).
-    return listed.isEmpty ? ModelSelection(providerID: providerID, modelID: modelID) : nil
+    return listed.isEmpty ? Self.unlistedSelection(stored: stored, agent: providerID) : nil
+  }
+
+  /// A stored choice before the list has come, in the first seconds after launch.
+  /// It says its provider, unless stored before it did: OpenCode cannot run a model
+  /// without one, so that chat starts on the default rather than failing.
+  private static func unlistedSelection(stored: String, agent: String) -> ModelSelection? {
+    if let slash = stored.firstIndex(of: "/") {
+      return ModelSelection(
+        providerID: String(stored[..<slash]), modelID: String(stored[stored.index(after: slash)...]))
+    }
+    return agent == AgentId.opencode.rawValue ? nil : ModelSelection(providerID: agent, modelID: stored)
   }
 
   func resolvedDefaultEffort(for providerID: String, model: ModelSelection?) -> String? {
@@ -79,9 +88,7 @@ final class ChatWorkspaceCoordinator {
   /// The listed model a session would run: the one named, else the agent's default.
   private func modelOption(for providerID: String, model: ModelSelection?) -> AgentModelOption? {
     let options = engine.modelsByProvider[providerID] ?? []
-    return model.flatMap { selection in
-      options.first { $0.selection.modelID == selection.modelID }
-    } ?? options.first { $0.isDefault } ?? options.first
+    return options.option(for: model) ?? options.agentDefault
   }
 
   func defaultProviderID() -> String {
@@ -178,14 +185,18 @@ final class ChatWorkspaceCoordinator {
     pictures: [ConversationAttachment] = []
   ) -> Conversation {
     let provider = providerID ?? defaultProviderID()
-    let model = resolvedDefaultModel(for: provider)
+    var model = resolvedDefaultModel(for: provider)
+    let effort = resolvedDefaultEffort(for: provider, model: model)
+    // An effort goes with a model: OpenCode drops it from a session made without
+    // one. So the default is named where the person chose an effort for it.
+    if model == nil, effort != nil { model = modelOption(for: provider, model: nil)?.selection }
     let conversation = store.createConversation(
       id: id,
       title: ConversationEngine.title(from: prompt),
       workingDirectory: workingDirectory ?? store.defaultWorkingDirectory(),
       providerID: provider,
       model: model,
-      reasoningEffort: resolvedDefaultEffort(for: provider, model: model),
+      reasoningEffort: effort,
       autoApprove: engine.registry.capabilities(forProviderID: provider).contains(.autoApproval)
         && defaultAutoApprove(provider)
     )

@@ -3449,47 +3449,50 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(view.shellUsesGlassForTesting)
   }
 
-  func testAChatInAutoModeShowsItLitAndItsSwitchTurnsItOff() {
+  func testAChatSaysItsModelInTheComposerAndItsChipAsksForTheMenu() {
     let view = makeScreenSizedView()
     view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
-    var changes: [(UUID, Bool)] = []
-    view.onSetAutoMode = { changes.append(($0, $1)) }
-    let id = UUID()
-    view.enterAddressing(.init(id: id, title: "Chat", agent: .claude,
-      state: .finished, body: "Done.", autoMode: true))
+    var menus = 0
+    view.onModelMenu = { menus += 1 }
+    view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .claude,
+      state: .finished, body: "Done.",
+      modelChip: BolttyAIModelChip(title: "Opus · High", help: "Model")))
     view.layoutSubtreeIfNeeded()
-    XCTAssertTrue(view.isAutoModeVisibleForTesting)
-    let button = view.autoModeButtonForTesting
-    XCTAssertEqual(button.title, "Auto", "the word, not a glyph")
-    XCTAssertEqual(button.restingTint, ComposerControlGroup.hoverInk, "lit while on")
-    XCTAssertEqual(button.accessibilityValue() as? String, "On")
-    XCTAssertEqual(button.toolTip, AgentPaletteView.autoModeHelp(on: true, agent: .claude))
-    XCTAssertTrue(button.toolTip?.contains(AgentsSettingsPage.autoModeReach(for: .claude).dropFirst()) == true,
-      "the help tag names what Auto Mode lets through")
+    XCTAssertTrue(view.isModelChipVisibleForTesting)
+    let button = view.modelChipButtonForTesting
+    XCTAssertEqual(button.title, "Opus · High")
+    XCTAssertEqual(button.restingTint, ComposerControlGroup.restingInk)
+    XCTAssertEqual(button.helpShortcut, "⇧⌘M")
     let field = view.promptCapsuleFrameForTesting
-    let glyph = view.convert(view.autoModeButtonForTesting.bounds, from: view.autoModeButtonForTesting)
-    XCTAssertTrue(field.contains(glyph))
+    let chip = view.convert(button.bounds, from: button)
+    XCTAssertTrue(field.contains(chip))
     let folder = view.convert(view.workingDirectoryChipForTesting.bounds,
       from: view.workingDirectoryChipForTesting)
-    XCTAssertLessThanOrEqual(glyph.maxX, folder.minX + 0.5, "on the left, before the folder")
-    XCTAssertEqual(folder.midY, glyph.midY, accuracy: 0.5)
+    XCTAssertLessThanOrEqual(chip.maxX, folder.minX + 0.5, "on the left, before the folder")
+    XCTAssertEqual(folder.midY, chip.midY, accuracy: 0.5)
 
-    view.pressAutoModeForTesting()
-    XCTAssertEqual(changes.map(\.0), [id])
-    XCTAssertEqual(changes.map(\.1), [false])
-    XCTAssertEqual(button.restingTint, ComposerControlGroup.restingInk, "drawn off at once")
-    XCTAssertEqual(button.accessibilityValue() as? String, "Off")
+    view.pressModelChipForTesting()
+    XCTAssertEqual(menus, 1)
   }
 
-  func testNoAutoModeSwitchWhereTheAgentOffersNone() {
+  func testAModelThatHasGoneIsToldByItsChip() {
+    let view = makeScreenSizedView()
+    view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
+      state: .failed, body: "",
+      modelChip: BolttyAIModelChip(title: "qwen3.8-flash", isGone: true, help: "Gone")))
+    view.layoutSubtreeIfNeeded()
+    XCTAssertEqual(view.modelChipButtonForTesting.restingTint, AgentPaletteMetrics.failureCardAccent)
+  }
+
+  func testNoModelChipWhereTheAgentOffersNone() {
     let view = makeScreenSizedView()
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
       state: .finished, body: "Done."))
     view.layoutSubtreeIfNeeded()
-    XCTAssertFalse(view.isAutoModeVisibleForTesting)
+    XCTAssertFalse(view.isModelChipVisibleForTesting)
     view.leaveAddressing(animated: false)
     view.layoutSubtreeIfNeeded()
-    XCTAssertFalse(view.isAutoModeVisibleForTesting, "never on the first screen")
+    XCTAssertFalse(view.isModelChipVisibleForTesting, "never on the first screen")
   }
 
   func testGrownChatDraftUsesFullTextWidthWithControlsAlongTheBottom() {

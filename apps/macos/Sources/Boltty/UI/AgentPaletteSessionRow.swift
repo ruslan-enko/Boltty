@@ -605,10 +605,6 @@ final class BolttyAISessionRowView: NSView {
   /// loudest thing on the panel — brighter than the prompt capsule it sits
   /// under. Lit from the top edge, the pill reads as a raised surface instead
   /// of a painted rectangle, and the card's own wash carries the rest.
-  ///
-  /// The fill was raised from a ~10% average once the list was used with the
-  /// keyboard: see `highlightBorderColor` for why it could not carry selection
-  /// on its own.
   /// The selected row's fill, and the fainter one hover gets.
   ///
   /// **Flat, not a gradient.** The mock fills the pill with a single
@@ -644,38 +640,14 @@ final class BolttyAISessionRowView: NSView {
     return [NSColor.clear.cgColor, NSColor.clear.cgColor]
   }
 
-  /// The edge that makes a keyboard selection unmistakable. Hover never gets
-  /// one.
-  ///
-  /// A translucent wash could not carry selection alone, for two reasons that
-  /// only show up in use. The card is glass, so how much of a white ramp
-  /// survives depends on the desktop behind the panel — over a bright wallpaper
-  /// the selected row and its neighbours land within a few percent of each
-  /// other and the list reads as having nothing selected at all. And a row the
-  /// cursor happens to rest on is lit too, so "brighter" was never a reliable
-  /// answer to "which one does Enter mean". A drawn hairline is independent of
-  /// the backdrop and belongs to exactly one row.
-  private func highlightBorderColor() -> CGColor {
-    guard isHighlightedRow else { return NSColor.clear.cgColor }
-    let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-    return isDark
-      ? PaletteInk.selectedFill.cgColor
-      : NSColor.black.withAlphaComponent(0.16).cgColor
-  }
-
   private func renderHighlight(animated: Bool) {
     guard let layer = background.gradientLayer else { return }
     let colors = highlightColors()
-    let border = highlightBorderColor()
     let previous = layer.colors as? [CGColor] ?? []
-    let previousBorder = layer.borderColor
     let unchanged = previous.count == colors.count
       && zip(previous, colors).allSatisfy { $0 == $1 }
-      && previousBorder == border
     guard !unchanged else { return }
     layer.colors = colors
-    layer.borderWidth = AgentPaletteMetrics.resultsRowSelectedBorderWidth
-    layer.borderColor = border
 
     guard animated, !MotionPreferences.reduceMotion else { return }
     let fade = CABasicAnimation(keyPath: "colors")
@@ -685,16 +657,6 @@ final class BolttyAISessionRowView: NSView {
     fade.timingFunction = Motion.standardCurve
     fade.preferringHighFrameRate()
     layer.add(fade, forKey: "highlight")
-
-    // The edge crossfades with the fill rather than snapping in, or the row
-    // appears to be outlined a frame before it is lit.
-    let edge = CABasicAnimation(keyPath: "borderColor")
-    edge.fromValue = previousBorder
-    edge.toValue = border
-    edge.duration = AgentPaletteMetrics.hoverFadeDuration
-    edge.timingFunction = Motion.standardCurve
-    edge.preferringHighFrameRate()
-    layer.add(edge, forKey: "highlightBorder")
   }
 
   var highlightFillAlphaForTesting: CGFloat {

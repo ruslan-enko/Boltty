@@ -31,10 +31,24 @@ struct AgentFailureReport: Equatable, Sendable {
   /// The prompt to send again, when there is one to send.
   let retryPrompt: String?
 
+  /// The chat's model is what failed, so another is the way on.
+  var offersModelChoice = false
+
   var canRetry: Bool { retryPrompt != nil }
 
   /// One sentence for every failure, on purpose — see the type's note.
   static let universalSentence = "This turn didn't finish — your conversation is saved."
+
+  static let modelGoneSentence = "This model isn't available any more. Choose another, then try again."
+
+  /// OpenCode says "Model unavailable: strata/x" (`provider.no-route`, 2.2.5). A
+  /// session accepts any model at all, so this is the first anyone hears of it.
+  static func saysModelIsGone(_ failure: MessageFailure) -> Bool {
+    if failure.name == "provider.no-route" { return true }
+    let words = "\(failure.name) \(failure.message)".lowercased()
+    return ["model unavailable", "model_not_found", "model not found", "unknown model", "invalid model"]
+      .contains { words.contains($0) }
+  }
 
   /// A turn the plan refused, and when it can run again.
   static func rateLimitSentence(_ hit: RateLimitHit, now: Date = Date()) -> String {
@@ -81,16 +95,20 @@ struct AgentFailureReport: Equatable, Sendable {
     guard failedState || !evidence.isEmpty else { return nil }
     // Only the newest failure speaks for the card: an old refusal must not
     // explain a new, different failure.
-    let latestHit = preview.messages.last(where: { $0.failure != nil })?.failure?.rateLimit
+    let latest = preview.messages.last(where: { $0.failure != nil })?.failure
+    let latestHit = latest?.rateLimit
+    let modelGone = preview.modelChip?.isGone == true || latest.map(saysModelIsGone) == true
 
     return AgentFailureReport(
-      sentence: latestHit.map { rateLimitSentence($0) } ?? universalSentence,
+      sentence: latestHit.map { rateLimitSentence($0) }
+        ?? (modelGone ? modelGoneSentence : universalSentence),
       // An empty details block would be a disclosure that opens onto nothing.
       // Say that much rather than draw an empty drawer.
       details: evidence.isEmpty
         ? "The agent reported a failure without saying anything about it."
         : evidence.joined(separator: "\n\n"),
-      retryPrompt: preview.retryPrompt
+      retryPrompt: preview.retryPrompt,
+      offersModelChoice: modelGone && preview.modelChip != nil
     )
   }
 

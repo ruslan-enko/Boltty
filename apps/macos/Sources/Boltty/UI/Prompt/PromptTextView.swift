@@ -2,7 +2,7 @@ import AppKit
 
 /// A composer button's own key, shown on its help tag.
 enum ComposerChord: CaseIterable {
-  case dictate, folder, attach
+  case dictate, folder, attach, model
 
   init?(key: String, modifiers: NSEvent.ModifierFlags) {
     guard let chord = Self.allCases.first(where: {
@@ -16,11 +16,12 @@ enum ComposerChord: CaseIterable {
     case .dictate: "d"
     case .folder: "o"
     case .attach: "a"
+    case .model: "m"
     }
   }
 
   var modifiers: NSEvent.ModifierFlags {
-    self == .attach ? [.command, .shift] : [.command]
+    self == .attach || self == .model ? [.command, .shift] : [.command]
   }
 
   var display: String {
@@ -28,6 +29,7 @@ enum ComposerChord: CaseIterable {
     case .dictate: "⌘D"
     case .folder: "⌘O"
     case .attach: "⇧⌘A"
+    case .model: "⇧⌘M"
     }
   }
 }

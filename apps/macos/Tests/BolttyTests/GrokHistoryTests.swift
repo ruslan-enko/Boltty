@@ -174,6 +174,9 @@ final class GrokHistoryTests: XCTestCase {
             if sid == 'lost':
                 say({'id': request['id'], 'error': {'code': -32602, 'message': 'session not found'}})
                 continue
+            if 'cwd' not in params:
+                say({'id': request['id'], 'error': {'code': -32602, 'message': 'missing field `cwd`'}})
+                continue
             # ACP replays the history before it answers.
             update(sid, 'OLD HISTORY')
             known.add(sid)

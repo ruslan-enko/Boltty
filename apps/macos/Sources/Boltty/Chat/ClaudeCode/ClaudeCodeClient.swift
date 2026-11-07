@@ -5,7 +5,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.claude
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .attachments, .images, .interrupt,
+    .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
     .permissionMessage, .steering
@@ -14,6 +14,9 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
   private let lock = NSLock()
   private var sessions: [String: LiveSession] = [:]
+  /// What each chat asked for last: the next process starts with it, whoever
+  /// ended the one before (Boltty, a crash, `prepareSession`).
+  private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var conversationResolver: (@Sendable (String) -> UUID?)?
   private var cachedHandshake: JSONObject?
@@ -100,8 +103,35 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     )
   }
 
+  /// `set_model` reaches the running process, so the chat's "Always allow" rules
+  /// survive it (2.1.319: the next turn ran the new model). Effort and the
+  /// read-only tools are launch flags, so those let the process go, and the next
+  /// send resumes it with them; `--resume` takes `--model` and costs 0.3 s.
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let live = lock.withLock { () -> LiveSession? in
+      wantedOptions[id] = options
+      return sessions[id]
+    }
+    guard let live, live.process.isRunning else { return }
+    guard live.options.effort == options.effort, live.options.readOnly == options.readOnly else {
+      endProcess(of: id)
+      return
+    }
+    _ = try await live.sendControl(
+      ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: options.autoApprove)],
+      timeout: 5
+    )
+    if let model = options.model, model.modelID != live.model?.modelID {
+      _ = try await live.sendControl(["subtype": "set_model", "model": model.modelID], timeout: 5)
+      live.model = model
+    }
+  }
+
   func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    guard let session = lock.withLock({ sessions[sessionID] }) else { return }
+    guard let session = lock.withLock({ () -> LiveSession? in
+      wantedOptions[sessionID]?.autoApprove = enabled
+      return sessions[sessionID]
+    }) else { return }
     _ = try await session.sendControl(
       ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: enabled)],
       timeout: 5
@@ -338,6 +368,11 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   func release(sessionID: String) async {
+    lock.withLock { _ = wantedOptions.removeValue(forKey: sessionID) }
+    endProcess(of: sessionID)
+  }
+
+  private func endProcess(of sessionID: String) {
     guard let session = lock.withLock({ sessions.removeValue(forKey: sessionID) }) else { return }
     session.readerTask?.cancel()
     session.process.closeInput()
@@ -396,11 +431,9 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard let directory = ClaudeCodeTranscript.locate(sessionID: sessionID)?.directory else {
       throw AgentClientError.sessionNotFound
     }
-    return try await startSession(
-      id: sessionID,
-      options: AgentSessionOptions(directory: directory),
-      resuming: true
-    )
+    var options = lock.withLock { wantedOptions[sessionID] } ?? AgentSessionOptions(directory: directory)
+    options.directory = directory
+    return try await startSession(id: sessionID, options: options, resuming: true)
   }
 
   @discardableResult
@@ -411,7 +444,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   ) async throws -> LiveSession {
     guard let executable = locate() else { throw AgentClientError.notInstalled }
     let directory = options.directory
-    let model = options.model
+    lock.withLock { wantedOptions[id] = options }
 
     let arguments = Self.sessionArguments(id: id, options: options, resuming: resuming)
 
@@ -421,7 +454,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       directory: directory,
       category: "claude-code"
     )
-    let session = LiveSession(id: id, directory: directory, model: model, process: process)
+    let session = LiveSession(id: id, options: options, process: process)
     process.onExit = { [weak self, weak session] status, stderr in
       guard let self, let session else { return }
       session.failPending(AgentClientError.processExited(status))

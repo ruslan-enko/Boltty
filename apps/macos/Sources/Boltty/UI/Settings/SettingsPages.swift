@@ -291,7 +291,7 @@ extension AgentSettingsRow {
 
   /// The chosen model, else the one the agent itself starts with.
   var currentModel: AgentModelOption? {
-    models.first { $0.selection.modelID == selectedModelID } ?? models.first { $0.isDefault }
+    models.option(stored: selectedModelID) ?? models.first { $0.isDefault }
   }
 }
 
@@ -461,7 +461,7 @@ private struct AgentSettingsDetail: View {
         Text(row.models.first(where: \.isDefault).map { "Default (\($0.selection.displayName))" } ?? "Agent default")
           .tag("")
         ForEach(row.models) { option in
-          Text(option.selection.displayName).tag(option.selection.modelID)
+          Text(option.selection.displayName).tag(option.id)
         }
       } label: {
         Text("Model")
@@ -1218,7 +1218,6 @@ struct RingedChoice<Picture: View>: View {
       VStack(spacing: 7) {
         picture(presses)
           .frame(width: diameter, height: diameter)
-          .overlay(Circle().strokeBorder(Color.primary.opacity(isRinged ? 0.1 : 0), lineWidth: 1))
           .padding(Self.ringGap + Self.ringWidth)
           .overlay(
             Circle()

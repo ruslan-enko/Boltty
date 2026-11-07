@@ -38,9 +38,7 @@ enum AskBolttyConfiguration {
       ?? candidates.first
     else { return nil }
     let options = models[providerID] ?? []
-    let model = settings.askBolttyModelID.flatMap { id in
-      options.first { $0.selection.modelID == id }
-    }
+    let model = options.option(stored: settings.askBolttyModelID)
     let effort = fastestEffort(model?.effortOptions ?? [])
     return AskBolttyTarget(
       providerID: providerID, model: model?.selection, effort: effort,

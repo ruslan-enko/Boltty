@@ -191,7 +191,7 @@ private struct AccessPermissionRow: View {
     } else {
       switch status {
       case .allowed:
-        BolttyIconView(icon: .checkCircleFill, size: 22)
+        BolttyIconView(icon: .checkCircle, size: 22)
           .foregroundStyle(.green)
           .help("Allowed")
           .transition(.scale.combined(with: .opacity))
@@ -212,10 +212,10 @@ private struct AccessPermissionRow: View {
 extension AccessKind {
   var icon: BolttyIcon {
     switch self {
-    case .dictation: .micFill
+    case .dictation: .mic
     case .screen: .region
-    case .notifications: .bellBadgeFill
-    case .finder: .folderFill
+    case .notifications: .bellBadge
+    case .finder: .folder
     }
   }
 

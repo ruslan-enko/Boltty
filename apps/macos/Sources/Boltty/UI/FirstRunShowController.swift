@@ -600,11 +600,6 @@ final class FirstRunShowController {
         face.view.poke(.wink)
         card.answer()
       }
-      // Auto, on for this chat: the word goes white.
-      self.after(2.1) { [weak self] in
-        prompt.lightAuto()
-        self?.sound(.tap, 2)
-      }
       self.after(3.6) { [weak self] in self?.sceneList(card: card, prompt: prompt) }
     }
   }
@@ -1158,8 +1153,6 @@ final class ShowGlass: NSView {
   /// sublayer of the glass view's own layer goes under the material and
   /// shows blurred through it.
   let content = ShowGlassContent()
-  /// A hairline of light round it, over the system glass's own darker edge.
-  private let rim = CALayer()
   /// Boltty's own glass stands forward of the apps behind it: the shell's
   /// two shadows, a tight contact one and the broad pool a window casts,
   /// each with the glass's shape cut out so neither darkens it from inside.
@@ -1205,11 +1198,6 @@ final class ShowGlass: NSView {
     addSubview(host)
     content.radius = radius
     content.shades = Self.light
-    rim.borderColor = CGColor(gray: 1, alpha: 0.42)
-    rim.borderWidth = 1.5
-    rim.cornerCurve = .continuous
-    rim.zPosition = 3
-    layer?.addSublayer(rim)
   }
 
   @available(*, unavailable)
@@ -1219,8 +1207,6 @@ final class ShowGlass: NSView {
     super.layout()
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    rim.frame = bounds.insetBy(dx: -0.5, dy: -0.5)
-    rim.cornerRadius = min(radius, bounds.height / 2) + 0.5
     if casts, !bounds.isEmpty {
       let corner = min(radius, bounds.height / 2)
       let shape = CGPath(roundedRect: bounds, cornerWidth: corner, cornerHeight: corner, transform: nil)
@@ -1528,13 +1514,13 @@ final class ShowPrompt {
   private let hint: NSTextField
   private let caret = CAGradientLayer()
   /// The first screen's folder and microphone at the right end; in a chat
-  /// the composer's Auto, microphone and Send. Inside the glass, laid out
+  /// the composer's model, microphone and Send. Inside the glass, laid out
   /// from its right edge on every frame, so they ride as the capsule widens:
   /// the glass's content has no size yet when these are made, so a resizing
   /// mask would carry them off the far end.
   private let folder: NSImageView
   private let microphone: NSImageView
-  private let auto: NSTextField
+  private let model: NSTextField
   private let send = NSView()
   /// How far the microphone's middle stands from the right edge, in slide
   /// units: moves over when Send comes.
@@ -1588,10 +1574,10 @@ final class ShowPrompt {
     }
     folder = control(.folder)
     microphone = control(.mic)
-    auto = ShowText.label("Auto", size: space.v(22), weight: .medium)
-    auto.sizeToFit()
-    auto.alphaValue = 0
-    glass.content.addSubview(auto)
+    model = ShowText.label("Default", size: space.v(22), weight: .medium)
+    model.sizeToFit()
+    model.alphaValue = 0
+    glass.content.addSubview(model)
     let disc = space.v(64)
     send.frame.size = CGSize(width: disc, height: disc)
     send.wantsLayer = true
@@ -1689,22 +1675,17 @@ final class ShowPrompt {
     layoutText(in: shown)
   }
 
-  /// Sent: it is a chat's composer now — Auto and Send come, the microphone
+  /// Sent: it is a chat's composer now — its model and Send come, the microphone
   /// makes room, the folder goes.
   func becomeComposer() {
     ShowClock.fade(folder, to: 0, duration: 0.2)
-    ShowClock.fade(auto, to: 0.5, duration: 0.3)
+    ShowClock.fade(model, to: 0.5, duration: 0.3)
     ShowClock.fade(send, to: 1, duration: 0.25)
     clock.spring(0.4, bounce: 0.05, key: ObjectIdentifier(microphone)) { [weak self] t in
       guard let self else { return }
       self.microphoneCentre = 44 + 62 * t
       self.layoutControls(in: self.shown)
     }
-  }
-
-  /// Auto switched on for this chat: the word goes white.
-  func lightAuto() {
-    ShowClock.fade(auto, to: 1, duration: 0.2)
   }
 
   /// Gone into what comes next.
@@ -1748,7 +1729,7 @@ final class ShowPrompt {
     }
     stand(folder, right: space.v(92) - folder.frame.width / 2)
     stand(microphone, right: space.v(microphoneCentre) - microphone.frame.width / 2)
-    stand(auto, right: space.v(150))
+    stand(model, right: space.v(150))
     stand(send, right: space.v(14))
   }
 
@@ -2836,7 +2817,7 @@ final class ShowChatList {
 @MainActor
 final class ShowSettingsWindow {
   private static let pages: [(symbol: BolttyIcon, title: String)] = [
-    (.gear, "General"), (.people, "Agents"), (.chart, "Usage"), (.waveform, "Voice"),
+    (.settings, "General"), (.people, "Agents"), (.chart, "Usage"), (.waveform, "Voice"),
     (.pointerRays, "Ask Boltty"), (.keyboard, "Shortcuts"),
   ]
   private static let backdrops: [ChatBackdrop] = [.standard, .sky, .space]

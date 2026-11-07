@@ -130,11 +130,13 @@ Settings uses the system's text styles in the rounded design
 
 - Soft, continuous corners and no hard vertex, like the hexagon's. Nested corners
   are concentric: outer = inner + inset.
-- Borders are filled, not stroked. Shadows belong to the panel's glass alone.
+- No borders: a surface is told by its fill or its glass, a chosen thing by a flat
+  fill. Where a line is the point (a table's rule) it is filled, not stroked.
+  Shadows belong to the panel's glass alone.
 - Glass is the system's, and density goes over it, never into its tint. Never tint
   glass with brand yellow as a surface: only a button's fill may be yellow.
-- Icons are Boltty's own (`BolttyIcon`): a 16 × 16 grid, 1.25 stroke, round ends, one
-  colour. Never SF Symbols.
+- Icons are Boltty's own (`BolttyIcon`): a 16 × 16 grid, 1.425 stroke, round ends, lines and
+  true arcs only, every corner evenly round and none sharp, one colour, outlines only, the ink nearly filling the box and broken where a small solid detail stands. Never SF Symbols.
 
 ## Voice
 

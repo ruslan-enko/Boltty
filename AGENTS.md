@@ -42,8 +42,10 @@ opens, on Scan for Agents, and as the panel opens once an hour has passed
 (`refreshModelsIfStale`, in the background). A list that did not come leaves the
 last one standing. A chosen model the list no longer has gives way to the agent's
 default for new chats, and Settings says so; the stored choice stays, in case it
-comes back. A chat already started keeps its model, and what the CLI says about it
-is a failure on that turn. A CLI updated under a process kept running (Codex's
+comes back. OpenCode reads sooner: its `model.updated` / `provider.updated` events
+and a reconnect read the list again at once, and the panel opening does after 5
+minutes (`modelListLifetime`), since that is one HTTP request; a failed turn does on
+every agent, at most once a minute. A CLI updated under a process kept running (Codex's
 app-server, Grok's stdio, Boltty's own OpenCode server) restarts it once nothing of
 its is running or waiting (`restartOutdatedProcesses`, by `--version`).
 
@@ -84,7 +86,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Notch face | `UI/NotchMascotController.swift` |
 | Mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal`; `Models/MascotShape.swift`, `MascotPalette.swift`, `MascotLook.swift` |
 | Screen selection | `Services/ScreenRegionCapture.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
-| Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons` |
+| Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons`, drawn by `scripts/render-icons.py` and judged by `scripts/check-icons.py` |
 | Brand colours | `UI/Appearance/BolttyBrand.swift`, [BRAND.md](BRAND.md) |
 | Shader effects | `UI/Effects/` |
 | Chat backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
@@ -95,6 +97,13 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
 | Updates, login item, releases | `Services/AppUpdater.swift`, `Services/LoginItem.swift`, `scripts/release.sh`, `scripts/bump-version.sh` |
+
+**A chat's model is the conversation's, and the engine applies it.**
+`Conversation.model`, `reasoningEffort`, `autoApprove` and `readOnly` are what the
+chat asks for; `settingsInForce` is what its session was last told. Before every send
+that differ (always, the first time after a relaunch) and
+`AgentClient.prepareSession` closes the gap, never during a turn. A refusal keeps the
+words in the composer and says why. Declared as `.modelSwitching`.
 
 **A provider is added behind `AgentClient` or not at all**: an adapter, and one
 line in `AgentRegistry.live()`. The store, engine, panel and Settings speak that
@@ -118,7 +127,7 @@ no adapter; never offer a toggle for them.
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the composer's word **Auto** (white when on) switches it per chat. Edits only (commands still ask), except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Edits only (commands still ask), except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -221,6 +230,10 @@ implementation first. Versions say what was measured.
   name is lossy; take `cwd` from the records.
 - Read-only chats run with `--tools Read,Glob,Grep` (variadic flag: another
   flag must follow it).
+- `set_model` over the control channel takes effect on the next turn and keeps the
+  process, so "Always allow" rules survive it. `--resume` without `--model` goes on
+  with the last model used; with it, on that one (2.1.319). Effort and the read-only
+  tools are launch flags: the process is let go and resumed, 0.3 s.
 
 ### Codex
 
@@ -246,6 +259,10 @@ implementation first. Versions say what was measured.
   `## My request for Codex:`; `CodexRolloutTranscript.request(in:)` unwraps it
   *after* dropping scaffolding (the reviewer's wrapper carries the heading too).
 - Read-only chats use `sandbox: read-only`.
+- `turn/start` takes `model` and `effort`, per turn; the rollout's `turn_context`
+  shows each (0.167). Neither has a "none": a level stays until another is sent,
+  so Codex and Grok do not declare `.effortReset` and their menu offers no way back
+  to Default.
 
 ### Grok
 
@@ -258,7 +275,11 @@ implementation first. Versions say what was measured.
 - Grok mints session ids (`session/new`). `session/load` replays history as
   notifications into the asking process and is **not** a read; read
   `chat_history.jsonl` (`GrokChatHistoryTranscript`). `send` loads a session it
-  has not seen (`ensureLoaded`).
+  has not seen (`ensureLoaded`). **`session/load` requires `cwd`** (1.0.77: "missing
+  field `cwd`"); without it every chat after a relaunch read as forgotten and went on
+  in a new session.
+- `session/set_model` and `session/set_config_option` work on a loaded session; the
+  session keeps its model across a load (`summary.json`'s `current_model_id`).
 - `session/prompt` returns only when the turn ends; streaming is
   `session/update`. `session/cancel` is a notification, not a request.
 - `session/set_config_option` takes `configId`; `reasoning_effort` is the one
@@ -324,6 +345,10 @@ Measured on agy 1.3.4 and 1.4.0 (`AntigravityClient`, `AntigravityTranscript`,
     only "do not use tools", `agy` answered without looking.
 - Plan limits: `agy -p=/usage --output-format json` (~4 s, no model call);
   groups of weekly buckets, each labelled (`AgentUsageWindow.title`).
+- `--conversation <id> --model <other> --effort <level>` goes on in that conversation
+  on the other model (1.5.2); both are launch flags, so an idle process is let go.
+  With neither, `init` names no model. A conversation resumed after a relaunch gets
+  its folder from `prepareSession`.
 - SIGINT stops a turn (`result` with `error: "interrupted"`, exit 1): declared
   `.interrupt`, not `.terminableTurn`.
 - Effort is part of the model id (`gemini-3.8-flash-high`); `--model` takes the
@@ -393,17 +418,27 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   (2.2.5); that one is the list's default.
 - Reasoning levels are a model's `variants` (`[{id, settings: {reasoningEffort}}]`,
   2.2.5); the chosen one goes as `model.variant` when the session is made.
+- An effort needs a model (`model.variant`), so a chat with a default model and a
+  chosen effort names the default.
 - Auto Mode is Boltty answering `edit` asks "once"; a file outside the folder
   asks `external_directory` first, and commands still ask.
 - **The free tier refuses a session whose id is not in OpenCode's own
   spelling** (`FreeTierError`, measured 2.0.12–2.0.27; on 2.2.5 it is a 429
   `provider.free-limit`, "Free usage limit reached", which reads as a spent
-  plan but is not). Free-model sessions are therefore server-named, and so is a
-  session made without a model (the server's default, Big Pickle on 2.2.5, is
-  free); a free model switched onto a caller-named session fails the same way.
-  Minting OpenCode's spelling in
-  `AgentSessionID.opaque()` would let them be caller-named again. Do not report
-  this upstream on the person's behalf.
+  plan but is not). So the server names every session: any chat can be switched
+  onto a free model later. A chat from before that, on a Boltty id, still fails the
+  same way on a free model. Do not report this upstream on the person's behalf.
+- `POST /api/session/{id}/model` `{model: {id, providerID, variant?}}` answers 204
+  and the next turn runs it (2.2.5). Each switch leaves a `model-switched` record,
+  which the transcript reader passes over, so an unchanged chat sends none. 1.18 has
+  no such route: there the chat keeps its model.
+- **A session accepts any model at all**, a made-up one included; the first anyone
+  hears is `session.execution.failed` `provider.no-route` ("Model unavailable: …"),
+  with no step and no reply. Unread, the chat stood at Working until Stop.
+  `session.execution.interrupted` ends a turn the same way.
+- `model.updated` / `provider.updated` arrive on `/api/event` when a config edit
+  changes the catalogue (seconds, with no restart) and when a folder's instance
+  opens; reading `/api/model` raises none.
 - `GET /session/{id}/message` caps `limit` at 200; page with
   `order=desc&limit=200`, then `cursor=` alone (never with `order`), up to
   `transcriptMessageCap` (1 000).
@@ -486,20 +521,27 @@ The loop that must keep working:
 - **Return while a turn runs queues** (one slot, shown, cancellable).
   **⌘Return** steers where the agent declares `.steering`. **⌘.** stops where it
   declares `.interrupt` or `.terminableTurn`; the Send slot turns into Stop.
-- **A composer button has its own key**, shown as keycaps on its help tag:
-  ⌘D the microphone, ⌘O the folder, ⇧⌘A attach (`ComposerChord`, through
+- **A composer button has its own key**, shown as glass keycaps on its help tag:
+  ⌘D the microphone, ⌘O the folder, ⇧⌘A attach, ⇧⌘M the model (`ComposerChord`, through
   the field's `performKeyEquivalent`). A hidden or disabled button's key does
   nothing.
 - **A chat's composer foot is two groups.** Left, what shapes the request:
-  + (attach), Auto, folder — the folder last, so a long name moves nothing.
+  + (attach), the model, folder — the folder last, so a long name moves nothing.
   Right, what is read and pressed: the usage ring, the microphone, Send. Send
   is a white disc with Return in black (the composer's one pure-white fill;
-  the glass's fill while there is nothing to send, a filled stop square while
-  it stops). Auto Mode is the word "Auto" in the group's inks, white when
-  on — no glyph, never filled. The ring is thin, from twelve o'clock
+  the glass's fill while there is nothing to send, a stop square while
+  it stops). The ring is thin, from twelve o'clock
   clockwise, in the group's inks. The first screen keeps ring, folder and microphone together on the
   right; the folder's slot moves between the two stacks
   (`placeDirectorySlot`).
+- **The model chip says what the chat runs on, in words** ("Opus · High"), in the
+  group's inks; a long name gives way in its middle. Its menu (`ModelMenu`) is the
+  models (under their providers when there are several, in submenus past 14), the
+  chosen model's efforts, and Auto Mode with what it lets through for this agent.
+  Auto was a word of its own here and read as not working, since on most agents
+  commands still ask; it is on the chip's help tag while on. A choice waits for the
+  next message, whatever is running. The first screen has no chip: a new chat starts
+  on Settings' choice.
 - **Key hints after the typed text** read like Siri's "ds — Ask Siri": an em
   dash, then the first hint in secondary ink at the typed size, with no capsule
   and no key ("— Ask Claude", "— Queue"). Only ever that one: a second hint
@@ -583,10 +625,15 @@ The loop that must keep working:
   beside them is what its card stands on. A card flies there from the strip
   without changing shape. Right click: Quick Look, Show in Finder, Use in Follow-up.
 - A failure belongs to the turn that produced it; once the agent speaks again
-  it draws no card. A failure is never a bubble.
+  it draws no card. A failure is never a bubble. One sentence serves every failure,
+  but for a used-up plan and a model that has gone (`saysModelIsGone`): that card
+  offers Choose Model, its Retry sends the request again, and the chip wears the
+  failure's accent. A turn that failed before any reply keeps its words on an empty
+  agent message.
 - The answer text view is contiguous layout: non-contiguous layout drew long
   answers blank when first shown at their foot.
-- Block borders are filled, never stroked (wide strokes hit Core Animation's
+- Where a line is the point (a table's rule, a quote's bar) it is filled, never
+  stroked (wide strokes hit Core Animation's
   wide-line renderer, which can hand Metal a zero-instance draw). A Debug build
   stopped on a Metal assertion is paused, not hung — `sample <pid>` it.
 - Sizes are arithmetic: the same function measures and draws.
@@ -665,7 +712,7 @@ The loop that must keep working:
 - The foot holds two glass discs, apart on purpose (a shared capsule would
   say they act on one thing): **New Chat** (+, ⌘N) lower right opens the first
   screen on the chosen tab's agent — All on automatic routing; a tab whose
-  agent cannot take a prompt keeps it disabled — and **Settings** (gear) lower
+  agent cannot take a prompt keeps it disabled — and **Settings** (hex nut) lower
   left, 18 from the foot and side (`historyFootDiscInset`). They stand inside
   the corner resize grips, which give way on a disc; the rows dissolve under
   them.
@@ -903,7 +950,7 @@ heard.
   slides to the screen; one face carried through every scene; its own clock,
   `ShowClock`). Its beats, each with a caption: the panel under the notch,
   ⇧Tab walking the agents, a question answered in a chat whose composer has
-  Auto and Send; ↓ to the chat list and its agent's tab; Ask Boltty in an app
+  its model and Send; ↓ to the chat list and its agent's tab; Ask Boltty in an app
   as one movement (the panel, a dragged region, the orb on its corner with
   the words out of a blur, the face to the pointer and on to what it names,
   drawing a loop and an arrow on the app itself); Settings (a face, a backdrop's round window, Usage, Voice). A
@@ -915,6 +962,9 @@ heard.
   in until then. `-boltty.replayIntro YES`, `-boltty.skipShow YES`,
   `-boltty.setup.step N` in Debug. Launch with `open`, never the binary from a
   shell (TCC would attribute the request to the shell's app).
+- **The menu-bar mark** (`StatusBarIconRenderer`, the hexagon with soft corners)
+  stands still. Moves of its own, blinks and glances, were tried and removed; work is
+  the notch face's to show.
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
   Shortcuts), standard parts but for what is selected: the sidebar's rows and
   the segments are drawn here (`SettingsSidebarRow`, `SettingsSegments`), since a
@@ -1110,15 +1160,26 @@ heard.
 - **Icons are Boltty's own** (`BolttyIcon`, `Resources/Icons`;
   `BolttyIconView` in SwiftUI). Never an SF Symbol: the one left is the Apple
   mark in the first-run show's made-up menu bar, which is Apple's to draw, not
-  ours. A 16 × 16 grid, a 1.25 stroke with round ends, continuous corners and
-  no hard vertex, one colour. An icon is sized by its box (a chat's composer
+  ours. A 16 × 16 grid, a 1.425 stroke with round ends, drawn only of lines and
+  true circular arcs, every turn a tangent arc (1.25 at a joint, 2 for a medium corner,
+  3.25 for a box's; 0.75 only on a pointer's tips; a few shapes keep a
+  size of their own, such as the Return arrow's 2.75). The one turn with no arc is a
+  tip: an arrow's strokes meet on their round ends, since a fillet made
+  a blob of it. So nothing is sharp or nearly so, no curve is by hand, and a shape's
+  two sides are one number. An icon is changed in `scripts/render-icons.py`, never in its file,
+  and `scripts/check-icons.py` then judges the files: lines and arcs only, no kink at
+  a joint, the ink clear of the edge. One colour, outlines only: no icon is a filled version of another. An icon is sized by its box (a chat's composer
   `ComposerControlGroup.iconSize`, a point over `glyph`; elsewhere about a
   fifth over the point size its symbol had, since the ink stops short of the
   box), and its stroke grows with the box. A small round mark is solid:
-  stroked, it reads as a ring round a pinhole. `NSImage` draws the files as
+  stroked, it reads as a ring round a pinhole. So are the stars of `sparkles`, which
+  stroked only fill up; that icon is the maintainer's own drawing, curves and all, kept
+  to the letter by the generator and passed over by the check. `NSImage` draws the files as
   template images, so they are black, not `currentColor`, and **it blurs an
   SVG mask**: a solid with marks cut out is one plain path. Refresh shows the system's spinner while a press is at work: an arrow turned by
-  hand could stop at any angle.
+  hand could stop at any angle. The ink fills the box to about 1 from each edge,
+  and a stroke breaks to let a small solid detail stand in the gap (a dot, a check).
+  Icons stand still: a movement as the pointer came to a button was tried and removed.
 - **Glass is the system's**, in five kinds: the shell (`PaletteGlassHost`, bare
   regular glass under a black ramp), controls (the same
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,
@@ -1145,6 +1206,11 @@ heard.
   `.bolttyProminentButton()`), never a page: on Settings' root it turned every
   button's and menu's words yellow on white. Focus rings and text selection stay
   the person's.
+- **No borders.** A surface is told by its fill or its glass, a chosen thing by
+  a flat fill; nothing is finished with a stroke or a hairline round it. The
+  glass's own edge is the system's. Left on purpose: table rules, a quote's bar,
+  the work thread, the screen selection's edge, the Ask pointer's white edge
+  (it stands on any screen), and `RingedChoice`'s ring.
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
   concentric (`outer = inner + inset`). The composer's content stands 16 from
@@ -1286,7 +1352,11 @@ heard.
 10. The unit-test host launches nothing of the product
     (`AppDelegate.isHostingUnitTests`) and runs as `.accessory`. Live tests shut
     down any CLI they start.
-11. Comments say why. Who decided and when belongs in git.
+11. **Write few comments.** Most code needs none: no comment on what the code
+    already says, no doc comment by habit, no history of what was tried. One earns
+    its place only where the reason is not obvious and would be missed (a measured
+    CLI quirk, a trap), and then it is short and says why. Who decided and when
+    belongs in git.
 12. **Keep this file current in the same change** that makes it stale. Where this
     file and the code disagree and it's unclear which is right, ask.
 13. Never publish anything outside the repo (issues, comments, releases) on the

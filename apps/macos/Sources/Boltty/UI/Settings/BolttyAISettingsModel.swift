@@ -231,9 +231,7 @@ final class BolttyAISettingsModel: ObservableObject {
       let installation = engine.registry.installation(for: agent)
       let models = modelsByProvider[agent.rawValue] ?? []
       let selectedModelID = appModel.settings.defaultModelByProvider[agent.rawValue]
-      let selectedModel = models.first { $0.selection.modelID == selectedModelID }
-        ?? models.first { $0.isDefault }
-        ?? models.first
+      let selectedModel = models.option(stored: selectedModelID) ?? models.agentDefault
       return AgentSettingsRow(
         agent: agent,
         enabled: appModel.settings.isProviderEnabled(agent.rawValue),
@@ -262,9 +260,7 @@ final class BolttyAISettingsModel: ObservableObject {
         settings.defaultModelByProvider.removeValue(forKey: agent.rawValue)
       }
       let models = modelsByProvider[agent.rawValue] ?? []
-      let match = models.first { $0.selection.modelID == modelID }
-        ?? models.first { $0.isDefault }
-        ?? models.first
+      let match = models.option(stored: modelID) ?? models.agentDefault
       let allowed = Set((match?.effortOptions ?? []).map(\.value))
       if let current = settings.defaultEffortByProvider[agent.rawValue],
          !allowed.contains(current)
@@ -592,9 +588,8 @@ struct AgentSettingsRow: Identifiable, Equatable {
   /// The choice as far as the menu can show it: one the agent no longer offers
   /// is its default, which is what a new chat gets.
   var shownModelID: String {
-    guard let selectedModelID, models.contains(where: { $0.selection.modelID == selectedModelID })
-    else { return "" }
-    return selectedModelID
+    guard let shown = models.option(stored: selectedModelID)?.id else { return "" }
+    return shown
   }
   var modelNoLongerOffered: String? {
     guard let selectedModelID, !selectedModelID.isEmpty, !models.isEmpty, shownModelID.isEmpty

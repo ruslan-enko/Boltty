@@ -9,12 +9,22 @@ protocol AgentClient: AnyObject, Sendable {
 
   func availableModels() async throws -> [AgentModelOption]
 
+  /// How long a model list is good for before the panel opening reads it again.
+  var modelListLifetime: TimeInterval { get }
+
   func makeSessionID() -> String
 
   func createSession(
     id: String,
     options: AgentSessionOptions
   ) async throws -> RemoteSessionInfo
+
+  /// Makes an existing session run as `options` say from its next turn: after a
+  /// relaunch, when the person chose another model in the chat, when the CLI's
+  /// process was let go. The engine calls it before a send whenever what is in
+  /// force is not what the chat asks for, never during a turn. `.sessionNotFound`
+  /// means the session is gone, as from `send`.
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot
 
@@ -87,6 +97,8 @@ protocol AgentClient: AnyObject, Sendable {
 }
 
 extension AgentClient {
+  var modelListLifetime: TimeInterval { ConversationEngine.modelListLifetime }
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {}
   func usageLimits() async -> AgentUsage? { nil }
   func contextUsage(sessionID: String) async -> AgentContextUsage? { nil }
   func activityHistory() async -> AgentActivityHistory? { nil }
@@ -184,6 +196,25 @@ struct AgentModelOption: Identifiable, Equatable, Sendable {
   var id: String { "\(selection.providerID)/\(selection.modelID)" }
 }
 
+extension Array where Element == AgentModelOption {
+  /// What Settings stores: the option's `id`, or from before that its bare model
+  /// id, which two of OpenCode's providers can share.
+  func option(stored: String?) -> AgentModelOption? {
+    guard let stored, !stored.isEmpty else { return nil }
+    return first { $0.id == stored } ?? first { $0.selection.modelID == stored }
+  }
+
+  /// A chat's model: exactly, else by its id alone, since a chat's record can
+  /// name the agent where the list names the provider.
+  func option(for selection: ModelSelection?) -> AgentModelOption? {
+    guard let selection else { return nil }
+    return first { $0.selection.providerID == selection.providerID && $0.selection.modelID == selection.modelID }
+      ?? first { $0.selection.modelID == selection.modelID }
+  }
+
+  var agentDefault: AgentModelOption? { first(where: \.isDefault) ?? first }
+}
+
 struct AgentEffortOption: Identifiable, Equatable, Sendable {
   let value: String
   var label: String
@@ -278,10 +309,12 @@ enum AgentEvent: Equatable, Sendable {
   )
   case fileChanged(sessionID: String, path: String)
   case sessionDeleted(sessionID: String)
+  /// The agent's own catalogue changed: read its model list again.
+  case modelsChanged
 
   var sessionID: String? {
     switch self {
-    case .connection: return nil
+    case .connection, .modelsChanged: return nil
     case let .messageUpdated(id, _), let .messageRemoved(id, _),
          let .partUpdated(id, _, _), let .partDelta(id, _, _, _, _),
          let .partRemoved(id, _, _), let .executionStateChanged(id, _),

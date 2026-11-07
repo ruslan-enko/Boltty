@@ -186,7 +186,7 @@ final class StatusBarController {
     case nil:
       break
     }
-    addItem(to: menu, title: "Settings…", action: #selector(openSettings), icon: .gear)
+    addItem(to: menu, title: "Settings…", action: #selector(openSettings), icon: .settings)
     menu.addItem(.separator())
     addItem(to: menu, title: "Quit Boltty", action: #selector(quitApp), icon: .power)
     return menu

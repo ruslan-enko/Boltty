@@ -44,8 +44,7 @@ extension BolttyAISettingsModel {
   /// Choosing one pins the agent too: the model is that agent's.
   var askBolttyModelID: String {
     get {
-      let stored = appModel.settings.askBolttyModelID ?? ""
-      return askBolttyModels.contains { $0.selection.modelID == stored } ? stored : ""
+      askBolttyModels.option(stored: appModel.settings.askBolttyModelID)?.id ?? ""
     }
     set {
       let agent = askBolttyAgent?.rawValue
@@ -59,7 +58,7 @@ extension BolttyAISettingsModel {
   /// A model chosen here that the agent's list no longer has.
   var askBolttyModelNoLongerOffered: String? {
     guard let stored = appModel.settings.askBolttyModelID, !askBolttyModels.isEmpty,
-          !askBolttyModels.contains(where: { $0.selection.modelID == stored })
+          askBolttyModels.option(stored: stored) == nil
     else { return nil }
     return stored
   }
@@ -103,7 +102,7 @@ struct AskBolttySettingsSection: View {
       Text(agentDefaultTitle).tag("")
       Divider()
       ForEach(model.askBolttyModels) { option in
-        Text(option.selection.displayName).tag(option.selection.modelID)
+        Text(option.selection.displayName).tag(option.id)
       }
     } label: {
       Text("Model")
