@@ -46,6 +46,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var onChooseAttachments: (() -> Void)?
   var onScreenSelectionBegan: (() -> Void)?
   var onScreenRegionReady: (() -> Void)?
+  var onScreenRegionRedrawn: (() -> Void)?
   var onScreenRegionSelected: ((CGRect) -> Void)?
   var onScreenSelectionCancelled: (() -> Void)?
   private let screenOutlines = ScreenSelectionOverlay()
@@ -303,7 +304,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private lazy var promptWidthConstraint = promptCapsule.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.promptSize.width)
   private var showsCompactListening: Bool {
     (isVoiceListening || (isVoiceProcessing && voiceGlow.fillsShell) || isHandingOver
-      || holdsQuestionWords || (awaitsRegionVoice && field.string.isEmpty))
+      || holdsQuestionWords || asksByVoice)
       && !isResultsExpanded
       && (addressedPreview == nil || voicePrefixDraft?.isEffectivelyEmpty != false)
   }
@@ -666,9 +667,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let collapses = listening && !isVoiceListening && !isResultsExpanded
       && (addressedPreview == nil || field.draft.isEffectivelyEmpty)
     if collapses, screenSelectionPhase == .idle { beginFaceFlight() } else if !listening { endFaceFlight() }
-    regionVoiceWait?.cancel()
-    regionVoiceWait = nil
-    awaitsRegionVoice = false
     if listening, !isVoiceListening {
       voicePrefixDraft = field.draft
       appliedVoiceTranscript = nil
@@ -783,6 +781,17 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     listeningWords.setText(words, animated: window?.isVisible == true)
     if listeningWords.wordCount > before { listeningFace.nod() }
   }
+
+  /// What the microphone is doing, said in the orb in secondary ink while a
+  /// region's question has no words yet.
+  func showRegionVoiceStatus(_ status: String?) {
+    guard asksByVoice, !isVoiceListening, field.draft.isEffectivelyEmpty else { return }
+    listeningWords.setText(
+      status ?? "", animated: window?.isVisible == true, ink: PaletteInk.secondary)
+    needsLayout = true
+  }
+
+  var asksAboutRegionByVoice: Bool { asksByVoice && !isHandingOver }
 
   private func listeningShellSize() -> CGSize {
     let orb = AgentPaletteMetrics.listeningOrbDiameter
@@ -2181,6 +2190,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private func pressComposerChord(_ chord: ComposerChord) -> Bool {
     guard mode == .prompt else { return false }
+    if asksByVoice, chord != .dictate { return true }
     let button: NSButton = switch chord {
     case .dictate: micButton
     case .folder: directoryChip
@@ -2229,9 +2239,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     )
   }
 
-  override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { .copy }
+  override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+    asksByVoice ? [] : .copy
+  }
 
   override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+    guard !asksByVoice else { return false }
     applyIngest(PasteboardIngest.read(sender.draggingPasteboard, into: field.draft))
     return true
   }
@@ -3511,16 +3524,18 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private var placedPhase: ScreenSelectionPhase = .idle
 
   private var regionAnnounced = false
-  private var awaitsRegionVoice = false {
-    didSet { if awaitsRegionVoice != oldValue { needsLayout = true } }
-  }
-  private var regionVoiceWait: DispatchWorkItem?
   private var isHandingOver = false
   private var regionEndedAtLeft = false
   private var regionEndedAtFoot = false
 
   var screenSelectionFrame: CGRect? {
     screenSelectionPhase == .editing ? screenSelectionGlobal : nil
+  }
+
+  /// A question about a region is spoken, never typed: the shell stays the orb
+  /// from the region's first frame until it is sent or let go of.
+  private var asksByVoice: Bool {
+    screenSelectionPhase == .editing && addressedPreview == nil
   }
 
   private var acceptsScreenSelection: Bool {
@@ -3616,20 +3631,16 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let first = !regionAnnounced
     regionAnnounced = true
     if first { noteRegionDrawn() }
-    if first, field.draft.isEffectivelyEmpty {
+    if first {
       setListeningWords("")
       syncVoiceGlowPalette()
-      awaitsRegionVoice = true
-      let wait = DispatchWorkItem { [weak self] in self?.awaitsRegionVoice = false }
-      regionVoiceWait = wait
-      DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionVoiceWait, execute: wait)
     }
     screenSelectionPhase = .editing
     screenOutlines.showsHandles = true
     syncSelectionOverlay()
     syncPointerWhereItIs()
     _ = focusField()
-    if first { onScreenRegionReady?() }
+    if first { onScreenRegionReady?() } else { onScreenRegionRedrawn?() }
   }
 
   private static func region(from start: CGPoint, to end: CGPoint) -> CGRect {
@@ -3690,9 +3701,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   func endScreenSelection() {
-    regionVoiceWait?.cancel()
-    regionVoiceWait = nil
-    awaitsRegionVoice = false
     isHandingOver = false
     holdsQuestionWords = false
     screenOutlines.alphaValue = 1
@@ -4344,6 +4352,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 extension AgentPaletteView: NSTextViewDelegate {
   func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange,
                 replacementString: String?) -> Bool {
+    if asksByVoice, !isApplyingVoiceTranscript, !isRestoringChatDraft { return false }
     if composerKeyTarget != .text {
       if replacementString == " " {
         activateComposerKeyTarget()
@@ -4441,6 +4450,7 @@ extension AgentPaletteView: NSTextViewDelegate {
       return true
     }
     if commandSelector == #selector(deleteBackward(_:)) {
+      if asksByVoice { return true }
       if mode != .prompt, field.searchQuery.isEmpty {
         closeSwitcher()
         return true
@@ -4506,6 +4516,7 @@ extension AgentPaletteView: NSTextViewDelegate {
   }
 
   private func handlePaste(forcePlainText: Bool) {
+    guard !asksByVoice else { return }
     applyIngest(
       PasteboardIngest.read(
         .general,

@@ -120,7 +120,14 @@ final class ListeningWordsView: NSView {
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-  func setText(_ newText: String, animated: Bool) {
+  private var ink: NSColor = PaletteInk.primary
+
+  func setText(_ newText: String, animated: Bool, ink: NSColor = PaletteInk.primary) {
+    if ink != self.ink {
+      self.ink = ink
+      words = []
+      text = ""
+    }
     guard newText != text else { return }
     text = newText
     let incoming = newText.split(whereSeparator: \.isWhitespace).map(String.init)
@@ -129,7 +136,7 @@ final class ListeningWordsView: NSView {
     let stagger = AgentPaletteMetrics.listeningWordStagger
     let attributes: [NSAttributedString.Key: Any] = [
       .font: font,
-      .foregroundColor: PaletteInk.primary
+      .foregroundColor: ink
     ]
     let held = min(incoming.count, words.count)
     var revised = Array(words.prefix(held))

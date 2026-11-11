@@ -67,6 +67,38 @@ final class AskBolttyConfigurationTests: XCTestCase {
     XCTAssertNil(target?.model)
   }
 
+  func testTheAgentChosenForTheQuestionGoesFirstThenAskBolttysThenTheRest() {
+    var settings = AppSettings()
+    settings.askBolttyProviderID = "codex"
+    XCTAssertEqual(
+      AskBolttyConfiguration.ranked(
+        settings: settings, candidates: ["claude", "codex", "grok"], chosen: "grok"),
+      ["grok", "codex", "claude"])
+    XCTAssertEqual(
+      AskBolttyConfiguration.ranked(settings: settings, candidates: ["claude", "grok"]),
+      ["claude", "grok"], "an agent that is not ready is not tried")
+  }
+
+  func testOnlyAskBolttysAgentWearsTheChosenModel() {
+    var settings = AppSettings()
+    settings.askBolttyProviderID = "codex"
+    settings.askBolttyModelID = "gpt-6-luna"
+    XCTAssertNil(AskBolttyConfiguration.target(for: "claude", settings: settings, models: models).model)
+    XCTAssertNotNil(AskBolttyConfiguration.target(for: "codex", settings: settings, models: models).model)
+  }
+
+  func testAPlanIsSpentOnlyUntilItsExhaustedWindowResets() {
+    let now = Date()
+    func usage(_ used: Int, resets: Date?) -> AgentUsage {
+      AgentUsage(windows: [AgentUsageWindow(kind: .session, usedPercent: used, resetsAt: resets)])
+    }
+    XCTAssertTrue(AskBolttyConfiguration.isSpent(usage(100, resets: now + 60), now: now))
+    XCTAssertTrue(AskBolttyConfiguration.isSpent(usage(100, resets: nil), now: now))
+    XCTAssertFalse(AskBolttyConfiguration.isSpent(usage(100, resets: now - 60), now: now))
+    XCTAssertFalse(AskBolttyConfiguration.isSpent(usage(90, resets: now + 60), now: now))
+    XCTAssertFalse(AskBolttyConfiguration.isSpent(nil, now: now))
+  }
+
   func testNoAgentThatSeesIsNoAskBoltty() {
     XCTAssertNil(AskBolttyConfiguration.resolve(settings: AppSettings(), candidates: [], models: models))
   }

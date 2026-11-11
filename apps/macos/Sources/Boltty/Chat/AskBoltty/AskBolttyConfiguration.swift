@@ -24,17 +24,39 @@ enum AskBolttyConfiguration {
     candidates: [String],
     models: [String: [AgentModelOption]]
   ) -> AskBolttyTarget? {
-    let ready: (String?) -> String? = { id in id.flatMap { candidates.contains($0) ? $0 : nil } }
-    guard let providerID = ready(settings.askBolttyProviderID)
-      ?? ready(settings.agentPreset?.rawValue)
-      ?? candidates.first
-    else { return nil }
-    let options = models[providerID] ?? []
-    let model = options.option(stored: settings.askBolttyModelID)
-    let effort = fastestEffort(model?.effortOptions ?? [])
+    ranked(settings: settings, candidates: candidates)
+      .first.map { target(for: $0, settings: settings, models: models) }
+  }
+
+  /// Who answers, in the order they are tried: the agent chosen for this
+  /// question, Ask Boltty's agent, the preferred agent, then the rest.
+  static func ranked(settings: AppSettings, candidates: [String], chosen: String? = nil) -> [String] {
+    var order: [String] = []
+    for id in [chosen, settings.askBolttyProviderID, settings.agentPreset?.rawValue] + candidates.map(Optional.some) {
+      guard let id, candidates.contains(id), !order.contains(id) else { continue }
+      order.append(id)
+    }
+    return order
+  }
+
+  /// The model chosen in Settings › Ask Boltty belongs to Ask Boltty's agent; any
+  /// other answers in its default model.
+  static func target(
+    for providerID: String, settings: AppSettings, models: [String: [AgentModelOption]]
+  ) -> AskBolttyTarget {
+    let model = providerID == settings.askBolttyProviderID
+      ? (models[providerID] ?? []).option(stored: settings.askBolttyModelID)
+      : nil
     return AskBolttyTarget(
-      providerID: providerID, model: model?.selection, effort: effort,
+      providerID: providerID, model: model?.selection,
+      effort: fastestEffort(model?.effortOptions ?? []),
       readOnly: settings.askBolttyReadOnly)
+  }
+
+  static func isSpent(_ usage: AgentUsage?, now: Date) -> Bool {
+    usage?.windows.contains { window in
+      window.severity == .exhausted && (window.resetsAt.map { $0 > now } ?? true)
+    } == true
   }
 }
 

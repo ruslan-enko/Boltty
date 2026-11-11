@@ -58,7 +58,21 @@ final class AskBolttySession: ObservableObject {
   private var expiry: Timer?
   private var followIsScheduled = false
   private var answerSoFar = ""
+  private var asked: (words: String, selection: ScreenSelection, displayFrame: CGRect)?
+  private var fallbacks: [AskBolttyTarget] = []
+  private var note: String?
   var findPlace: (@MainActor (FinderSpot) async -> FinderPlace?)?
+  var onSpent: ((String, Date?) -> Void)?
+
+  enum HandOverReason { case spent, modelGone, failed }
+
+  static func handOverNote(skipped: String, why: HandOverReason, next: String) -> String {
+    switch why {
+    case .spent: "\(skipped)'s limit is used up · \(next) answers"
+    case .modelGone: "\(skipped)'s model is gone · \(next) answers"
+    case .failed: "\(skipped) could not answer · \(next) answers"
+    }
+  }
 
   init(
     coordinator: ChatWorkspaceCoordinator,
@@ -88,16 +102,26 @@ final class AskBolttySession: ObservableObject {
 
   func ask(_ words: String, about selection: ScreenSelection, on displayFrame: CGRect,
            target: AskBolttyTarget, speaksAloud: Bool) {
+    ask(words, about: selection, on: displayFrame, targets: [target], speaksAloud: speaksAloud)
+  }
+
+  /// The first target answers; if it fails before saying anything, the same
+  /// question goes to the next, each once.
+  func ask(_ words: String, about selection: ScreenSelection, on displayFrame: CGRect,
+           targets: [AskBolttyTarget], note: String? = nil, speaksAloud: Bool) {
     let words = words.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !words.isEmpty else { return }
+    guard !words.isEmpty, let target = targets.first else { return }
     interruptAnswer()
     stopTurn()
     self.speaksAloud = speaksAloud
+    asked = (words, selection, displayFrame)
+    fallbacks = Array(targets.dropFirst())
+    self.note = note
     choosePlace(for: target)
     pointing = nil
     drawn = []
     caption = ""
-    step = nil
+    step = note
     readsAloud = true
     phase = .thinking
     sendTask = Task { [weak self] in
@@ -272,10 +296,14 @@ final class AskBolttySession: ObservableObject {
     }
 
     if coordinator.failedPanelPrompts[id] != nil {
-      return fail("\(name(of: conversation)) did not get that question.")
+      return handOver(from: conversation, failure: nil)
     }
     if coordinator.pendingPanelPrompts[id] != nil { return }
-    if conversation.lastKnownState == .working || !spokenText.isEmpty { turnBegan = true }
+    let failure = coordinator.store.transcript(id: id).messages.dropFirst(baseline)
+      .last { $0.failure.map { !$0.isAbort } == true }?.failure
+    if conversation.lastKnownState == .working || !spokenText.isEmpty || failure != nil {
+      turnBegan = true
+    }
     guard turnBegan else { return }
 
     switch conversation.lastKnownState {
@@ -289,7 +317,7 @@ final class AskBolttySession: ObservableObject {
         caption = ""
         sentencesSaid = 0
       }
-      let shown = phase == .thinking && !conversation.readOnly ? live : nil
+      let shown = (phase == .thinking && !conversation.readOnly ? live : nil) ?? note
       if shown != step { step = shown }
       return
     case .waiting:
@@ -298,7 +326,7 @@ final class AskBolttySession: ObservableObject {
       phase = .needsYou("\(name(of: conversation)) needs your answer in Boltty.")
       return
     case .failed, .rateLimited:
-      if spokenText.isEmpty { return fail("\(name(of: conversation)) could not answer that.") }
+      if spokenText.isEmpty { return handOver(from: conversation, failure: failure) }
     case .idle, .interrupted:
       break
     }
@@ -312,9 +340,52 @@ final class AskBolttySession: ObservableObject {
     finish()
   }
 
+  /// A failure before any word: the next agent gets the same question, and the
+  /// face says who took it and why. With none left, it says why it failed.
+  private func handOver(from conversation: Conversation, failure: MessageFailure?) {
+    let who = name(of: conversation)
+    let why: HandOverReason
+    if let hit = failure?.rateLimit {
+      why = .spent
+      onSpent?(conversation.providerID, hit.resetsAt)
+    } else if conversation.lastKnownState == .rateLimited {
+      why = .spent
+      onSpent?(conversation.providerID, nil)
+    } else if failure.map(AgentFailureReport.saysModelIsGone) == true {
+      why = .modelGone
+    } else {
+      why = .failed
+    }
+    guard let asked, !fallbacks.isEmpty else {
+      switch why {
+      case .spent:
+        let reset = failure?.rateLimit?.resetsAt.flatMap { $0 > now() ? $0 : nil }
+        return fail(reset.map {
+          "\(who)'s limit is used up — it comes back \(AgentUsageWindow.resetPhrase($0, now: now()))."
+        } ?? "\(who)'s limit is used up.")
+      case .modelGone:
+        return fail("\(who)'s model isn't available any more.")
+      case .failed:
+        return fail("\(who) could not answer that.")
+      }
+    }
+    let next = fallbacks.removeFirst()
+    storeWatch = nil
+    isNewConversation = false
+    choosePlace(for: next)
+    note = AgentId(rawValue: next.providerID).map {
+      Self.handOverNote(skipped: who, why: why, next: $0.displayName)
+    }
+    step = note
+    sendTask = Task { [weak self] in
+      await self?.send(asked.words, about: asked.selection, on: asked.displayFrame)
+    }
+  }
+
   private func feed(_ delta: String, id: String) {
     let pieces = chunker.append(delta)
     guard !pieces.isEmpty else { return }
+    note = nil
     for piece in pieces { say(piece, id: id) }
     phase = .speaking
   }
@@ -377,6 +448,7 @@ final class AskBolttySession: ObservableObject {
 
   private func finish() {
     storeWatch = nil
+    note = nil
     step = nil
     phase = .idle
   }
@@ -422,6 +494,9 @@ final class AskBolttySession: ObservableObject {
   private func fail(_ message: String) {
     discardIfNew()
     storeWatch = nil
+    note = nil
+    step = nil
+    fallbacks = []
     phase = .failed(message)
     scheduleExpiry()
   }

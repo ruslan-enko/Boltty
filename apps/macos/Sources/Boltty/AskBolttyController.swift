@@ -32,6 +32,9 @@ final class AskBolttyController {
 
     overlay.onVisibleChange = { [weak self] in self?.syncEscapeKey() }
     overlay.restHint = { [weak self] in Self.restHint(launchKey: self?.launchKeyName?()) }
+    session.onSpent = { [weak self] providerID, resetsAt in
+      self?.spentUntil[providerID] = resetsAt ?? Date().addingTimeInterval(Self.spentWithoutReset)
+    }
     session.findPlace = { [weak self] spot in
       guard let self, settings().attachesFinderSelection else { return nil }
       return await self.finderSelection.place(of: spot)
@@ -118,11 +121,13 @@ final class AskBolttyController {
   func ask(
     _ words: String, about selection: ScreenSelection, on displayFrame: CGRect, agent: AgentId?
   ) -> Bool {
-    guard let target = target(for: agent) else { return false }
+    let targets = targets(for: agent)
+    guard !targets.isEmpty else { return false }
     lastRegion = selection.frame
     overlay.holdForArrival()
     session.ask(
-      words, about: selection, on: displayFrame, target: target,
+      words, about: selection, on: displayFrame, targets: targets,
+      note: skipNote(wanted: agent, answering: targets.first?.providerID),
       speaksAloud: settings().askBolttySpeaksAloud)
     return true
   }
@@ -136,6 +141,13 @@ final class AskBolttyController {
   }
 
   private func target(for agent: AgentId?) -> AskBolttyTarget? {
+    targets(for: agent).first
+  }
+
+  /// Every agent that could answer, in the order they are tried; one whose plan
+  /// is used up goes last, so a question is never refused while another could
+  /// take it.
+  private func targets(for agent: AgentId?) -> [AskBolttyTarget] {
     let current = settings()
     let engine = coordinator.engine
     let candidates = AgentHistory.tabOrder
@@ -146,12 +158,34 @@ final class AskBolttyController {
         else { return nil }
         return agent.rawValue
       }
-    let resolved = AskBolttyConfiguration.resolve(
-      settings: current, candidates: candidates, models: engine.modelsByProvider)
-    guard let agent, agent.rawValue != resolved?.providerID else { return resolved }
-    guard candidates.contains(agent.rawValue) else { return nil }
-    return AskBolttyTarget(
-      providerID: agent.rawValue, model: nil, effort: nil, readOnly: current.askBolttyReadOnly)
+    let ranked = AskBolttyConfiguration.ranked(
+      settings: current, candidates: candidates, chosen: agent?.rawValue)
+    let spent = ranked.filter(isSpent)
+    return (ranked.filter { !spent.contains($0) } + spent).map {
+      AskBolttyConfiguration.target(for: $0, settings: current, models: engine.modelsByProvider)
+    }
+  }
+
+  private var spentUntil: [String: Date] = [:]
+  static let spentWithoutReset: TimeInterval = 15 * 60
+
+  private func isSpent(_ providerID: String) -> Bool {
+    let now = Date()
+    if let until = spentUntil[providerID] {
+      if until > now { return true }
+      spentUntil[providerID] = nil
+    }
+    return AskBolttyConfiguration.isSpent(coordinator.engine.usageByProvider[providerID], now: now)
+  }
+
+  /// Said beside the face when the agent that would have answered is skipped.
+  private func skipNote(wanted: AgentId?, answering: String?) -> String? {
+    let current = settings()
+    let first = wanted?.rawValue ?? current.askBolttyProviderID ?? current.agentPreset?.rawValue
+    guard let first, let answering, first != answering, isSpent(first),
+          let skipped = AgentId(rawValue: first), let next = AgentId(rawValue: answering)
+    else { return nil }
+    return AskBolttySession.handOverNote(skipped: skipped.displayName, why: .spent, next: next.displayName)
   }
 
   func apply(_ settings: AppSettings) {

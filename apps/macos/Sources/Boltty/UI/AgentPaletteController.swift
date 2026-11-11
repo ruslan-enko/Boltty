@@ -65,6 +65,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private var isHandingRegionOver = false
   private var regionFaceFlies = false
   private var draftBeforeRegion = PromptDraft()
+  private var regionMicrophoneRetried = false
+  private var regionMicrophoneWait: DispatchWorkItem?
   private var hidesAtOnce = false
   var onRegionDropped: (() -> Void)?
   private var regionChoseAgent = false
@@ -176,6 +178,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     }
     panelView.onVoiceCancel = { [weak self] in
       guard let self else { return }
+      if self.panelView.asksAboutRegionByVoice {
+        self.letGoOfRegion()
+        return
+      }
       self.cancelPendingVoiceSubmit()
       self.silenceWatcher.reset()
       self.voiceDictation.cancel()
@@ -247,12 +253,21 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.onScreenRegionReady = { [weak self] in
       self?.regionReady()
     }
+    panelView.onScreenRegionRedrawn = { [weak self] in
+      self?.listenForRegion()
+    }
     panelView.onSurfaceSizesChange = { sizes in
       sizes.save()
     }
     panelView.surfaceSizes = BolttyAISurfaceSizes.load()
     voiceDictation.onFinalTranscript = { [weak self] in
-      self?.submitDictatedPromptIfPending()
+      guard let self else { return }
+      if self.pendingVoiceSubmit == nil, self.panelView.asksAboutRegionByVoice,
+         self.panelView.currentDraft.isEffectivelyEmpty {
+        self.listenForRegion()
+        return
+      }
+      self.submitDictatedPromptIfPending()
     }
 
     voiceDictation.onAudioLevel = { [weak self] level in
@@ -273,6 +288,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         self.window?.makeKeyAndOrderFront(nil)
       }
       guard state != .listening else {
+        self.regionMicrophoneWait?.cancel()
+        self.regionMicrophoneWait = nil
         self.silenceWatcher.reset()
         self.onListeningStarted?()
         self.panelView.setVoiceListening(true)
@@ -284,9 +301,14 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       )
     }
     voiceDictation.onError = { [weak self] message in
-      self?.cancelPendingVoiceSubmit()
-      self?.panelView.setVoiceListening(false, ending: .failed)
-      self?.panelView.showError(message)
+      guard let self else { return }
+      self.cancelPendingVoiceSubmit()
+      self.panelView.setVoiceListening(false, ending: .failed)
+      guard self.panelView.asksAboutRegionByVoice else {
+        self.panelView.showError(message)
+        return
+      }
+      self.regionMicrophoneFailed(message)
     }
 
     applyDictationLanguage()
@@ -326,6 +348,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
   private func confirmDictation() {
     guard isShowing, pendingVoiceSubmit == nil, !isSubmitting else { return }
+    if panelView.asksAboutRegionByVoice, panelView.currentDraft.isEffectivelyEmpty {
+      onPromptRefused?()
+      return
+    }
     let generation = visibilityGeneration
     let work = DispatchWorkItem { [weak self] in
       guard self?.visibilityGeneration == generation else { return }
@@ -901,8 +927,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       panelView.cancelScreenSelection()
       return
     }
-    if isFirstRegion, panelView.addressedSessionID == nil, !draftBeforeRegion.attachments.isEmpty {
-      panelView.setChatDraft(PromptDraft(draftBeforeRegion.typedText))
+    if isFirstRegion, panelView.addressedSessionID == nil, !draftBeforeRegion.elements.isEmpty {
+      panelView.setChatDraft(PromptDraft())
     }
     isProgrammaticMove = true
     window.setFrame(screen.frame, display: true)
@@ -1230,10 +1256,42 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
   private func regionReady() {
     onRegionReady?(panelView.agentForNewPrompt)
-    if !panelView.isVoiceListeningNow, panelView.currentDraft.isEffectivelyEmpty {
-      cancelPendingVoiceSubmit()
-      voiceDictation.toggle()
+    regionMicrophoneRetried = false
+    listenForRegion()
+  }
+
+  private func listenForRegion() {
+    guard panelView.asksAboutRegionByVoice, !panelView.isVoiceListeningNow,
+          voiceDictation.state == .idle, panelView.currentDraft.isEffectivelyEmpty
+    else { return }
+    cancelPendingVoiceSubmit()
+    voiceDictation.toggle()
+    guard voiceDictation.state != .listening else { return }
+    regionMicrophoneWait?.cancel()
+    let wait = DispatchWorkItem { [weak self] in
+      guard let self, self.voiceDictation.state == .requestingPermission else { return }
+      self.panelView.showRegionVoiceStatus("Getting the microphone ready…")
     }
+    regionMicrophoneWait = wait
+    DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionMicrophoneWait, execute: wait)
+  }
+
+  /// One more try, then the question is let go of and the panel says why: a
+  /// region has no text field to fall back on.
+  private func regionMicrophoneFailed(_ message: String) {
+    regionMicrophoneWait?.cancel()
+    regionMicrophoneWait = nil
+    guard panelView.currentDraft.isEffectivelyEmpty else { return }
+    guard regionMicrophoneRetried else {
+      regionMicrophoneRetried = true
+      panelView.showRegionVoiceStatus("Trying the microphone again…")
+      DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionMicrophoneRetry) {
+        [weak self] in self?.listenForRegion()
+      }
+      return
+    }
+    panelView.cancelScreenSelection()
+    panelView.showError(message)
   }
 
   private func ask(_ words: String, about region: CGRect) {
@@ -1268,11 +1326,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         return
       }
       self.draftIsDictated = false
-      let left = self.opensForRegion
-        ? self.draftBeforeRegion
-        : PromptDraft(elements: self.draftBeforeRegion.attachments.map { .attachment($0) })
-      self.newPromptDraft = left
-      self.panelView.setChatDraft(left)
+      self.newPromptDraft = self.draftBeforeRegion
+      self.panelView.setChatDraft(self.draftBeforeRegion)
       self.isHandingRegionOver = true
       self.regionFaceFlies = true
       self.isSubmitting = true

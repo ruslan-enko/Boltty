@@ -745,16 +745,27 @@ go of the whole question** (`letGoOfRegion`): the microphone stops first (left
 running, its silence sent the words as a chat with the first screen's agent),
 what was said goes, the prompt is as it was before the region, and the panel
 closes. The microphone opens by itself — select, then
-speak — and a typed key takes over from it. Return, ✓, a silence after
-speech sends. The region is cut off the main thread (the
+speak. **The question is only ever spoken** (`asksByVoice`): the shell is the
+orb for as long as the region stands, keys that would type, paste or drop do
+nothing, and ⌘D is the one composer chord left. A typed key used to take over
+from the microphone and left a text field beside the region. Return, ✓, a
+silence after speech sends; Return or ✓ with nothing said is the system alert
+and the listening goes on, and the take's × lets go of the question as Escape
+does. So the orb is never left with a microphone that is not listening
+(`listenForRegion`): a redrawn region listens again, an engine that ends its
+take with nothing heard is started again, a microphone slow to start says
+"Getting the microphone ready…" in the orb in secondary ink
+(`showRegionVoiceStatus`), and one that fails is tried once more
+("Trying the microphone again…"); a second failure lets go of the region and
+the first screen says why (`regionMicrophoneFailed`). Words already heard
+when it fails stay in the orb, for Return. The region is cut off the main thread (the
 region at display pixels, the whole screen at 1568 with the region outlined,
 the app and window under it, Vision's text) and goes with the words to
 `AskBolttySession.ask`.
 
 **It is one movement.** The shell stands at the corner of the region where the
 drag ended, on that side if the prompt fits there (`shellAnchor`), and is the
-orb from the first frame (`awaitsRegionVoice`, until the microphone is up or 2 s
-pass), growing out of a speck on the region's edge on the shell's spring
+orb from the first frame, growing out of a speck on the region's edge on the shell's spring
 (`regionSeed`); the face does not fly in, since the prompt it would come from
 was never seen. The edge by the region and the shell's top hold as it grows
 with the words. Sent, the turn starts at once and the shell closes into the orb
@@ -771,8 +782,8 @@ done, the bubble draws back into the face (`rest`). A bare version, face and
 words on the dimmed screen with no glass, was tried and refused: the face hung
 in nothing.
 
-Files in the prompt wait out the question: taken out as the region begins, so the
-microphone opens, and back in the prompt afterwards. Over an open chat a dragged
+What the prompt held, words and files, waits out the question: taken out as the
+region begins, so the microphone opens, and back in the prompt afterwards. Over an open chat a dragged
 region is a card in its composer; a click outside still hides. Screen
 Recording is asked the first time; refusals are said in the panel.
 
@@ -911,7 +922,16 @@ heard.
   Code's read-only tools include WebSearch and WebFetch, let through without
   asking (`readOnlyAllowedTools`): "find where this news is" needs a search.
 - Who answers: the chosen agent and model if ready, else the preferred agent in
-  its default model, else the first ready agent that takes pictures. No model is
+  its default model, else the first ready agent that takes pictures. **A used-up
+  plan does not refuse a question**: unlike the panel, Ask Boltty passes over an
+  agent, chosen or not (`AskBolttyConfiguration.ranked`, then
+  `AskBolttyController.targets`), whose plan window is exhausted or that hit its
+  limit here (until the reset, else 15 minutes), and says so beside the face
+  ("Claude Code's limit is used up · Codex answers"). A turn that fails before
+  any word — a limit, a model gone, any failure — gives the same question to the
+  next agent, each once (`AskBolttySession.handOver`); with none left the face
+  says why, with the reset time for a limit. Spent agents are tried last, not
+  never, since the usage read may be stale. No model is
   hunted for by name: an "Automatic" that meant Claude Code on Haiku was tried and
   removed. Chosen in Settings › Ask Boltty as a strip of bare faces, no circle or
   ring, the chosen one told by its name in the accent's ink
