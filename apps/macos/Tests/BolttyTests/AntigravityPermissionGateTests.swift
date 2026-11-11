@@ -133,9 +133,9 @@ final class AntigravityPermissionGateTests: XCTestCase {
       .ask(action: "command", resources: ["npm test"], always: "command:npm test")
     )
     XCTAssertEqual(
-      verdict("run_command", ["CommandLine": "npm test"], auto: true),
-      .ask(action: "command", resources: ["npm test"], always: "command:npm test"),
-      "Auto Mode is edits only"
+      verdict("run_command", ["CommandLine": "npm test", "Cwd": "/work/app"], auto: true),
+      .allow,
+      "Auto Mode lets a test run in the folder through"
     )
     XCTAssertEqual(
       verdict("run_command", ["CommandLine": "npm test"], granted: ["command:npm test"]), .allow
