@@ -472,7 +472,9 @@ final class PermissionAnsweringTests: XCTestCase {
     }
     let wearing = try XCTUnwrap(bar.buttonForTesting(options[1].label))
     bar.focusedIndex = 1
-    XCTAssertEqual(ceil(wearing.intrinsicContentSize.width), widths[1], accuracy: 0.5)
+    bar.frame = NSRect(x: 0, y: 0, width: 800, height: 120)
+    bar.layoutSubtreeIfNeeded()
+    XCTAssertEqual(wearing.frame.width, widths[1], accuracy: 0.5, "the lit answer keeps its width on glass")
 
     let needed = widths.reduce(0, +) + BolttyAIApprovalBar.buttonSpacing * CGFloat(options.count)
     XCTAssertTrue(BolttyAIApprovalBar.fitsInOneRow(options, width: needed))
@@ -706,7 +708,7 @@ final class PlanCardTests: XCTestCase {
     XCTAssertTrue(plan.takesWordsAsRefusal)
     XCTAssertFalse(plan.answersByNumber)
     XCTAssertEqual(plan.refusing(with: "smaller"), ["cancelled", "smaller"])
-    XCTAssertEqual(plan.refusalWords, "Request changes")
+    XCTAssertEqual(plan.refusalWords, "Request Changes", "as the button says it")
     XCTAssertEqual(
       AgentPaletteView.composerPlaceholder(for: BolttyAISessionPreview(
         id: UUID(), title: "Chat", agent: .grok, state: .blocked, body: "", question: plan)),

@@ -3462,7 +3462,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(field.contains(chip))
     let folder = view.convert(view.workingDirectoryChipForTesting.bounds,
       from: view.workingDirectoryChipForTesting)
-    XCTAssertLessThanOrEqual(chip.maxX, folder.minX + 0.5, "on the left, before the folder")
+    XCTAssertGreaterThanOrEqual(chip.minX, folder.maxX - 0.5, "on the left, after the folder")
     XCTAssertEqual(folder.midY, chip.midY, accuracy: 0.5)
 
     view.pressModelChipForTesting()

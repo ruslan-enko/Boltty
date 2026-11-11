@@ -64,7 +64,7 @@ struct AgentQuestion: Equatable, Sendable {
     kind == .plan ? [PlanDecision.cancelled.rawValue, words] : Self.refusal(saying: words)
   }
 
-  var refusalWords: String { kind == .plan ? "Request changes" : "Deny and send" }
+  var refusalWords: String { kind == .plan ? "Request Changes" : "Deny and send" }
 
   var returnReachableCount: Int {
     kind == .plan ? max(options.count - 1, 1) : options.count
