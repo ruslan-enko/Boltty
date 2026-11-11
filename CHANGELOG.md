@@ -2,6 +2,55 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.7.0
+
+**Chats**
+- A chat's model can change. The chip in the composer says what the chat runs on
+  ("Opus · High"); its menu offers the agent's models, the model's reasoning levels
+  and Auto Mode. A choice takes effect with the next message, never in the middle
+  of a turn.
+- Auto Mode now works for every agent that asks. Boltty lets through edits in the
+  chat's folder and commands that only read, build, test or change files there;
+  anything else still asks. Codex keeps its sandbox, and Claude Code its own auto
+  mode.
+- A question an agent asked still stands after Boltty quits or the agent forgets
+  it. Your answer goes as the chat's next message, saying what it answers.
+- On a permission card, ← and → move between the answers and Return presses the
+  lit one. The answers are in title case, as a Mac's buttons are ("Allow Once").
+- A failed turn that used up the plan or lost its model offers Choose Model, and
+  Retry sends the request again.
+
+**Limits**
+- A click on the menu-bar mark opens Limits: each agent's plan windows and when
+  they come back. More, at its foot, is the old menu, and a right-click on the
+  mark opens that menu at once.
+- OpenCode's plan limits show up, from OpenCode Go and the Console, and so does
+  the free models' daily allowance once it is spent.
+- Usage shows how much of a plan is used, as the composer's ring does.
+
+**Ask Boltty**
+- A question about an area of the screen is only ever spoken. A typed key no
+  longer turns the microphone into a text field beside the area, and what was in
+  the prompt waits until the question is asked.
+- The microphone is never left idle beside the area: a slow start says so, a
+  failure is tried once more, and Return with nothing said leaves it listening.
+- An agent whose plan is used up is passed over, and the face says who answers
+  instead. If an agent fails before saying anything, the next one gets the same
+  question.
+
+**Look**
+- The panel is clear glass under its black shade. Settings › General ›
+  Appearance puts it back on frosted glass, with a Clear–Frosted slider over your
+  wallpaper.
+- Every icon is redrawn from straight lines and true arcs, and none is filled.
+- The Sky backdrop's high clouds take their light from the sky behind them.
+
+**Fixes**
+- A chat's name no longer keeps a stop after its closing quote.
+- The placeholder and the typed text stand on the same baseline on a 1× display.
+- Grok chats go on in their own session after Boltty is relaunched, instead of
+  starting a new one.
+
 ## 0.6.0
 
 **Boltty AI**
