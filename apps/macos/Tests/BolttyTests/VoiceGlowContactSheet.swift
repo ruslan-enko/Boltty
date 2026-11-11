@@ -23,7 +23,6 @@ final class VoiceGlowContactSheet: XCTestCase {
       ("completed-half", frame(intensity: 0.8, opacity: 0.5)),
     ]
 
-    // No glass here: it does not draw offscreen, and it frosts this light.
     for (name, input) in states {
       let image = try XCTUnwrap(
         renderer.image(of: VoiceGlowRenderer.uniforms(for: input)), "\(name) did not render")

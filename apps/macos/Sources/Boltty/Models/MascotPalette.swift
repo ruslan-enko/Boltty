@@ -29,12 +29,6 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
     return [stops[0], stops[4], stops[2]]
   }
 
-  /// Light passing through arriving words reads as a gradient only if its
-  /// stops differ in hue: lifted to the same lightness, a face of one hue
-  /// (Ember, Mist, Lilac) became one pastel that vanished into the ink. Such
-  /// a face's stops are fanned out round their own hue, in stop order, and
-  /// given at least a little colour; a face that already mixes hues keeps
-  /// its own.
   var arrivalLight: [NSColor] {
     let stops = colors.map(Oklab.init)
     let hues = stops.map(\.hue)
@@ -53,7 +47,6 @@ struct MascotPalette: Identifiable, Equatable, Hashable, Sendable {
     }
   }
 
-  /// Degrees of hue a one-hue face's arrival light is fanned across.
   static let arrivalHueSpread = 80.0
   private static let arrivalMinimumChroma = 0.09
 
@@ -246,7 +239,6 @@ extension MascotPalette {
     }
   }
 }
-
 
 enum MascotGradientStyle: Equatable, Hashable, Sendable {
   case sunrise

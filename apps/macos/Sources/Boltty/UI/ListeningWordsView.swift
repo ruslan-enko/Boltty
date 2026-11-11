@@ -1,54 +1,26 @@
 import AppKit
 
-/// The words being said, under the face in the listening capsule: centred
-/// lines that run downward as the take goes on, up to
-/// `AgentPaletteMetrics.listeningMaxLines`, and each new word arrives slowly
-/// out of a soft blur in the face's colours, which settles into the sharp
-/// white word, rising a little into place.
-///
-/// Drawn by hand rather than by a label, because a word has to arrive on its
-/// own clock while the ones before it stay still. The blur is the word drawn
-/// round rings of offsets at a fraction of its alpha, closing to one sharp
-/// copy: no filter, so nothing forces an offscreen pass, and `CIGaussianBlur`
-/// is not allowed in the panel.
-///
-/// Lines are centred, so a word joining a line moves the ones before it;
-/// they glide there rather than jump. Past the last line the oldest line
-/// rises into the room left above the lines (`headroom`, under the face) and
-/// fades there through a gradient mask, never cut at an edge.
 final class ListeningWordsView: NSView {
-  /// What is shown, as plain text.
   private(set) var text = ""
 
   private struct Word {
     let string: NSAttributedString
     let width: CGFloat
-    /// When it began to arrive; `-infinity` for words already there.
     let born: CFTimeInterval
-    /// Where it is drawn, gliding toward where the lines put it; nil until
-    /// first laid out, when it starts where it belongs.
     var shown: CGPoint?
   }
 
   private var words: [Word] = []
-  /// The face's colours, which a word's blur wears before it turns white.
   var colors: [NSColor] = [PaletteInk.primary] {
     didSet { needsDisplay = true }
   }
-  /// The width the lines break at: the capsule's width to come, not the one
-  /// it is springing through, so a line does not re-break on every frame.
   var wrapWidth: CGFloat = 0 {
     didSet { if wrapWidth != oldValue { needsDisplay = true; startClock() } }
   }
-  /// Lines centred on the view, as under the listening face; otherwise from
-  /// its leading edge, past the room the blur takes.
   var isCentred = true
-  /// Room above the first line, inside this view, that a line leaving by the
-  /// top rises into and fades through.
   var headroom: CGFloat = 0 {
     didSet { if headroom != oldValue { needsLayout = true; needsDisplay = true } }
   }
-  /// How many words are shown: the panel nods the face at each new one.
   var wordCount: Int { words.count }
   private var timer: Timer?
   private var lastDraw: CFTimeInterval?
@@ -62,17 +34,14 @@ final class ListeningWordsView: NSView {
     ceil(NSAttributedString(string: " ", attributes: [.font: font]).size().width)
   }
 
-  /// One line, with room between lines.
   var lineHeight: CGFloat {
     ceil(AgentPaletteMetrics.listeningWordsFontSize * AgentPaletteMetrics.listeningWordsLineSpacing)
   }
 
-  /// The words, broken into lines at `width`: indices into `words`.
   private func lines(at width: CGFloat) -> [[Int]] {
     Self.broken(widths: words.map(\.width), space: spaceWidth, at: width)
   }
 
-  /// Words of these widths, broken into lines at `width`: indices into them.
   private static func broken(widths: [CGFloat], space: CGFloat, at width: CGFloat) -> [[Int]] {
     guard !widths.isEmpty else { return [] }
     var lines: [[Int]] = [[]]
@@ -90,8 +59,6 @@ final class ListeningWordsView: NSView {
     return lines
   }
 
-  /// How `text` will stand at `width` once all of it has arrived, whatever is
-  /// shown now: a bubble that grows knows from this where it will end.
   func measure(_ text: String, width: CGFloat) -> (lines: Int, widest: CGFloat) {
     let attributes: [NSAttributedString.Key: Any] = [.font: font]
     let widths = text.split(whereSeparator: \.isWhitespace).map {
@@ -109,23 +76,18 @@ final class ListeningWordsView: NSView {
     line.reduce(0) { $0 + words[$1].width } + spaceWidth * CGFloat(max(0, line.count - 1))
   }
 
-  /// How the words would stand at `width`: how many lines are shown (no more
-  /// than the most) and how wide the widest is — what the capsule is sized by.
   func measure(width: CGFloat) -> (lines: Int, widest: CGFloat) {
     let broken = lines(at: width)
     let shown = min(broken.count, AgentPaletteMetrics.listeningMaxLines)
     return (shown, ceil(broken.map(lineWidth).max() ?? 0))
   }
 
-  /// Where each word belongs: lines centred on the view, the newest at the
-  /// foot of the shown ones, the oldest past the top.
   private func targets() -> [CGPoint] {
     let broken = lines(at: max(1, wrapWidth))
     let shown = min(broken.count, AgentPaletteMetrics.listeningMaxLines)
     let pad = AgentPaletteMetrics.listeningWordBlur
     var points = [CGPoint](repeating: .zero, count: words.count)
     for (row, line) in broken.enumerated() {
-      // `draw(at:)` takes the foot of the line's box in an unflipped view.
       let fromTop = CGFloat(row - (broken.count - shown) + 1)
       let foot = bounds.height - headroom - pad - fromTop * lineHeight
         + (lineHeight - ceil(font.ascender - font.descender)) / 2
@@ -138,8 +100,6 @@ final class ListeningWordsView: NSView {
     return points
   }
 
-  /// The middle of the newest word, in this view's coordinates — where the
-  /// face looks. Nil with no words.
   var newestWordCentre: CGPoint? {
     guard let last = words.last, let point = targets().last else { return nil }
     return CGPoint(x: point.x + last.width / 2, y: point.y + lineHeight / 2)
@@ -160,11 +120,14 @@ final class ListeningWordsView: NSView {
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-  /// Shows `newText`. Only words past the end of what is shown arrive out of
-  /// the blur. A word already there that the engine revises — it rewrites its
-  /// last words on almost every result — changes in place and keeps its own
-  /// arrival: arriving again, the same few words blinked on every result.
-  func setText(_ newText: String, animated: Bool) {
+  private var ink: NSColor = PaletteInk.primary
+
+  func setText(_ newText: String, animated: Bool, ink: NSColor = PaletteInk.primary) {
+    if ink != self.ink {
+      self.ink = ink
+      words = []
+      text = ""
+    }
     guard newText != text else { return }
     text = newText
     let incoming = newText.split(whereSeparator: \.isWhitespace).map(String.init)
@@ -173,7 +136,7 @@ final class ListeningWordsView: NSView {
     let stagger = AgentPaletteMetrics.listeningWordStagger
     let attributes: [NSAttributedString.Key: Any] = [
       .font: font,
-      .foregroundColor: PaletteInk.primary
+      .foregroundColor: ink
     ]
     let held = min(incoming.count, words.count)
     var revised = Array(words.prefix(held))
@@ -238,8 +201,6 @@ final class ListeningWordsView: NSView {
     updateFade()
   }
 
-  /// Clear at the top of the headroom, whole by the first line: a line
-  /// rising out of the shown ones fades as it goes under the face.
   private func updateFade() {
     guard bounds.height > 0 else { return }
     CATransaction.begin()
@@ -275,25 +236,17 @@ final class ListeningWordsView: NSView {
       words[index].shown = at
       let word = words[index]
       guard at.y + lineHeight > 0, at.y < bounds.height else { continue }
-      // A line gone past the top of the shown ones fades as it rises, over a
-      // line's height, on top of the mask.
       let firstFoot = bounds.height - headroom - AgentPaletteMetrics.listeningWordBlur - lineHeight
         + (lineHeight - ceil(font.ascender - font.descender)) / 2
       let leaving = max(0, min(1, 1 - (at.y - firstFoot.rounded()) / lineHeight))
       guard leaving > 0.01 else { continue }
       let progress = word.born == -.infinity ? 1 : max(0, min(1, (now - word.born) / arrival))
       guard progress > 0 else { continue }
-      // Ease out: most of the sharpening happens early, the last of it slowly.
       let eased = 1 - pow(1 - progress, 3)
       let rise = AgentPaletteMetrics.listeningWordRise * (1 - eased)
       let origin = CGPoint(x: at.x, y: at.y - rise)
 
-      // The sharp word, with the shadow that lifts it off the dark, comes in
-      // over the second half.
       let sharp = max(0, min(1, (eased - 0.45) / 0.55))
-      // The blur: the word in the face's colour round rings of offsets,
-      // closing as it sharpens. Many faint copies, so it is a glow and not a
-      // ghost of the word.
       let radius = AgentPaletteMetrics.listeningWordBlur * (1 - eased)
       let haze = min(1, progress * 2.5) * (1 - sharp * sharp)
       if haze > 0.01, radius > 0.25 {
@@ -325,8 +278,6 @@ final class ListeningWordsView: NSView {
     }
   }
 
-  /// The face's colour for a word standing at `x`: its gradient runs along
-  /// the line, so words side by side glow in neighbouring colours.
   private func hazeColor(at x: CGFloat) -> NSColor {
     guard colors.count > 1, bounds.width > 0 else { return colors.first ?? PaletteInk.primary }
     let t = max(0, min(1, x / bounds.width)) * CGFloat(colors.count - 1)

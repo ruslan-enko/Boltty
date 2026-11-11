@@ -28,7 +28,6 @@ final class AskBolttyPointTests: XCTestCase {
   }
 
   func testAPointLandsOnTheScreenThePictureWasTakenOf() {
-    // A 1000 × 500 display whose bottom left is at (200, 100) in AppKit's space.
     let frame = CGRect(x: 200, y: 100, width: 1000, height: 500)
     XCTAssertEqual(AskBolttyPoint(x: 0, y: 0).location(in: frame), CGPoint(x: 200, y: 600))
     XCTAssertEqual(AskBolttyPoint(x: 0.5, y: 0.5).location(in: frame), CGPoint(x: 700, y: 350))
@@ -132,7 +131,6 @@ final class AskBolttyOverlayGeometryTests: XCTestCase {
     overlay.show(.speaking, caption: "Hello there.", agent: .claude)
     try await Task.sleep(for: .seconds(0.6))
     overlay.show(.idle, caption: "", agent: .claude)
-    // The answer's linger, its words going back into the face, the line growing.
     try await Task.sleep(for: .seconds(2))
 
     let bubble = overlay.bubbleForTesting

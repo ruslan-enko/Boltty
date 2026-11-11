@@ -21,7 +21,6 @@ vertex MascotVaryings mascotVertex(
 
 // MARK: - Stuffing
 
-
 constant float kCameraDistance = 90.0;
 
 constant float kEyeLine = 1.6;
@@ -1233,11 +1232,6 @@ static MascotSample shade(float2 q, constant MascotUniforms &u, const device flo
   const float3 origin = (view.inverse * (eyeW - lift)) / view.stretch;
   const float3 direction = normalize((view.inverse * view.directionW) / view.stretch);
 
-  // The ray is marched only inside a box round the body — its outline's
-  // reach, its stuffing's depth, and a margin for the fur — not a sphere
-  // of 24 round all of it: a pixel whose ray misses the box is done at
-  // once (the canvas holds a hop's room round the face, most of it air),
-  // and one that meets it starts at the box.
   const float margin = 1.5;
   const float3 lo = float3(-u.extent.z - margin, u.extent.y - margin, -build.thickness - margin);
   const float3 hi = float3(u.extent.z + margin, u.extent.x + margin, build.thickness + margin);

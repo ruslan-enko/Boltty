@@ -1,23 +1,16 @@
 import CoreGraphics
 import Foundation
 
-/// One thing an answer draws: on the screen, in the picture's 0–1000 across
-/// and down (0 0 its top left) — the scale `<point>` already uses — or on a
-/// board beside the face, in 0–1000 across a square.
 struct AskBolttyShape: Equatable, Sendable {
   enum Kind: Equatable, Sendable {
-    /// Round something: a centre and a radius in the across scale.
     case circle(center: CGPoint, radius: CGFloat)
     case box(CGRect)
     case arrow(from: CGPoint, to: CGPoint)
     case line(from: CGPoint, to: CGPoint)
-    /// A free outline: a polygon, a figure, a curve.
     case path([Segment])
-    /// Words alone, at a place.
     case label(at: CGPoint)
   }
 
-  /// A step of a `path`, absolute, in 0–1000.
   enum Segment: Equatable, Sendable {
     case move(CGPoint)
     case line(CGPoint)
@@ -31,7 +24,6 @@ struct AskBolttyShape: Equatable, Sendable {
 
   static let names = ["circle", "box", "arrow", "line", "path", "label"]
 
-  /// One self-closing tag, or `nil` when it does not say where.
   static func parse(_ tag: String) -> AskBolttyShape? {
     guard let name = tagName(tag), names.contains(name) else { return nil }
     let label = attribute("label", in: tag) ?? attribute("text", in: tag)
@@ -96,8 +88,6 @@ struct AskBolttyShape: Equatable, Sendable {
     CGPoint(x: min(max(point.x, 0), 1000), y: min(max(point.y, 0), 1000))
   }
 
-  /// SVG's path data, the commands an outline needs: M L H V Q C Z, absolute
-  /// and relative, with a repeated pair after M read as L.
   static func pathSegments(_ data: String) -> [Segment] {
     let tokens = data.replacingOccurrences(
       of: #"([MmLlHhVvQqCcZz])"#, with: " $1 ", options: .regularExpression)
@@ -165,7 +155,6 @@ struct AskBolttyShape: Equatable, Sendable {
     return segments
   }
 
-  /// SVG's polygon `points`: pairs, closed.
   private static func polygon(_ data: String) -> [Segment] {
     let values = data.replacingOccurrences(of: ",", with: " ")
       .split(whereSeparator: \.isWhitespace).compactMap { Double($0) }.map { CGFloat($0) }
@@ -181,18 +170,14 @@ struct AskBolttyShape: Equatable, Sendable {
   }
 }
 
-/// What an answer marks, in the order it wrote them: a place the face flies
-/// to, a shape on the screen, or a board of shapes beside the face.
 enum AskBolttyMark: Equatable, Sendable {
   case point(AskBolttyPoint)
   case shape(AskBolttyShape)
   case board([AskBolttyShape])
 
-  /// A board as a whole, or one self-closing tag of a kind Ask Boltty draws.
   static let pattern =
     #"(?s)<board\b[^>]*>.*?</board\s*>|<(?:point|circle|box|arrow|line|path|label)\b[^>]*>"#
 
-  /// The most an answer draws: a model that loops does not paint the screen.
   static let limit = 40
 
   static func parse(_ tag: String) -> AskBolttyMark? {
@@ -208,8 +193,6 @@ enum AskBolttyMark: Equatable, Sendable {
     return AskBolttyShape.parse(tag).map(Self.shape)
   }
 
-  /// Every complete mark in `text`, in order. One that does not parse is
-  /// skipped, so the n-th of these is the n-th marker the voice carries.
   static func all(in text: String) -> [AskBolttyMark] {
     guard text.contains("<") else { return [] }
     var marks: [AskBolttyMark] = []
@@ -222,7 +205,6 @@ enum AskBolttyMark: Equatable, Sendable {
     return marks
   }
 
-  /// The text with every mark gone, for anything that shows an answer.
   static func stripped(_ text: String) -> String {
     guard text.contains("<") else { return text }
     let tag = #"[ \t]*(?:"# + pattern + #")[ \t]*"#
@@ -231,8 +213,6 @@ enum AskBolttyMark: Equatable, Sendable {
     return out.replacingOccurrences(of: tag, with: " ", options: .regularExpression)
   }
 
-  /// A mark still arriving — `<circ`, `<arrow x1="4`, a board not yet closed
-  /// — is not text yet: everything from where it opens is held back.
   static func withoutUnfinished(_ text: String) -> String {
     var text = text
     if let open = text.range(of: "<board", options: [.caseInsensitive, .backwards]),
@@ -261,10 +241,7 @@ enum AskBolttyMark: Equatable, Sendable {
   }
 }
 
-/// A shape put up by an answer, and where its 0–1000 is measured: across the
-/// screen's picture (`frame`, AppKit's global coordinates), or on the board.
 struct AskBolttyStroke: Equatable {
   var shape: AskBolttyShape
-  /// `nil`: on the board.
   var frame: CGRect?
 }

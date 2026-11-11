@@ -818,7 +818,6 @@ final class AgentPaletteViewTests: XCTestCase {
     }
   }
 
-
   func testTheShellKeepsThePromptCapsuleAndWearsTheMocksCornerForExpandedChat() {
     let view = makeScreenSizedView()
     view.layoutSubtreeIfNeeded()
@@ -2168,7 +2167,6 @@ final class AgentPaletteViewTests: XCTestCase {
     view.setSessions([.row("claude", .claude)], activeSessionID: nil)
     view.openSwitcher()
 
-    // Taken and dropped: left to the field, a Tab typed itself and turned the list into a search.
     XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertTab(_:))))
     XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:))))
     XCTAssertEqual(view.agentForNewPrompt, .claude)
@@ -2187,7 +2185,6 @@ final class AgentPaletteViewTests: XCTestCase {
     view.layoutSubtreeIfNeeded()
     let typed = try XCTUnwrap(view.typedBaselineInWindowForTesting, "nothing laid out")
 
-    // A pixel: at 1× each snaps to its own whole point.
     XCTAssertEqual(placeholder, typed, accuracy: 1 / (NSScreen.main?.backingScaleFactor ?? 1))
   }
 
@@ -3325,9 +3322,6 @@ final class AgentPaletteViewTests: XCTestCase {
 
   // MARK: - Unread rows
 
-  /// An unread chat wears a dot and a semibold title, on every tab alike —
-  /// the dot stands on the trailing edge because Latest's face owns the
-  /// leading one.
   private func unreadRowItem(_ title: String, id: UUID, unread: Bool) -> BolttyAISessionItem {
     BolttyAISessionItem(
       id: id,
@@ -3449,47 +3443,50 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(view.shellUsesGlassForTesting)
   }
 
-  func testAChatInAutoModeShowsItLitAndItsSwitchTurnsItOff() {
+  func testAChatSaysItsModelInTheComposerAndItsChipAsksForTheMenu() {
     let view = makeScreenSizedView()
     view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
-    var changes: [(UUID, Bool)] = []
-    view.onSetAutoMode = { changes.append(($0, $1)) }
-    let id = UUID()
-    view.enterAddressing(.init(id: id, title: "Chat", agent: .claude,
-      state: .finished, body: "Done.", autoMode: true))
+    var menus = 0
+    view.onModelMenu = { menus += 1 }
+    view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .claude,
+      state: .finished, body: "Done.",
+      modelChip: BolttyAIModelChip(title: "Opus · High", help: "Model")))
     view.layoutSubtreeIfNeeded()
-    XCTAssertTrue(view.isAutoModeVisibleForTesting)
-    let button = view.autoModeButtonForTesting
-    XCTAssertEqual(button.title, "Auto", "the word, not a glyph")
-    XCTAssertEqual(button.restingTint, ComposerControlGroup.hoverInk, "lit while on")
-    XCTAssertEqual(button.accessibilityValue() as? String, "On")
-    XCTAssertEqual(button.toolTip, AgentPaletteView.autoModeHelp(on: true, agent: .claude))
-    XCTAssertTrue(button.toolTip?.contains(AgentsSettingsPage.autoModeReach(for: .claude).dropFirst()) == true,
-      "the help tag names what Auto Mode lets through")
+    XCTAssertTrue(view.isModelChipVisibleForTesting)
+    let button = view.modelChipButtonForTesting
+    XCTAssertEqual(button.title, "Opus · High")
+    XCTAssertEqual(button.restingTint, ComposerControlGroup.restingInk)
+    XCTAssertEqual(button.helpShortcut, "⇧⌘M")
     let field = view.promptCapsuleFrameForTesting
-    let glyph = view.convert(view.autoModeButtonForTesting.bounds, from: view.autoModeButtonForTesting)
-    XCTAssertTrue(field.contains(glyph))
+    let chip = view.convert(button.bounds, from: button)
+    XCTAssertTrue(field.contains(chip))
     let folder = view.convert(view.workingDirectoryChipForTesting.bounds,
       from: view.workingDirectoryChipForTesting)
-    XCTAssertLessThanOrEqual(glyph.maxX, folder.minX + 0.5, "on the left, before the folder")
-    XCTAssertEqual(folder.midY, glyph.midY, accuracy: 0.5)
+    XCTAssertLessThanOrEqual(chip.maxX, folder.minX + 0.5, "on the left, before the folder")
+    XCTAssertEqual(folder.midY, chip.midY, accuracy: 0.5)
 
-    view.pressAutoModeForTesting()
-    XCTAssertEqual(changes.map(\.0), [id])
-    XCTAssertEqual(changes.map(\.1), [false])
-    XCTAssertEqual(button.restingTint, ComposerControlGroup.restingInk, "drawn off at once")
-    XCTAssertEqual(button.accessibilityValue() as? String, "Off")
+    view.pressModelChipForTesting()
+    XCTAssertEqual(menus, 1)
   }
 
-  func testNoAutoModeSwitchWhereTheAgentOffersNone() {
+  func testAModelThatHasGoneIsToldByItsChip() {
+    let view = makeScreenSizedView()
+    view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
+      state: .failed, body: "",
+      modelChip: BolttyAIModelChip(title: "qwen3.8-flash", isGone: true, help: "Gone")))
+    view.layoutSubtreeIfNeeded()
+    XCTAssertEqual(view.modelChipButtonForTesting.restingTint, AgentPaletteMetrics.failureCardAccent)
+  }
+
+  func testNoModelChipWhereTheAgentOffersNone() {
     let view = makeScreenSizedView()
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
       state: .finished, body: "Done."))
     view.layoutSubtreeIfNeeded()
-    XCTAssertFalse(view.isAutoModeVisibleForTesting)
+    XCTAssertFalse(view.isModelChipVisibleForTesting)
     view.leaveAddressing(animated: false)
     view.layoutSubtreeIfNeeded()
-    XCTAssertFalse(view.isAutoModeVisibleForTesting, "never on the first screen")
+    XCTAssertFalse(view.isModelChipVisibleForTesting, "never on the first screen")
   }
 
   func testGrownChatDraftUsesFullTextWidthWithControlsAlongTheBottom() {
@@ -4071,8 +4068,6 @@ extension AgentPaletteViewTests {
     }
   }
 
-  /// All wears the agents that can take a prompt — the panel's choices — and
-  /// is composed again when they change.
   func testLatestIsComposedOfTheAgentsThatAreOn() throws {
     let view = hostOffscreen(makeScreenSizedView(targets: [.claude, .opencode, .grok]))
     view.setSessions([.row("claude work", .claude)], activeSessionID: nil)
@@ -4228,7 +4223,6 @@ extension AgentPaletteViewTests {
     XCTAssertEqual(strip.glassFrameForTesting, try tab(nil, in: view).frame)
   }
 }
-
 
 extension AgentPaletteViewTests {
   func testOnlyLatestsRowsWearTheirAgentsFace() throws {

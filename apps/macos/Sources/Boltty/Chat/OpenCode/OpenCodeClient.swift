@@ -5,15 +5,13 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.opencode
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .questions, .attachments, .images,
+    .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval
   ]
 
   private let server: OpenCodeServer
-  /// Boltty's own server for sessions in folders macOS keeps from the background service.
   private let ownServer: OpenCodeServer
-  /// The server's cap: limit=201 answers 400.
   static let messagePageLimit = 200
 
   static let transcriptMessageCap = 1_000
@@ -31,14 +29,11 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   private var lastSequence: [String: Int] = [:]
   private var allowances = OpenCodeAllowances()
-  /// Sessions in Auto Mode: Boltty answers their `edit` asks "once". OpenCode asks
-  /// `external_directory` first for a file outside the folder, so that still asks.
   private var autoApproved: Set<String> = []
   private var historyIsAbsent = false
   private var freeModels: Set<String> = []
 
   private var formFields: [String: [OpenCodeDTO.FormRequest.Field]] = [:]
-  /// true: the session runs on `ownServer`. Absent: not yet asked.
   private var runsOnOwnServer: [String: Bool] = [:]
 
   private let urlSession: URLSession
@@ -83,6 +78,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return .available(version: version)
   }
 
+  var modelListLifetime: TimeInterval { 5 * 60 }
+
   func availableModels() async throws -> [AgentModelOption] {
     do {
       let fromServer = try await modelsFromServer()
@@ -121,7 +118,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     async let fallback: JSONValue? = try? await get("/api/model/default")
     let payload: JSONValue = try await get("/api/model")
     guard let rows = payload["data"]?.arrayValue else { return [] }
-    // What a session made without a model starts with, after the person's own config.
     let standard = await fallback?["data"]
     let standardID = standard?["modelID"]?.stringValue ?? standard?["id"]?.stringValue
     let standardProvider = standard?["providerID"]?.stringValue
@@ -181,11 +177,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   ) async throws -> RemoteSessionInfo {
     let directory = options.directory
     let model = options.model
-    // The free tier refuses a session id in Boltty's spelling; let the server name free sessions.
-    // No model is the server's default, which is often free (Big Pickle on 2.2.5).
-    let free = model == nil ? true : await isFree(model)
     let body = OpenCodeDTO.CreateSessionRequest(
-      id: free ? nil : id,
+      id: nil,
       location: OpenCodeDTO.LocationRef(directory: directory, workspaceID: nil),
       model: model.map {
         OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: options.effort)
@@ -203,17 +196,40 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       if own { startOwnStreamIfNeeded() }
       return info(from: response.data, fallbackDirectory: directory)
     } catch AgentClientError.indeterminate {
-      guard !free else { throw AgentClientError.indeterminate("session creation") }
-      if let existing = try? await loadSession(id: id) { return existing.info }
       throw AgentClientError.indeterminate("session creation")
+    }
+  }
+
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    lock.withLock {
+      if options.autoApprove, !options.readOnly {
+        autoApproved.insert(id)
+      } else {
+        autoApproved.remove(id)
+      }
+    }
+    guard let model = options.model else { return }
+    let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await get("/api/session/\(id)")
+    let current = session.data.model
+    if current?.id == model.modelID, current?.providerID == model.providerID,
+       (current?.variant ?? "default") == (options.effort ?? "default") {
+      return
+    }
+    do {
+      try await postIgnoringResponse(
+        "/api/session/\(id)/model",
+        body: OpenCodeDTO.SwitchModelRequest(model: OpenCodeDTO.ModelRef(
+          id: model.modelID, providerID: model.providerID, variant: options.effort))
+      )
+    } catch AgentClientError.sessionNotFound {
+      log.notice("this OpenCode cannot change a session's model")
+    } catch let AgentClientError.indeterminate(detail) {
+      throw AgentClientError.transport(detail)
     }
   }
 
   // MARK: - Which server runs a session
 
-  /// launchd starts the background service, so no app answers for it to macOS's privacy
-  /// checks: it is refused these folders (an empty HTTP 500 on the first prompt). Boltty's own
-  /// server is Boltty's child and reaches whatever Boltty was allowed.
   static func isPrivacyProtected(_ directory: String, home: String = NSHomeDirectory()) -> Bool {
     let path = (directory as NSString).standardizingPath
     if path.hasPrefix("/Volumes/") { return true }
@@ -229,8 +245,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return (try? await server.start())?.isService == true
   }
 
-  /// A session made in an earlier launch is placed by its folder, read off the record; reading
-  /// it needs no access to the folder.
   private func server(forSession sessionID: String) async -> OpenCodeServer {
     if let own = lock.withLock({ runsOnOwnServer[sessionID] }) { return own ? ownServer : server }
     guard let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try? await perform(
@@ -293,8 +307,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return !events.isEmpty
   }
 
-  /// OpenCode names a session itself, a moment after its first turn; until
-  /// then its title is a placeholder, which `ChatNaming.name` refuses.
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     await ChatNaming.fromRecord { [self] in
       let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo>? =
@@ -516,7 +528,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return lock.withLock { formFields[formID] } ?? []
   }
 
-  /// 2.0 takes `decision`, 1.18 `reply`; the old body is retried on a 400 only.
   func answerPermission(
     requestID: String,
     sessionID: String,
@@ -572,8 +583,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// The second stream says only "connected", which re-reads every chat; its drops are not the
-  /// provider's connection state.
   private func runEventLoop(on server: OpenCodeServer, reportsConnection: Bool) async {
     var backoff: UInt64 = 250_000_000
     while !Task.isCancelled {
@@ -718,6 +727,9 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
             let partID = event.data?["partID"]?.stringValue
       else { return [] }
       return [.partRemoved(sessionID: sessionID, messageID: messageID, partID: partID)]
+
+    case "model.updated", "provider.updated":
+      return [.modelsChanged]
 
     case "session.idle":
       guard let sessionID = event.data?["sessionID"]?.stringValue else { return [] }
@@ -1017,6 +1029,20 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     case "session.retried", "session.execution.started":
       return [.executionStateChanged(sessionID: sessionID, state: .working)]
 
+    // How a turn ends with no step to fail: a model that has gone says
+    // `provider.no-route` here and nowhere else (2.2.5), and unread, the chat
+    // stood at Working until the person pressed Stop.
+    case "session.execution.failed":
+      return [
+        .sessionFailed(
+          sessionID: sessionID,
+          failure: OpenCodeMapper.failure(fromError: data["error"])
+        )
+      ]
+
+    case "session.execution.interrupted":
+      return [.executionStateChanged(sessionID: sessionID, state: .idle)]
+
     default:
       return []
     }
@@ -1045,8 +1071,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     await ownServer.stop()
   }
 
-  /// Only Boltty's own servers: `stop` has nothing to end on the person's
-  /// service. The event loops reconnect, which starts them again as they are now.
   func restartIdleProcess() async {
     await server.stop()
     await ownServer.stop()

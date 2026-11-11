@@ -139,8 +139,6 @@ final class AntigravityClientTests: XCTestCase {
 
   // MARK: - The process
 
-  /// A stand-in `agy`: says `init` at once, as the real one does, and answers
-  /// each stdin line with a reply in its frames.
   func testASessionIsNamedByInitAndATurnStreams() async throws {
     let script = root.appendingPathComponent("agy")
     try """
@@ -195,8 +193,6 @@ final class AntigravityClientTests: XCTestCase {
     XCTAssertFalse(sent, "shutdown forgets the session")
   }
 
-  /// A stand-in `agy` that runs the installed hook before a command, as the
-  /// real one does, and reports what the hook decided in its reply.
   func testACommandAsksThroughTheGateAndARefusalCarriesTheWords() async throws {
     let hooks = root.appendingPathComponent("config/hooks.json")
     let script = root.appendingPathComponent("agy")
@@ -297,8 +293,6 @@ final class AntigravityClientTests: XCTestCase {
     )
   }
 
-  /// A stand-in `agy` that asks the installed hook about a `view_file` on
-  /// the file it was sent, as the real one does before opening a picture.
   func testASentPictureIsOpenedWithoutAskingThePerson() async throws {
     let hooks = root.appendingPathComponent("config/hooks.json")
     let picture = root.appendingPathComponent("elsewhere/image1.png")
@@ -435,7 +429,6 @@ final class AntigravityClientTests: XCTestCase {
   }
 }
 
-/// Writes protobuf the way `agy` stores it, to test the schemaless reader.
 private enum Proto {
   static func encodeVarint(_ value: UInt64) -> Data {
     var value = value

@@ -2,29 +2,15 @@ import Combine
 import CoreML
 import Foundation
 
-/// Fetches one file to a temporary place the caller then owns.
 protocol LocalModelFetching: Sendable {
-  /// `progress` hears the bytes received so far, from any thread.
   func fetch(_ url: URL, progress: @escaping @Sendable (Int64) -> Void) async throws -> URL
 }
 
-/// The local voice models on this Mac: downloads one when the person asks,
-/// checks every file against the catalog, has Core ML compile it once, and
-/// removes it again.
-///
-/// One folder per model and revision under `Application Support/Boltty/Models`;
-/// a download in progress is `<folder>.partial`, renamed into place only when
-/// every file matches. A file already checked is not fetched again, so a
-/// download cut off resumes with what is missing. Folders of revisions the
-/// catalog no longer names are deleted; anything else in the folder is left
-/// alone. A second Boltty (`canWrite` false) downloads and deletes nothing.
 @MainActor
 final class LocalModelStore: ObservableObject {
   enum State: Equatable, Sendable {
     case notInstalled
-    /// Of the whole model, 0…1.
     case downloading(Double)
-    /// Core ML compiling for this Mac's Neural Engine, once.
     case preparing
     case ready
     case failed(String)
@@ -67,7 +53,6 @@ final class LocalModelStore: ObservableObject {
   private let canWrite: () -> Bool
   private var installs: [LocalVoiceModel.ID: Task<Void, Never>] = [:]
 
-  /// Transient failures (a dropped connection) are tried again this often.
   static let attempts = 3
 
   init(
@@ -95,14 +80,11 @@ final class LocalModelStore: ObservableObject {
 
   func state(of id: LocalVoiceModel.ID) -> State { states[id] ?? .notInstalled }
 
-  /// The model's folder, once it is downloaded, checked and compiled.
   func folder(of id: LocalVoiceModel.ID) -> URL? {
     guard state(of: id) == .ready, let model = model(id) else { return nil }
     return folder(for: model)
   }
 
-  /// Reads what is on disk: a model whose folder holds every file at its size
-  /// is ready. Clears folders of revisions no longer in the catalog.
   func refresh() {
     let manager = FileManager.default
     let entries = (try? manager.contentsOfDirectory(atPath: root.path)) ?? []
@@ -119,8 +101,6 @@ final class LocalModelStore: ObservableObject {
     states = next
   }
 
-  /// Downloads, checks and compiles the model; returns when it is ready or
-  /// has failed. Asking again while it runs waits for the same download.
   func install(_ id: LocalVoiceModel.ID) async {
     if let running = installs[id] { return await running.value }
     guard let model = model(id), state(of: id) != .ready else { return }
@@ -130,12 +110,10 @@ final class LocalModelStore: ObservableObject {
     installs[id] = nil
   }
 
-  /// Stops a download; what was already checked stays for the next one.
   func cancel(_ id: LocalVoiceModel.ID) {
     installs[id]?.cancel()
   }
 
-  /// Deletes the model and anything half-downloaded of it.
   func remove(_ id: LocalVoiceModel.ID) {
     guard let model = model(id), canWrite() else { return }
     installs[id]?.cancel()
@@ -156,7 +134,6 @@ final class LocalModelStore: ObservableObject {
     let final = folder(for: model)
     do {
       try manager.createDirectory(at: root, withIntermediateDirectories: true)
-      // A folder that lost a file goes back to being a download.
       if manager.fileExists(atPath: final.path) {
         try? manager.removeItem(at: partial)
         try manager.moveItem(at: final, to: partial)
@@ -204,8 +181,6 @@ final class LocalModelStore: ObservableObject {
     }
   }
 
-  /// One file, fetched and checked against the catalog; tried again after a
-  /// transient failure, never after a wrong digest.
   private func fetch(
     _ file: LocalVoiceModel.File,
     of model: LocalVoiceModel,
@@ -231,9 +206,6 @@ final class LocalModelStore: ObservableObject {
     throw Failure.download(model.name, reason: lastError?.localizedDescription ?? "unknown error")
   }
 
-  /// Moves the bar only forward, by half a percent at least, and only while
-  /// downloading: a report that arrives late, after a failure or once
-  /// compiling began, changes nothing.
   private func report(_ model: LocalVoiceModel, _ bytes: Int64) {
     guard case let .downloading(current) = state(of: model.id) else { return }
     let fraction = Self.fraction(bytes, of: model)
@@ -259,16 +231,12 @@ final class LocalModelStore: ObservableObject {
     root.appendingPathComponent(model.folderName + ".partial", isDirectory: true)
   }
 
-  /// A folder of one of our models, but not of the revision the catalog
-  /// pins now.
   private func isStale(_ entry: String) -> Bool {
     let ours = LocalVoiceModel.ID.allCases.contains { entry.hasPrefix($0.rawValue + "-") }
     let current = models.contains { entry == $0.folderName || entry == $0.folderName + ".partial" }
     return ours && !current
   }
 
-  /// Every file there at its catalog size: cheap enough to ask at launch.
-  /// Digests were checked when the files arrived.
   private static func isComplete(_ model: LocalVoiceModel, in folder: URL) -> Bool {
     model.files.allSatisfy { file in
       let path = folder.appendingPathComponent(file.path).path
@@ -277,8 +245,6 @@ final class LocalModelStore: ObservableObject {
     }
   }
 
-  /// The paths in `folder` whose size and digest are right, read off the
-  /// main thread.
   private static func checked(_ files: [LocalVoiceModel.File], in folder: URL) async -> Set<String> {
     await Task.detached(priority: .utility) {
       var held: Set<String> = []
@@ -300,9 +266,6 @@ final class LocalModelStore: ObservableObject {
 
   // MARK: - Defaults
 
-  /// Loads every `.mlmodelc` in the folder once, so Core ML compiles it for
-  /// this Mac and keeps the result: the first dictation does not wait for it.
-  /// Blocking; the store runs it detached.
   nonisolated static func compileModels(in folder: URL) throws {
     let configuration = MLModelConfiguration()
     configuration.computeUnits = .cpuAndNeuralEngine
@@ -323,8 +286,6 @@ final class LocalModelStore: ObservableObject {
     return bundles.sorted { $0.path < $1.path }
   }
 
-  /// Free space for a download the person asked for, on the volume that
-  /// holds `url` (or its nearest existing parent).
   nonisolated static func availableSpace(at url: URL) -> Int64? {
     var probe = url
     while !FileManager.default.fileExists(atPath: probe.path), probe.pathComponents.count > 1 {
@@ -335,8 +296,6 @@ final class LocalModelStore: ObservableObject {
   }
 }
 
-/// Hugging Face over the shared session: redirects to its file servers are
-/// followed, and progress is read off the task.
 struct URLSessionModelFetcher: LocalModelFetching {
   func fetch(_ url: URL, progress: @escaping @Sendable (Int64) -> Void) async throws -> URL {
     let watcher = DownloadProgressWatcher(report: progress)

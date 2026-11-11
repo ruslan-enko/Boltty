@@ -2,23 +2,13 @@ import AVFoundation
 import Foundation
 import os
 
-/// Says pieces of text in Supertonic's voice, in order: each is synthesized
-/// on a serial queue while the one before it plays, and played through one
-/// `AVAudioPlayerNode`.
-///
-/// `onStart` runs when a piece is really heard (Ask Boltty's caption and
-/// pointing follow the sound), `onFinish` when it has played or failed.
-/// `stop()` drops everything queued and nothing of it is reported after.
 @MainActor
 final class SupertonicSpeaker {
-  /// What a piece is said with.
   struct Delivery: Equatable, Sendable {
     var voice: String
-    /// Multiplies Supertonic's own pace.
     var rate: Double
   }
 
-  /// The models' folder; a new one (or none) unloads the old.
   var folder: URL? {
     didSet {
       guard folder != oldValue else { return }
@@ -27,10 +17,8 @@ final class SupertonicSpeaker {
     }
   }
 
-  /// The last thing that went wrong, until something is said again.
   private(set) var failure: String?
 
-  /// The models stay loaded this long after the last piece (~100 MB).
   static let idleUnload: TimeInterval = 600
 
   private let queue = DispatchQueue(label: "com.boltty.supertonic", qos: .userInitiated)
@@ -52,7 +40,6 @@ final class SupertonicSpeaker {
   }
 
   private var nextID = 0
-  /// Callbacks of pieces still being synthesized; the queue carries only ids.
   private var waiting: [Int: Scheduled] = [:]
 
   init() {
@@ -60,15 +47,12 @@ final class SupertonicSpeaker {
     engine.connect(player, to: engine.mainMixerNode, format: format)
   }
 
-  /// Loads the models now, off the main thread, so the first answer does not
-  /// wait. After a download or an update Core ML compiles them first.
   func warm() {
     guard let folder else { return }
     queue.async { [loaded] in _ = try? loaded.synthesizer(in: folder) }
     scheduleUnload()
   }
 
-  /// Queues `piece`. `onFinish(false)` when it could not be said.
   func say(
     _ piece: String, language: String, delivery: Delivery,
     onStart: (() -> Void)? = nil, onFinish: @escaping (Bool) -> Void
@@ -143,8 +127,6 @@ final class SupertonicSpeaker {
     scheduleUnload()
   }
 
-  /// Starts the engine where it stopped: first use, or after the output
-  /// device changed (`AVAudioEngineConfigurationChange` stops it).
   private func start() -> Bool {
     if !engine.isRunning {
       do {
@@ -171,8 +153,6 @@ final class SupertonicSpeaker {
 
   // MARK: - Idle
 
-  /// With nothing to say the engine stops (it holds the audio device) and,
-  /// after `idleUnload`, the models go.
   private func scheduleUnload() {
     idleTimer?.invalidate()
     guard playing.isEmpty, synthesizing == 0 else { return }
@@ -192,7 +172,6 @@ final class SupertonicSpeaker {
   }
 }
 
-/// The synthesizer, touched only on the speaker's queue.
 private final class Loaded: @unchecked Sendable {
   private var synthesizer: SupertonicSynthesizer?
   private var folder: URL?

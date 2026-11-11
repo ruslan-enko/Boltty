@@ -6,7 +6,6 @@ enum MascotSpec {
   static let seed: UInt32 = 488_462
   static let speed = 2.0
 
-
   static let eyeSize = 0.73
   static let eyeSpacing = 7.0
   static let eyeBridge = CGPoint(x: 16, y: 14.4)
@@ -131,16 +130,8 @@ final class MascotNSView: NSView {
   private(set) var lastFrame: MascotRenderer.Frame?
   fileprivate var isTicking: Bool?
 
-  /// Ticks on its screen's display link at 60, in step with the display,
-  /// instead of the shared 60 Hz timer — for a face big enough that the
-  /// timer's drift against a 120 Hz screen shows as judder (the first run's
-  /// face under the pointer). The shared clock stays a timer: a link for
-  /// every small face measured worse.
   var ownsDisplayLink = false
 
-  /// Pixels per point, when not the screen's: the first run's face draws at
-  /// 1.5 — a little under Retina, about half the pixels, and hard to tell
-  /// apart at that size.
   var renderScale: CGFloat? {
     didSet { canvas.scaleOverride = renderScale; render() }
   }
@@ -150,20 +141,10 @@ final class MascotNSView: NSView {
 
   var onBeat: ((Bool) -> Void)?
 
-  /// A point in the window the face looks at instead of the pointer — the
-  /// listening orb's face watches each word as it arrives. Nil follows the
-  /// pointer, as every other face does.
   var lookAtWindowPoint: CGPoint?
 
   // MARK: Going to rest, and waking
 
-  /// How awake the face is, 0 to 1 — for a face that goes back to a picture
-  /// of itself and comes out of it again (a history tab's,
-  /// `restAsPicture(of:)`). At 0 it is the picture: the pose the mood settles
-  /// on, the colours where the picture holds them. At 1 it is alive. Between
-  /// them the pose is a blend and the colours sway by that share of their
-  /// reach, so going to rest is the face's own motion run back, never a
-  /// swap for something else.
   private(set) var awake = 1.0
   private var swaysAboutRest = false
   private var swayTime = 0.0
@@ -173,15 +154,9 @@ final class MascotNSView: NSView {
   private var wakeDuration = 0.0
   private var onWakeSettled: (() -> Void)?
 
-  /// How far the colours sway about the picture's, in the clock's units
-  /// (the shader's slowest wave turns in about 21), and how long a sway takes.
   private static let swayReach = 4.0
   private static let swayPeriod = 12.0
 
-  /// Makes this face's rest the picture `MascotSnapshotCache` draws for
-  /// `identity` — its phase, and no drift of the colours but a sway about
-  /// that picture's. The face starts at rest. Its motion keeps the random
-  /// stream it was made with, so five of them do not blink together.
   func restAsPicture(of identity: UUID) {
     var stream = Self.stream(for: identity)
     phase = stream.next() * 90
@@ -195,10 +170,6 @@ final class MascotNSView: NSView {
     render()
   }
 
-  /// Takes the face to `target` (1 awake, 0 at rest) over `duration`, from
-  /// wherever it is now. `completion` runs once it has got there and drawn
-  /// that frame; it does not run if another call replaces this one, or when
-  /// `duration` is 0, which sets the state at once.
   func transition(toAwake target: Double, over duration: Double, completion: (() -> Void)? = nil) {
     onWakeSettled = nil
     wakeFrom = awake
@@ -325,16 +296,13 @@ final class MascotNSView: NSView {
     render()
   }
 
-  /// Whether a hop, a bop or a reaction is under way.
   var isActing: Bool { motion.isActing }
 
-  /// A reaction — the one named, or a different one each time.
   func poke(_ reaction: MascotReaction? = nil) {
     guard !reduceMotion else { return }
     motion.poke(reaction)
   }
 
-  /// A small bob, as if taking a word in (`MascotMotion.nod`).
   func nod() {
     guard !reduceMotion else { return }
     motion.nod()
@@ -389,7 +357,6 @@ extension MascotNSView {
   }
 
   private func pointerOffset() -> (x: Double, y: Double, strength: Double)? {
-    /// In widths of the face from its centre.
     func offset(of windowPoint: NSPoint) -> (dx: Double, dy: Double, d: Double) {
       let inView = convert(windowPoint, from: nil)
       let dx = (inView.x - bounds.midX) / bounds.width
@@ -436,8 +403,6 @@ extension MascotNSView {
     return frame(for: pose, clock: clock, scale: scale)
   }
 
-  /// One picture of the face in `pose`, room for a hop included, at four
-  /// rays — for a face too big to draw live (the first run's four).
   func still(_ pose: MascotMotionPose, scale: CGFloat) async -> CGImage? {
     guard !bounds.isEmpty, let renderer = MascotRenderer.shared else { return nil }
     let frame = frame(for: pose, clock: phase, scale: scale)

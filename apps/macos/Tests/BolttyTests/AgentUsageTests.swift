@@ -2,8 +2,6 @@ import XCTest
 @testable import Boltty
 
 final class AgentUsageTests: XCTestCase {
-
-  /// The shape `agy -p=/usage --output-format json` printed on agy 1.3.4.
   func testAntigravityHasAWeeklyLimitPerGroupOfModels() throws {
     let line = #"{"conversation_id":"","status":"SUCCESS","command":{"name":"usage","data":{"groups":[{"name":"Gemini Models","buckets":[{"id":"gemini-weekly","name":"Weekly Limit Remaining","window":"weekly","remaining_fraction":0.5217975974082947,"reset_time":"2026-10-22T21:42:35Z"}]},{"name":"Claude and GPT models","buckets":[{"id":"3p-weekly","window":"weekly","remaining_fraction":1,"reset_time":"2026-10-23T11:55:52Z"}]}]}}}"#
     let usage = try XCTUnwrap(AgentUsage.antigravity(XCTUnwrap(JSONObject(line: line))))

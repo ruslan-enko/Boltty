@@ -1,21 +1,12 @@
-// The text cleaning and chunking are ported from FluidAudio's
-// Supertonic3UnicodeProcessor and Supertonic3TextChunker
-// (github.com/FluidInference/FluidAudio, Apache-2.0), which follow Supertone's
-// reference `Helper.swift`. Splitting by script is Boltty's own.
-
 import Foundation
 
-/// What Supertonic-3 is fed: text cleaned the way the model was trained,
-/// wrapped in language tags and cut to fit its 128-character window.
 enum SupertonicText {
-  /// The model's languages (`AVAILABLE_LANGS` in the reference, less `na`).
   static let languages: Set<String> = [
     "en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi",
     "fr", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl", "pt", "ro",
     "ru", "sk", "sl", "sv", "tr", "uk", "vi",
   ]
 
-  /// The text encoder's fixed sequence length.
   static let window = 128
 
   /// Characters per pass. The window would hold ~110, but quality falls off
@@ -26,9 +17,6 @@ enum SupertonicText {
     language == "ko" || language == "ja" ? 57 : 70
   }
 
-  /// Languages written in Cyrillic, in which a Latin word is a name or a term
-  /// read as English ("README", "SwiftUI"). Read with the Cyrillic language,
-  /// Supertonic spells it out in Ukrainian letters ("README" came back "ядм").
   static let cyrillic: Set<String> = ["uk", "ru", "bg"]
 
   struct Run: Equatable {
@@ -36,9 +24,6 @@ enum SupertonicText {
     var language: String
   }
 
-  /// A pass cut where its script changes: in a Cyrillic language, runs of
-  /// Latin words become English, each said as a pass of its own. Spaces and
-  /// punctuation stay with the run they follow.
   static func runs(_ text: String, language: String) -> [Run] {
     guard cyrillic.contains(language) else { return [Run(text: text, language: language)] }
     var runs: [Run] = []
@@ -61,15 +46,6 @@ enum SupertonicText {
     return merged(runs, into: language)
   }
 
-  /// One pass of text, cleaned and wrapped in its language's tags. The
-  /// last pass of a piece ends on a stop, as the reference ends every
-  /// utterance; a run the piece goes on after ends on a comma, so it does
-  /// not fall as if the sentence were over.
-  ///
-  /// One language per pass: tagging Latin runs inside a Ukrainian pass
-  /// (`<uk>…</uk> <en>README</en> <uk>…</uk>`) made the model drop whole
-  /// words (Parakeet heard "Я оновив файл і запустив кодекс" for "Я оновив
-  /// файл README і запустив тести у Codex").
   static func tagged(_ text: String, language: String, last: Bool) -> String {
     var body = clean(text)
     guard !body.isEmpty else { return "" }
@@ -81,8 +57,6 @@ enum SupertonicText {
     return "<\(language)>\(body)</\(language)>"
   }
 
-  /// Token ids for one pass, padded to the window, and its mask. A scalar
-  /// the indexer does not know is -1, which the model masks itself.
   static func encode(_ tagged: String, indexer: [Int32]) -> (ids: [Int32], mask: [Float]) {
     var ids = [Int32](repeating: 0, count: window)
     var mask = [Float](repeating: 0, count: window)
@@ -96,8 +70,6 @@ enum SupertonicText {
 
   // MARK: - Cleaning (from the reference)
 
-  /// NFKD, no emoji, dashes and quotes made plain, decoration dropped,
-  /// spacing tightened. Ending punctuation is `tagged`'s.
   static func clean(_ raw: String) -> String {
     var text = raw.decomposedStringWithCompatibilityMapping
     text = String(String.UnicodeScalarView(text.unicodeScalars.filter { !isEmoji($0.value) }))
@@ -127,8 +99,6 @@ enum SupertonicText {
 
   // MARK: - Chunking (from the reference)
 
-  /// Cuts a piece into passes of at most `limit` characters: at sentence
-  /// ends, then commas, then spaces.
   static func passes(_ piece: String, limit: Int) -> [String] {
     let trimmed = piece.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return [] }
@@ -218,8 +188,6 @@ enum SupertonicText {
     }
   }
 
-  /// A run with no letters of its own ("3", " — ") joins the one before it,
-  /// and neighbours left in one language join up again.
   private static func merged(_ runs: [Run], into language: String) -> [Run] {
     var out: [Run] = []
     for run in runs {

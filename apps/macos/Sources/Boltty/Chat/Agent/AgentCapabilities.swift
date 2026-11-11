@@ -32,6 +32,10 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let permissionMessage = AgentCapabilities(rawValue: 1 << 18)
 
+  static let modelSwitching = AgentCapabilities(rawValue: 1 << 19)
+
+  static let effortReset = AgentCapabilities(rawValue: 1 << 20)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }

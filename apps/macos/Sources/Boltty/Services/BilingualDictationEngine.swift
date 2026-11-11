@@ -2,13 +2,6 @@ import AVFoundation
 import Foundation
 import OSLog
 
-/// Dictation in two languages: the same audio goes to a recognizer for each,
-/// and `BilingualTranscript` decides whose words every phrase gets.
-///
-/// `start`'s locale is the primary language's; the second one is this
-/// engine's. If the second recognizer cannot start — its model was removed, the
-/// Mac stopped offering it — dictation goes on in the first alone rather than
-/// not at all.
 @MainActor
 final class BilingualDictationEngine: DictationEngine {
   private let log = Logger(subsystem: "com.boltty", category: "bilingual-dictation")
@@ -54,7 +47,6 @@ final class BilingualDictationEngine: DictationEngine {
           if transcript.value.isComplete { report(true) }
         },
         onFailure: { [log] error in
-          // The second language failing is not the take failing.
           log.error("second language stopped: \(error.localizedDescription, privacy: .public)")
           transcript.value.end(.secondary)
           if transcript.value.isComplete { report(true) }
@@ -94,14 +86,12 @@ final class BilingualDictationEngine: DictationEngine {
     return PairSession([firstSession, secondSession])
   }
 
-  /// A transcript being built by escaping closures, all on the main actor.
   @MainActor
   private final class TranscriptBox {
     var value: BilingualTranscript
     init(_ value: BilingualTranscript) { self.value = value }
   }
 
-  /// One microphone, two recognizers.
   private final class PairSession: DictationSession, @unchecked Sendable {
     private let sessions: [DictationSession]
 

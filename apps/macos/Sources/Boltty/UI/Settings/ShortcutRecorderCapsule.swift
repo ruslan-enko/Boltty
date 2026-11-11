@@ -13,8 +13,6 @@ struct ShortcutRecorderCapsule: View {
   var accessibilityIdentifier: String?
   var isConflicting = false
   var isRowHovered = false
-  /// Shown at rest, disabled while the default is in place. For a recorder
-  /// that stands alone, where a slot shown only on hover read as an indent.
   var restoreAlwaysShown = false
   var canClear = false
   var isInline = false
@@ -62,7 +60,6 @@ struct ShortcutRecorderCapsule: View {
     .onChange(of: isEnabled) { _, enabled in
       if !enabled { isRecording = false }
     }
-    // While recording, chords are data: without this the menu takes them first.
     .onChange(of: isRecording) { _, recording in
       BolttyShortcutRouter.setSuspended(recording)
     }
@@ -71,8 +68,6 @@ struct ShortcutRecorderCapsule: View {
     }
   }
 
-  // The slot is always laid out and only fades: inserting the button on hover
-  // shoved the capsule sideways under the pointer.
   private var restoreButton: some View {
     let isShown = restoreAlwaysShown
       || (onRestoreDefault != nil && (isRowHovered || isRecording))
@@ -298,7 +293,7 @@ private struct RestoreGlyph: View {
   @Environment(\.settingsControlIsPressed) private var isPressed
 
   var body: some View {
-    BolttyIconView(icon: .undoCircleFill, size: 18)
+    BolttyIconView(icon: .undoCircle, size: 18)
       .foregroundStyle(.secondary)
       .opacity(isPressed ? 0.55 : 1)
       .animation(isPressed ? nil : SettingsMotion.quick, value: isPressed)

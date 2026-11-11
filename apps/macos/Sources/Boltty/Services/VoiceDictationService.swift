@@ -23,13 +23,9 @@ final class VoiceDictationService {
   var onFinalTranscript: (() -> Void)?
   var onError: ((String) -> Void)?
 
-  /// The local engine when Settings chose it, it is downloaded and it hears
-  /// the dictation language; `nil` is Apple's. Read at every take.
   static var localEngine: (() -> DictationEngine?)?
 
   var localeIdentifier: String = DictationLanguageCatalog.followSystemIdentifier
-  /// A second language to listen for beside the first
-  /// (`DictationLanguageCatalog.noSecondLanguageIdentifier`: none).
   var secondLocaleIdentifier: String = DictationLanguageCatalog.noSecondLanguageIdentifier
 
   private let audioEngine = AVAudioEngine()
@@ -93,7 +89,6 @@ final class VoiceDictationService {
   private func requestPermissionAndStart() {
     cancel()
     let generation = generation
-    // A local engine needs the microphone only, never Speech Recognition.
     if Self.localEngine?() != nil {
       guard usageDescription("NSMicrophoneUsageDescription")?.isEmpty == false else {
         fail("Voice input is unavailable in this Boltty build. Please update or reinstall Boltty.")
@@ -146,8 +141,6 @@ final class VoiceDictationService {
     }
   }
 
-  /// `local`: the take was started for the local engine, which is asked
-  /// for again here (the microphone's answer can take a while).
   private func startListening(generation: Int, local: Bool = false) async {
     guard self.generation == generation, state == .requestingPermission else { return }
     if local {

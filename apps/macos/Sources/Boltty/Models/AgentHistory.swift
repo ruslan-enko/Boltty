@@ -3,9 +3,6 @@ import Foundation
 enum AgentHistory {
   static let tabOrder: [AgentId] = [.claude, .codex, .opencode, .grok, .antigravity]
 
-  /// The agents Boltty shows: the ones switched on that are on this Mac. `installed`
-  /// is nil until the first scan has said. With none to show, every one: there is
-  /// nothing to narrow to, and the way to one is on the list.
   static func listed(enabled: Set<String>, installed: Set<String>?) -> [AgentId] {
     let shown = tabOrder.filter {
       enabled.contains($0.rawValue) && (installed?.contains($0.rawValue) ?? true)
@@ -13,7 +10,6 @@ enum AgentHistory {
     return shown.isEmpty ? tabOrder : shown
   }
 
-  /// One agent has no need of All: it would be the same list twice.
   static func stops(for agents: [AgentId]) -> [AgentId?] {
     agents.count == 1 ? [agents[0]] : [nil] + agents.map { Optional($0) }
   }

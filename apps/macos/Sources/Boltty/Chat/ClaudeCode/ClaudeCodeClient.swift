@@ -5,7 +5,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.claude
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .attachments, .images, .interrupt,
+    .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
     .permissionMessage, .steering
@@ -14,6 +14,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
   private let lock = NSLock()
   private var sessions: [String: LiveSession] = [:]
+  private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var conversationResolver: (@Sendable (String) -> UUID?)?
   private var cachedHandshake: JSONObject?
@@ -100,19 +101,37 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     )
   }
 
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let live = lock.withLock { () -> LiveSession? in
+      wantedOptions[id] = options
+      return sessions[id]
+    }
+    guard let live, live.process.isRunning else { return }
+    guard live.options.effort == options.effort, live.options.readOnly == options.readOnly else {
+      endProcess(of: id)
+      return
+    }
+    _ = try await live.sendControl(
+      ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: options.autoApprove)],
+      timeout: 5
+    )
+    if let model = options.model, model.modelID != live.model?.modelID {
+      _ = try await live.sendControl(["subtype": "set_model", "model": model.modelID], timeout: 5)
+      live.model = model
+    }
+  }
+
   func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    guard let session = lock.withLock({ sessions[sessionID] }) else { return }
+    guard let session = lock.withLock({ () -> LiveSession? in
+      wantedOptions[sessionID]?.autoApprove = enabled
+      return sessions[sessionID]
+    }) else { return }
     _ = try await session.sendControl(
       ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: enabled)],
       timeout: 5
     )
   }
 
-  /// A read-only chat's tools: measured on 2.1.296, asked to write
-  /// a file and run `touch`, it had neither tool and did neither. The web
-  /// reads nothing of the person's and writes nothing, so it goes without
-  /// asking (`readOnlyAllowedTools`): a read-only chat refuses every ask,
-  /// and "find where this news is" needs a search.
   static let readOnlyTools = "Read,Glob,Grep,WebSearch,WebFetch"
   static let readOnlyAllowedTools = "WebSearch,WebFetch"
 
@@ -138,11 +157,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return arguments
   }
 
-  /// Auto is Claude Code's own `auto` mode: its classifier lets through what
-  /// the person asked for, edits and commands alike, and asks about the rest
-  /// (2.1.296: `ls`, `rm -rf ./junk` and `git push --force`, each asked for,
-  /// ran without a `can_use_tool`). `acceptEdits` still asked about every
-  /// command, which read as Auto not working.
   static func permissionMode(autoApprove: Bool) -> String {
     autoApprove ? "auto" : "default"
   }
@@ -338,6 +352,11 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   func release(sessionID: String) async {
+    lock.withLock { _ = wantedOptions.removeValue(forKey: sessionID) }
+    endProcess(of: sessionID)
+  }
+
+  private func endProcess(of sessionID: String) {
     guard let session = lock.withLock({ sessions.removeValue(forKey: sessionID) }) else { return }
     session.readerTask?.cancel()
     session.process.closeInput()
@@ -346,9 +365,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   // MARK: - A chat's name
 
-  /// Print mode names nothing in its record, so a name is asked for: the
-  /// smallest model the CLI lists, with none of the person's servers, hooks or
-  /// instructions, and no session left behind (2.1.296: 5.5 s).
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     guard let executable = locate() else { return nil }
     let models = (try? await availableModels()) ?? []
@@ -396,11 +412,9 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard let directory = ClaudeCodeTranscript.locate(sessionID: sessionID)?.directory else {
       throw AgentClientError.sessionNotFound
     }
-    return try await startSession(
-      id: sessionID,
-      options: AgentSessionOptions(directory: directory),
-      resuming: true
-    )
+    var options = lock.withLock { wantedOptions[sessionID] } ?? AgentSessionOptions(directory: directory)
+    options.directory = directory
+    return try await startSession(id: sessionID, options: options, resuming: true)
   }
 
   @discardableResult
@@ -411,7 +425,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   ) async throws -> LiveSession {
     guard let executable = locate() else { throw AgentClientError.notInstalled }
     let directory = options.directory
-    let model = options.model
+    lock.withLock { wantedOptions[id] = options }
 
     let arguments = Self.sessionArguments(id: id, options: options, resuming: resuming)
 
@@ -421,7 +435,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       directory: directory,
       category: "claude-code"
     )
-    let session = LiveSession(id: id, directory: directory, model: model, process: process)
+    let session = LiveSession(id: id, options: options, process: process)
     process.onExit = { [weak self, weak session] status, stderr in
       guard let self, let session else { return }
       session.failPending(AgentClientError.processExited(status))

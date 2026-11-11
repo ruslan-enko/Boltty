@@ -20,9 +20,7 @@ final class BolttyAISettingsModel: ObservableObject {
 
   var probeHotkey: ((HotkeyBinding) -> HotkeyAvailability)?
   var onReviewAccess: (() -> Void)?
-  /// Says the samples on the Voice page; `nil` where nothing can speak.
   let speech: SpeechOutput?
-  /// The local voice models; `nil` where Settings shows none.
   let localModels: LocalModelStore?
 
   private var cancellables = Set<AnyCancellable>()
@@ -86,14 +84,10 @@ final class BolttyAISettingsModel: ObservableObject {
     let agent: AgentId
     let usage: AgentUsage?
     let history: AgentActivityHistory?
-    /// The CLI says it is signed out; its limits come back after a sign-in
-    /// and a refresh.
     var isSignedOut = false
     var id: AgentId { agent }
   }
 
-  /// The agents Usage shows. Settings › Agents lists every one regardless: it is
-  /// where one is switched on.
   var listedAgents: [AgentId] {
     let installed = engine.hasProbed
       ? Set(engine.registry.installations.filter(\.availability.isInstalled).map(\.provider.rawValue))
@@ -138,9 +132,6 @@ final class BolttyAISettingsModel: ObservableObject {
     }
   }
 
-  /// Asks every CLI again whether it is signed in, then reads limits,
-  /// activity and the statistics. Signing in happens in a terminal, so
-  /// nothing here may trust an earlier answer.
   func refreshUsage() async {
     guard !isRefreshingUsage else { return }
     isRefreshingUsage = true
@@ -154,8 +145,6 @@ final class BolttyAISettingsModel: ObservableObject {
     await statistics
   }
 
-  /// The page re-reads on its own when it is shown or its window comes
-  /// forward, but not on every switch between windows.
   func refreshUsageIfStale() async {
     if let usageReadAt, Date().timeIntervalSince(usageReadAt) < Self.usageStaleAfter { return }
     await refreshUsage()
@@ -231,9 +220,7 @@ final class BolttyAISettingsModel: ObservableObject {
       let installation = engine.registry.installation(for: agent)
       let models = modelsByProvider[agent.rawValue] ?? []
       let selectedModelID = appModel.settings.defaultModelByProvider[agent.rawValue]
-      let selectedModel = models.first { $0.selection.modelID == selectedModelID }
-        ?? models.first { $0.isDefault }
-        ?? models.first
+      let selectedModel = models.option(stored: selectedModelID) ?? models.agentDefault
       return AgentSettingsRow(
         agent: agent,
         enabled: appModel.settings.isProviderEnabled(agent.rawValue),
@@ -262,9 +249,7 @@ final class BolttyAISettingsModel: ObservableObject {
         settings.defaultModelByProvider.removeValue(forKey: agent.rawValue)
       }
       let models = modelsByProvider[agent.rawValue] ?? []
-      let match = models.first { $0.selection.modelID == modelID }
-        ?? models.first { $0.isDefault }
-        ?? models.first
+      let match = models.option(stored: modelID) ?? models.agentDefault
       let allowed = Set((match?.effortOptions ?? []).map(\.value))
       if let current = settings.defaultEffortByProvider[agent.rawValue],
          !allowed.contains(current)
@@ -300,8 +285,6 @@ final class BolttyAISettingsModel: ObservableObject {
     KeyboardShortcutCatalog.sections
   }
 
-  /// Every key that is not a menu command, with the launch chord as it is set
-  /// now.
   var builtInKeySections: [BuiltInKeySection] {
     let settings = appModel.settings
     return BuiltInKeyCatalog.sections(
@@ -364,8 +347,6 @@ final class BolttyAISettingsModel: ObservableObject {
   }
 
   func refreshAgents() async {
-    // Published before it suspends, so the Usage page joins this probe
-    // instead of starting a second one.
     if let agentsRefresh { return await agentsRefresh.value }
     let refresh = Task { @MainActor [engine] in
       isLoadingModels = true
@@ -388,7 +369,6 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.dictationSecondLocaleIdentifier = newValue } }
   }
 
-  /// What "Follow System" resolves to among the languages this Mac offers.
   private var primaryDictationLanguage: DictationLanguage? {
     DictationLanguageCatalog.resolve(
       identifier: dictationLocaleIdentifier,
@@ -397,8 +377,6 @@ final class BolttyAISettingsModel: ObservableObject {
     )
   }
 
-  /// The second picker offers every language but the first's own: two
-  /// recognizers of one language, in two regions, would only agree.
   var secondDictationLanguages: [DictationLanguage] {
     let taken = primaryDictationLanguage?.languageCode
     return dictationLanguages.filter { $0.languageCode != taken }
@@ -434,8 +412,6 @@ final class BolttyAISettingsModel: ObservableObject {
     Task { await localModels.install(id) }
   }
 
-  /// Choosing Parakeet is asking for it, so stopping its download takes the
-  /// choice back too.
   func stopDownload(_ id: LocalVoiceModel.ID) {
     localModels?.cancel(id)
     if id == .parakeetUltra { usesLocalDictation = false }
@@ -453,16 +429,12 @@ final class BolttyAISettingsModel: ObservableObject {
     localModels?.remove(id)
   }
 
-  /// The local models ticked on the setup card's voice step.
   @Published private(set) var setupVoices: Set<LocalVoiceModel.ID> = []
 
   func toggleSetupVoice(_ id: LocalVoiceModel.ID) {
     if setupVoices.contains(id) { setupVoices.remove(id) } else { setupVoices.insert(id) }
   }
 
-  /// Downloads each ticked model in the background. Parakeet is chosen at
-  /// once, Apple Dictation standing in until it is ready; Supertonic reads
-  /// as soon as it is here.
   func installSetupVoices() {
     for id in setupVoices {
       if id == .parakeetUltra { usesLocalDictation = true }
@@ -475,14 +447,11 @@ final class BolttyAISettingsModel: ObservableObject {
 
   static let parakeetEngine = "parakeet"
 
-  /// Dictation is Parakeet's where it hears the language.
   var usesLocalDictation: Bool {
     get { appModel.settings.dictationEngine == Self.parakeetEngine }
     set { appModel.updateSettings { $0.dictationEngine = newValue ? Self.parakeetEngine : "" } }
   }
 
-  /// Choosing Parakeet starts its download; Apple Dictation listens until it
-  /// is ready. Going back stops a download still running.
   func chooseLocalDictation(_ local: Bool) {
     if !local, case .downloading = modelState(.parakeetUltra) { localModels?.cancel(.parakeetUltra) }
     usesLocalDictation = local
@@ -491,7 +460,6 @@ final class BolttyAISettingsModel: ObservableObject {
 
   // MARK: Reading voice
 
-  /// Supertonic's presets, as Settings names them.
   static let localVoices: [(id: String, title: String)] = SupertonicSynthesizer.presets.map { id in
     let number = id.dropFirst()
     return (id, id.hasPrefix("F") ? "Female \(number)" : "Male \(number)")
@@ -508,7 +476,6 @@ final class BolttyAISettingsModel: ObservableObject {
     }
   }
 
-  /// The Mac's language when Supertonic speaks it, otherwise English.
   var localPreviewLanguage: String {
     let code = LanguageCode.of(Locale.current.identifier)
     return SupertonicText.languages.contains(code) ? code : "en"
@@ -545,7 +512,6 @@ final class BolttyAISettingsModel: ObservableObject {
     await installDictationLanguage(identifier)
   }
 
-  /// Downloads a language's model when this Mac has not got it yet.
   private func installDictationLanguage(_ identifier: String) async {
     dictationDownload = .idle
     guard
@@ -589,12 +555,9 @@ struct AgentSettingsRow: Identifiable, Equatable {
   let offersModels: Bool
   let models: [AgentModelOption]
   let selectedModelID: String?
-  /// The choice as far as the menu can show it: one the agent no longer offers
-  /// is its default, which is what a new chat gets.
   var shownModelID: String {
-    guard let selectedModelID, models.contains(where: { $0.selection.modelID == selectedModelID })
-    else { return "" }
-    return selectedModelID
+    guard let shown = models.option(stored: selectedModelID)?.id else { return "" }
+    return shown
   }
   var modelNoLongerOffered: String? {
     guard let selectedModelID, !selectedModelID.isEmpty, !models.isEmpty, shownModelID.isEmpty

@@ -37,8 +37,6 @@ enum PasteboardIngest {
       return .nothing
     }
 
-    // A link is words in the sentence, drawn as a link (`PromptTextView.styleLinks`),
-    // not a card. Trimmed, since a copied address brings its newline.
     if PromptAttachmentKind.isLink(string) {
       return .plainText(string.trimmingCharacters(in: .whitespacesAndNewlines))
     }

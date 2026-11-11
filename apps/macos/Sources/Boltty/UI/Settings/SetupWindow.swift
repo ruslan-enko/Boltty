@@ -1,13 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// **The first run's setup**: one card of steps —
-/// which agents, which faces, which keys, what Boltty may reach — after the
-/// show, on its sunset. Laid out as Dia's welcome card: which step of how
-/// many, a title and two short lines on the left with the buttons under
-/// them, and on the right the thing being chosen, drawn rather than
-/// described. Every choice is the one Settings holds, made through the same
-/// model; nothing here is stored apart.
 enum SetupStep: Int, CaseIterable {
   case agents, mascots, keys, voice, access
 
@@ -21,8 +14,6 @@ enum SetupStep: Int, CaseIterable {
     }
   }
 
-  /// Two lines, each written to fit the column whole — a word left alone
-  /// on a line of its own reads as a mistake. The first is said brighter.
   var subtitle: [(String, Bool)] {
     switch self {
     case .agents: [("The agents already on your Mac.", true), ("\nPick the ones Boltty AI may use.", false)]
@@ -47,7 +38,6 @@ struct SetupView: View {
 
   static let padding: CGFloat = 40
 
-  /// A Debug build opens on `-boltty.setup.step N`, to photograph a step.
   private static var firstStep: SetupStep {
     #if DEBUG
     return SetupStep(rawValue: UserDefaults.standard.integer(forKey: "boltty.setup.step")) ?? .agents
@@ -83,7 +73,6 @@ struct SetupView: View {
   private var words: some View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 14) {
-        // Which step of how many, in words.
         Text("Step \(step.rawValue + 1) of \(SetupStep.allCases.count)")
           .font(.system(size: 13, weight: .medium, design: .rounded))
           .foregroundStyle(.secondary)
@@ -154,7 +143,6 @@ struct SetupView: View {
     }
   }
 
-  /// What was ticked on the voice step starts downloading as setup ends.
   private func finish() {
     model.installSetupVoices()
     onFinish()
@@ -166,7 +154,6 @@ struct SetupView: View {
   }
 }
 
-/// A button's words with the key that presses it, as Dia's "Let's Go ↵".
 private struct SetupButtonLabel: View {
   let title: String
 
@@ -179,7 +166,6 @@ private struct SetupButtonLabel: View {
   }
 }
 
-/// A rounded tile of the card's own glass, lit when chosen.
 private struct SetupTile<Content: View>: View {
   var isOn = true
   var isHovered = false
@@ -191,10 +177,6 @@ private struct SetupTile<Content: View>: View {
       .background(
         RoundedRectangle(cornerRadius: 22, style: .continuous)
           .fill(.white.opacity(isOn ? (isHovered ? 0.17 : 0.12) : (isHovered ? 0.07 : 0.04)))
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-          .strokeBorder(.white.opacity(isOn ? 0.18 : 0.06), lineWidth: 1)
       )
       .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
   }
@@ -216,9 +198,6 @@ private struct SetupAgentsVisual: View {
   }
 }
 
-/// An agent: its face in colour while it is on, grey while it is off, and
-/// which one a new prompt starts on said under its name — the others offer
-/// it under the pointer.
 private struct SetupAgentTile: View {
   @ObservedObject var model: BolttyAISettingsModel
   let row: AgentSettingsRow
@@ -289,7 +268,6 @@ private struct SetupAgentTile: View {
 
 // MARK: - Mascots
 
-/// The faces in a pile, as the show had them, each its own picker.
 private struct SetupMascotsVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
   let onFaceHover: (Int) -> Void
@@ -311,7 +289,6 @@ private struct SetupMascotsVisual: View {
           SetupMascotFace(model: model, agent: agent, side: spot.frame.width * 0.8,
                           onHover: { onFaceHover(index) })
             .rotationEffect(.radians(-spot.tilt))
-            // The pile's y runs up; SwiftUI's runs down.
             .position(x: spot.frame.midX, y: proxy.size.height - spot.frame.midY)
             .zIndex(spot.frame.width)
         }
@@ -395,7 +372,6 @@ private struct SetupKeysVisual: View {
   }
 }
 
-/// The keys in the middle of the tile, what they do along its foot.
 private struct SetupKeysTile<Row: View, Note: View>: View {
   let caps: [String]
   let isOn: Bool
@@ -416,7 +392,6 @@ private struct SetupKeysTile<Row: View, Note: View>: View {
   }
 }
 
-/// Keys drawn as keys, on glass.
 private struct SetupKeycaps: View {
   let caps: [String]
 
@@ -460,8 +435,6 @@ private struct SetupAccessVisual: View {
   }
 }
 
-/// A permission: its icon, its name and where it stands, each on a line of
-/// its own height, so the four tiles line up.
 private struct SetupAccessTile: View {
   let kind: AccessKind
   let status: AccessStatus?
@@ -512,7 +485,6 @@ private struct SetupAccessTile: View {
 
 // MARK: - Window
 
-/// A borderless window can take the keys only if it says so.
 private final class SetupCardWindow: NSWindow {
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { true }
@@ -525,7 +497,6 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
 
   let access: AccessPermissionsModel
   var onClose: (() -> Void)?
-  /// The pointer came onto agent `index`'s face.
   var onFaceHover: ((Int) -> Void)?
 
   init(model: BolttyAISettingsModel, access: AccessPermissionsModel) {
@@ -543,10 +514,7 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
     window.isReleasedWhenClosed = false
     window.isOpaque = false
     window.backgroundColor = .clear
-    // The system's shadow of a borderless window is cut from its
-    // rectangle and drew a hard edge round the glass's corners.
     window.hasShadow = false
-    // White words on glass over the sunset, whatever the system says.
     window.appearance = NSAppearance(named: .darkAqua)
     super.init(window: window)
     window.delegate = self
@@ -559,10 +527,6 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
       )
     )
     hosting.sizingOptions = []
-    // The panel's own glass host, the card's words beside the glass rather
-    // than in it: an `NSGlassEffectView` holding the SwiftUI view, as the
-    // window's content or inside it, showed a faint square-cornered
-    // rectangle round the rounded glass; the panel's host does not.
     let container = NSView(frame: NSRect(origin: .zero, size: Self.contentSize))
     container.wantsLayer = true
     container.layer?.cornerRadius = Self.cornerRadius
@@ -582,7 +546,6 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
     fatalError("init(coder:) has not been implemented")
   }
 
-  /// In the middle of `screen` — the one the show played on — exactly.
   func show(on screen: NSScreen? = nil) {
     access.startWatching()
     if let window, let screen = screen ?? NSScreen.main {
@@ -591,8 +554,6 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
                                     y: (frame.midY - window.frame.height / 2).rounded()))
     }
     NSApp.activate(ignoringOtherApps: true)
-    // Only the sunset and the card, as a setup assistant: the menu bar and
-    // the Dock come back when the card closes.
     NSApp.presentationOptions = [.hideDock, .hideMenuBar]
     showWindow(nil)
     window?.makeKeyAndOrderFront(nil)
@@ -607,18 +568,16 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
 
 // MARK: - Voice
 
-/// The two local models, each a tile to tick. Nothing is ticked at first: a
-/// gigabyte is not downloaded without a yes, and a tick is that yes.
 private struct SetupVoiceVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
 
   var body: some View {
     VStack(spacing: 12) {
       SetupVoiceTile(
-        model: model, id: .parakeetUltra, icon: .micFill, title: "Natural dictation",
+        model: model, id: .parakeetUltra, icon: .mic, title: "Natural dictation",
         detail: "Parakeet hears Ukrainian, English and 23 more, even mixed in one sentence.")
       SetupVoiceTile(
-        model: model, id: .supertonic3, icon: .speakerFill, title: "Natural voice",
+        model: model, id: .supertonic3, icon: .speaker, title: "Natural voice",
         detail: "Supertonic reads answers aloud in 31 languages.")
       Text(summary)
         .font(.system(size: 12, design: .rounded))
@@ -664,7 +623,7 @@ private struct SetupVoiceTile: View {
             .foregroundStyle(.tertiary)
         }
         Spacer(minLength: 8)
-        BolttyIconView(icon: isOn || isHere ? .checkCircleFill : .circle, size: 24)
+        BolttyIconView(icon: isOn || isHere ? .checkCircle : .circle, size: 24)
           .foregroundStyle(isOn || isHere ? .primary : .tertiary)
       }
       .padding(.horizontal, 18)

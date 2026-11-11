@@ -168,12 +168,10 @@ final class BolttyAIOptionRow: NSView {
     guard let layer else { return }
     let lit = isFocused || isPressed
     let target = (lit
-      ? PaletteInk.secondaryFill
+      ? PaletteInk.selectedFill
       : isHovered ? PaletteInk.tertiaryFill : NSColor.clear).cgColor
     let previous = layer.presentation()?.backgroundColor ?? layer.backgroundColor
     layer.backgroundColor = target
-    layer.borderWidth = lit ? 1 / max(window?.backingScaleFactor ?? 2, 1) : 0
-    layer.borderColor = PaletteInk.selectedFill.cgColor
     guard animated, !MotionPreferences.reduceMotion else { return }
     let fade = CABasicAnimation(keyPath: "backgroundColor")
     fade.fromValue = previous
@@ -284,14 +282,7 @@ private final class OptionMarkView: NSView {
 
 // MARK: - A permission, as a Mac asks for one
 
-/// What a permission is about, verbatim: the tool's own name as a label, the
-/// command under it in mono, and a long one cut to `maximumLines` with a link
-/// that says how much is left. The tool's name is a label, not the
-/// command's first line: in the same mono it reads as part of the command.
 final class BolttyAICommandWell: NSView {
-  /// The lines a long command shows, counted as drawn: one `ssh` with ten
-  /// commands after `;` is one line of text and eight of well. One line
-  /// more shows whole: the link would take that line's room to hide it.
   static let maximumLines = 4
 
   private let label = NSTextField(labelWithString: "")
@@ -366,8 +357,6 @@ final class BolttyAICommandWell: NSView {
     refresh()
   }
 
-  /// `PermissionSentence.detail`'s shape: the tool's name, then what it
-  /// would touch, a line each. One line alone is shown as it is.
   static func parts(of words: String) -> (tool: String?, command: String) {
     let lines = words.components(separatedBy: "\n")
     guard lines.count > 1 else { return (nil, words) }
@@ -408,7 +397,6 @@ final class BolttyAICommandWell: NSView {
 
   private static func truncates(_ lines: Int) -> Bool { lines > maximumLines + 1 }
 
-  /// Lines as drawn at this width; before the well has one, lines of text.
   private static func lineCount(_ command: String, width: CGFloat) -> Int {
     guard width > 0 else { return command.components(separatedBy: "\n").count }
     let height = codeHeight(command, width: width)
@@ -422,8 +410,6 @@ final class BolttyAICommandWell: NSView {
     ).height)
   }
 
-  /// Measured to the ink: the first line's caps and the last line's
-  /// baseline stand `serviceWellPadding` from the well's edge.
   private static func insets(labelled: Bool, linked: Bool) -> NSEdgeInsets {
     let pad = AgentPaletteMetrics.serviceWellPadding
     let top = labelled
@@ -469,9 +455,6 @@ final class BolttyAICommandWell: NSView {
   }
 }
 
-/// Words that do one thing when clicked — the well's Show More. A label
-/// rather than a borderless button, so its words start where the label's
-/// and the command's do: a button's title stands two points further in.
 final class BolttyAIWellLink: NSTextField {
   var onClick: (() -> Void)?
   private var hoverArea: NSTrackingArea?
@@ -507,10 +490,6 @@ final class BolttyAIWellLink: NSTextField {
   }
 }
 
-/// A permission's answers as a dialog's buttons, and what "always" reaches
-/// said over them — under them, at the leading edge, it reads as Deny's.
-/// The card ends on the buttons, as a
-/// dialog does.
 final class BolttyAIApprovalBar: NSView {
   static let buttonHeight: CGFloat = 32
   static let buttonSpacing: CGFloat = 8
@@ -689,9 +668,6 @@ final class BolttyAIApprovalBar: NSView {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: reset)
   }
 
-  /// One kind of button for every answer: a white pill beside glass ones
-  /// read as two kinds of control. The one Return presses wears the accent,
-  /// as a Mac's default button does, and no key glyph.
   private static func makeButton(at index: Int) -> NSButton {
     let glass = GlassPillLabelButton(frame: .zero)
     glass.titleFontSize = AgentPaletteMetrics.typeMeta
@@ -717,8 +693,6 @@ final class BolttyAIApprovalBar: NSView {
       .map { options[$0.tag].label }
   }
 
-  /// Whether the bar opens on a note, which the card stands closer to what
-  /// it captions.
   static func isCaptioned(_ options: [AgentQuestion.Option]) -> Bool { noteText(options) != nil }
 
   private static func noteText(_ options: [AgentQuestion.Option]) -> String? {

@@ -1,12 +1,5 @@
 import AppKit
 
-/// What an Ask Boltty answer draws, in the answering agent's gradient: each
-/// shape strokes itself on — a circle round, an arrow to its head — over a glow of its own,
-/// and its words fade in once it is drawn. It stays until the next question.
-///
-/// One layer holds one surface's shapes: the screen's, or the board's. Its
-/// 0–1000 is measured across `space` (the layer's own coordinates, origin at
-/// the bottom left, as AppKit's are), y counted from its top.
 final class AskBolttyDrawingLayer: CALayer {
   static let width: CGFloat = 3.5
   static let glowRadius: CGFloat = 9
@@ -14,15 +7,11 @@ final class AskBolttyDrawingLayer: CALayer {
   static let glowAlpha: CGFloat = 0.55
   static let arrowHead: CGFloat = 16
   static var labelFont: NSFont { roundedAppFont(size: AgentPaletteMetrics.typeSecondary, weight: .semibold) }
-  /// Stroked at this many points a second, held between these bounds.
   static let drawSpeed: CGFloat = 900
   static let drawDuration: ClosedRange<CFTimeInterval> = 0.35...1.1
-  /// Between two shapes put up by one sentence.
   static let stagger: CFTimeInterval = 0.18
 
-  /// The face's gradient, lifted to read on any page, top to foot.
   var colours: [NSColor] = []
-  /// Lines and words at this many times their size: the board is small.
   var scale: CGFloat = 1
 
   private(set) var shapeCount = 0
@@ -41,7 +30,6 @@ final class AskBolttyDrawingLayer: CALayer {
     queuedUntil = 0
   }
 
-  /// Draws `shape`, its 0–1000 measured across `space`.
   func draw(_ shape: AskBolttyShape, in space: CGRect) {
     let now = CACurrentMediaTime()
     let begin = max(now, queuedUntil)
@@ -117,7 +105,6 @@ final class AskBolttyDrawingLayer: CALayer {
   ) -> CALayer {
     let font = Self.labelFont.withSize(Self.labelFont.pointSize * scale)
     let attributed = NSAttributedString(string: words, attributes: [
-      // Written down, not dynamic: the app's own appearance may be light.
       .font: font, .foregroundColor: NSColor.white,
     ])
     let size = attributed.boundingRect(
@@ -136,7 +123,6 @@ final class AskBolttyDrawingLayer: CALayer {
       let p = Self.place(at, in: space)
       anchor = CGPoint(x: p.x - box.width / 2, y: p.y - box.height / 2)
     case let .arrow(from, _):
-      // At the tail, away from the head: the head points at the thing.
       let p = Self.place(from, in: space)
       anchor = CGPoint(x: p.x - box.width / 2, y: p.y + gap)
     default:
@@ -144,11 +130,9 @@ final class AskBolttyDrawingLayer: CALayer {
       anchor = CGPoint(x: bounds.midX - box.width / 2, y: bounds.maxY + gap)
     }
     var frame = CGRect(origin: anchor, size: box)
-    // Inside the surface, whichever side the shape stands at.
     if frame.maxY > bounds.maxY - 4 { frame.origin.y = (path?.boundingBoxOfPath.minY ?? frame.minY) - gap - box.height }
     frame.origin.x = min(max(frame.minX, bounds.minX + 4), bounds.maxX - 4 - box.width)
     frame.origin.y = min(max(frame.minY, bounds.minY + 4), bounds.maxY - 4 - box.height)
-    // On a dark capsule, so the words read over a light page as over a dark one.
     let pill = CALayer()
     pill.contentsScale = contentsScale
     pill.frame = frame
@@ -172,7 +156,6 @@ final class AskBolttyDrawingLayer: CALayer {
 
   // MARK: - Geometry
 
-  /// A 0–1000 point in `space`, y counted from its top.
   static func place(_ point: CGPoint, in space: CGRect) -> CGPoint {
     CGPoint(x: space.minX + point.x / 1000 * space.width,
             y: space.maxY - point.y / 1000 * space.height)
@@ -184,7 +167,6 @@ final class AskBolttyDrawingLayer: CALayer {
     case let .circle(center, radius):
       let c = place(center, in: space)
       let r = radius / 1000 * space.width
-      // Started at the top and drawn clockwise, as a hand rings something.
       path.addArc(center: c, radius: r, startAngle: .pi / 2, endAngle: .pi / 2 - 2 * .pi, clockwise: true)
     case let .box(rect):
       let a = place(rect.origin, in: space)
@@ -223,7 +205,6 @@ final class AskBolttyDrawingLayer: CALayer {
     return path.isEmpty ? nil : path
   }
 
-  /// Roughly how long the path is, to pace its stroke.
   static func length(of path: CGPath?) -> CGFloat {
     guard let path else { return 0 }
     var length: CGFloat = 0

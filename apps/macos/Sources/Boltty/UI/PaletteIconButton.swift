@@ -120,9 +120,6 @@ class PaletteIconButton: NSButton {
     PaletteHelpPresenter.shared.dismiss(for: self)
   }
 
-  // A button shown under a pointer that is already there gets no
-  // mouseEntered: a reveal on hover would otherwise answer only a pointer
-  // that came in from outside it.
   override func viewDidUnhide() {
     super.viewDidUnhide()
     guard let window, window.isKeyWindow else { return }
@@ -258,7 +255,6 @@ extension NSView {
   }
 }
 
-/// A view that tells help tags where its glass is, in its own coordinates.
 @MainActor
 protocol PaletteHelpRoomProviding: AnyObject {
   var helpRoom: NSRect? { get }
@@ -371,9 +367,6 @@ final class PaletteHelpPresenter {
     return NSRect(x: x, y: y, width: size.width, height: size.height)
   }
 
-  /// The screen's room inside the host, cut to the glass the control stands
-  /// on: the panel's window is wider than its shell, and a tag hanging off
-  /// the glass reads as dropped.
   static func room(in host: NSView, for view: NSView) -> NSRect {
     var room = room(in: host)
     var ancestor = view.superview
@@ -438,14 +431,10 @@ final class PaletteHelpPresenter {
   }
 }
 
-/// What every help tag stands on: the system's glass, with density over it and
-/// never in its tint. The glass brings its own edge and shadow. It takes no
-/// clicks, so a press on a pinned tag still reaches the tag.
 final class PaletteHelpBackdrop: NSView {
   private let glass = NSGlassEffectView()
   private let density = NSView()
 
-  /// Goes in first, so everything the tag adds later stands above it.
   static func install(in tag: NSView) {
     let backdrop = PaletteHelpBackdrop()
     backdrop.translatesAutoresizingMaskIntoConstraints = false
@@ -477,7 +466,6 @@ final class PaletteHelpBackdrop: NSView {
     super.layout()
     glass.frame = bounds
     density.frame = bounds
-    // A glass view loses its corner when its size changes.
     glass.cornerRadius = AgentPaletteMetrics.helpCornerRadius
     density.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpCornerRadius)
   }
@@ -503,12 +491,9 @@ private final class PaletteHelpTag: NSView {
     titleRow.setViews([title], in: .leading)
     if let shortcut, !shortcut.isEmpty {
       let caps = PaletteHelpPresenter.keys(of: shortcut).map(PaletteKeycapView.init(key:))
-      keycaps = caps
       let keys = NSStackView(views: caps)
       keys.orientation = .horizontal
       keys.spacing = AgentPaletteMetrics.helpKeycapSpacing
-      // A second line wider than the title widens the row; the room goes
-      // between title and keys, never into a keycap.
       keys.setHuggingPriority(.required, for: .horizontal)
       title.setContentHuggingPriority(.defaultLow, for: .horizontal)
       titleRow.setViews([keys], in: .trailing)
@@ -546,21 +531,8 @@ private final class PaletteHelpTag: NSView {
       column.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -vertical),
       titleRow.widthAnchor.constraint(equalTo: column.widthAnchor),
     ])
-    applyHairlines()
     setAccessibilityRole(.group)
     setAccessibilityLabel(text)
-  }
-
-  private var keycaps: [PaletteKeycapView] = []
-
-  override func viewDidChangeBackingProperties() {
-    super.viewDidChangeBackingProperties()
-    applyHairlines()
-  }
-
-  private func applyHairlines() {
-    let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-    for cap in keycaps { cap.layer?.borderWidth = 1 / scale }
   }
 
   private static func label(_ text: String, ink: NSColor, maxWidth: CGFloat) -> NSTextField {
@@ -586,55 +558,92 @@ private final class PaletteHelpTag: NSView {
 }
 
 private final class PaletteKeycapView: NSView {
+  private let glass = NSGlassEffectView()
+
   init(key: String) {
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
-    wantsLayer = true
-    layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpKeycapCornerRadius)
-    layer?.borderColor = AgentPaletteMetrics.helpKeycapEdge.cgColor
+    glass.style = .regular
+    glass.contentView = NSView()
+    addSubview(glass)
     let font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote)
     let size = AgentPaletteMetrics.helpKeycapSize
-    let mark: NSView
-    var centring: [NSLayoutConstraint]
-    if let image = Self.icons[key]?.image(size: font.pointSize + 2, description: key) {
-      let view = NSImageView(image: image)
-      view.contentTintColor = PaletteInk.secondary
-      mark = view
-      centring = [mark.centerYAnchor.constraint(equalTo: centerYAnchor)]
-    } else {
-      let label = NSTextField(labelWithString: key)
-      label.font = font
-      label.textColor = PaletteInk.secondary
-      label.alignment = .center
-      mark = label
-      centring = [label.firstBaselineAnchor.constraint(
-        equalTo: centerYAnchor, constant: font.capHeight / 2
-      )]
-    }
-    mark.translatesAutoresizingMaskIntoConstraints = false
-    addSubview(mark)
-    centring += [
+    var constraints = [
       heightAnchor.constraint(equalToConstant: size),
       widthAnchor.constraint(greaterThanOrEqualToConstant: size),
-      // A plain view has no width of its own: without this a stack hands it
-      // whatever room is left over.
       {
         let snug = widthAnchor.constraint(equalToConstant: size)
         snug.priority = .defaultHigh
         return snug
       }(),
-      mark.centerXAnchor.constraint(equalTo: centerXAnchor),
-      mark.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 4),
-      mark.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),
     ]
-    NSLayoutConstraint.activate(centring)
+    if let image = Self.icons[key]?.image(size: font.pointSize + 2, description: key) {
+      let mark = NSImageView(image: image)
+      mark.contentTintColor = PaletteInk.secondary
+      mark.translatesAutoresizingMaskIntoConstraints = false
+      addSubview(mark)
+      constraints += [
+        mark.centerXAnchor.constraint(equalTo: centerXAnchor),
+        mark.centerYAnchor.constraint(equalTo: centerYAnchor),
+      ]
+    } else {
+      let mark = PaletteKeyLettersView(key: key, font: font)
+      mark.translatesAutoresizingMaskIntoConstraints = false
+      addSubview(mark)
+      constraints += [
+        mark.leadingAnchor.constraint(equalTo: leadingAnchor),
+        mark.trailingAnchor.constraint(equalTo: trailingAnchor),
+        mark.topAnchor.constraint(equalTo: topAnchor),
+        mark.bottomAnchor.constraint(equalTo: bottomAnchor),
+        widthAnchor.constraint(
+          greaterThanOrEqualToConstant: ceil(mark.inkWidth) + AgentPaletteMetrics.helpKeycapInset * 2),
+      ]
+    }
+    NSLayoutConstraint.activate(constraints)
     setAccessibilityElement(false)
+  }
+
+  override func layout() {
+    super.layout()
+    glass.frame = bounds
+    glass.cornerRadius = AgentPaletteMetrics.helpKeycapCornerRadius
   }
 
   private static let icons: [String: BolttyIcon] = [
     "↵": .keyReturn, "⏎": .keyReturn, "⌘": .keyCommand, "⇧": .keyShift,
     "⌥": .keyOption, "⌃": .keyControl, "⌫": .keyDelete, "⇥": .keyTab,
   ]
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+private final class PaletteKeyLettersView: NSView {
+  private let line: CTLine
+  private let ink: CGRect
+  var inkWidth: CGFloat { ink.width }
+
+  init(key: String, font: NSFont) {
+    line = CTLineCreateWithAttributedString(NSAttributedString(string: key, attributes: [
+      .font: font,
+      NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true,
+    ]))
+    ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+    super.init(frame: .zero)
+  }
+
+  override func draw(_ dirtyRect: NSRect) {
+    guard let context = NSGraphicsContext.current?.cgContext else { return }
+    let scale = window?.backingScaleFactor ?? 2
+    PaletteInk.secondary.setFill()
+    context.textMatrix = .identity
+    context.textPosition = CGPoint(
+      x: ((bounds.midX - ink.midX) * scale).rounded() / scale,
+      y: ((bounds.midY - ink.midY) * scale).rounded() / scale)
+    CTLineDraw(line, context)
+  }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

@@ -1,13 +1,7 @@
 import AVFoundation
 
-/// The mascot's voice while Ask Boltty's words type out: a soft blip a syllable,
-/// as Animal Crossing and Zelda give their characters — no words, a pitch
-/// that wanders a little round the agent's own, in place of reading the
-/// answer aloud. Synthesized here, so the sound is
-/// Boltty's: a short sine with a quick attack and a falling tail.
 @MainActor
 final class AskBolttyBlips {
-  /// Quiet: under the interface sounds, which sit near −21 dBFS.
   static let volume: Float = 0.08
   nonisolated static let duration: Double = 0.055
 
@@ -16,7 +10,6 @@ final class AskBolttyBlips {
   private let state = BlipState()
   private var started = false
 
-  /// One blip at `pitch` Hz.
   func blip(pitch: Double) {
     guard prepare() else { return }
     state.trigger(pitch: pitch)
@@ -61,7 +54,6 @@ final class AskBolttyBlips {
   }
 }
 
-/// Shared with the render thread under a lock: what the next samples are.
 final class BlipState: @unchecked Sendable {
   private let lock = NSLock()
   private var pitch = 0.0
@@ -86,7 +78,6 @@ final class BlipState: @unchecked Sendable {
         }
         let t = Double(length - remaining) / Double(length)
         let envelope = min(1, t * 12) * pow(1 - t, 2)
-        // A touch of the octave makes it a voice, not a beep.
         let value = sin(phase) + 0.3 * sin(phase * 2)
         samples[i] = Float(value * envelope)
         phase += 2 * .pi * pitch / rate

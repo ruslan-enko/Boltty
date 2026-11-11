@@ -1,12 +1,9 @@
 import Foundation
 
-/// A key Boltty answers that is not a menu command, so it cannot be rebound:
-/// the panel's own keys, Ask Boltty's chord, Settings' ‹ ›.
 struct BuiltInKey: Identifiable, Equatable {
   let id: String
   let title: String
   let keys: String
-  /// One line under the title: where the key works, or where to change it.
   var detail: String?
 }
 
@@ -17,16 +14,7 @@ struct BuiltInKeySection: Identifiable, Equatable {
   var id: String { title }
 }
 
-/// Every key the product answers besides the menu's (`KeyboardShortcutCatalog`),
-/// written down from where the panel handles them
-/// (`AgentPaletteView.textView(_:doCommandBy:)`, `PromptTextView`,
-/// Settings' toolbar). Settings › Shortcuts lists them
-/// so a key that exists is a key that can be found; a key added to the panel
-/// is added here in the same change.
 enum BuiltInKeyCatalog {
-  /// `launchChord` is the key that opens Boltty AI from anywhere (`nil`: it is
-  /// switched off).
-  /// With one `agents` listed, the keys that choose among them are not there to list.
   static func sections(launchChord: String?, agents: Int = AgentHistory.tabOrder.count) -> [BuiltInKeySection] {
     let choices = agents > 1
     return everySection(launchChord: launchChord).map { section in
@@ -98,6 +86,10 @@ enum BuiltInKeyCatalog {
         BuiltInKey(
           id: "attach", title: "Attach a file", keys: "⇧⌘A",
           detail: "Where the agent reads files"
+        ),
+        BuiltInKey(
+          id: "model", title: "Choose the model", keys: "⇧⌘M",
+          detail: "Applies from the next message"
         ),
         BuiltInKey(id: "chatBack", title: "Back to the chat list", keys: "Esc", detail: nil),
       ]),

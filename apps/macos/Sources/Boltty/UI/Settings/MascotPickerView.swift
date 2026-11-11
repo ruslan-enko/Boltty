@@ -4,15 +4,9 @@ import SwiftUI
 struct MascotFace: NSViewRepresentable {
   var look: MascotLook
   var emotion: MascotEmotion = .curious
-  /// Seeds the face's own motion: faces that share it move as one.
   var identity: UUID = MascotStill.identity
-  /// A link of its own at the display's rate — for a face that is the
-  /// thing being looked at (the setup card's); the shared clock is 60 Hz.
   var ownsDisplayLink = false
-  /// Each change pokes the face once.
   var pokes = 0
-  /// Pixels per point, when not the screen's: a big face that is one of
-  /// several live ones draws under Retina, where it costs least.
   var renderScale: CGFloat? = nil
 
   final class Coordinator {
@@ -152,8 +146,6 @@ struct MascotPickerView: View {
   }
 }
 
-/// The face's three choices as rows of a settings form, for the agent's own
-/// page. One cell size throughout, so the three rows line up.
 struct MascotChoiceRows: View {
   @ObservedObject var model: BolttyAISettingsModel
   let agent: AgentId
@@ -191,7 +183,6 @@ struct MascotChoiceRows: View {
     }
   }
 
-  /// The name centred on its cells; a LabeledContent sets it at their top.
   private func row<Cells: View>(_ title: String, @ViewBuilder cells: () -> Cells) -> some View {
     HStack(spacing: 12) {
       Text(title)
@@ -201,8 +192,6 @@ struct MascotChoiceRows: View {
   }
 }
 
-/// One look to choose: ringed when it is the agent's, faded when another
-/// agent wears it.
 struct MascotChoice: View {
   @ObservedObject var model: BolttyAISettingsModel
   let agent: AgentId
@@ -225,7 +214,6 @@ struct MascotChoice: View {
 }
 
 extension BolttyAISettingsModel {
-  /// Only when the default differs and no other agent wears it.
   func canRestoreDefaultMascot(for agent: AgentId) -> Bool {
     guard let standard = MascotRoster.defaultLook(for: agent), standard != mascotLook(for: agent) else {
       return false
@@ -278,12 +266,8 @@ private struct MascotCellStyle: ButtonStyle {
       .padding(3)
       .background(
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .fill(Color.primary.opacity(isPressed ? 0.14 : (isHovered ? 0.08 : 0)))
+          .fill(Color.primary.opacity(isPressed ? 0.2 : (isChosen ? 0.16 : (isHovered ? 0.08 : 0))))
           .animation(isPressed ? nil : SettingsMotion.quick, value: isPressed)
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .strokeBorder(Color.bolttyAccent, lineWidth: isChosen ? 2 : 0)
           .animation(SettingsMotion.quick, value: isChosen)
       )
       .contentShape(Rectangle())

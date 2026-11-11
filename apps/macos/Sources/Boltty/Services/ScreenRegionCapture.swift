@@ -14,7 +14,6 @@ enum ScreenRegionCapture {
   static let regionLongEdge: CGFloat = 2048
   static let outlineWidth: CGFloat = 4
   static let outlineColor = "#FF3B30"
-  /// What stands where the rest of the screen was.
   static let hiddenColor = "#1C1C1E"
   static let recognizedTextByteLimit = PromptExpansion.inlineTextByteLimit
 
@@ -38,8 +37,6 @@ enum ScreenRegionCapture {
     let pixels = pixelRect(
       of: region, in: frozen.displayFrame, imageSize: CGSize(width: image.width, height: image.height))
     guard !pixels.isEmpty, let crop = image.cropping(to: pixels) else { throw Failure.failed }
-    // Asked about all of it, all of it goes. Otherwise only what the question
-    // is about: an area of one window is no reason to send the others.
     let isWholeScreen = region.insetBy(dx: -1, dy: -1).contains(frozen.displayFrame)
     let layers = isWholeScreen ? nil : frozen.layers(showing: region).map { layer in
       ScreenLayer(
@@ -179,7 +176,6 @@ enum ScreenRegionCapture {
     context.interpolationQuality = .high
     let whole = CGRect(origin: .zero, size: size)
     if let layers {
-      // Scaled once: each shown piece is then only a copy.
       let scaledImage = scaled(image, longEdge: longEdge, outlining: nil) ?? image
       context.setFillColor(HexColor.nsColor(hiddenColor).cgColor)
       context.fill(whole)
@@ -253,8 +249,6 @@ enum ScreenRegionCapture {
   }
 }
 
-/// One piece of the screen as it goes to an agent: drawn in order, shown as it
-/// was or hidden.
 struct ScreenLayer: Equatable, Sendable {
   var frame: CGRect
   var isShown: Bool
@@ -266,15 +260,11 @@ struct FrozenScreen: @unchecked Sendable {
     var app: String?
     var title: String?
     var pid: pid_t = 0
-    /// 0 is an ordinary window; above it the menu bar, menus and floating panels.
     var layer = 0
   }
 
-  /// The window server's level for the menu bar. Not all that stands there is
-  /// the bar: the system's Screenshot keeps a window as big as the screen at it.
   static let menuBarLayer = 24
   static let menuBarTallest: CGFloat = 100
-  /// Points tried across a region to find the windows it shows.
   static let regionSamples = 9
 
   var image: CGImage
@@ -289,15 +279,10 @@ struct FrozenScreen: @unchecked Sendable {
     window(at: point).flatMap { ScreenRegionCapture.contextLine(app: $0.app, window: $0.title) }
   }
 
-  /// The ordinary window in front at `point`. Above them stand things that are
-  /// not what anyone means, some as wide as the screen and clear.
   private func window(at point: CGPoint) -> Window? {
     windows.first { $0.layer == 0 && $0.frame.contains(point) }
   }
 
-  /// Whether `point` is on a Finder window or on the desktop, which is Finder's.
-  /// With no ordinary window there it is the desktop, unless it is the menu bar
-  /// or some other small thing floating over it.
   func finderSpot(at point: CGPoint) -> FinderSpot? {
     if let window = window(at: point) {
       let isFinder = NSRunningApplication(processIdentifier: window.pid)?.bundleIdentifier
@@ -315,12 +300,6 @@ struct FrozenScreen: @unchecked Sendable {
       && window.frame.intersects(displayFrame)
   }
 
-  /// What of the screen goes with a question about `region`, in drawing order:
-  /// the windows it shows, what those windows have open over them (a menu, a
-  /// popover), the menu bar, where "where is Export?" is often answered, and
-  /// the region itself. Everything else is painted out where it stands, so the
-  /// picture keeps its coordinates for pointing and drawing, and a window
-  /// lying over a shown one stays hidden, as does another app's banner.
   func layers(showing region: CGRect) -> [ScreenLayer] {
     let display = displayFrame
     let ordinary = windows.filter { $0.layer == 0 && $0.frame.intersects(display) }
@@ -336,7 +315,6 @@ struct FrozenScreen: @unchecked Sendable {
       }
     }
     let owners = Set(shown.map { ordinary[$0].pid })
-    // The list runs front to back; drawing runs back to front.
     var layers = ordinary.indices.reversed().map {
       ScreenLayer(frame: ordinary[$0].frame, isShown: shown.contains($0))
     }

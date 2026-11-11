@@ -176,8 +176,6 @@ struct AgentActivity: Identifiable, Codable, Equatable, Sendable {
     return spokenName
   }
 
-  /// A tool's own id read as words: `run_command` is "Run command". Names
-  /// that already read as words, `Bash` or `mcp__x__y`, are left alone.
   private var spokenName: String {
     guard name.contains("_"), !name.contains("__"), !name.contains(" ") else { return name }
     let words = name.replacingOccurrences(of: "_", with: " ")

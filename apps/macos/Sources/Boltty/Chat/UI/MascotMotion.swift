@@ -89,8 +89,6 @@ struct MascotMotion {
     pointerTarget = SIMD3(max(-1, min(1, x)), max(-1, min(1, y)), weight)
   }
 
-  /// A small bob, as if taking a word in: the listening orb's face nods at
-  /// each word it hears. Skipped while anything else is being acted.
   mutating func nod() {
     guard action == nil else { return }
     bopCount += 1
@@ -290,8 +288,6 @@ struct MascotEyeShape: Equatable {
 }
 
 extension MascotMotionPose {
-  /// `rest` at 0, `live` at 1 — a face going back to its standard pose, or
-  /// out of it, passes through every pose between.
   static func blend(_ rest: MascotMotionPose, _ live: MascotMotionPose, _ t: Double) -> MascotMotionPose {
     func mix(_ a: Double, _ b: Double) -> Double { a + (b - a) * t }
     var pose = MascotMotionPose()
@@ -347,8 +343,6 @@ struct MascotMood: Equatable {
       actionEvery = 6.5...11
     case .listening:
       pitch = 0.07
-      // Wide enough to be seen following what is said: the orb's face
-      // watches each word arrive under it (`lookAtWindowPoint`).
       gazeReach = SIMD2(1.9, 1.4)
       turnReach = SIMD2(0.34, 0.2)
       glanceEvery = 1.6...3.5

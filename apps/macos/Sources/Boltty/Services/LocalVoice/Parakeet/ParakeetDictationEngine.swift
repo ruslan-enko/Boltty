@@ -2,26 +2,15 @@ import AVFoundation
 import Foundation
 import os
 
-/// Dictation by Parakeet on this Mac. One model hears all 25 of its
-/// languages and tells them apart itself, so there is no language to pick
-/// and no second recognizer. It needs the microphone and not Speech
-/// Recognition.
-///
-/// Parakeet reads a whole take, not a stream: while the person speaks, the
-/// take so far is read again every `livePass` (~0.1 s for 15 s of sound on an
-/// M1 Pro), and once they stop, one last time for the final text.
 @MainActor
 final class ParakeetDictationEngine: DictationEngine {
-  /// Its languages (FluidInference's Parakeet TDT 0.6B v3 card).
   static let languages: Set<String> = [
     "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt",
     "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk",
   ]
 
   static let livePass: TimeInterval = 0.7
-  /// The model stays loaded this long after the last take (~600 MB).
   static let idleUnload: TimeInterval = 600
-  /// After loading it ahead of use, it goes sooner if nobody dictates.
   static let warmUnload: TimeInterval = 60
 
   var folder: URL? {
@@ -35,8 +24,6 @@ final class ParakeetDictationEngine: DictationEngine {
   private let loaded = LoadedTranscriber()
   private var idleTimer: Timer?
 
-  /// Loads the model now, so the first take does not wait. After a download
-  /// or an update Core ML compiles it first (24 s on an M1 Pro).
   func warm() {
     guard let folder else { return }
     queue.async { [loaded] in _ = try? loaded.transcriber(in: folder) }
@@ -76,7 +63,6 @@ final class ParakeetDictationEngine: DictationEngine {
   }
 }
 
-/// Reads one take while it is spoken and once more when it ends.
 @MainActor
 private final class ParakeetTake {
   private let session: ParakeetSession
@@ -106,7 +92,6 @@ private final class ParakeetTake {
     self.onDone = onDone
   }
 
-  /// The take keeps itself alive through its timer and the session's end.
   func begin() {
     timer = Timer.scheduledTimer(
       withTimeInterval: ParakeetDictationEngine.livePass, repeats: true
@@ -126,7 +111,6 @@ private final class ParakeetTake {
       return stopTimer()
     }
     let count = session.count
-    // Under a third of a second there is nothing worth showing yet.
     guard !passing, count > heard, count >= ParakeetTranscriber.frameSamples * 4 else { return }
     heard = count
     read(final: false)
@@ -160,7 +144,6 @@ private final class ParakeetTake {
     guard !session.isCancelled else { return }
     switch result {
     case let .success(text):
-      // A live pass that lands after the end is old news.
       if final || !finished { onTranscript(text, final) }
     case let .failure(error):
       onFailure(.localModelFailed(error.localizedDescription))
@@ -172,8 +155,6 @@ private final class ParakeetTake {
   }
 }
 
-/// One take: the microphone's buffers, turned into 16 kHz mono as they come
-/// (on the audio thread) and kept whole.
 private final class ParakeetSession: DictationSession, @unchecked Sendable {
   var onEnd: (@Sendable () -> Void)?
 
@@ -225,7 +206,6 @@ private final class ParakeetSession: DictationSession, @unchecked Sendable {
   }
 }
 
-/// The transcriber, touched only on the engine's queue.
 private final class LoadedTranscriber: @unchecked Sendable {
   private var transcriber: ParakeetTranscriber?
   private var folder: URL?

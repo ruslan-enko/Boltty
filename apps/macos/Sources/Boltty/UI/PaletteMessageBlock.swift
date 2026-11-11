@@ -130,7 +130,6 @@ extension ConversationMessage {
       guard !part.isEmpty else { return nil }
       switch part {
       case let .text(value):
-        // An Ask Boltty answer's `<point …/>` tags are for the mascot, not for reading.
         return .prose(role == .agent ? AskBolttyMark.stripped(value.text) : value.text)
       case let .reasoning(value): return .reasoning(value.text)
       case let .activity(value): return .activity(value)

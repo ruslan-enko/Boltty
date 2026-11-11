@@ -9,7 +9,6 @@ extension BolttyAISettingsModel {
     set { appModel.updateSettings { $0.askBolttyReadOnly = newValue } }
   }
 
-  /// Ready, switched-on agents that take a picture: Ask Boltty sends the screen.
   var askBolttyAgents: [AgentId] {
     AgentHistory.tabOrder.filter { agent in
       guard appModel.settings.isProviderEnabled(agent.rawValue),
@@ -19,7 +18,6 @@ extension BolttyAISettingsModel {
     }
   }
 
-  /// The agent that answers now, chosen or not.
   var askBolttyAgent: AgentId? {
     AskBolttyConfiguration.resolve(
       settings: appModel.settings, candidates: askBolttyAgents.map(\.rawValue), models: modelsByProvider
@@ -40,12 +38,9 @@ extension BolttyAISettingsModel {
     return modelsByProvider[agent.rawValue] ?? []
   }
 
-  /// `""` is the agent's own default, also for a model it no longer offers.
-  /// Choosing one pins the agent too: the model is that agent's.
   var askBolttyModelID: String {
     get {
-      let stored = appModel.settings.askBolttyModelID ?? ""
-      return askBolttyModels.contains { $0.selection.modelID == stored } ? stored : ""
+      askBolttyModels.option(stored: appModel.settings.askBolttyModelID)?.id ?? ""
     }
     set {
       let agent = askBolttyAgent?.rawValue
@@ -56,17 +51,14 @@ extension BolttyAISettingsModel {
     }
   }
 
-  /// A model chosen here that the agent's list no longer has.
   var askBolttyModelNoLongerOffered: String? {
     guard let stored = appModel.settings.askBolttyModelID, !askBolttyModels.isEmpty,
-          !askBolttyModels.contains(where: { $0.selection.modelID == stored })
+          askBolttyModels.option(stored: stored) == nil
     else { return nil }
     return stored
   }
 }
 
-/// Settings › Ask Boltty: who answers, what they may do. The way in is the
-/// panel's: there is nothing to switch on.
 struct AskBolttySettingsSection: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -103,7 +95,7 @@ struct AskBolttySettingsSection: View {
       Text(agentDefaultTitle).tag("")
       Divider()
       ForEach(model.askBolttyModels) { option in
-        Text(option.selection.displayName).tag(option.selection.modelID)
+        Text(option.selection.displayName).tag(option.id)
       }
     } label: {
       Text("Model")
@@ -115,8 +107,6 @@ struct AskBolttySettingsSection: View {
     .accessibilityIdentifier("boltty.settings.talkModel")
   }
 
-  /// Saying it needs Supertonic: until it is here, its download stands in
-  /// the switch's place, as on the Voice page.
   @ViewBuilder
   private var speaking: some View {
     if model.supertonicState == .ready {
@@ -138,7 +128,6 @@ struct AskBolttySettingsSection: View {
     }
   }
 
-  /// The model a chat with the chosen agent starts in, named.
   private var agentDefaultTitle: String {
     guard let agent = model.askBolttyAgent,
           let name = model.adapterRows.first(where: { $0.agent == agent })?
@@ -153,8 +142,6 @@ struct AskBolttySettingsSection: View {
   }
 }
 
-/// Who answers, as their faces: the face that will answer beside the pointer
-/// is the one chosen here.
 private struct AskBolttyAgentPicker: View {
   @ObservedObject var model: BolttyAISettingsModel
 

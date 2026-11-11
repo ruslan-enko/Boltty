@@ -6,8 +6,6 @@ struct UsageOverviewSection: View {
   @State private var range: AgentStatisticsRange = .all
   @State private var chosenAgent: AgentId?
 
-  /// What is counted: the one chosen while it is still shown; with one agent, that
-  /// one, and no menu to choose from.
   private var agent: AgentId? {
     let listed = model.listedAgents
     if listed.count == 1 { return listed[0] }
@@ -238,8 +236,6 @@ private struct UsageDayGrid: View {
     } else {
       let day = days[date]
       let level = Self.level(day?.messages ?? 0, thresholds: thresholds)
-      // A busy day is the tint on the card alone: over the empty day's grey its
-      // lower steps were a dirty beige.
       shape
         .fill(level == 0 ? Color.primary.opacity(0.08) : tint.opacity(Self.opacity[level]))
         .aspectRatio(1, contentMode: .fit)

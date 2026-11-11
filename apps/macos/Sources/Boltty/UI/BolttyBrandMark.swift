@@ -18,128 +18,33 @@ enum BolttyBrandMark {
       )
     }
 
-    builder.move(to: point(71.1565, 93.4236))
-    builder.curve(
-      to: point(84.5813, 71.9531),
-      c1: point(76.7966, 81.6733),
-      c2: point(79.6166, 75.7981)
-    )
-    builder.curve(
-      to: point(108.611, 64.3563),
-      c1: point(89.546, 68.1081),
-      c2: point(95.901, 66.8575)
-    )
-    builder.curve(
-      to: point(146.209, 57.0982),
-      c1: point(120.709, 61.9755),
-      c2: point(134.893, 59.2145)
-    )
-    builder.curve(
-      to: point(182.073, 50.6007),
-      c1: point(156.966, 55.0866),
-      c2: point(170.349, 52.6819)
-    )
-    builder.curve(
-      to: point(208.968, 49.1161),
-      c1: point(195.728, 48.1768),
-      c2: point(202.555, 46.9649)
-    )
-    builder.curve(
-      to: point(229.386, 66.3613),
-      c1: point(215.38, 51.2674),
-      c2: point(220.049, 56.2987)
-    )
-    builder.curve(
-      to: point(259.776, 100.107),
-      c1: point(239.298, 77.0436),
-      c2: point(251.071, 89.9363)
-    )
-    builder.curve(
-      to: point(284.879, 130.919),
-      c1: point(267.722, 109.391),
-      c2: point(277.016, 120.952)
-    )
-    builder.curve(
-      to: point(298.704, 153.658),
-      c1: point(293.334, 141.634),
-      c2: point(297.561, 146.992)
-    )
-    builder.curve(
-      to: point(293.133, 180.044),
-      c1: point(299.847, 160.323),
-      c2: point(297.609, 166.897)
-    )
-    builder.curve(
-      to: point(279.882, 218.788),
-      c1: point(288.884, 192.523),
-      c2: point(283.892, 207.148)
-    )
-    builder.curve(
-      to: point(268.16, 252.597),
-      c1: point(276.386, 228.937),
-      c2: point(272.082, 241.333)
-    )
-    builder.curve(
-      to: point(253.924, 280.567),
-      c1: point(262.786, 268.033),
-      c2: point(260.099, 275.751)
-    )
-    builder.curve(
-      to: point(223.771, 287.512),
-      c1: point(247.75, 285.383),
-      c2: point(239.757, 286.092)
-    )
-    builder.curve(
-      to: point(184.848, 290.314),
-      c1: point(210.927, 288.652),
-      c2: point(196.547, 289.781)
-    )
-    builder.curve(
-      to: point(125.535, 290.854),
-      c1: point(166.86, 291.134),
-      c2: point(143.486, 291.083)
-    )
-    builder.curve(
-      to: point(99.805, 287.405),
-      c1: point(112.257, 290.685),
-      c2: point(105.618, 290.601)
-    )
-    builder.curve(
-      to: point(83.0174, 267.4),
-      c1: point(93.9925, 284.209),
-      c2: point(90.3341, 278.606)
-    )
-    builder.curve(
-      to: point(64.4494, 238.444),
-      c1: point(76.8549, 257.961),
-      c2: point(69.9093, 247.209)
-    )
-    builder.curve(
-      to: point(43.7216, 204.036),
-      c1: point(58.0647, 228.196),
-      c2: point(50.3057, 215.199)
-    )
-    builder.curve(
-      to: point(33.017, 179.679),
-      c1: point(36.7673, 192.245),
-      c2: point(33.2901, 186.35)
-    )
-    builder.curve(
-      to: point(41.7997, 154.31),
-      c1: point(32.7439, 173.008),
-      c2: point(35.7625, 166.775)
-    )
-    builder.curve(
-      to: point(56.4616, 123.986),
-      c1: point(46.6372, 144.323),
-      c2: point(52.0717, 133.09)
-    )
-    builder.curve(
-      to: point(71.1565, 93.4236),
-      c1: point(60.8833, 114.815),
-      c2: point(66.3591, 103.418)
-    )
+    let corners = outlineCorners
+    for index in corners.indices {
+      let before = corners[(index + corners.count - 1) % corners.count]
+      let corner = corners[index]
+      let after = corners[(index + 1) % corners.count]
+      let enter = along(corner, before, by: cornerReach)
+      let leave = along(corner, after, by: cornerReach)
+      if index == corners.startIndex {
+        builder.move(to: point(enter.x, enter.y))
+      } else {
+        builder.line(to: point(enter.x, enter.y))
+      }
+      let c1 = along(enter, corner, by: 2.0 / 3)
+      let c2 = along(leave, corner, by: 2.0 / 3)
+      builder.curve(to: point(leave.x, leave.y), c1: point(c1.x, c1.y), c2: point(c2.x, c2.y))
+    }
     builder.close()
+  }
+
+  private static let outlineCorners: [CGPoint] = [
+    CGPoint(x: 82.9, y: 69.2), CGPoint(x: 211, y: 45.1), CGPoint(x: 302.8, y: 151.6),
+    CGPoint(x: 256.7, y: 286.4), CGPoint(x: 97.9, y: 291.4), CGPoint(x: 29.1, y: 180.5),
+  ]
+  private static let cornerReach: CGFloat = 0.35
+
+  private static func along(_ from: CGPoint, _ to: CGPoint, by part: CGFloat) -> CGPoint {
+    CGPoint(x: from.x + (to.x - from.x) * part, y: from.y + (to.y - from.y) * part)
   }
 
   static func emitEyes(into builder: inout some BrandMarkPathBuilder, rect: CGRect) {

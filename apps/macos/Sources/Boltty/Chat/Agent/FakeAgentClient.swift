@@ -4,7 +4,7 @@ import Foundation
 final class FakeAgentClient: AgentClient, @unchecked Sendable {
   var provider = AgentId.opencode
   var capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .questions, .attachments, .images,
+    .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory
   ]
 
@@ -66,6 +66,13 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
   var missedAnythingAnswer: Bool?
 
   func probe() async -> AgentAvailability { availability }
+
+  private(set) var preparedSessions: [(id: String, options: AgentSessionOptions)] = []
+  var prepareError: AgentClientError?
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    if let prepareError { throw prepareError }
+    lock.withLock { preparedSessions.append((id, options)) }
+  }
 
   private(set) var processRestarts = 0
   func restartIdleProcess() async { lock.withLock { processRestarts += 1 } }
@@ -148,7 +155,6 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
     return existingMessages.contains(id)
   }
 
-  /// Seconds a stop takes per session; a cancelled wait records no stop.
   var stopDelays: [String: TimeInterval] = [:]
 
   func stop(sessionID: String) async throws {

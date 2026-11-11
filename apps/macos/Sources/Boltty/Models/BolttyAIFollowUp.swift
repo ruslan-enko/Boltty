@@ -52,6 +52,23 @@ enum BolttyAIFollowUp {
   }
 }
 
+struct BolttyAIModelChip: Equatable, Sendable {
+  let title: String
+  var isGone = false
+  var help: String
+}
+
+struct BolttyAIModelMenu: Equatable, Sendable {
+  let agent: AgentId
+  let models: [AgentModelOption]
+  let current: AgentModelOption?
+  let goneName: String?
+  let efforts: [AgentEffortOption]
+  let effort: String?
+  var canResetEffort = true
+  let autoMode: Bool?
+}
+
 struct BolttyAISessionPreview: Equatable, Sendable {
   let id: UUID
   let title: String
@@ -64,9 +81,8 @@ struct BolttyAISessionPreview: Equatable, Sendable {
   var canStop = false
   var stopIsAbrupt = false
   var canSteer = false
-  /// The chat's Auto Mode, or `nil` where its agent declares no
-  /// `.autoApproval` — then the composer offers no switch for it.
   var autoMode: Bool? = nil
+  var modelChip: BolttyAIModelChip? = nil
   var notice: String? = nil
   var retryPrompt: String? = nil
   var queuedPrompt: String? = nil

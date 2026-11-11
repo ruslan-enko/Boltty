@@ -3,14 +3,8 @@ import MetalKit
 import QuartzCore
 
 enum VoiceEdgeGlowLayout {
-  /// The listening capsule's height, which is what the light is drawn for. A
-  /// taller shell — an open chat dictated into — is lit this far up from its
-  /// foot and no further, not through the whole transcript.
   static let authoredHeight: CGFloat = 74.5
 
-  /// How far up from the bottom edge the light reaches, in points. A shell no
-  /// taller than the capsule is lit throughout; a loud voice pushes it a
-  /// little higher in a taller one.
   static func reach(size: CGSize, intensity: CGFloat) -> CGFloat {
     let level = min(1, max(0, intensity))
     guard size.height > authoredHeight else { return size.height }
@@ -43,12 +37,6 @@ enum VoiceEdgeGlowLayout {
     return 0.5 + 0.5 * sin(2 * .pi * time / period)
   }
 
-  /// How fast the rays travel, in the shader's own units a second.
-  ///
-  /// A floor, so silence still drifts; the voice adds to it; processing holds
-  /// its own steady pace, since it has no microphone to answer. The view
-  /// integrates this into `flow` rather than handing the shader a speed, so a
-  /// change of speed quickens the picture instead of jumping it.
   static func flowSpeed(level: CGFloat, processing: CGFloat) -> CGFloat {
     let level = min(1, max(0, level))
     let processing = min(1, max(0, processing))
@@ -57,12 +45,6 @@ enum VoiceEdgeGlowLayout {
     return listening + (AgentPaletteMetrics.voiceGlowFlowProcessing - listening) * processing
   }
 
-  /// Where the rays start, in points from the shell's bottom-left corner.
-  ///
-  /// Below the bottom edge in silence — the shell is lit from under, as it
-  /// always was — climbing into it as the voice rises, so a loud word puts the
-  /// burst's hot centre in the shell. It sways across the width, further the
-  /// louder it is. Processing gathers it to the middle and holds still.
   static func rayOrigin(
     size: CGSize,
     intensity: CGFloat,
@@ -72,7 +54,6 @@ enum VoiceEdgeGlowLayout {
   ) -> CGPoint {
     let level = min(1, max(0, intensity))
     let beam = min(1, max(0, beam))
-    // Not just a stopped clock: the waves' phases would hold it off centre.
     let sway = reduceMotion ? 0 : 0.6 * sin(clock * AgentPaletteMetrics.voiceGlowSwayRate + 0.6)
       + 0.4 * sin(clock * AgentPaletteMetrics.voiceGlowSwayRate * 0.41 + 2.0)
     let reach = size.width * (0.10 + 0.22 * level) * (1 - beam)
@@ -82,8 +63,6 @@ enum VoiceEdgeGlowLayout {
     return CGPoint(x: x, y: listening + (processing - listening) * beam)
   }
 
-  /// The mascot's stops, lifted so a dark one — Lilac's — still reads once
-  /// the glass has frosted and dimmed it.
   static func rayColors(from palette: MascotPalette) -> [NSColor] {
     palette.light(atLeast: AgentPaletteMetrics.voiceGlowLightness)
   }
@@ -95,7 +74,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   private var targetLevel: CGFloat = 0
   private var palette = MascotPalette.standard
   private var clock: CGFloat = 0
-  /// How far the rays have travelled; see `VoiceEdgeGlowLayout.flowSpeed`.
   private var flow: CGFloat = 0
   private var beamMorph: CGFloat = 0
   private var opacity: CGFloat = 0
@@ -112,11 +90,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   var surfaceCornerCurve: CALayerCornerCurve = .continuous {
     didSet { needsLayout = true }
   }
-  /// Whether the shell is the listening orb (or the capsule it grows into round
-  /// the words), which is its own glass and draws no light, rather than the rays
-  /// lighting it from its foot. The panel decides as a take starts — whether it collapses
-  /// the shell — and leaves it while the take fades, so the light does not
-  /// change its kind on its way out.
   var fillsShell = false {
     didSet { if fillsShell != oldValue { refresh() } }
   }
@@ -367,8 +340,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     lastUniforms = VoiceGlowRenderer.uniforms(for: makeFrame(size: size))
     let visible = !isHidden && opacity > 0
     guard visible else { return }
-    // The orb is the glass and has no light: one clear frame takes the rays
-    // away, and the clock goes on only to time the take.
     if fillsShell, orbIsClear { return }
     orbIsClear = fillsShell
     draw()
@@ -405,8 +376,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     )
   }
 
-  /// The fade on a curve: the clock steps `opacity` evenly, which read as a
-  /// light switched off. In, it eases both ways; out, it drops fast.
   private var shownOpacity: CGFloat {
     let o = min(1, max(0, opacity))
     return targetOpacity > o ? o * o * (3 - 2 * o) : o * o

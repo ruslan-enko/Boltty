@@ -2,15 +2,6 @@ import AppKit
 import XCTest
 @testable import Boltty
 
-/// The pictures in the README, taken from the real panel and overlay on the real
-/// screen (glass and live faces do not draw offscreen). Boltty's own sunset is
-/// laid over the whole display first, menu bar and Dock included, so nothing of
-/// the desktop underneath gets into a picture.
-///
-/// `TEST_RUNNER_BOLTTY_README_SHOTS=<dir>` writes `prompt.png`, `chat.png`,
-/// `permission.png`, `history.png`, `ask-boltty.png`, and three short recordings,
-/// `faces.mov` (the history tabs, one face after another), `prompt-faces.mov`
-/// (⇧Tab round the agents on the prompt) and `ask-boltty.mov`.
 @MainActor
 final class ReadmeShotsOnScreen: XCTestCase {
   private var directory = ""
@@ -24,7 +15,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     ChatBackdrop.chosenForTesting = .standard
     let screen = try XCTUnwrap(NSScreen.main)
     let window = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
-    // Over the menu bar and the Dock, under the panel (`.popUpMenu`).
     window.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue - 1)
     window.collectionBehavior = [.canJoinAllSpaces, .stationary]
     let sunset = SunsetView(frame: CGRect(origin: .zero, size: screen.frame.size))
@@ -69,7 +59,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     try await Task.sleep(for: .seconds(1))
   }
 
-  /// ⇧Tab on an empty prompt, round every agent: the face turns into each one's.
   func testRecordThePromptChangingFaces() async throws {
     let (controller, _) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
@@ -86,12 +75,10 @@ final class ReadmeShotsOnScreen: XCTestCase {
     }
     reel.waitUntilExit()
     controller.hide()
-    // A panel still going when its test ends would stand behind the next one's.
     try await Task.sleep(for: .seconds(1))
   }
 
   func testPhotographTheHistory() async throws {
-    // A panel of its own: one reopened within a minute goes back to its chat.
     let (controller, _) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     controller.show()
@@ -100,7 +87,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     try await Task.sleep(for: .seconds(2))
     try photograph(view, to: "history.png")
 
-    // Each tab wakes its own face; walking them is the mascot reel.
     let reel = try record(view, seconds: 9, to: "faces.mov")
     try await Task.sleep(for: .seconds(1))
     for agent in [AgentId.claude, .codex, .opencode, .grok, .antigravity] {
@@ -208,19 +194,14 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let screen = try XCTUnwrap(NSScreen.main)
     let note = makeNote(on: screen)
     defer { note.orderOut(nil) }
-    // "Trip to Lviv", the document's first line.
     let heading = CGPoint(x: note.frame.minX + 92, y: note.frame.maxY - 80)
 
     let area = CGRect(x: note.frame.minX - 140, y: note.frame.minY - 60,
                       width: note.frame.width + 520, height: note.frame.height + 120)
-    // The heading, dragged across: what the panel does with a region just drawn,
-    // with the microphone's words handed in by hand.
     let region = CGRect(x: heading.x - 70, y: heading.y - 30, width: 300, height: 60)
     let (controller, _) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     view.onScreenRegionReady = nil
-    // This scene, not the display: ScreenCaptureKit leaves out Boltty's own
-    // windows, so a real freeze would show the desktop under them.
     let frozen = try frozenScene(on: screen)
     controller.screenFreeze = { _ in frozen }
 
@@ -228,7 +209,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let pointer = CGPoint(x: heading.x + 90, y: heading.y - 90)
     overlay.pointer = { pointer }
     overlay.restHint = { AskBolttyController.restHint(launchKey: "⌥Space") }
-    // The real pointer stands where the face follows it.
     let top = NSScreen.screens.first?.frame.maxY ?? pointer.y
     CGWarpMouseCursorPosition(CGPoint(x: pointer.x, y: top - pointer.y))
     let reel = try record(area, seconds: 20, to: "ask-boltty.mov")
@@ -256,10 +236,8 @@ final class ReadmeShotsOnScreen: XCTestCase {
     overlay.show(.speaking,
                  caption: "Select the heading, then press ⌘T and pick a bigger size.", agent: .claude)
     overlay.point(at: CGPoint(x: note.frame.minX + 152, y: heading.y))
-    // Long enough for the sentence to type out in full.
     try await Task.sleep(for: .seconds(5))
     try photograph(area, to: "ask-boltty.png")
-    // Said: the words go, and the face stays on the spot with what can be done.
     overlay.show(.idle, caption: "", agent: .claude)
     // Asleep, not in `waitUntilExit`: its run loop would never drain the main
     // queue, where the face's words are timed.
@@ -281,7 +259,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     return FrozenScreen(image: image, displayFrame: frame, windows: [])
   }
 
-  /// A plain document to ask about: nothing of anyone's own.
   private func makeNote(on screen: NSScreen) -> NSWindow {
     let size = CGSize(width: 620, height: 300)
     let frame = CGRect(x: screen.frame.midX - size.width / 2 - 160, y: screen.frame.midY - size.height / 2,
@@ -289,7 +266,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let window = NSWindow(contentRect: frame, styleMask: [.titled, .closable, .miniaturizable],
                           backing: .buffered, defer: false)
     window.title = "Trip to Lviv"
-    // Light whatever this Mac is set to: the answer's dark bubble reads on it.
     window.appearance = NSAppearance(named: .aqua)
     window.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue - 1)
     let text = NSTextView(frame: CGRect(origin: .zero, size: size))
@@ -341,7 +317,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     try screencapture(["-x", "-v", "-V", "\(seconds)", "-R", rect(area), "\(directory)/\(name)"])
   }
 
-  /// `screencapture -R` takes points from the top left of the main display.
   private func rect(_ area: CGRect) -> String {
     let top = NSScreen.screens.first?.frame.maxY ?? area.maxY
     let clipped = area.intersection(NSScreen.main?.frame ?? area)

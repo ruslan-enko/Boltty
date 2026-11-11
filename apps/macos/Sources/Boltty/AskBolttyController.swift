@@ -2,9 +2,6 @@ import AppKit
 import Carbon
 import Combine
 
-/// Ask Boltty, put together: the session that answers about a region beside
-/// the face, and the settings that choose its agent. The region and the words
-/// are the panel's.
 @MainActor
 final class AskBolttyController {
   let session: AskBolttySession
@@ -13,23 +10,15 @@ final class AskBolttyController {
   private let coordinator: ChatWorkspaceCoordinator
   private let settings: () -> AppSettings
   private var cancellables = Set<AnyCancellable>()
-  /// Escape, from whichever app is in front, needing no permission: held only
-  /// while the face is on the screen and the panel, which has its own Escape,
-  /// is not.
   private lazy var escapeKey = GlobalHotkeyService(number: 2) { [weak self] in
     MainActor.assumeIsolated { self?.escapePressed() }
   }
   private var holdsEscape = false
-  /// What the last question was about, in global coordinates.
   private var lastRegion: CGRect?
   private var panelIsUp = false
 
-  /// The answer waits on the person — a permission, a question: the panel
-  /// opens on its chat.
   var onNeedsYou: ((UUID) -> Void)?
-  /// The chord that opens the panel as it stands, nil with none working.
   var launchKeyName: (() -> String?)?
-  /// Reads the Finder folder a question is about, when it is about one.
   var finderSelection = FinderSelectionService()
 
   init(
@@ -43,6 +32,9 @@ final class AskBolttyController {
 
     overlay.onVisibleChange = { [weak self] in self?.syncEscapeKey() }
     overlay.restHint = { [weak self] in Self.restHint(launchKey: self?.launchKeyName?()) }
+    session.onSpent = { [weak self] providerID, resetsAt in
+      self?.spentUntil[providerID] = resetsAt ?? Date().addingTimeInterval(Self.spentWithoutReset)
+    }
     session.findPlace = { [weak self] spot in
       guard let self, settings().attachesFinderSelection else { return nil }
       return await self.finderSelection.place(of: spot)
@@ -52,7 +44,6 @@ final class AskBolttyController {
       .receive(on: RunLoop.main)
       .sink { [weak self] phase, caption, step in
         guard let self else { return }
-        // Its chat is open in the panel: the work and the words are there.
         if phase == .thinking || phase == .speaking, let id = self.session.conversationID,
            self.coordinator.store.selectedConversationID == id {
           self.overlay.hide()
@@ -86,7 +77,6 @@ final class AskBolttyController {
         self.onNeedsYou?(id)
       }
       .store(in: &cancellables)
-    // What an Ask Boltty left behind when Boltty last quit is done with.
     coordinator.forgetAskBolttyChats()
     // On the next turn of the run loop: `$speakingID` tells before the value
     // changes, and asked then the voice is still saying what it has finished.
@@ -100,28 +90,21 @@ final class AskBolttyController {
 
   // MARK: - A question about a region
 
-  /// What can be done while the face waits after an answer. Going on takes the
-  /// launch key, and from there a new area can be dragged out over the last.
   static func restHint(launchKey: String?) -> String {
     guard let launchKey else { return "Esc to close" }
     return "\(launchKey) to ask more · Esc to close"
   }
 
-  /// The agent a region is asked of, before ⇧Tab moves it: Settings › Ask
-  /// Boltty's choice where it is ready, else the preferred agent.
   var answeringAgent: AgentId? {
     target(for: nil).flatMap { AgentId(rawValue: $0.providerID) }
   }
 
-  /// A region was drawn: the agent's session starts while the person speaks.
   func warmUp(agent: AgentId?) {
     guard let target = target(for: agent) else { return }
     overlay.hide()
     session.warmUp(target)
   }
 
-  /// The question the launch key goes on with, while the face that answered it
-  /// is still beside the pointer and the pointer is on that screen.
   var questionToContinue: (region: CGRect, agent: AgentId?)? {
     guard overlay.isFaceUp, let lastRegion else { return nil }
     switch session.phase {
@@ -135,34 +118,36 @@ final class AskBolttyController {
     return (lastRegion, session.providerID.flatMap(AgentId.init(rawValue:)))
   }
 
-  /// Sends the question; `false` when no agent could take it. The turn starts
-  /// now; the face beside the pointer waits for `faceArrives`.
   func ask(
     _ words: String, about selection: ScreenSelection, on displayFrame: CGRect, agent: AgentId?
   ) -> Bool {
-    guard let target = target(for: agent) else { return false }
+    let targets = targets(for: agent)
+    guard !targets.isEmpty else { return false }
     lastRegion = selection.frame
     overlay.holdForArrival()
     session.ask(
-      words, about: selection, on: displayFrame, target: target,
+      words, about: selection, on: displayFrame, targets: targets,
+      note: skipNote(wanted: agent, answering: targets.first?.providerID),
       speaksAloud: settings().askBolttySpeaksAloud)
     return true
   }
 
-  /// The panel has gone from under its face, which stood at `point`: this one
-  /// takes up from there and flies to the pointer.
   func faceArrives(from point: CGPoint?) {
     overlay.arrive(from: point)
   }
 
-  /// The region was let go of without a question.
   func cancelQuestion() {
     session.cancel()
   }
 
-  /// Ask Boltty's agent and model, or — when ⇧Tab chose another agent — that
-  /// one at its default model; always at the model's lowest effort.
   private func target(for agent: AgentId?) -> AskBolttyTarget? {
+    targets(for: agent).first
+  }
+
+  /// Every agent that could answer, in the order they are tried; one whose plan
+  /// is used up goes last, so a question is never refused while another could
+  /// take it.
+  private func targets(for agent: AgentId?) -> [AskBolttyTarget] {
     let current = settings()
     let engine = coordinator.engine
     let candidates = AgentHistory.tabOrder
@@ -173,20 +158,40 @@ final class AskBolttyController {
         else { return nil }
         return agent.rawValue
       }
-    let resolved = AskBolttyConfiguration.resolve(
-      settings: current, candidates: candidates, models: engine.modelsByProvider)
-    guard let agent, agent.rawValue != resolved?.providerID else { return resolved }
-    guard candidates.contains(agent.rawValue) else { return nil }
-    return AskBolttyTarget(
-      providerID: agent.rawValue, model: nil, effort: nil, readOnly: current.askBolttyReadOnly)
+    let ranked = AskBolttyConfiguration.ranked(
+      settings: current, candidates: candidates, chosen: agent?.rawValue)
+    let spent = ranked.filter(isSpent)
+    return (ranked.filter { !spent.contains($0) } + spent).map {
+      AskBolttyConfiguration.target(for: $0, settings: current, models: engine.modelsByProvider)
+    }
+  }
+
+  private var spentUntil: [String: Date] = [:]
+  static let spentWithoutReset: TimeInterval = 15 * 60
+
+  private func isSpent(_ providerID: String) -> Bool {
+    let now = Date()
+    if let until = spentUntil[providerID] {
+      if until > now { return true }
+      spentUntil[providerID] = nil
+    }
+    return AskBolttyConfiguration.isSpent(coordinator.engine.usageByProvider[providerID], now: now)
+  }
+
+  /// Said beside the face when the agent that would have answered is skipped.
+  private func skipNote(wanted: AgentId?, answering: String?) -> String? {
+    let current = settings()
+    let first = wanted?.rawValue ?? current.askBolttyProviderID ?? current.agentPreset?.rawValue
+    guard let first, let answering, first != answering, isSpent(first),
+          let skipped = AgentId(rawValue: first), let next = AgentId(rawValue: answering)
+    else { return nil }
+    return AskBolttySession.handOverNote(skipped: skipped.displayName, why: .spent, next: next.displayName)
   }
 
   func apply(_ settings: AppSettings) {
     overlay.makesSounds = settings.playsSounds
   }
 
-  /// The panel came up or went. A face resting from its last answer gives way
-  /// to it; one still answering stays, without Escape.
   func setPanelVisible(_ visible: Bool) {
     panelIsUp = visible
     if visible, session.phase == .idle { overlay.giveWay() }
@@ -197,7 +202,6 @@ final class AskBolttyController {
     let wanted = overlay.isVisible && !panelIsUp
     guard wanted != holdsEscape else { return }
     if wanted {
-      // Another app holding it costs only the key: a click still works.
       holdsEscape = escapeKey.register(
         HotkeyBinding(keyCode: UInt32(kVK_Escape), carbonModifiers: 0)
       ).isFree

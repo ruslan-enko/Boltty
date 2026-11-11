@@ -140,8 +140,6 @@ final class ConversationStore: ObservableObject {
     objectWillChange.send()
   }
 
-  /// Gone on with in the panel, an Ask Boltty chat is the person's own: it is no
-  /// longer forgotten, and it asks as any chat does.
   func keepAskBolttyChat(id: UUID) {
     guard let index = conversations.firstIndex(where: { $0.id == id }),
           conversations[index].isAskBoltty
@@ -202,8 +200,6 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.title = title }
   }
 
-  /// Gives a chat its name. Nothing was said by it, so its place in the list
-  /// stays where it was.
   func giveName(_ name: String, to id: UUID) {
     updateWithoutTouching(id) {
       $0.title = name
@@ -216,6 +212,13 @@ final class ConversationStore: ObservableObject {
     update(id) {
       $0.model = model
       $0.reasoningEffort = nil
+    }
+  }
+
+  func setModel(_ model: ModelSelection?, effort: String?, for id: UUID) {
+    update(id) {
+      $0.model = model
+      $0.reasoningEffort = effort
     }
   }
 
@@ -309,7 +312,7 @@ final class ConversationStore: ObservableObject {
   func attachRemoteSession(_ remoteID: String, to id: UUID, model: ModelSelection?) {
     update(id) {
       $0.remoteSessionID = remoteID
-      if let model { $0.model = model }
+      if $0.model == nil, let model { $0.model = model }
     }
   }
 
@@ -518,7 +521,7 @@ final class ConversationStore: ObservableObject {
 
     let id = conversation.id
     switch envelope.event {
-    case .connection:
+    case .connection, .modelsChanged:
       break
 
     case let .messageUpdated(_, message):
@@ -556,6 +559,11 @@ final class ConversationStore: ObservableObject {
         last.failure = failure
         last.completedAt = last.completedAt ?? clock()
         upsert(last, in: id)
+      } else if !failure.isAbort {
+        var empty = ConversationMessage(
+          id: "failure-\(UUID().uuidString)", role: .agent, createdAt: clock(), completedAt: clock())
+        empty.failure = failure
+        upsert(empty, in: id)
       }
       saveTranscriptNow(id)
 

@@ -6,16 +6,11 @@ import AppKit
 @MainActor
 final class InterfaceSounds {
   static let sendVariantNames = ["send-1", "send-2", "send-3"]
-  /// The first run's show: the faces' voices (one variant a face), the
-  /// air of something flying by, a scene's run of notes, a typed key —
-  /// five of each.
   enum FaceSound: String, CaseIterable {
     case hum, whoosh, run, tap
     static let variants = 5
     var names: [String] { (1...Self.variants).map { "\(rawValue)-\($0)" } }
   }
-  /// The show's music, under all of it: AAC, forty seconds — longer than a
-  /// system sound may be, so it plays through a player of its own.
   static let musicName = "show-music"
   static let doneName = "done"
   static let attentionName = "attention"
@@ -55,7 +50,6 @@ final class InterfaceSounds {
     }
   }
 
-  /// The show's music, from its start.
   func startMusic() {
     guard isEnabled(), music == nil,
           let url = bundle.url(forResource: Self.musicName, withExtension: "m4a"),
@@ -66,7 +60,6 @@ final class InterfaceSounds {
     music = player
   }
 
-  /// Out over `fade` seconds, then let go.
   func stopMusic(fade: TimeInterval) {
     guard let music else { return }
     music.setVolume(0, fadeDuration: fade)
@@ -77,7 +70,6 @@ final class InterfaceSounds {
     }
   }
 
-  /// Face `index` of the first run lands, exclaims or flies off.
   func playFace(_ sound: FaceSound, _ index: Int) {
     guard isEnabled(), let sounds = faceSounds[sound], !sounds.isEmpty else { return }
     AudioServicesPlaySystemSound(sounds[index % sounds.count])

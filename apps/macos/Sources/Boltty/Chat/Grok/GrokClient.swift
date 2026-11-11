@@ -20,7 +20,7 @@ struct ACPAgent: Sendable {
     // stands before `agent` (after it, `grok agent` refuses its arguments).
     arguments: ["--permission-mode", "default", "agent", "stdio"],
     capabilities: [
-      .modelSelection, .permissions, .attachments, .images, .interrupt, .resumeSession,
+      .modelSelection, .modelSwitching, .permissions, .attachments, .images, .interrupt, .resumeSession,
       .workingDirectory, .reasoningEffort, .autoApproval, .usageReporting,
       .rereadableTranscript, .usageLimits, .questions,
     ],
@@ -52,6 +52,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   private var pending: [Int: CheckedContinuation<JSONObject, Error>] = [:]
   private var rpcCounter = 0
   private var sessions: [String: LiveSession] = [:]
+  private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var permissions: [String: PendingPermission] = [:]
   private var plans: [String: PendingPlan] = [:]
   private var asks: [String: PendingAsk] = [:]
@@ -71,11 +72,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let id: String
     var directory: String
     var model: ModelSelection?
+    var effort: String?
     var pendingMessageID: String?
     var messages: [ConversationMessage] = []
     var textSegment = 0
     var planToolCalls: Set<String> = []
-    /// Auto Mode: an edit's permission is answered "allow once" as it comes.
     var autoApprove = false
 
     init(id: String, directory: String, model: ModelSelection?) {
@@ -183,8 +184,12 @@ final class ACPClient: AgentClient, @unchecked Sendable {
 
     let session = LiveSession(id: sessionID, directory: options.directory, model: options.model)
     session.autoApprove = options.autoApprove
-    lock.withLock { sessions[sessionID] = session }
-    try await apply(model: options.model, effort: options.effort, to: sessionID)
+    session.effort = options.effort
+    lock.withLock {
+      sessions[sessionID] = session
+      wantedOptions[sessionID] = options
+    }
+    await applyLeniently(model: options.model, effort: options.effort, to: sessionID)
 
     return RemoteSessionInfo(
       id: sessionID,
@@ -194,16 +199,49 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  private func apply(model: ModelSelection?, effort: String?, to sessionID: String) async throws {
-    if let model {
-      _ = try? await request("session/set_model", params: [
-        "sessionId": sessionID, "modelId": model.modelID
-      ])
+  private func applyLeniently(model: ModelSelection?, effort: String?, to sessionID: String) async {
+    if let model { try? await set(model: model, on: sessionID) }
+    if let effort { try? await set(effort: effort, on: sessionID) }
+  }
+
+  private func set(model: ModelSelection, on sessionID: String) async throws {
+    _ = try await request("session/set_model", params: [
+      "sessionId": sessionID, "modelId": model.modelID
+    ])
+  }
+
+  private func set(effort: String, on sessionID: String) async throws {
+    _ = try await request("session/set_config_option", params: [
+      "sessionId": sessionID, "configId": "reasoning_effort", "value": effort
+    ])
+  }
+
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    lock.withLock { wantedOptions[id] = options }
+    _ = try await connect()
+    try await ensureLoaded(id)
+    let current = lock.withLock { () -> (model: ModelSelection?, effort: String?) in
+      let session = sessions[id]
+      defer {
+        session?.directory = options.directory
+        session?.autoApprove = options.autoApprove
+      }
+      return (session?.model, session?.effort)
     }
-    if let effort {
-      _ = try? await request("session/set_config_option", params: [
-        "sessionId": sessionID, "configId": "reasoning_effort", "value": effort
-      ])
+    if let model = options.model, model.modelID != current.model?.modelID {
+      try await set(model: model, on: id)
+      lock.withLock { sessions[id]?.model = model }
+    }
+    if let effort = options.effort, effort != current.effort {
+      try await set(effort: effort, on: id)
+    }
+    lock.withLock { sessions[id]?.effort = options.effort }
+  }
+
+  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
+    lock.withLock {
+      wantedOptions[sessionID]?.autoApprove = enabled
+      sessions[sessionID]?.autoApprove = enabled
     }
   }
 
@@ -249,19 +287,27 @@ final class ACPClient: AgentClient, @unchecked Sendable {
 
   private func ensureLoaded(_ id: String) async throws {
     guard lock.withLock({ sessions[id] }) == nil else { return }
+    let wanted = lock.withLock { wantedOptions[id] }
+    let directory = wanted?.directory ?? FileManager.default.currentDirectoryPath
     do {
-      _ = try await request("session/load", params: ["sessionId": id, "mcpServers": []])
+      // `cwd` is required (1.0.77: "missing field `cwd`"), and a refused load read
+      // as a forgotten session: the chat went on in a new one, knowing nothing.
+      _ = try await request("session/load", params: [
+        "sessionId": id, "cwd": directory, "mcpServers": []
+      ])
     } catch {
       log.debug("session/load refused \(id, privacy: .public): \(String(describing: error), privacy: .public)")
       throw AgentClientError.sessionNotFound
     }
     lock.withLock {
       if sessions[id] == nil {
-        sessions[id] = LiveSession(
-          id: id, directory: FileManager.default.currentDirectoryPath, model: nil
-        )
+        let session = LiveSession(id: id, directory: directory, model: wanted?.model)
+        session.effort = wanted?.effort
+        session.autoApprove = wanted?.autoApprove ?? false
+        sessions[id] = session
       }
     }
+    await applyLeniently(model: wanted?.model, effort: wanted?.effort, to: id)
   }
 
   func messageExists(id: String, in sessionID: String) async throws -> Bool {
@@ -429,8 +475,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     return result
   }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {}
-
   func events() -> AsyncStream<AgentEventEnvelope> {
     AsyncStream { continuation in
       lock.withLock { self.eventContinuation = continuation }
@@ -452,8 +496,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// The same ending as a quit: `connect` starts it again, and `ensureLoaded`
-  /// loads each session as it is next used.
   func restartIdleProcess() async { await shutdown() }
 
   // MARK: - Transport
@@ -579,7 +621,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       }
     }
 
-    // Auto Mode is edits only: a command still asks.
     if params.object("toolCall")?.string("kind") == "edit",
        lock.withLock({ sessions[sessionID]?.autoApprove == true }),
        let allow = byDecision[.once] {
@@ -617,11 +658,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     )))
   }
 
-  /// What a permission is about, for the card. The title is the whole ask
-  /// ("Execute `ssh … ; df -h ; docker ps …`"), which made a heading of the
-  /// command; the kind says what sort of thing it is and `rawInput` or
-  /// `locations` what it touches. The options' names are buttons, not
-  /// resources: listed in the well they read as a second set of answers.
   static func permissionSubject(of tool: JSONObject?) -> (action: String, resources: [String]) {
     let command = tool?.object("rawInput")?.string("command")
     let paths = (tool?.array("locations") ?? []).compactMap { $0.string("path") }

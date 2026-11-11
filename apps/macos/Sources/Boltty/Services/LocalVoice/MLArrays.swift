@@ -2,7 +2,6 @@ import Accelerate
 import CoreML
 import Foundation
 
-/// Moving numbers in and out of Core ML's arrays, for the local voices.
 enum MLArrays {
   static func floats(_ values: [Float], shape: [Int]) throws -> MLMultiArray {
     let array = try MLMultiArray(shape: shape.map(NSNumber.init), dataType: .float32)
@@ -24,7 +23,6 @@ enum MLArrays {
     return array
   }
 
-  /// The array's contents as Float, whatever Core ML chose to store.
   static func values(_ array: MLMultiArray) -> [Float] {
     let count = array.count
     switch array.dataType {
@@ -42,8 +40,6 @@ enum MLArrays {
     }
   }
 
-  /// Half floats, given as their bits, as Float. Not through `Float16`: Swift
-  /// has no such type on Intel, and the release is universal.
   static func halves(_ bits: UnsafeBufferPointer<UInt16>) -> [Float] {
     guard let base = bits.baseAddress, !bits.isEmpty else { return [] }
     var out = [Float](repeating: 0, count: bits.count)

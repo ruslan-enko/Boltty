@@ -2,9 +2,6 @@ import XCTest
 
 @testable import Boltty
 
-/// The timelines are the ones measured with `say`'s voices (see `BilingualTranscript`):
-/// English in `SpeechTranscriber`, which reports confidence on a final result,
-/// Ukrainian in `DictationTranscriber`, which reports none.
 final class BilingualTranscriptTests: XCTestCase {
   private func makeTranscript() -> BilingualTranscript {
     BilingualTranscript(primary: Locale(identifier: "uk-UA"), secondary: Locale(identifier: "en-US"))
@@ -58,7 +55,6 @@ final class BilingualTranscriptTests: XCTestCase {
 
   func testEachPhraseOfATakeGoesToItsOwnLanguage() {
     var transcript = makeTranscript()
-    // Ukrainian, English, Ukrainian, as the two recognizers wrote them.
     transcript.add(piece(0, 6.3, "With Alaska, with cravic, no, no.", 0.15),
                    isFinal: true, finalizedThrough: 6.3, to: .secondary)
     transcript.add(piece(0, 7.9, "Будь ласка відкрий вікно", nil),
@@ -126,8 +122,6 @@ final class BilingualTranscriptTests: XCTestCase {
                    isFinal: true, finalizedThrough: 11.9, to: .secondary)
     XCTAssertEqual(transcript.text, "")
 
-    // The Ukrainian one finalizes a later phrase, so it has been past this one
-    // and wrote nothing for it.
     transcript.add(piece(14.4, 18.1, " додай кнопку", nil),
                    isFinal: true, finalizedThrough: 18.1, to: .primary)
     XCTAssertEqual(transcript.text, "Please open the settings додай кнопку")

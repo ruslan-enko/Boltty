@@ -202,8 +202,6 @@ final class CodexSessionRecoveryTests: XCTestCase {
                              "thread/resume", "turn/start"])
   }
 
-  /// A turn can end before the answer to `turn/start` is read: one that fails at
-  /// once did, and the chat stood working for good.
   func testATurnOverBeforeItsStartIsAnsweredIsNotLeftRunning() async throws {
     try await send(to: "instant")
     do {

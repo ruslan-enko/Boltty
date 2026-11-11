@@ -5,7 +5,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.codex
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .permissions, .questions, .attachments, .images,
+    .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
     .contextUsage, .compaction, .steering, .activityHistory
@@ -160,7 +160,21 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  /// Read off the rollout: thread/resume writes to it.
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let server = try await server()
+    try await ensureThread(id: id, on: server)
+    lock.withLock {
+      let changesModel = options.model.map { $0.modelID != threads[id]?.model?.modelID } ?? false
+      if let model = options.model { threads[id]?.model = model }
+      if let effort = options.effort {
+        threads[id]?.effort = effort
+      } else if changesModel {
+        threads[id]?.effort = nil
+      }
+      threads[id]?.autoApprove = options.autoApprove
+    }
+  }
+
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
     let live = lock.withLock { () -> (directory: String, model: ModelSelection?, state: ConversationExecutionState)? in
       threads[id].map { ($0.directory, $0.model, $0.executionState) }
@@ -198,8 +212,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return AgentActivityHistory.codex(result)
   }
 
-  /// Codex names its threads itself, a moment after a turn, and not always
-  /// (three of Boltty's four, 0.166.0). What it does not name keeps its request.
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     await ChatNaming.fromRecord {
       CodexSessionStore().indexedTitles()[sessionID.lowercased()]
@@ -456,8 +468,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     running?.terminate()
   }
 
-  /// The same ending as a quit, which leaves nothing that a new server cannot
-  /// pick up: threads are resumed on it as they are next used (`ensureThread`).
   func restartIdleProcess() async { await shutdown() }
 
   // MARK: - The server

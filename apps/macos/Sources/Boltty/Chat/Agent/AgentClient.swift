@@ -9,12 +9,16 @@ protocol AgentClient: AnyObject, Sendable {
 
   func availableModels() async throws -> [AgentModelOption]
 
+  var modelListLifetime: TimeInterval { get }
+
   func makeSessionID() -> String
 
   func createSession(
     id: String,
     options: AgentSessionOptions
   ) async throws -> RemoteSessionInfo
+
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot
 
@@ -70,23 +74,18 @@ protocol AgentClient: AnyObject, Sendable {
 
   func shutdown() async
 
-  /// Lets go of what keeps a session open in Boltty — a CLI's process per
-  /// conversation — without touching the CLI's record of it. A later send
-  /// starts it again. Ask Boltty lets go of every chat it is done with.
   func release(sessionID: String) async
 
-  /// Ends a process kept running across chats, with nothing running in it, so
-  /// the next request starts the CLI as it is now on disk.
   func restartIdleProcess() async
 
-  /// A few words naming this chat, from the CLI's record or asked of a small
-  /// model. nil is no name yet: the engine tries again after the next turn.
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String?
 
   func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?)
 }
 
 extension AgentClient {
+  var modelListLifetime: TimeInterval { ConversationEngine.modelListLifetime }
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {}
   func usageLimits() async -> AgentUsage? { nil }
   func contextUsage(sessionID: String) async -> AgentContextUsage? { nil }
   func activityHistory() async -> AgentActivityHistory? { nil }
@@ -117,8 +116,6 @@ struct AgentSessionOptions: Equatable, Sendable {
   var model: ModelSelection?
   var effort: String?
   var autoApprove: Bool
-  /// Start the agent without the tools that write, where the CLI can be told.
-  /// The engine refuses every permission such a chat is asked either way.
   var readOnly: Bool
 
   init(
@@ -182,6 +179,21 @@ struct AgentModelOption: Identifiable, Equatable, Sendable {
   var isDefault: Bool
   var effortOptions: [AgentEffortOption] = []
   var id: String { "\(selection.providerID)/\(selection.modelID)" }
+}
+
+extension Array where Element == AgentModelOption {
+  func option(stored: String?) -> AgentModelOption? {
+    guard let stored, !stored.isEmpty else { return nil }
+    return first { $0.id == stored } ?? first { $0.selection.modelID == stored }
+  }
+
+  func option(for selection: ModelSelection?) -> AgentModelOption? {
+    guard let selection else { return nil }
+    return first { $0.selection.providerID == selection.providerID && $0.selection.modelID == selection.modelID }
+      ?? first { $0.selection.modelID == selection.modelID }
+  }
+
+  var agentDefault: AgentModelOption? { first(where: \.isDefault) ?? first }
 }
 
 struct AgentEffortOption: Identifiable, Equatable, Sendable {
@@ -278,10 +290,11 @@ enum AgentEvent: Equatable, Sendable {
   )
   case fileChanged(sessionID: String, path: String)
   case sessionDeleted(sessionID: String)
+  case modelsChanged
 
   var sessionID: String? {
     switch self {
-    case .connection: return nil
+    case .connection, .modelsChanged: return nil
     case let .messageUpdated(id, _), let .messageRemoved(id, _),
          let .partUpdated(id, _, _), let .partDelta(id, _, _, _, _),
          let .partRemoved(id, _, _), let .executionStateChanged(id, _),

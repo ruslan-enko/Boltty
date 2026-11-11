@@ -81,7 +81,6 @@ struct AgentStatisticsSummary: Equatable, Sendable {
     now: Date = Date(),
     calendar: Calendar = .current
   ) {
-    // A CLI that is off leaves "All Agents" as it leaves everything else.
     let hidden = Set(AgentHistory.tabOrder.map(\.rawValue)).subtracting(agents.map(\.rawValue))
     let firstHour = range.start(now: now, calendar: calendar)
       .map { Int(($0.timeIntervalSince1970 / 3600).rounded(.down)) } ?? .min

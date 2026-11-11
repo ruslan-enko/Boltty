@@ -28,9 +28,12 @@ final class ConversationEngine: ObservableObject {
   private var processesToRestart: Set<UUID> = []
   private var modelsReadAt: Date?
   private var modelRefresh: Task<Void, Never>?
-  /// The version each CLI was last seen at, for `restartOutdatedProcesses`.
+  private var modelsReadAtByProvider: [String: Date] = [:]
+  private var modelReads: [String: Task<Void, Never>] = [:]
+  private var settingsInForce: [String: AgentSessionOptions] = [:]
   private var seenVersions: [String: String] = [:]
-  static let modelListLifetime: TimeInterval = 60 * 60
+  nonisolated static let modelListLifetime: TimeInterval = 60 * 60
+  private static let modelReadDelay: UInt64 = 1_000_000_000
 
   static let defaultModelListDeadline: TimeInterval = 30
   private let modelListDeadline: TimeInterval
@@ -88,6 +91,7 @@ final class ConversationEngine: ObservableObject {
     else { return }
     do {
       try await client.setAutoApproval(enabled, sessionID: remote)
+      settingsInForce[remote]?.autoApprove = enabled
     } catch {
       notices[conversationID] = EngineNotice(
         text: "\(agentName(for: conversationID)) did not take that change. It will apply to the "
@@ -103,10 +107,30 @@ final class ConversationEngine: ObservableObject {
             .contains(.reasoningEffort)
     else { return [] }
     let options = models(for: conversationID)
-    let match = conversation.model.flatMap { model in
-      options.first { $0.selection.modelID == model.modelID }
-    } ?? options.first { $0.isDefault } ?? options.first
-    return match?.effortOptions ?? []
+    return (options.option(for: conversation.model) ?? options.agentDefault)?.effortOptions ?? []
+  }
+
+  func chooseModel(_ option: AgentModelOption, for conversationID: UUID) {
+    guard let conversation = store.conversation(id: conversationID) else { return }
+    let effort = conversation.reasoningEffort.flatMap { level in
+      option.effortOptions.contains { $0.value == level } ? level : nil
+    }
+    store.setModel(option.selection, effort: effort, for: conversationID)
+  }
+
+  func chooseEffort(_ effort: String?, for conversationID: UUID) {
+    guard let conversation = store.conversation(id: conversationID) else { return }
+    if conversation.model == nil, let current = models(for: conversationID).agentDefault {
+      store.setModel(current.selection, effort: effort, for: conversationID)
+    } else {
+      store.setReasoningEffort(effort, for: conversationID)
+    }
+  }
+
+  func modelIsGone(for conversationID: UUID) -> Bool {
+    guard let model = store.conversation(id: conversationID)?.model else { return false }
+    let options = models(for: conversationID)
+    return !options.isEmpty && options.option(for: model) == nil
   }
 
   func availability(for conversationID: UUID) -> AgentAvailability? {
@@ -150,12 +174,13 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  private func loadModels() async {
+  private func loadModels(only providers: Set<String>? = nil) async {
     let deadline = modelListDeadline
     await withTaskGroup(of: (String, [AgentModelOption]?).self) { group in
       for installation in registry.ready {
         guard let client = registry.client(for: installation.provider),
-              installation.capabilities.contains(.modelSelection)
+              installation.capabilities.contains(.modelSelection),
+              providers?.contains(client.providerID) != false
         else { continue }
         group.addTask {
           (client.providerID, await ConversationEngine.modelList(from: client, within: deadline))
@@ -165,33 +190,49 @@ final class ConversationEngine: ObservableObject {
         if options == nil {
           log.notice("\(providerID, privacy: .public) did not list its models within \(deadline, privacy: .public) s")
         }
-        // A list that did not come is no news: the last one stands.
         if let options, !options.isEmpty {
           modelsByProvider[providerID] = options
         } else if modelsByProvider[providerID] == nil {
           modelsByProvider[providerID] = []
         }
+        modelsReadAtByProvider[providerID] = Date()
       }
     }
-    modelsReadAt = Date()
+    if providers == nil { modelsReadAt = Date() }
   }
 
-  /// A CLI adds and drops models while Boltty sits in the menu bar. Asked as the
-  /// panel opens, and read in the background: nothing waits for it.
   func refreshModelsIfStale(now: Date = Date()) {
-    guard modelRefresh == nil, let modelsReadAt,
-          now.timeIntervalSince(modelsReadAt) >= Self.modelListLifetime
-    else { return }
-    modelRefresh = Task { [weak self] in
-      await self?.refreshAvailability()
-      self?.modelRefresh = nil
+    guard modelRefresh == nil, let modelsReadAt else { return }
+    if now.timeIntervalSince(modelsReadAt) >= Self.modelListLifetime {
+      modelRefresh = Task { [weak self] in
+        await self?.refreshAvailability()
+        self?.modelRefresh = nil
+      }
+      return
+    }
+    for client in registry.clients where client.modelListLifetime < Self.modelListLifetime {
+      let readAt = modelsReadAtByProvider[client.providerID] ?? modelsReadAt
+      if now.timeIntervalSince(readAt) >= client.modelListLifetime {
+        readModels(of: client.providerID)
+      }
     }
   }
 
-  /// Codex's app-server, Grok's stdio and Boltty's own OpenCode server outlive an
-  /// update of their CLI, and go on answering as the old version, old models
-  /// included. One whose CLI has changed is restarted once nothing of its is
-  /// running or waiting; until then it is looked at again next time.
+  private func readModels(of providerID: String) {
+    guard modelReads[providerID] == nil else { return }
+    modelReads[providerID] = Task { [weak self] in
+      try? await Task.sleep(nanoseconds: Self.modelReadDelay)
+      await self?.loadModels(only: [providerID])
+      self?.modelReads[providerID] = nil
+    }
+  }
+
+  private func readModelsAfterFailure(of providerID: String?) {
+    guard let providerID else { return }
+    if let readAt = modelsReadAtByProvider[providerID], Date().timeIntervalSince(readAt) < 60 { return }
+    readModels(of: providerID)
+  }
+
   private func restartOutdatedProcesses() async {
     for installation in registry.installations {
       guard case let .available(version?) = installation.availability,
@@ -239,7 +280,6 @@ final class ConversationEngine: ObservableObject {
       return
     }
     usageReadAt = Date()
-    // Limits read before a sign-out are not the account's any more.
     for installation in registry.installations
     where !installation.isReady && usageByProvider[installation.provider.rawValue] != nil {
       usageByProvider.removeValue(forKey: installation.provider.rawValue)
@@ -311,14 +351,26 @@ final class ConversationEngine: ObservableObject {
   // MARK: - Events
 
   private func handle(_ envelope: AgentEventEnvelope) async {
+    if case .modelsChanged = envelope.event {
+      if let providerID = envelope.providerID { readModels(of: providerID) }
+      return
+    }
     if case let .connection(state) = envelope.event {
       store.apply(envelope)
       if case .connected = state {
+        if let providerID = envelope.providerID,
+           let client = registry.client(forProviderID: providerID),
+           client.modelListLifetime < Self.modelListLifetime {
+          readModels(of: providerID)
+        }
         await resyncAll()
       }
       return
     }
     var envelope = envelope
+    if case let .sessionFailed(_, failure) = envelope.event, failure.rateLimit == nil, !failure.isAbort {
+      readModelsAfterFailure(of: envelope.providerID)
+    }
     if case let .sessionFailed(sessionID, failure) = envelope.event, var hit = failure.rateLimit {
       if hit.resetsAt == nil, let providerID = envelope.providerID {
         hit.resetsAt = usageByProvider[providerID]?.windows
@@ -354,8 +406,6 @@ final class ConversationEngine: ObservableObject {
 
   // MARK: - Naming
 
-  /// A turn has ended well in a chat with no name of its own. In the
-  /// background: it can take the CLI half a minute, and nothing waits on it.
   private func nameIfDue(_ id: UUID) {
     guard !store.isReadOnly, !namingChats.contains(id),
           let conversation = store.conversation(id: id),
@@ -458,7 +508,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// Whether the agent's record was read; a gone session counts as read.
   @discardableResult
   func refresh(conversationID: UUID) async -> Bool {
     guard let conversation = store.conversation(id: conversationID),
@@ -485,7 +534,7 @@ final class ConversationEngine: ObservableObject {
       )
       store.setExecutionState(snapshot.state, for: conversationID)
       if let model = snapshot.info.model, conversation.model == nil {
-        store.setModel(model, for: conversationID)
+        store.setModel(model, effort: conversation.reasoningEffort, for: conversationID)
       }
       notices[conversationID] = nil
       return true
@@ -533,6 +582,7 @@ final class ConversationEngine: ObservableObject {
     defer { sending.remove(conversationID) }
 
     if processesToRestart.remove(conversationID) != nil, let remote = conversation.remoteSessionID {
+      settingsInForce[remote] = nil
       await registry.client(forProviderID: conversation.providerID)?.release(sessionID: remote)
     }
     notices[conversationID] = nil
@@ -544,9 +594,6 @@ final class ConversationEngine: ObservableObject {
     )
   }
 
-  /// An Ask Boltty chat the person goes on with. If it could only look, its
-  /// process was started without the tools that write: let go of before the next
-  /// send, which resumes it with all of them.
   func keepAskBolttyChat(id: UUID) {
     guard let conversation = store.conversation(id: id), conversation.isAskBoltty else { return }
     store.keepAskBolttyChat(id: id)
@@ -593,6 +640,11 @@ final class ConversationEngine: ObservableObject {
     }
 
     do {
+      if let wanted = store.conversation(id: conversationID).map(Self.sessionOptions(for:)),
+         settingsInForce[remote] != wanted {
+        try await client.prepareSession(remote, options: wanted)
+        settingsInForce[remote] = wanted
+      }
       try await client.send(
         messageID: messageID,
         text: trimmed,
@@ -601,11 +653,6 @@ final class ConversationEngine: ObservableObject {
       )
       if conversation.title == Self.untitled || conversation.title.isEmpty {
         store.rename(id: conversationID, to: Self.title(from: trimmed))
-      }
-      // A session resumed after a relaunch was not created with the chat's
-      // Auto Mode; telling it again is harmless where it already knows.
-      if conversation.autoApprove {
-        Task { try? await client.setAutoApproval(true, sessionID: remote) }
       }
       return true
     } catch AgentClientError.indeterminate {
@@ -631,6 +678,7 @@ final class ConversationEngine: ObservableObject {
         )
       )
       attached.remove(remote)
+      settingsInForce[remote] = nil
       let sent = await deliver(
         text: trimmed,
         attachments: attachments,
@@ -725,7 +773,6 @@ final class ConversationEngine: ObservableObject {
       throw AgentClientError.sessionNotFound
     }
     if let remote = conversation.remoteSessionID { return remote }
-    // A copy that cannot save the chat must not start work it would lose.
     guard !store.isReadOnly else { throw AgentClientError.serverStartFailed(Self.secondCopyRefusal) }
     if let pending = creatingSessions[conversationID] { return try await pending.value }
     let task = Task { try await self.createRemoteSession(for: conversationID) }
@@ -742,16 +789,8 @@ final class ConversationEngine: ObservableObject {
     let client = try requireClient(for: conversationID)
 
     let sessionID = client.makeSessionID()
-    let info = try await client.createSession(
-      id: sessionID,
-      options: AgentSessionOptions(
-        directory: conversation.workingDirectory,
-        model: conversation.model,
-        effort: conversation.reasoningEffort,
-        autoApprove: conversation.autoApprove,
-        readOnly: conversation.readOnly
-      )
-    )
+    let options = Self.sessionOptions(for: conversation)
+    let info = try await client.createSession(id: sessionID, options: options)
     // A chat forgotten while its session started (Ask Boltty let go before the
     // warm-up finished) must not keep the process it just got.
     guard store.conversation(id: conversationID) != nil else {
@@ -760,7 +799,18 @@ final class ConversationEngine: ObservableObject {
     }
     store.attachRemoteSession(info.id, to: conversationID, model: info.model)
     attached.insert(info.id)
+    settingsInForce[info.id] = options
     return info.id
+  }
+
+  private static func sessionOptions(for conversation: Conversation) -> AgentSessionOptions {
+    AgentSessionOptions(
+      directory: conversation.workingDirectory,
+      model: conversation.model,
+      effort: conversation.reasoningEffort,
+      autoApprove: conversation.autoApprove,
+      readOnly: conversation.readOnly
+    )
   }
 
   // MARK: - Stopping
@@ -780,12 +830,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// A chat that is done with goes for good — Ask Boltty's, which keeps no
-  /// history: its record deleted at once, not trashed; then a running turn
-  /// stopped and its session let go (Claude Code and Antigravity hold a
-  /// process per conversation until Boltty quits). A session still starting
-  /// lets itself go when it finds the chat gone (`createRemoteSession`). The
-  /// CLI's own record stays.
   func forgetConversation(id: UUID) {
     guard let conversation = store.conversation(id: id) else { return }
     notices[id] = nil
@@ -794,6 +838,7 @@ final class ConversationEngine: ObservableObject {
           let client = registry.client(forProviderID: conversation.providerID)
     else { return }
     attached.remove(remote)
+    settingsInForce[remote] = nil
     let running = conversation.lastKnownState.blocksSending
     Task {
       if running { try? await client.stop(sessionID: remote) }
@@ -861,7 +906,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// No timeout: an unanswered permission is not consent.
   @discardableResult
   func reply(
     permissionID: String,
@@ -949,12 +993,9 @@ final class ConversationEngine: ObservableObject {
   // MARK: - Helpers
 
   nonisolated static let untitled = "New conversation"
-  /// What a second Boltty says when asked to start work: the first one owns
-  /// the conversations, and this one would lose whatever it started.
   static let secondCopyRefusal =
     "Another Boltty is already running and owns your conversations. Use that one to send."
 
-  /// What a read-only chat's agent hears when it asks to change something.
   static let readOnlyRefusal =
     "This chat is read-only: answer from what you can see, without changing files or running commands."
 
@@ -965,11 +1006,6 @@ final class ConversationEngine: ObservableObject {
     return String((0..<24).map { _ in alphabet.randomElement()! })
   }
 
-  /// The stored title: the request's opening words, at most 40 characters —
-  /// short for the notch, the banners and the tray. The history row reads
-  /// the whole request instead (`ChatTitle.forRow`). Cleaned the same way,
-  /// so a screen region's bracket or Boltty's own copy of a picture never
-  /// names a chat.
   static func title(from prompt: String) -> String {
     let cleaned = ChatTitle.clean(prompt)
     guard !cleaned.isEmpty else { return untitled }

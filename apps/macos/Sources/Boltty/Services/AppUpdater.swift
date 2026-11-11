@@ -6,8 +6,6 @@ final class AppUpdater: ObservableObject {
   struct Release: Equatable, Sendable {
     let version: String
     let pageURL: URL
-    /// The release's `Boltty.dmg` and its checksum. Without both the release
-    /// can only be opened, not installed.
     var imageURL: URL? = nil
     var checksumURL: URL? = nil
 
@@ -54,14 +52,11 @@ final class AppUpdater: ObservableObject {
   }
   var openURL: @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) }
   var presentResult: @MainActor (CheckResult, String) -> Bool = AppUpdater.alert
-  /// Puts the release in place of this copy; the running copy is untouched.
   var installRelease: @MainActor (Release) async throws -> Void = { release in
     guard let image = release.imageURL, let checksum = release.checksumURL else { return }
     try await UpdateInstaller.install(
       dmg: image, checksum: checksum, version: release.version, over: Bundle.main.bundleURL)
   }
-  /// Starts the new copy and quits this one, through the usual quit, which
-  /// stops every turn and adapter.
   var relaunch: @MainActor () async throws -> Void = {
     try await UpdateInstaller.relaunch(Bundle.main.bundleURL)
     // Not from inside this task: the quit waits for replies delivered on the
@@ -105,8 +100,6 @@ final class AppUpdater: ObservableObject {
     await check()
   }
 
-  /// The menu's and Settings' one button: checks, or offers what was found.
-  /// Nothing is installed without a yes.
   func checkForUpdates() {
     guard !isChecking, !isInstalling else { return }
     Task {
@@ -191,7 +184,6 @@ final class AppUpdater: ObservableObject {
     guard !version.isEmpty else { return nil }
     let pagePrefix = "https://github.com/\(repository)/releases/"
     let safePage = page.absoluteString.hasPrefix(pagePrefix) ? page : releasesURL
-    // Only this repository's own downloads; GitHub spells the owner's case.
     let downloadPrefix = "https://github.com/\(repository)/releases/download/".lowercased()
     let assets = (object["assets"] as? [[String: Any]] ?? []).reduce(into: [String: URL]()) { found, asset in
       guard let name = asset["name"] as? String,
@@ -254,7 +246,6 @@ final class AppUpdater: ObservableObject {
     return false
   }
 
-  /// True when the person chose to get the release by hand instead.
   private static func failureAlert(_ error: Error) -> Bool {
     let alert = NSAlert()
     alert.alertStyle = .warning

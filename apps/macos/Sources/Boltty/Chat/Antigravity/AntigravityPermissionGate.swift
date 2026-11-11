@@ -1,27 +1,12 @@
 import Foundation
 import os
 
-/// How Boltty asks before `agy` acts.
-///
-/// Print mode cannot ask: a tool that needs a permission is refused on the
-/// spot. A `PreToolUse` hook can *deny* but cannot *allow* there — `allow` and
-/// `permissionOverrides` were both refused (agy 1.3.4). So the
-/// process runs with `--dangerously-skip-permissions` and this gate is what
-/// decides: the hook hands each call to Boltty and waits for its answer.
-///
-/// The hook fails closed, measured: a crash, garbage, `{}`, a timeout or a
-/// killed hook all block the call. **Exit 0 with nothing on stdout lets it
-/// through**, which is why the script checks the answer file is not empty
-/// and exits 1 on anything it does not understand.
-///
-/// The hook lives in the person's `~/.gemini/config/hooks.json` under one
-/// named key, and outside Boltty it answers `ask`, which leaves `agy` to its
-/// own rules (measured: a read went through with and without it).
+/// Print mode cannot ask, and a `PreToolUse` hook can deny but not allow, so the
+/// process runs with `--dangerously-skip-permissions` and this gate decides every
+/// call. The hook fails closed.
 final class AntigravityPermissionGate: @unchecked Sendable {
   static let hookName = "boltty-permission-gate"
   static let environmentKey = "BOLTTY_AGY_GATE"
-  /// `agy` kills a hook past its `timeout`; the script gives up a little
-  /// sooner, and Boltty puts the card away sooner still.
   static let hookTimeout = 900
   static let scriptPatience: TimeInterval = 870
   static let cardLifetime: TimeInterval = 840
@@ -31,7 +16,6 @@ final class AntigravityPermissionGate: @unchecked Sendable {
     let conversationID: String
     let tool: String
     let arguments: JSONObject
-    /// The folder `agy` works in, as the hook was told it.
     let workspace: String?
   }
 
@@ -47,7 +31,6 @@ final class AntigravityPermissionGate: @unchecked Sendable {
     self.directory = directory
   }
 
-  /// Makes the hand-over folder and starts watching it.
   func start() throws {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let descriptor = open(directory.path, O_EVTONLY)
@@ -144,9 +127,6 @@ final class AntigravityPermissionGate: @unchecked Sendable {
     exit 0
     """
 
-  /// Puts the script in Application Support and Boltty's key in `hooks.json`,
-  /// leaving every other key as it was. A `hooks.json` that is not plain JSON
-  /// is not touched: the gate is then unavailable and `agy` runs as before.
   static func install(hooksFile: URL = defaultHooksFile, scriptFile: URL = defaultScriptFile) throws {
     let manager = FileManager.default
     try manager.createDirectory(at: scriptFile.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -188,16 +168,12 @@ final class AntigravityPermissionGate: @unchecked Sendable {
   }
 }
 
-/// What a call needs before it runs: nothing, or the person.
 enum AntigravityToolPolicy {
   enum Verdict: Equatable {
     case allow
     case ask(action: String, resources: [String], always: String)
   }
 
-  /// Reads and the agent's own bookkeeping: they change nothing. `read_file`
-  /// is what `agy` 1.4 opens a picture with — not `view_file` — and, missing
-  /// here, every Ask Boltty screenshot asked and a read-only chat refused it.
   static let quiet: Set<String> = [
     "view_file", "read_file", "view_file_outline", "view_code_item", "list_dir",
     "list_directory", "find_by_name", "file_search", "grep_search", "search_web",
@@ -249,10 +225,6 @@ enum AntigravityToolPolicy {
     "read:" + (path as NSString).standardizingPath
   }
 
-  /// A file the person sent is theirs to show the agent: `agy` takes no
-  /// picture in its input (1.4.0 ends the run on an `image` block) and opens
-  /// one only with `view_file`, so the copy Boltty made of it, outside the
-  /// chat's folder, is read without a card.
   static func readGrants(for attachments: [OutgoingAttachment]) -> Set<String> {
     Set(attachments.filter(\.url.isFileURL).map { readKey($0.url.path) })
   }

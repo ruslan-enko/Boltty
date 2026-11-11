@@ -12,6 +12,7 @@ extension ClaudeCodeClient {
     let id: String
     let directory: String
     var model: ModelSelection?
+    let options: AgentSessionOptions
     let process: JSONLineProcess
     var readerTask: Task<Void, Never>?
 
@@ -24,10 +25,11 @@ extension ClaudeCodeClient {
     private var control: [String: CheckedContinuation<JSONObject, Error>] = [:]
     private var controlCounter = 0
 
-    init(id: String, directory: String, model: ModelSelection?, process: JSONLineProcess) {
+    init(id: String, options: AgentSessionOptions, process: JSONLineProcess) {
       self.id = id
-      self.directory = directory
-      self.model = model
+      self.directory = options.directory
+      self.model = options.model
+      self.options = options
       self.process = process
     }
 
@@ -229,7 +231,6 @@ enum ClaudeCodeTranscript {
         order.append(id)
 
       case "attachment":
-        // Words sent mid-turn are filed as a queued_command attachment, not a user record.
         guard let attachment = record.object("attachment"),
               attachment.string("type") == "queued_command"
         else { return true }

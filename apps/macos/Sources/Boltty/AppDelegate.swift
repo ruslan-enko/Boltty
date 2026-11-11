@@ -16,7 +16,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var attentionNotifications: SystemAttentionNotificationService?
   private var sounds: InterfaceSounds?
   private var askBoltty: AskBolttyController?
-  /// Boltty's voice, made on first use.
   private lazy var speech = SpeechOutput { [weak self] in
     let settings = self?.model?.settings ?? AppSettings()
     var local: SpeechOutput.Local?
@@ -27,17 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     return SpeechOutput.Preferences(rate: settings.speechRate, local: local)
   }
-  /// Chats whose last request was dictated, for "When I asked by voice".
   private var dictatedChats: Set<UUID> = []
-  /// The reply being read because its turn finished: hiding the panel does
-  /// not stop it, a new request does.
   private var readAloudID: String?
-  /// The local voice models. A second Boltty (read-only) downloads and
-  /// deletes nothing.
   private lazy var localModels = LocalModelStore(canWrite: { [weak self] in
     self?.chat.map { !$0.store.isReadOnly } ?? false
   })
-  /// Parakeet, handed to dictation when Settings chose it and it is here.
   private let parakeet = ParakeetDictationEngine()
   private var settingsCancellable: AnyCancellable?
   private var cancellables = Set<AnyCancellable>()
@@ -163,8 +156,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
   }
 
-  /// The face still beside the pointer: the key goes on with its question,
-  /// about the same region. Otherwise it is the panel's.
   private func launchKeyPressed() {
     guard let palette = requirePalette() else { return }
     if !palette.isShowing, let question = askBoltty?.questionToContinue {
@@ -258,7 +249,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       guard let self else { return }
       sounds?.playSend()
       if byVoice { dictatedChats.insert(conversation) } else { dictatedChats.remove(conversation) }
-      // A new request cuts off the last one's reading.
       if let readAloudID, speech.isSaying(readAloudID) { speech.stop() }
     }
     palette.onListeningStarted = { [weak self] in
@@ -266,8 +256,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       speech.stop()
     }
     palette.onPromptRefused = { [weak self] in self?.sounds?.playRefused() }
-    // A region of the screen is Ask Boltty's question: the panel holds the
-    // region and the words, the answer comes beside the face.
     palette.regionAgent = { [weak self] in self?.askBoltty?.answeringAgent }
     palette.onRegionReady = { [weak self] agent in self?.askBoltty?.warmUp(agent: agent) }
     palette.onRegionDropped = { [weak self] in self?.askBoltty?.cancelQuestion() }
@@ -352,9 +340,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       self.firstRunShow = nil
       if isFirstRun { self.requirePalette()?.show() }
     }
-    // The first run plays Boltty once — the show (*First run*) — then sets
-    // it up in one window — agents, faces, keys, access — and opens the
-    // panel once that closes.
     if isFirstRun {
       return playFirstRunShow { [weak self] in
         guard let self else { return }
@@ -377,18 +362,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
   }
 
-  /// The agents to show: the ones that can take a prompt, in the history
-  /// tabs' order, or every adapter while none is ready yet (a first launch
-  /// may come before the scan).
   private var firstRunAgents: [AgentId] {
     let launchable = chat?.launchableProviderIDs().compactMap(AgentId.init(rawValue:)) ?? []
     let ready = AgentHistory.tabOrder.filter(launchable.contains)
     return ready.isEmpty ? AgentHistory.tabOrder : ready
   }
 
-  /// The show — the faces gathering under a sunset, then Boltty AI played
-  /// on glass of its own — *First run* in AGENTS.md. `then` runs once it
-  /// has ended or was skipped.
   private func playFirstRunShow(then: @escaping () -> Void) {
     guard let screen = firstRunScreen, !MotionPreferences.reduceMotion else { return then() }
     #if DEBUG
@@ -410,8 +389,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     show.play(completion: then)
   }
 
-  /// The setup window, on the same settings model as Settings. `false`
-  /// when it cannot be made yet (no engine).
   private func showSetup(then: @escaping () -> Void) -> Bool {
     guard let model, let engine = chat?.engine else { return false }
     let settings = BolttyAISettingsModel(
@@ -432,7 +409,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     presence.enterForeground { [weak self] in
       setup.show(on: self?.firstRunScreen)
-      // The show's daylight stays under the window until it closes.
       if let window = setup.window { self?.firstRunShow?.settle(under: window) }
     }
     return true
@@ -480,8 +456,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     applyHotkey(settings.bolttyAIHotkey, enabled: settings.bolttyAIHotkeyEnabled)
   }
 
-  /// Reads the start of a finished turn's reply aloud, when Settings says
-  /// so for this turn. Never over something else being said.
   private func readFinishedTurn(_ conversation: Conversation) {
     let mode = AnswerReading(rawValue: model?.settings.speechReadAnswers ?? "") ?? .off
     guard mode.reads(askedByVoice: dictatedChats.contains(conversation.id)),
@@ -524,8 +498,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     .store(in: &cancellables)
   }
 
-  /// Parakeet when it is chosen, here, and hears the dictation language;
-  /// otherwise Apple's dictation takes the take.
   private func localDictation() -> DictationEngine? {
     guard let settings = model?.settings, parakeet.folder != nil,
           settings.dictationEngine == BolttyAISettingsModel.parakeetEngine
@@ -687,7 +659,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-    // The first run's show is playing: the panel comes after it.
     if firstRunShow?.isPlaying == true { return false }
     if let settings = settingsWindowController?.window,
        settings.isVisible || settings.isMiniaturized {
@@ -842,8 +813,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
     windowMenu.addItem(NSMenuItem.separator())
 
-    // No chord: the launch hotkey (General) is the key that opens it, and a
-    // second one here was the same thing twice.
     let paletteItem = windowMenu.addItem(
       withTitle: "Boltty AI",
       action: #selector(openPalette),

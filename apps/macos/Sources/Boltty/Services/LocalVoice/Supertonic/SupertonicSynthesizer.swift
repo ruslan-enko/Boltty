@@ -1,21 +1,6 @@
-// The inference flow is ported from FluidAudio's Supertonic3Synthesizer,
-// Supertonic3LatentSampler and Supertonic3ModelStore
-// (github.com/FluidInference/FluidAudio, Apache-2.0), which follow Supertone's
-// reference implementation (github.com/supertone-inc/supertonic).
-
 import CoreML
 import Foundation
 
-/// Supertonic-3 on Core ML: text in, 44.1 kHz mono samples out.
-///
-/// Four stages per pass: the duration predictor says how long the speech
-/// runs, the text encoder embeds the characters, a vector estimator turns
-/// noise into a latent in eight steps, and the vocoder makes the wave. The
-/// estimator is the Neural Engine build, fixed at latent lengths 128, 256 and
-/// 512; a pass is padded up to the smallest that holds it.
-///
-/// Loading and predicting block, so one of these lives on a serial queue
-/// (`SupertonicSpeaker`) and is never touched from two threads.
 final class SupertonicSynthesizer: @unchecked Sendable {
   enum Failure: LocalizedError {
     case missing(String)
@@ -31,19 +16,15 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     }
   }
 
-  /// One of the ten presets: the speaker's timbre, as two style tensors.
   struct Voice {
     let name: String
-    /// `[1, 50, 256]`, for the text encoder and the estimator.
     let ttl: MLMultiArray
-    /// `[1, 8, 16]`, for the duration predictor.
     let dp: MLMultiArray
   }
 
   static let sampleRate = 44_100
   static let buckets = [128, 256, 512]
   static let steps = 8
-  /// The reference's speed; Boltty's rate multiplies it.
   static let baseSpeed: Float = 1.05
 
   private let folder: URL
@@ -56,9 +37,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
   private let vocoder: MLModel
   private var voices: [String: Voice] = [:]
 
-  /// Loads every stage. From Core ML's cache this takes about a second; the
-  /// first load after a download compiles for the Neural Engine and takes
-  /// longer, which is why the store does it once while "preparing".
   init(folder: URL) throws {
     self.folder = folder
     let config = try Self.config(in: folder)
@@ -83,7 +61,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     self.estimators = estimators
   }
 
-  /// The ten presets the model comes with, `F1`–`F5` and `M1`–`M5`.
   static let presets = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"]
 
   func voice(_ name: String) throws -> Voice {
@@ -103,9 +80,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     return voice
   }
 
-  /// A piece of an answer — a sentence, usually — as one stretch of sound:
-  /// cut into passes the window holds, and within a pass into runs of one
-  /// script, joined without the silence each run ends on.
   func say(_ piece: String, language: String, voice: Voice, speed: Float) throws -> [Float] {
     var samples: [Float] = []
     for pass in SupertonicText.passes(piece, limit: SupertonicText.passLength(for: language)) {
@@ -124,9 +98,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     return samples
   }
 
-  /// A run cut at a joint keeps a breath of its quiet edge: 70 ms after the
-  /// last sound, 15 ms before the first. Without the cut a word said in
-  /// English stood between two pauses, pasted in.
   static func joint(_ samples: [Float], trimStart: Bool, trimEnd: Bool) -> [Float] {
     let quiet: Float = 0.02
     var end = samples.count
@@ -140,8 +111,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     return start < end ? Array(samples[start..<end]) : []
   }
 
-  /// One pass: `tagged` is `SupertonicText.tagged`'s output, at most a
-  /// window long. `speed` divides the predicted duration.
   func synthesize(tagged: String, voice: Voice, speed: Float) throws -> [Float] {
     let (ids, maskValues) = SupertonicText.encode(tagged, indexer: indexer)
     let textIDs = try MLArrays.ints(ids, shape: [1, SupertonicText.window])
@@ -177,7 +146,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
       }
     }
 
-    // The vocoder takes any length: the padding goes before it.
     let trimmed = try MLArrays.floats(
       Self.trim(MLArrays.values(latent), channels: channels, from: bucket, to: length),
       shape: [1, channels, length])
@@ -205,8 +173,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
 
   // MARK: - The latent
 
-  /// Gaussian noise for `length` frames of each channel, zero in the padding
-  /// up to `padded` (Box–Muller, as the reference).
   static func noise(
     channels: Int, length: Int, padded: Int, uniform: () -> Float = { Float.random(in: 0..<1) }
   ) -> [Float] {
@@ -221,7 +187,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     return out
   }
 
-  /// Each channel's first `length` frames of a `[1, channels, from]` latent.
   static func trim(_ values: [Float], channels: Int, from: Int, to length: Int) -> [Float] {
     guard from > length else { return values }
     var out = [Float](repeating: 0, count: channels * length)
@@ -252,7 +217,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     var latentDim = 24
   }
 
-  /// `tts.json`'s few numbers the pipeline needs; the defaults are v1.7.3's.
   private static func config(in folder: URL) throws -> Config {
     let url = folder.appendingPathComponent("tts.json")
     guard let data = try? Data(contentsOf: url),
@@ -270,7 +234,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     return config
   }
 
-  /// `unicode_indexer.json`: a token id per code point, -1 where none.
   private static func indexer(in folder: URL) throws -> [Int32] {
     let url = folder.appendingPathComponent("unicode_indexer.json")
     guard let data = try? Data(contentsOf: url),

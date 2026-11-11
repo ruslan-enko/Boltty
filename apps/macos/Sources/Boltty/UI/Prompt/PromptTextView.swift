@@ -1,8 +1,7 @@
 import AppKit
 
-/// A composer button's own key, shown on its help tag.
 enum ComposerChord: CaseIterable {
-  case dictate, folder, attach
+  case dictate, folder, attach, model
 
   init?(key: String, modifiers: NSEvent.ModifierFlags) {
     guard let chord = Self.allCases.first(where: {
@@ -16,11 +15,12 @@ enum ComposerChord: CaseIterable {
     case .dictate: "d"
     case .folder: "o"
     case .attach: "a"
+    case .model: "m"
     }
   }
 
   var modifiers: NSEvent.ModifierFlags {
-    self == .attach ? [.command, .shift] : [.command]
+    self == .attach || self == .model ? [.command, .shift] : [.command]
   }
 
   var display: String {
@@ -28,13 +28,11 @@ enum ComposerChord: CaseIterable {
     case .dictate: "⌘D"
     case .folder: "⌘O"
     case .attach: "⇧⌘A"
+    case .model: "⇧⌘M"
     }
   }
 }
 
-/// How a link standing in the draft is drawn: the sentence's own type in a
-/// cyan-blue, underlined. `key` marks the characters `PromptTextView.styleLinks`
-/// has styled.
 enum PromptLinkStyle {
   static let color = HexColor.nsColor("#5AC8FA")
   static let key = NSAttributedString.Key("boltty.promptLink")
@@ -45,7 +43,6 @@ final class PromptTextView: NSTextView {
   var onCommandPeriod: (() -> Bool)?
   var onCommandReturn: (() -> Bool)?
   var onCommandN: (() -> Bool)?
-  /// ⌘D, ⌘O and ⇧⌘A: the composer's buttons, pressed from the keys.
   var onComposerChord: ((ComposerChord) -> Bool)?
   var onMouseDown: (() -> Void)?
 
@@ -77,13 +74,8 @@ final class PromptTextView: NSTextView {
     )
   }
 
-  /// What came with the words, in the order it came. Kept apart from the
-  /// text storage: an attachment stands over the sentence (`PromptAttachmentStrip`),
-  /// so nothing in the sentence can select, cross or delete it.
   private(set) var attachments: [PromptAttachment] = []
 
-  /// The cards have to follow. Told before the text view's own change, so
-  /// the height worked out from that already counts them.
   var onAttachmentsChange: ((_ animated: Bool) -> Void)?
 
   var draft: PromptDraft {
@@ -361,8 +353,6 @@ final class PromptTextView: NSTextView {
 
   var caretViewForTesting: PromptCaretView { caretView }
 
-  /// No words, which is what the placeholder and a key on the empty field
-  /// go by. Whether there is anything to send is `draft.isEffectivelyEmpty`.
   var isEmptyPrompt: Bool { (textStorage?.length ?? 0) == 0 }
   var isWhollyEmpty: Bool { isEmptyPrompt && attachments.isEmpty }
 
@@ -452,10 +442,6 @@ final class PromptTextView: NSTextView {
     super.viewDidChangeEffectiveAppearance()
   }
 
-  /// Draws every link in the draft as one — cyan-blue, underlined — and puts
-  /// back the sentence's own ink on what is no longer one. Attributes only:
-  /// the characters and the line breaks are not touched, so a link pasted or
-  /// typed in the middle of a sentence leaves the rest where it was.
   func styleLinks() {
     guard let storage = textStorage else { return }
     let wanted = PromptAttachmentKind.linkRanges(in: storage.string)
@@ -505,7 +491,6 @@ final class PromptTextView: NSTextView {
     return max(text, restingLineHeight(for: font))
   }
 
-  /// A line roomier than its type, which the first screen's row is centred on.
   private static func restingLineHeight(for font: NSFont) -> CGFloat {
     let height = (font.pointSize * AgentPaletteMetrics.promptLineHeightPerPoint * 2).rounded() / 2
     let descent = height / 2 - font.capHeight / 2
@@ -591,7 +576,6 @@ final class PromptTextView: NSTextView {
     textStorage?.setAttributedString(NSAttributedString(string: words, attributes: defaultTypingAttributes))
     typingAttributes = defaultTypingAttributes
     setSelectedRange(NSRange(location: textStorage?.length ?? 0, length: 0))
-    // Nothing older can be undone into a draft that has just been replaced.
     undoManager?.removeAllActions(withTarget: self)
     if attachments != self.attachments {
       self.attachments = attachments
@@ -634,7 +618,6 @@ final class PromptTextView: NSTextView {
     changeAttachments(to: attachments.filter { $0.id != id })
   }
 
-  /// Backspace with nothing before the caret: the card nearest the words goes.
   func removeLastAttachmentFromFieldStart() -> Bool {
     guard selectedRange() == NSRange(location: 0, length: 0), let last = attachments.last else {
       return false
@@ -669,8 +652,6 @@ final class PromptTextView: NSTextView {
     super.mouseDown(with: event)
   }
 
-  /// One door for what is dropped: the panel's (`AgentPaletteView.performDragOperation`).
-  /// Left to itself the text view takes a dropped file as its path, in words.
   override var acceptableDragTypes: [NSPasteboard.PasteboardType] { [] }
 
   // MARK: - Paste
@@ -787,12 +768,6 @@ struct PromptKeyHint: Equatable {
   let key: String
 }
 
-/// What the keys say after the typed text, as Siri says "ds — Ask Siri":
-/// an em dash, then the first hint in secondary ink at the typed size, on
-/// the line's baseline, with no capsule and no key — Return is what the
-/// sentence already asks for. Any further hints follow a middle dot in
-/// tertiary ink with their keys written plainly ("· Grok ⇧⇥"), because
-/// those keys are not the obvious one.
 final class PromptKeyHintView: NSView {
   var keys: [PromptKeyHint] = [] {
     didSet { if keys != oldValue { invalidateIntrinsicContentSize(); needsDisplay = true } }
@@ -805,10 +780,8 @@ final class PromptKeyHintView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
   override var intrinsicContentSize: NSSize { Self.size(of: keys, font: font) }
 
-  /// The typed text's own font: Siri's suggestion is the same size as the words before it.
   static func font(following typed: NSFont) -> NSFont { typed }
 
-  /// A space's width between the last glyph and the dash.
   static func spacing(_ font: NSFont) -> CGFloat {
     AgentPaletteMetrics.onPixelGrid(NSAttributedString(string: " ", attributes: [.font: font]).size().width)
   }

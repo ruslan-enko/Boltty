@@ -70,16 +70,7 @@ final class PaletteCornerScrollIndicator: NSView {
     path.addArc(center: foot, radius: radius, startAngle: 0, endAngle: -.pi / 2, clockwise: true)
 
     guard length > 1 else { return }
-    // Half a corner's quarter circle, whatever the document's length: at
-    // either end it
-    // stands inside the corner and bends with it, on the wall a short
-    // stroke. A thumb sized to the viewport, as a scroller's is, ran far
-    // down the wall from the corner.
     let thumbLength = min(length, max(.pi / 4 * radius, AgentPaletteMetrics.scrollIndicatorMinimumLength))
-    // At either end the thumb stops centred in the corner, on its diagonal
-    // — not at the arc's end, where it would lie flat
-    // along the foot. Under the history's tabs there is no top corner, so
-    // there it stops at the track's start.
     let half = thumbLength / 2
     let diagonal = CGFloat.pi / 4 * radius
     let first = topClearance > 0 ? half : max(half, diagonal)

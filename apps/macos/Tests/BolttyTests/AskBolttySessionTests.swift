@@ -7,7 +7,6 @@ final class AskBolttySessionTests: XCTestCase {
   private final class Voice: AskBolttySpeaking {
     var said: [String] = []
     var saying: String?
-    /// Starts each piece at once, unless told to hold them.
     var holds = false
     var held: [() -> Void] = []
     var speaks = true
@@ -67,18 +66,15 @@ final class AskBolttySessionTests: XCTestCase {
 
   private let target = AskBolttyTarget(
     providerID: AgentId.claude.rawValue, model: nil, effort: nil, readOnly: true)
-  /// The frozen display is 40 × 20 at the top left of the primary screen.
   private var top: CGFloat { NSScreen.screens.first?.frame.height ?? 20 }
   private var displayFrame: CGRect { CGRect(x: 0, y: top - 20, width: 40, height: 20) }
 
-  /// The left half of the frozen display, as the panel cuts it.
   private func selection(whole: Bool = false) throws -> ScreenSelection {
     let frame = whole ? displayFrame
       : CGRect(x: displayFrame.minX, y: displayFrame.minY, width: 20, height: 20)
     return try ScreenRegionCapture.selection(frame, in: Self.frozenScreen(), primaryScreenHeight: top)
   }
 
-  /// A region drawn, then `words` said about it.
   private func ask(_ words: String, whole: Bool = false) throws {
     askBoltty.warmUp(target)
     askBoltty.ask(words, about: try selection(whole: whole), on: displayFrame, target: target,
@@ -228,7 +224,6 @@ final class AskBolttySessionTests: XCTestCase {
     client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
     try await waitFor("the answer") { self.store.conversation(id: id)?.lastKnownState == .idle }
 
-    // An ordinary chat finishing in the same harness does raise one.
     let other = coordinator.startConversationInBackground(prompt: "hi", providerID: AgentId.claude.rawValue)
     try await waitFor("the other chat's send") { self.client.sentMessages.count == 2 }
     let otherRemote = try XCTUnwrap(client.sentMessages.last?.sessionID)
@@ -356,9 +351,6 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertTrue(client.sentMessages.first?.text.contains("/tmp/from-finder/") == true)
   }
 
-  /// The voice falling silent ends the answer by itself. `$speakingID` tells its
-  /// listeners before the value changes: asked then, the voice still "was saying"
-  /// it, and the answer stayed up until something else in the store moved.
   func testAnAnswerSaidAloudEndsWhenTheVoiceFallsSilent() async throws {
     SpeechOutput.setLanguagesForTesting(["en"])
     defer { SpeechOutput.setLanguagesForTesting([]) }
@@ -379,7 +371,6 @@ final class AskBolttySessionTests: XCTestCase {
     let id = try XCTUnwrap(controller.session.conversationID)
     try await waitFor("the turn to end") { self.store.conversation(id: id)?.lastKnownState == .idle }
     try await waitFor("the voice to be saying it") { controller.session.phase == .speaking }
-    // Whatever was still to come from the store has come.
     try await Task.sleep(for: .seconds(0.2))
 
     speech.finishPiecesForTesting()

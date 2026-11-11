@@ -367,7 +367,6 @@ final class PaletteGlassHost: NSView {
 
   var surfaceStyleForTesting: PaletteSurfaceStyle { style }
 
-  /// The style the host wears now — what a caller compares a wanted one with.
   var currentSurfaceStyle: PaletteSurfaceStyle { style }
 
   var hasVerticalOverlayForTesting: Bool {
@@ -411,7 +410,6 @@ final class PaletteGlassHost: NSView {
     innerTopShadowLayer.frame
   }
 
-  /// Nothing over the glass may carry filters or rasterize: an offscreen pass turns the material opaque black.
   var overlayAvoidsOffscreenPassForTesting: Bool {
     guard let overlay = verticalOverlayView.layer else { return false }
     let layers = [overlay, verticalOverlayGradientLayer, innerTopShadowLayer]
@@ -459,7 +457,6 @@ final class PaletteGlassHost: NSView {
   private var drawsOuterShadow: Bool
   private var glassStyle: PaletteGlassMaterialStyle
   private var verticalOverlay: PaletteGlassVerticalOverlay?
-  /// The wash that is fading out — still drawn, no longer the style's.
   private var fadingOutOverlay: PaletteGlassVerticalOverlay?
   private var washFadeGeneration = 0
   private var effectView: NSView?
@@ -532,7 +529,6 @@ final class PaletteGlassHost: NSView {
     )
     innerTopShadowLayer.contentsScale = scale
   }
-
 
   static let innerTopShadowHeight: CGFloat = 14
 
@@ -732,13 +728,8 @@ final class PaletteGlassHost: NSView {
     runWashFade(to: surfaceStyle.wash)
   }
 
-  /// How long a wash takes to come or go: a little longer than
-  /// the shell's own spring, so the ramp is still thinning as the glass lands.
   static let washFadeDuration: TimeInterval = 0.32
 
-  /// A wash that is going away stays drawn until its fade has run — the
-  /// first screen's black ramp used to vanish in one frame while the shell
-  /// was still growing into the list, and the two read as separate cuts.
   private func prepareWashFade(
     from old: PaletteGlassVerticalOverlay?, to new: PaletteGlassVerticalOverlay?
   ) {

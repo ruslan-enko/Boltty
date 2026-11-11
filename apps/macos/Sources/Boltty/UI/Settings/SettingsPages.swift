@@ -203,9 +203,6 @@ struct GeneralSettingsPage: View {
 
 // MARK: - Agents
 
-/// Every agent on one short list — its face, what a new chat with it would
-/// use, its switch — and a page of its own for its model, permissions and
-/// face, so the list stays a list.
 struct AgentsSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
   @ObservedObject var navigation: SettingsNavigation
@@ -237,7 +234,6 @@ struct AgentsSettingsPage: View {
   }
 
   private var list: some View {
-    // Preferred over whom? With one agent on, the words have nothing to say.
     let preferred = model.enabledAdapters.count > 1 ? model.defaultAgent : nil
     return Form {
       Section {
@@ -255,13 +251,10 @@ struct AgentsSettingsPage: View {
     .settingsGroupedPage()
   }
 
-  /// What Auto Mode lets through, in that agent's terms. New chats take the
-  /// choice; a chat already started keeps its own.
   static func autoModeNote(for agent: AgentId) -> String {
     "Auto Mode: \(autoModeReach(for: agent)) Applies to new chats."
   }
 
-  /// What Auto Mode lets through, alone — the composer's switch says it too.
   static func autoModeReach(for agent: AgentId) -> String {
     switch agent {
     case .codex:
@@ -275,8 +268,6 @@ struct AgentsSettingsPage: View {
 }
 
 extension AgentSettingsRow {
-  /// One line for the list: what a new chat with this agent would use, or why
-  /// there would be none.
   var summary: String {
     guard isReady else { return status }
     guard enabled else { return "Off" }
@@ -289,14 +280,11 @@ extension AgentSettingsRow {
     return parts.isEmpty ? "Ready" : parts.joined(separator: " · ")
   }
 
-  /// The chosen model, else the one the agent itself starts with.
   var currentModel: AgentModelOption? {
-    models.first { $0.selection.modelID == selectedModelID } ?? models.first { $0.isDefault }
+    models.option(stored: selectedModelID) ?? models.first { $0.isDefault }
   }
 }
 
-/// A row that opens the agent's page. The switch stays its own control, so
-/// an agent goes on or off without leaving the list.
 private struct AgentSettingsListRow: View {
   @ObservedObject var model: BolttyAISettingsModel
   let row: AgentSettingsRow
@@ -315,7 +303,6 @@ private struct AgentSettingsListRow: View {
               Text(row.agent.displayName)
               if isPreferred { SettingsTag("Preferred") }
             }
-            // A status can carry a command in backticks.
             Text((try? AttributedString(markdown: row.summary)) ?? AttributedString(row.summary))
               .font(BolttyInterfaceTypography.callout)
               .foregroundStyle(.secondary)
@@ -353,8 +340,6 @@ private struct AgentSettingsListRow: View {
   }
 }
 
-/// One agent's own page: the agent and its switch, what its new chats use,
-/// and its face.
 private struct AgentSettingsDetail: View {
   @ObservedObject var model: BolttyAISettingsModel
   let row: AgentSettingsRow
@@ -461,7 +446,7 @@ private struct AgentSettingsDetail: View {
         Text(row.models.first(where: \.isDefault).map { "Default (\($0.selection.displayName))" } ?? "Agent default")
           .tag("")
         ForEach(row.models) { option in
-          Text(option.selection.displayName).tag(option.selection.modelID)
+          Text(option.selection.displayName).tag(option.id)
         }
       } label: {
         Text("Model")
@@ -526,7 +511,6 @@ private struct AgentEnabledSwitch: View {
   }
 }
 
-/// A row that is a button presses like one, without a bezel.
 private struct SettingsRowPressStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -535,7 +519,6 @@ private struct SettingsRowPressStyle: ButtonStyle {
   }
 }
 
-/// A word beside a name that marks it: the accent under black.
 private struct SettingsTag: View {
   let text: String
 
@@ -650,8 +633,6 @@ struct UsageSettingsPage: View {
 
 }
 
-/// One plan window, said the way plan pages say it: what is left, and when
-/// it comes back. The bar is what remains.
 private struct UsageLimitCard: View {
   let window: AgentUsageWindow
 
@@ -686,7 +667,6 @@ private struct UsageLimitCard: View {
   }
 }
 
-/// A capsule track, the filled part in Boltty's accent. The faces' colours made every agent's bar a scale of its own.
 struct UsageMeter: View {
   let fraction: Double
   var height: CGFloat = 8
@@ -751,7 +731,6 @@ private struct UsageHistoryChart: View {
     }
   }
 
-  /// Said like a limit card's title: what is counted, and the fortnight's sum.
   private var headline: some View {
     HStack(alignment: .firstTextBaseline) {
       Text("Last \(AgentActivityHistory.window) days")
@@ -867,8 +846,6 @@ struct VoiceSettingsPage: View {
 
   // MARK: Reading aloud
 
-  /// Supertonic reads aloud, or nothing does: until it is downloaded the
-  /// page offers only the download.
   @ViewBuilder
   private func reading(_ speech: SpeechOutput) -> some View {
     if model.localModels != nil {
@@ -897,7 +874,6 @@ struct VoiceSettingsPage: View {
     }
   }
 
-  /// A model's name in a menu, with what choosing it downloads until it is here.
   private func modelTitle(_ name: String, _ id: LocalVoiceModel.ID) -> String {
     switch model.modelState(id) {
     case .notInstalled, .failed: "\(name) (\(model.modelSize(id)) download)"
@@ -923,8 +899,6 @@ struct VoiceSettingsPage: View {
   }
 }
 
-/// Settings › Ask Boltty. Voice is dictation; a region asked about is Ask
-/// Boltty's.
 struct AskBolttySettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -987,7 +961,6 @@ struct ShortcutsSettingsPage: View {
     }
   }
 
-  /// A key that is not a menu command: plain, and not a control.
   private func builtInRow(_ key: BuiltInKey) -> some View {
     HStack(alignment: .center) {
       VStack(alignment: .leading, spacing: 2) {
@@ -1034,8 +1007,6 @@ struct ShortcutsSettingsPage: View {
   }
 }
 
-/// A local model's line on the Voice page, only when there is something to
-/// say: its download while chosen, or what it takes once it is no longer used.
 struct LocalModelProgress: View {
   @ObservedObject var model: BolttyAISettingsModel
   let id: LocalVoiceModel.ID
@@ -1047,7 +1018,6 @@ struct LocalModelProgress: View {
   var body: some View {
     switch model.modelState(id) {
     case .notInstalled:
-      // Chosen, yet gone from the disk: removed by hand.
       if chosen {
         Button("Download (\(model.modelSize(id)))") { model.download(id) }
       }
@@ -1101,9 +1071,6 @@ struct LocalModelProgress: View {
 
 // MARK: - Voice picker
 
-/// Settings › Voice › Reading aloud: Supertonic's ten voices as a strip of
-/// gradients, scrolled sideways. A press chooses the voice and says a line in
-/// it; a press on the chosen one says it again, so there is no Play button.
 struct VoicePicker: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -1129,8 +1096,6 @@ struct VoicePicker: View {
   }
 }
 
-/// A voice's circle: one of the mascots' gradients and nothing else. Ten
-/// voices, six gradients: a gradient worn twice runs the other way.
 private struct VoiceSwatch: View {
   let id: String
 
@@ -1161,16 +1126,11 @@ private struct VoiceSwatch: View {
   }
 }
 
-/// A titled row of round choices that scrolls sideways when it runs out of
-/// room: voices on the Voice page, agents on Ask Boltty's.
 struct ChoiceStrip<Choices: View>: View {
   let title: String
   let identifier: String
   @ViewBuilder let choices: () -> Choices
 
-  /// The form's row inset, which `listRowInsets` does not remove on macOS:
-  /// the strip reaches past it to the card's edges, so a choice scrolls out
-  /// under the edge rather than being cut short of it.
   private static var rowInset: CGFloat { 10 }
 
   var body: some View {
@@ -1191,16 +1151,11 @@ struct ChoiceStrip<Choices: View>: View {
   }
 }
 
-/// One round choice: its picture in a circle, its name under it, and an
-/// accent ring standing off the chosen one, as a chat backdrop is chosen.
-/// `picture` is told how many times it was pressed, to answer each press.
 struct RingedChoice<Picture: View>: View {
   let title: String
   let isChosen: Bool
   var help: String?
   var diameter: CGFloat = 52
-  /// False for a picture that stands on its own: no circle, no ring, no
-  /// shadow, and the chosen one is told by its name.
   var isRinged = true
   let action: () -> Void
   @ViewBuilder let picture: (_ presses: Int) -> Picture
@@ -1218,7 +1173,6 @@ struct RingedChoice<Picture: View>: View {
       VStack(spacing: 7) {
         picture(presses)
           .frame(width: diameter, height: diameter)
-          .overlay(Circle().strokeBorder(Color.primary.opacity(isRinged ? 0.1 : 0), lineWidth: 1))
           .padding(Self.ringGap + Self.ringWidth)
           .overlay(
             Circle()

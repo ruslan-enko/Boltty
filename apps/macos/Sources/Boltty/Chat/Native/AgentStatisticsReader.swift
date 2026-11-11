@@ -378,7 +378,6 @@ struct AgentStatisticsReader: Sendable {
 
   // MARK: - OpenCode
 
-  /// This database holds credentials: named columns, read-only connection.
   static func openCodeSessions(in database: URL) -> [AgentStatistics.Session] {
     var handle: OpaquePointer?
     guard sqlite3_open_v2("file:\(database.path)?mode=ro", &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK,

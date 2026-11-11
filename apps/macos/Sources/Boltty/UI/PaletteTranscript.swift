@@ -78,10 +78,6 @@ enum AgentActivityGroup {
     return headline.contains(where: { $0 == " " || $0 == "/" }) ? "Ran " + headline : headline
   }
 
-  /// A step still running, as the chat list says it: the kind's verb and
-  /// what it is on — "Reading upscale.py", "Running curl -I host" — or a
-  /// command's own description, which is already a sentence. A summary like
-  /// "Read upscale.py" reads as done, so it is never used as it stands.
   static func progress(for activity: AgentActivity) -> String {
     let kind = kind(of: activity)
     if kind == .command {

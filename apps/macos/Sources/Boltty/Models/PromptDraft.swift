@@ -39,12 +39,6 @@ struct PromptDraft: Sendable, Equatable, Codable {
       && typedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
-  /// The words, then what came with them: the shape the composer keeps a
-  /// draft in, since an attachment stands over the sentence and not in it.
-  ///
-  /// Words after an attachment mean a draft stored while attachments stood
-  /// in the sentence, each with a space either side that was only there for
-  /// it, or dictation added to what was already here.
   var separated: (words: String, attachments: [PromptAttachment]) {
     var words = ""
     var attachments: [PromptAttachment] = []
@@ -56,7 +50,6 @@ struct PromptDraft: Sendable, Equatable, Codable {
         let doubled = words.last?.isWhitespace == true && text.first == " "
         words += doubled ? String(text.dropFirst()) : text
       case let .attachment(attachment):
-        // A link saved as an attachment by an older build is words again.
         if attachment.kind == .link, case let .text(url) = attachment.payload {
           words += url
         } else {
@@ -153,8 +146,6 @@ enum PromptExpansion {
           files.append((attachment.id, SentFile(path: path, label: "", name: name)))
         } else if case .text = attachment.payload, attachment.kind != .link,
                   let written = try? store.fileURL(for: attachment).path {
-          // The words go inline; the file is what the card over the bubble
-          // stands on, so one that could not be written costs only the card.
           let name = Self.fileName(of: attachment, at: written)
           files.append((attachment.id, SentFile(path: written, label: "", name: name, expansion: text)))
         }
@@ -163,9 +154,6 @@ enum PromptExpansion {
     return (result, files)
   }
 
-  /// An attachment no longer stands where it was typed, so nothing in the
-  /// sentence parts it from its neighbours: a blank line under the words, a
-  /// space between files, and nothing where there is whitespace already.
   private static func separator(after text: String, followsAttachment: Bool) -> String {
     guard let last = text.last, !last.isWhitespace else { return "" }
     return followsAttachment ? " " : "\n\n"
@@ -274,7 +262,6 @@ struct SentFile: Codable, Equatable, Hashable, Sendable {
       words += source[cursor...]
       rest += source[cursor...]
       guard !rest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-      // What parted the words from the files they came with goes with them.
       while words.last?.isWhitespace == true { words.removeLast() }
       text.text = words
       return .text(text)

@@ -56,7 +56,6 @@ final class AntigravityPermissionGateTests: XCTestCase {
 
   // MARK: - The script
 
-  /// Outside Boltty the hook answers `ask`, which leaves agy to its rules.
   func testOutsideBolttyTheHookHasNoOpinion() throws {
     try AntigravityPermissionGate.install(hooksFile: hooksFile, scriptFile: scriptFile)
     let result = try runScript(environment: [:], input: #"{"toolCall":{"name":"view_file"}}"#)

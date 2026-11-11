@@ -46,28 +46,35 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertEqual(conversations.switcherReads, readsAtShow + 2, "kept current, once per turn")
   }
 
-  func testTheAutoModeSwitchReachesTheConversation() throws {
+  func testTheModelMenuOffersTheModelsAndTheAutoModeReachesTheConversation() throws {
     let (_, controller, conversations) = makeController()
     let chat = conversations.addConversation(title: "rename")
     let id = chat.id
+    let opus = AgentModelOption(
+      selection: ModelSelection(providerID: "claude", modelID: "opus", displayName: "Opus"), isDefault: true)
+    conversations.modelMenus[id] = BolttyAIModelMenu(
+      agent: .claude, models: [opus], current: opus, goneName: nil,
+      efforts: [AgentEffortOption(value: "high")], effort: "high", autoMode: true)
     conversations.previews[id] = BolttyAISessionPreview(
-      id: id, title: chat.title, agent: .claude, state: .finished, body: "Done.", autoMode: true)
+      id: id, title: chat.title, agent: .claude, state: .finished, body: "Done.", autoMode: true,
+      modelChip: BolttyAIModelChip(title: "Opus · High", help: ""))
     controller.show()
     defer { controller.hide() }
     controller.addressConversation(id)
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     view.layoutSubtreeIfNeeded()
-    XCTAssertTrue(view.isAutoModeVisibleForTesting, "a chat started in Auto Mode shows it")
+    XCTAssertTrue(view.isModelChipVisibleForTesting)
 
-    view.pressAutoModeForTesting()
+    let menu = try XCTUnwrap(controller.modelMenu())
+    XCTAssertEqual(menu.items.first?.title, "Opus")
+    XCTAssertEqual(menu.items.first?.state, .on)
+    let auto = try XCTUnwrap(menu.items.first { $0.title == "Auto Mode" })
+    XCTAssertEqual(auto.state, .on, "a chat started in Auto Mode shows it")
+    _ = auto.target?.perform(auto.action)
     XCTAssertEqual(conversations.autoApproveChanges.map(\.id), [id])
     XCTAssertEqual(conversations.autoApproveChanges.map(\.enabled), [false])
-    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-    XCTAssertEqual(view.addressedPreviewForTesting?.autoMode, false, "the store's answer agrees")
   }
 
-  /// A chat is opened for the first time with the card not yet in the panel:
-  /// nothing there has a size to scroll by, and a long transcript came up blank.
   func testTheFirstChatOpenedAfterLaunchShowsItsTranscript() throws {
     let (_, controller, conversations) = makeController()
     let chat = conversations.addConversation(title: "rename")
@@ -92,7 +99,6 @@ final class AgentPaletteControllerTests: XCTestCase {
     let row = try XCTUnwrap(view.previewCardForTesting.messageRowForTesting("a29"))
     XCTAssertGreaterThan(row.visibleRect.intersection(row.bounds).height, 0, "the end of the chat is in sight")
 
-    // Resized wider, its words wrap less and the chat gets shorter.
     var sizes = view.surfaceSizes
     sizes.chat.width += 120
     view.surfaceSizes = sizes
@@ -307,7 +313,6 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     view.field.setDraft(PromptDraft("test"))
-
 
     let submitSelector = #selector(NSTextView.insertNewline(_:))
     XCTAssertTrue(view.textView(view.field, doCommandBy: submitSelector))
@@ -663,8 +668,6 @@ final class AgentPaletteControllerTests: XCTestCase {
     wait(for: [chip], timeout: 5)
     XCTAssertEqual(view.addressedSessionIDForTesting, chat.id, "the chat stays open")
     XCTAssertEqual(view.screenSelectionPhase, .idle)
-    // In the panel's own coordinates: it stands on the Dock's top edge where the
-    // Dock is at the foot of the screen.
     let origin = try XCTUnwrap(view.window?.frame.origin)
     XCTAssertEqual(
       view.screenOutlinesForTesting,

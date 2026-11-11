@@ -306,14 +306,11 @@ final class PaletteActivityContactSheet: XCTestCase {
     first.cancelAllAnimationsAndSettle()
     first.layoutSubtreeIfNeeded()
     let firstGround = ground(for: first)
-    // The pictures come from other threads: Quick Look and ImageIO.
     RunLoop.main.run(until: Date().addingTimeInterval(2))
     try write(firstGround, to: directory.appendingPathComponent("attachments-first-screen.png"))
     first.attachmentStripForTesting.cardsForTesting[5].setHoveredForTesting(true)
     try write(firstGround, to: directory.appendingPathComponent("attachments-first-screen-hover.png"))
 
-    // A card arriving on the first screen, stopped on the shell's spring: the
-    // line rides the foot down and the strip comes out from under the top.
     let riding = panel()
     let ridingGround = ground(for: riding)
     let window = NSWindow(

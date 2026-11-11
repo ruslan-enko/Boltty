@@ -2,11 +2,8 @@ import AppKit
 import Security
 import os
 
-/// Puts a release's `Boltty.dmg` in place of the running copy. Nothing is
-/// trusted for being on GitHub: the new copy must carry the same designated
-/// requirement as the one running — the same signing identity — so a grant
-/// for the microphone or Input Monitoring carries over, and a copy nobody
-/// here signed is refused.
+/// Nothing is trusted for being on GitHub: the new copy must carry the running
+/// copy's designated requirement, or it is not installed.
 enum UpdateInstaller {
   enum Failure: Error, LocalizedError, Equatable {
     case download(String)
@@ -34,12 +31,9 @@ enum UpdateInstaller {
 
   static let mountDeadline: TimeInterval = 60
   static let copyDeadline: TimeInterval = 120
-  /// How long a relaunched Boltty waits for the one it replaces to quit.
   static let handOverDeadline: TimeInterval = 20
   static let waitArgument = "-boltty.updatedFrom"
 
-  /// Downloads, checks and swaps in the release. The running copy keeps
-  /// running; `relaunch` starts the new one.
   static func install(
     dmg: URL, checksum: URL, version: String, over bundle: URL
   ) async throws {
@@ -78,7 +72,6 @@ enum UpdateInstaller {
     let foundVersion = Bundle(url: found)?.infoDictionary?["CFBundleShortVersionString"] as? String
     guard foundVersion == version else { throw Failure.wrongVersion(foundVersion ?? "?") }
 
-    // Staged beside the old copy, so the swap is a rename on one volume.
     let staged = folder.appendingPathComponent(".Boltty-\(version)-\(UUID().uuidString.prefix(8)).app")
     let copy = await OneShotCommand.run(
       "/usr/bin/ditto", [found.path, staged.path],
@@ -88,7 +81,6 @@ enum UpdateInstaller {
       throw Failure.replace(copy?.output.trimmingCharacters(in: .whitespacesAndNewlines) ?? "the copy timed out")
     }
     do {
-      // Checked after the copy: what is verified is what will run.
       try verifySignature(of: staged)
       _ = try FileManager.default.replaceItemAt(bundle, withItemAt: staged)
     } catch {
@@ -97,13 +89,10 @@ enum UpdateInstaller {
     }
   }
 
-  /// Starts the new copy, which waits for this process to be gone before it
-  /// does anything — two Boltty at once would leave the second read-only.
-  ///
   /// `openApplication` answers only once the new copy has checked in with
-  /// LaunchServices, and a copy that waits for this one may not have yet:
-  /// awaiting it deadlocked the hand-over. So a refusal is heard for
-  /// `launchGrace`, and after that this copy goes regardless.
+  /// LaunchServices, and a copy waiting for this one may not have yet: awaiting it
+  /// deadlocked the hand-over. So a refusal is heard for `launchGrace`, then this
+  /// copy goes regardless.
   static func relaunch(_ bundle: URL) async throws {
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.createsNewApplicationInstance = true
@@ -122,7 +111,6 @@ enum UpdateInstaller {
     }
   }
 
-  /// How long a refusal to start the new copy is waited for.
   static let launchGrace: TimeInterval = 2
 
   /// Called first thing at launch: a copy started by `relaunch` waits here
@@ -134,8 +122,6 @@ enum UpdateInstaller {
           let pid = pid_t(arguments[index + 1]), pid > 0
     else { return }
     guard !wait(for: pid, seconds: handOverDeadline) else { return }
-    // A pid can be reused; only a process with this one's name is ended. Not
-    // its path: the replaced copy's binary is gone, and it has none.
     guard let name = Bundle.main.executableURL?.lastPathComponent, self.name(of: pid) == name else { return }
     kill(pid, SIGTERM)
     guard !wait(for: pid, seconds: stuckCopyGrace) else { return }
@@ -143,10 +129,8 @@ enum UpdateInstaller {
     _ = wait(for: pid, seconds: stuckCopyGrace)
   }
 
-  /// How long a stuck copy is given to go after each signal.
   static let stuckCopyGrace: TimeInterval = 3
 
-  /// Whether `pid` is gone within `seconds`.
   private static func wait(for pid: pid_t, seconds: TimeInterval) -> Bool {
     let deadline = Date().addingTimeInterval(seconds)
     while kill(pid, 0) == 0 || errno == EPERM {
@@ -192,7 +176,6 @@ enum UpdateInstaller {
     return digest
   }
 
-  /// The hex digest from a `shasum` line: "<hex>  Boltty.dmg".
   static func checksum(in text: String) -> String? {
     guard let first = text.split(whereSeparator: \.isWhitespace).first else { return nil }
     let hex = first.lowercased()

@@ -1,13 +1,4 @@
 #!/usr/bin/env swift
-// Draws the DMG window's background: the first run's sunset, Boltty on the
-// left, an arrow, Applications on the right. A stand-in until a drawn one
-// replaces Resources/DMG/background.png and background@2x.png — the release
-// reads those two files, not this script.
-//
-//   swift scripts/render-dmg-background.swift
-//
-// The window is 660 × 400 points; release.sh puts the icons at (170, 190)
-// and (490, 190), so the arrow runs between them.
 
 import AppKit
 
@@ -30,14 +21,12 @@ func render(scale: CGFloat) -> Data {
                      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
   cg.scaleBy(x: scale, y: scale)
 
-  // The sky: SunsetView's stops, top to bottom (y is up here).
   let stops = ["#22468f", "#3a6db0", "#5a8ac0", "#a9a0b4", "#e8a67c", "#f4a24e", "#e2461b"]
   let locations: [CGFloat] = [0, 0.3, 0.46, 0.6, 0.72, 0.84, 1].map { 1 - $0 }.reversed()
   let sky = CGGradient(colorsSpace: space, colors: stops.reversed().map { colour($0) } as CFArray,
                        locations: locations)!
   cg.drawLinearGradient(sky, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
 
-  // Its soft lights, held still.
   for (hex, alpha, x, y, r) in [("#ffb36b", 0.38, 0.28, 0.7, 260.0),
                                 ("#ff86b0", 0.26, 0.74, 0.58, 220.0),
                                 ("#9cc8ff", 0.30, 0.55, 0.22, 240.0)] {
@@ -49,13 +38,11 @@ func render(scale: CGFloat) -> Data {
   }
   cg.setBlendMode(.normal)
 
-  // A shade where the icons and their names stand, so white type reads.
   let band = CGGradient(colorsSpace: space, colors: [colour("#000000", 0), colour("#000000", 0.18),
                                                      colour("#000000", 0)] as CFArray,
                         locations: [0, 0.5, 1])!
   cg.drawLinearGradient(band, start: CGPoint(x: 0, y: 90), end: CGPoint(x: 0, y: 330), options: [])
 
-  // The arrow: a soft arc from Boltty to Applications.
   let from = CGPoint(x: 252, y: 214), to = CGPoint(x: 408, y: 214)
   let arc = CGMutablePath()
   arc.move(to: from)
@@ -74,7 +61,6 @@ func render(scale: CGFloat) -> Data {
   cg.addPath(head)
   cg.strokePath()
 
-  // The one sentence.
   let ctx = NSGraphicsContext(cgContext: cg, flipped: false)
   NSGraphicsContext.current = ctx
   let font = NSFont.systemFont(ofSize: 15, weight: .medium)
