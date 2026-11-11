@@ -318,6 +318,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     model.$settings
       .sink { [weak self] settings in
         self?.applyDictationLanguage(settings)
+        self?.panelView.shellUsesClearGlass = settings.panelClearGlass
       }
       .store(in: &cancellables)
 
@@ -575,8 +576,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         kind: .permission, requestID: "visual-fixture", header: "Approval",
         prompt: "May I update the files in this project?",
         detail: "swift build --configuration debug",
-        options: [.init(label: "Allow once", detail: nil, value: "once"),
-                  .init(label: "Always allow", detail: "For this conversation.", value: "always"),
+        options: [.init(label: "Allow Once", detail: nil, value: "once"),
+                  .init(label: "Always Allow", detail: "For this conversation.", value: "always"),
                   .init(label: "Reject", detail: nil, value: "reject")],
         allowsMultiple: false, allowsCustom: false)
       let queued = ProcessInfo.processInfo.arguments.contains("--ui-testing-queue")
@@ -1532,7 +1533,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     steering: Bool = false
   ) {
     let preview = conversations?.preview(for: sessionID)
-    if let preview, preview.question != nil {
+    // A late question holds nothing up: its ask is gone, and a message lets it go.
+    if let preview, let question = preview.question, !question.isLate {
       isSubmitting = false
       panelView.showError(BolttyAIFollowUp.busyMessage(agent: preview.agent))
       panelView.layoutSubtreeIfNeeded()

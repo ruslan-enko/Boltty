@@ -174,7 +174,7 @@ struct PaletteGlassVerticalOverlay: Equatable {
   static let bolttyAIPromptRamp = PaletteGlassVerticalOverlay.multiStop(
     PaletteGlassRamp.resample([
       .srgb(0, 0, 0, alpha: 1, at: 0),
-      .srgb(0, 0, 0, alpha: 0, at: 1),
+      .srgb(0, 0, 0, alpha: 0.5, at: 1),
     ]),
     reducedTransparencyStops: PaletteGlassRamp.resample([
       .srgb(0, 0, 0, alpha: 1, at: 0),
@@ -307,12 +307,22 @@ struct PaletteSurfaceStyle: Equatable {
   )
 
   static let bolttyAIPrompt = PaletteSurfaceStyle(
-    material: .regular,
+    material: .clear,
     wash: .bolttyAIPromptRamp,
     drawsOuterShadow: false,
     edgeAlpha: 0,
     glassTintAlpha: 0
   )
+
+  static func bolttyAIPrompt(clearGlass: Bool) -> PaletteSurfaceStyle {
+    clearGlass ? bolttyAIPrompt : PaletteSurfaceStyle(
+      material: .regular,
+      wash: bolttyAIPrompt.wash,
+      drawsOuterShadow: bolttyAIPrompt.drawsOuterShadow,
+      edgeAlpha: bolttyAIPrompt.edgeAlpha,
+      glassTintAlpha: bolttyAIPrompt.glassTintAlpha
+    )
+  }
 
   static let bolttyAIControl = bolttyAI
 
@@ -465,6 +475,11 @@ final class PaletteGlassHost: NSView {
   private let verticalOverlayGradientLayer = CAGradientLayer()
   private let bottomHighlightGradientLayer = CAGradientLayer()
   private let innerTopShadowLayer = CAGradientLayer()
+  /// The glass lights its own rim, strongest along the foot and thinning up the
+  /// corners. Through the wash's thin end that crescent read as a second, tighter
+  /// corner inside the shell's, so the wash is denser over the rim's two points.
+  private let rimShadeLayers = [CALayer(), CALayer()]
+  static let rimShade: [(width: CGFloat, alpha: CGFloat)] = [(1, 0.21), (2, 0.15)]
   private var showsGlass = true
 
   init(
@@ -507,7 +522,7 @@ final class PaletteGlassHost: NSView {
     CATransaction.setDisableActions(true)
     let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
     let bounds = verticalOverlayView.bounds
-    for layer in [verticalOverlayGradientLayer, bottomHighlightGradientLayer] {
+    for layer in [verticalOverlayGradientLayer, bottomHighlightGradientLayer] + rimShadeLayers {
       layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
       layer.frame = bounds
       layer.contentsScale = scale
@@ -629,6 +644,11 @@ final class PaletteGlassHost: NSView {
     verticalOverlayView.layer?.addSublayer(verticalOverlayGradientLayer)
     verticalOverlayView.layer?.addSublayer(bottomHighlightGradientLayer)
     verticalOverlayView.layer?.addSublayer(innerTopShadowLayer)
+    for (layer, shade) in zip(rimShadeLayers, Self.rimShade) {
+      layer.borderWidth = shade.width
+      layer.borderColor = NSColor.black.withAlphaComponent(shade.alpha).cgColor
+      verticalOverlayView.layer?.addSublayer(layer)
+    }
     addSubview(verticalOverlayView)
     pinEdges(of: verticalOverlayView, to: self)
 
@@ -700,6 +720,7 @@ final class PaletteGlassHost: NSView {
     applyContinuousCorner(to: verticalOverlayView.layer, radius: radius, masksToBounds: true)
     applyContinuousCorner(to: verticalOverlayGradientLayer, radius: radius, masksToBounds: true)
     applyContinuousCorner(to: bottomHighlightGradientLayer, radius: radius, masksToBounds: true)
+    for rim in rimShadeLayers { applyContinuousCorner(to: rim, radius: radius, masksToBounds: true) }
     applyContinuousCorner(to: layer, radius: radius, masksToBounds: false)
   }
 
@@ -780,6 +801,8 @@ final class PaletteGlassHost: NSView {
   private func applyAppearance() {
     applyVerticalOverlayColors()
     if let glass = effectView as? NSGlassEffectView {
+      let material: NSGlassEffectView.Style = glassStyle == .clear ? .clear : .regular
+      if glass.style != material { glass.style = material }
       let tint = effectiveGlassTintAlpha
       glass.tintColor = tint > 0 ? NSColor.black.withAlphaComponent(tint) : nil
     }
@@ -795,6 +818,8 @@ final class PaletteGlassHost: NSView {
       verticalOverlayView.layer?.backgroundColor = NSColor.clear.cgColor
       return
     }
+
+    for rim in rimShadeLayers { rim.isHidden = verticalOverlay != .bolttyAIPromptRamp }
 
     if let base = verticalOverlay.baseFillColor {
       verticalOverlayView.layer?.backgroundColor =

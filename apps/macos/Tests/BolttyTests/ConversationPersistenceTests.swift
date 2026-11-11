@@ -180,6 +180,25 @@ final class ConversationPersistenceTests: XCTestCase {
     XCTAssertEqual(second.transcript(id: chat.id).interactions.first?.resolution, .expired)
   }
 
+  func testAChatStoredWaitingOnAQuestionComesBackStillAsking() {
+    let first = newStore()
+    let chat = first.createConversation(title: "Asks", workingDirectory: "/tmp/w")
+    first.attachRemoteSession("ses_1", to: chat.id, model: nil)
+    first.appendUserMessage(id: "msg_1", text: "go", attachments: [], to: chat.id)
+    first.apply(AgentEventEnvelope(id: "ask", sequence: 1, event: .interactionAsked(
+      PendingInteraction(
+        id: "que_1", conversationID: chat.id, remoteSessionID: "ses_1",
+        kind: .question(QuestionPrompt(items: [QuestionItem(
+          header: "UI", question: "Which?", choices: [],
+          allowsMultiple: false, allowsCustom: true)]))))))
+    first.close()
+
+    let second = newStore()
+    XCTAssertEqual(second.conversation(id: chat.id)?.lastKnownState, .interrupted)
+    XCTAssertNil(second.transcript(id: chat.id).openInteraction, "it holds nothing up")
+    XCTAssertEqual(second.transcript(id: chat.id).lateQuestion?.id, "que_1")
+  }
+
   func testACorruptTranscriptCostsOneConversationNotTheApp() {
     let first = newStore()
     let good = first.createConversation(title: "Fine", workingDirectory: "/tmp")

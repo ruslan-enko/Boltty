@@ -32,14 +32,15 @@ final class ConversationStore: ObservableObject {
     transcripts = loaded.transcripts
     selectedConversationID = loaded.selectedConversationID
     damagedConversationIDs = Set(loaded.damaged)
-    // Waiting is mid-turn too: the process that asked is gone, so its card
-    // can no longer be answered and must not hold the chat.
+    // Waiting is mid-turn too: what asked may be gone, so no card may hold the
+    // chat. A question stays answerable; if its ask did survive (a crash, with
+    // OpenCode's service still up), the next read of the session reopens it.
     for index in conversations.indices where conversations[index].lastKnownState.blocksSending {
       conversations[index].lastKnownState = .interrupted
       let id = conversations[index].id
       guard var transcript = transcripts[id] else { continue }
       for asked in transcript.interactions.indices where transcript.interactions[asked].isOpen {
-        transcript.interactions[asked].resolution = .expired
+        transcript.interactions[asked].resolution = transcript.interactions[asked].goneResolution
         transcript.interactions[asked].isSubmitting = false
       }
       transcripts[id] = transcript
@@ -387,7 +388,7 @@ final class ConversationStore: ObservableObject {
     openInteractions: [PendingInteraction]
   ) {
     var transcript = transcript(id: conversationID)
-    var byID = Dictionary(uniqueKeysWithValues: transcript.messages.map { ($0.id, $0) })
+    var byID = Dictionary(transcript.messages.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     var merged: [ConversationMessage] = []
     for message in messages {
       if var existing = byID.removeValue(forKey: message.id) {
@@ -412,9 +413,12 @@ final class ConversationStore: ObservableObject {
         transcript.interactions[index].isSubmitting = false
       }
     }
-    for interaction in openInteractions
-    where !transcript.interactions.contains(where: { $0.id == interaction.id }) {
-      transcript.interactions.append(interaction)
+    for interaction in openInteractions {
+      if let known = transcript.interactions.firstIndex(where: { $0.id == interaction.id }) {
+        if transcript.interactions[known].isLate { transcript.interactions[known].resolution = nil }
+      } else {
+        transcript.interactions.append(interaction)
+      }
     }
     transcripts[conversationID] = transcript
     damagedConversationIDs.remove(conversationID)
@@ -458,7 +462,9 @@ final class ConversationStore: ObservableObject {
     }
     transcript.interactions[index].isSubmitting = false
     if transcript.interactions[index].resolution == nil {
-      transcript.interactions[index].resolution = resolution
+      transcript.interactions[index].resolution = resolution == .expired
+        ? transcript.interactions[index].goneResolution
+        : resolution
     }
     transcripts[conversationID] = transcript
     if transcript.openInteraction == nil,
@@ -474,7 +480,52 @@ final class ConversationStore: ObservableObject {
           transcript.interactions[index].isOpen
     else { return }
     transcript.interactions[index].isSubmitting = false
-    transcript.interactions[index].resolution = .expired
+    transcript.interactions[index].resolution = transcript.interactions[index].goneResolution
+    transcripts[conversationID] = transcript
+    saveTranscriptNow(conversationID)
+  }
+
+  /// Open questions whose ask is gone, or is about to be, become late ones.
+  func markQuestionsGone(in conversationID: UUID, except kept: Set<String> = []) {
+    var transcript = transcript(id: conversationID)
+    for index in transcript.interactions.indices
+    where transcript.interactions[index].isOpen && !kept.contains(transcript.interactions[index].id) {
+      guard case .question = transcript.interactions[index].kind else { continue }
+      transcript.interactions[index].resolution = .askGone
+      transcript.interactions[index].isSubmitting = false
+    }
+    transcripts[conversationID] = transcript
+    saveTranscriptNow(conversationID)
+  }
+
+  /// False if it was answered already, so a second press sends nothing.
+  func answerLateQuestion(
+    id interactionID: String,
+    in conversationID: UUID,
+    answers: [[String]]
+  ) -> Bool {
+    var transcript = transcript(id: conversationID)
+    guard let index = transcript.interactions.firstIndex(where: { $0.id == interactionID }),
+          transcript.interactions[index].isLate
+    else { return false }
+    transcript.interactions[index].resolution = .answered(answers)
+    transcripts[conversationID] = transcript
+    saveTranscriptNow(conversationID)
+    return true
+  }
+
+  /// The person has moved on, by another message or by stopping the turn.
+  func letGoOfQuestions(in conversationID: UUID, includingOpen: Bool = false) {
+    var transcript = transcript(id: conversationID)
+    var changed = false
+    for index in transcript.interactions.indices {
+      let asked = transcript.interactions[index]
+      guard case .question = asked.kind, asked.isLate || (includingOpen && asked.isOpen) else { continue }
+      transcript.interactions[index].resolution = .expired
+      transcript.interactions[index].isSubmitting = false
+      changed = true
+    }
+    guard changed else { return }
     transcripts[conversationID] = transcript
     saveTranscriptNow(conversationID)
   }
@@ -578,7 +629,9 @@ final class ConversationStore: ObservableObject {
 
     case .sessionDeleted:
       var transcript = transcript(id: id)
-      for index in transcript.interactions.indices where transcript.interactions[index].isOpen {
+      // Late questions too: a new session would not know what was asked.
+      for index in transcript.interactions.indices
+      where transcript.interactions[index].isOpen || transcript.interactions[index].isLate {
         transcript.interactions[index].resolution = .expired
         transcript.interactions[index].isSubmitting = false
       }

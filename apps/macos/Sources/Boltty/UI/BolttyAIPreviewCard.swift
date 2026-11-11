@@ -291,7 +291,7 @@ final class BolttyAIPreviewCard: NSView {
     configureScrollEdge()
     addSubview(scroll)
     closeButton.button.image = BolttyIcon.chevronLeft.image(
-      size: AgentPaletteMetrics.previewCloseGlyphPointSize,
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewCloseGlyphPointSize),
       nudgedLeft: AgentPaletteMetrics.previewCloseGlyphNudge,
       description: "Back"
     )
@@ -514,10 +514,52 @@ final class BolttyAIPreviewCard: NSView {
     fileFlightWhipsForTesting = whips.count
 
     row.alphaValue = 0
-    scroll.contentView.setBoundsOrigin(origin)
-    scroll.reflectScrolledClipView(scroll.contentView)
     isFlying = true
     let duration = AgentPaletteMetrics.previewSendFlightDuration
+    let ghosts = risers.map(\.view) + morphs.flatMap { [$0.card, $0.chip].compactMap { $0 } }
+      + whips
+    // Every part runs on Core Animation's clock. The clip view's animator() is
+    // AppKit's timer on the main thread, which the turn starting keeps busy: the
+    // transcript stuttered under a bubble that glided.
+    CATransaction.begin()
+    CATransaction.setCompletionBlock { [weak self, weak row] in
+      MainActor.assumeIsolated {
+        ghosts.forEach { $0.removeFromSuperview() }
+        row?.alphaValue = 1
+        guard let self else { return }
+        self.isFlying = false
+        self.scroll.reflectScrolledClipView(self.scroll.contentView)
+        if self.pendingBottomScroll {
+          self.pendingBottomScroll = false
+          self.scrollToLatest()
+        }
+      }
+    }
+    let clip = scroll.contentView
+    clip.setBoundsOrigin(origin)
+    let clipBefore = clip.layer?.bounds.origin
+    let documentBefore = content.layer?.position
+    clip.setBoundsOrigin(target)
+    scroll.reflectScrolledClipView(clip)
+    for (layer, keyPath, before, after) in [
+      (clip.layer, "bounds.origin", clipBefore, clip.layer?.bounds.origin),
+      (content.layer, "position", documentBefore, content.layer?.position),
+    ] {
+      guard let layer, let before, let after,
+            hypot(before.x - after.x, before.y - after.y) > 0.5 else { continue }
+      layer.add(Self.glide(
+        keyPath, by: CGPoint(x: before.x - after.x, y: before.y - after.y), over: duration),
+        forKey: "sendScroll")
+      break
+    }
+    for riser in risers {
+      let start = riser.view.frame.origin
+      riser.view.setFrameOrigin(riser.landing)
+      riser.view.wantsLayer = true
+      riser.view.layer?.add(Self.glide(
+        "position", by: CGPoint(x: start.x - riser.landing.x, y: start.y - riser.landing.y),
+        over: duration), forKey: "sendRise")
+    }
     for morph in morphs {
       if let layer = morph.card.layer, let from = morph.grow {
         let grow = CABasicAnimation(keyPath: "transform")
@@ -531,28 +573,27 @@ final class BolttyAIPreviewCard: NSView {
       morph.chip?.layer?.add(Self.fade([1, 0, 0], at: [0, 0.4, 1], over: duration), forKey: "sendFade")
     }
     whips.forEach { $0.start() }
-    let ghosts = risers.map(\.view) + morphs.flatMap { [$0.card, $0.chip].compactMap { $0 } }
-      + whips
-    NSAnimationContext.runAnimationGroup({ context in
-      context.duration = duration
-      context.timingFunction = Motion.emphasizedCurve
-      context.allowsImplicitAnimation = true
-      for riser in risers { riser.view.animator().setFrameOrigin(riser.landing) }
-      for morph in morphs { morph.chip?.animator().frame = morph.card.frame }
-      scroll.contentView.animator().setBoundsOrigin(target)
-    }, completionHandler: { [weak self, weak row] in
-      MainActor.assumeIsolated {
-        ghosts.forEach { $0.removeFromSuperview() }
-        row?.alphaValue = 1
-        guard let self else { return }
-        self.isFlying = false
-        self.scroll.reflectScrolledClipView(self.scroll.contentView)
-        if self.pendingBottomScroll {
-          self.pendingBottomScroll = false
-          self.scrollToLatest()
-        }
+    if morphs.contains(where: { $0.chip != nil }) {
+      NSAnimationContext.runAnimationGroup { context in
+        context.duration = duration
+        context.timingFunction = Motion.emphasizedCurve
+        context.allowsImplicitAnimation = true
+        for morph in morphs { morph.chip?.animator().frame = morph.card.frame }
       }
-    })
+    }
+    CATransaction.commit()
+  }
+
+  /// Additive, so the model value is already where it ends and anything AppKit
+  /// sets on the layer meanwhile does not cut the flight short.
+  private static func glide(_ keyPath: String, by offset: CGPoint, over duration: TimeInterval) -> CAAnimation {
+    let glide = CABasicAnimation(keyPath: keyPath)
+    glide.isAdditive = true
+    glide.fromValue = NSValue(point: offset)
+    glide.toValue = NSValue(point: .zero)
+    glide.duration = duration
+    glide.timingFunction = Motion.emphasizedCurve
+    return glide
   }
 
   private func makeWhip(
@@ -1237,6 +1278,19 @@ final class BolttyAIPreviewCard: NSView {
     return true
   }
 
+  /// ← and → walk the default across the approval buttons in the order they
+  /// stand, so Return presses the one that is lit. Words in the composer keep
+  /// the arrows, since then Return refuses with them.
+  @discardableResult
+  func moveApprovalFocus(by step: Int) -> Bool {
+    guard let approvalBar, !composerHasWords, !optionRows.isEmpty else { return false }
+    guard let next = approvalBar.answer(beside: focusedOption, step: step) else { return true }
+    focusedOption = next
+    chosenOptions = [next]
+    refreshRows()
+    return true
+  }
+
   enum ServicePiece: Equatable {
     case eyebrow, title, well, options, footer
     case actions(captioned: Bool)
@@ -1667,7 +1721,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   private static func statusImage(answered: Bool) -> NSImage? {
-    guard let mark = BolttyIcon.check.image(size: AgentPaletteMetrics.typeMeta + 1) else { return nil }
+    guard let mark = BolttyIcon.check.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.typeMeta + 1)) else { return nil }
     guard answered else { return mark }
     let offset = (mark.size.width * 0.42).rounded()
     let image = NSImage(
@@ -1723,7 +1777,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   private static func copyImage(_ icon: BolttyIcon) -> NSImage? {
-    icon.image(size: AgentPaletteMetrics.previewFileGlyphPointSize, description: "Copy this answer")
+    icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: "Copy this answer")
   }
 
   override func mouseEntered(with event: NSEvent) { setCopyRevealed(true) }
@@ -1757,7 +1811,7 @@ final class PaletteChatMessageView: NSView {
     let label = isSpeaking ? "Stop reading aloud" : "Read this answer aloud"
     speakButton.restingTint = isSpeaking ? .white : ComposerControlGroup.restingInk
     speakButton.image = BolttyIcon.speaker.image(
-      size: AgentPaletteMetrics.previewFileGlyphPointSize, description: label)
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: label)
     speakButton.toolTip = label
     speakButton.setAccessibilityLabel(label)
   }
@@ -2410,7 +2464,7 @@ final class PaletteTurnHeaderView: NSView {
     chevron.isHidden = value.isRunning
     button.isEnabled = !value.isRunning
     chevron.image = (value.isCollapsed ? BolttyIcon.chevronRight : .chevronDown).image(
-      size: AgentPaletteMetrics.previewActivityChevronPointSize,
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize),
       description: value.isCollapsed ? "Show the work" : "Hide the work"
     )
     setAccessibilityLabel(label.stringValue)

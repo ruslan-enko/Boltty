@@ -7,7 +7,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
-    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval
+    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits
   ]
 
   private let server: OpenCodeServer
@@ -30,6 +30,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   private var lastSequence: [String: Int] = [:]
   private var allowances = OpenCodeAllowances()
   private var autoApproved: Set<String> = []
+  private var sessionFolders: [String: String] = [:]
   private var historyIsAbsent = false
   private var freeModels: Set<String> = []
 
@@ -94,6 +95,18 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
     try Task.checkCancellation()
     return OpenCodeMapper.models(fromCLILines: await server.modelLines())
+  }
+
+  func usageLimits() async -> AgentUsage? {
+    let limits: JSONValue? = try? await get("/api/experimental/usage/limits")
+    if lock.withLock({ freeModels.isEmpty }) { _ = try? await modelsFromModelRoute() }
+    let free = lock.withLock { freeModels }
+    let usage = await Task.detached(priority: .utility) {
+      OpenCodeFreeUsage.read(isFree: { provider, model in
+        free.contains("\(provider)/\(model)") || (provider == "opencode" && model.hasSuffix("-free"))
+      })
+    }.value
+    return OpenCodeMapper.usage(limits: limits, free: usage)
   }
 
   func activityHistory() async -> AgentActivityHistory? {
@@ -191,6 +204,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       )
       lock.withLock {
         runsOnOwnServer[response.data.id] = own
+        sessionFolders[response.data.id] = response.data.location?.directory ?? directory
         if options.autoApprove, !options.readOnly { autoApproved.insert(response.data.id) }
       }
       if own { startOwnStreamIfNeeded() }
@@ -202,6 +216,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
     lock.withLock {
+      sessionFolders[id] = options.directory
       if options.autoApprove, !options.readOnly {
         autoApproved.insert(id)
       } else {
@@ -653,7 +668,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         let sessionID = ask.remoteSessionID
         let covered = lock.withLock {
           allowances.ask(ask.id, saving: prompt.savePatterns, in: sessionID)
-            || (prompt.action == "edit" && autoApproved.contains(sessionID))
+            || (autoApproved.contains(sessionID) && Self.autoModePasses(prompt, in: sessionFolders[sessionID]))
         }
         if covered {
           Task { [weak self] in
@@ -670,6 +685,16 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
           event: domain
         )
       )
+    }
+  }
+
+  static func autoModePasses(_ prompt: PermissionPrompt, in directory: String?) -> Bool {
+    switch prompt.action {
+    case "edit": return true
+    case "bash":
+      guard let directory, !prompt.resources.isEmpty else { return false }
+      return prompt.resources.allSatisfy { AutoModeCommands.allows($0, in: directory, autoMode: true) }
+    default: return false
     }
   }
 
@@ -986,6 +1011,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
          "session.next.tool.success", "session.next.tool.failed":
       guard let messageID, let callID = callID() else { return [] }
       let failed = event.type.hasSuffix("failed")
+      let interrupted = failed && OpenCodeMapper.isInterruption(data["error"]?["type"]?.stringValue)
       let output = data["content"]?.arrayValue?
         .compactMap { $0["text"]?.stringValue }
         .joined(separator: "\n")
@@ -1002,9 +1028,9 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
               summary: data["structured"]?["operation"]?.stringValue.map {
                 summary(operation: $0, resource: data["structured"]?["resource"]?.stringValue)
               },
-              state: failed ? .failed : .completed,
-              detail: failed
-                ? (data["error"]?.stringValue ?? output)
+              state: interrupted ? .interrupted : failed ? .failed : .completed,
+              detail: failed && !interrupted
+                ? (data["error"]?.stringValue ?? data["error"]?["message"]?.stringValue ?? output)
                 : (output?.isEmpty == false ? output : nil),
               files: Array(Set(files)).sorted(),
               endedAt: date()

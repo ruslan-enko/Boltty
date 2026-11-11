@@ -529,6 +529,15 @@ final class BolttyAIApprovalBar: NSView {
   func buttonForTesting(_ label: String) -> NSButton? {
     options.firstIndex { $0.label == label }.map { buttons[$0] }
   }
+  /// The answer `step` buttons along from `index` in the order they are drawn,
+  /// left to right (or top to bottom when stacked), within what Return may press.
+  func answer(beside index: Int, step: Int) -> Int? {
+    let order = answerButtonsInRow.map(\.tag).filter { $0 < returnReach }
+    guard let at = order.firstIndex(of: index) else { return order.first }
+    let next = at + step
+    return order.indices.contains(next) ? order[next] : nil
+  }
+
   var noteForTesting: String? { note.isHidden ? nil : note.stringValue }
   func pressForTesting(_ index: Int) { onClick?(index) }
   var copyButtonForTesting: NSButton? { copyText == nil ? nil : copyButton }
@@ -556,6 +565,12 @@ final class BolttyAIApprovalBar: NSView {
       button.setContentCompressionResistancePriority(.required, for: .horizontal)
       button.setAccessibilityLabel(option.detail.map { "\(option.label), \($0)" } ?? option.label)
       button.heightAnchor.constraint(equalToConstant: Self.buttonHeight).isActive = true
+      // Measured with the glass's bezel, so the lit one, a fill without it,
+      // keeps its width as ← and → move it. Stacked, the row's width wins.
+      let width = button.widthAnchor.constraint(
+        equalToConstant: Self.buttonWidths(for: options, returnReach: returnReach)[index])
+      width.priority = .defaultHigh
+      width.isActive = true
       buttons.append(button)
     }
 
@@ -613,6 +628,7 @@ final class BolttyAIApprovalBar: NSView {
     let stacked = !Self.fitsInOneRow(
       options, copies: copyText != nil, returnReach: returnReach, width: bounds.width)
     if stacked != isStacked { arrange(stacked: stacked) }
+    defaultButton?.layer?.applyPaletteCorner(radius: Self.buttonHeight / 2)
     if abs(note.preferredMaxLayoutWidth - bounds.width) > 0.5 {
       note.preferredMaxLayoutWidth = bounds.width
       note.invalidateIntrinsicContentSize()
@@ -683,14 +699,27 @@ final class BolttyAIApprovalBar: NSView {
     }
   }
 
+  /// The default is a fill of its own, not the glass's `bezelColor`: the system
+  /// leaves a bezel colour out while the panel is not key, and the default stood
+  /// as black words on grey glass.
   private static func mark(_ button: GlassPillLabelButton, asDefault: Bool) {
-    button.bezelColor = asDefault ? BolttyBrand.accentOnGlass : nil
+    button.isBordered = !asDefault
+    button.restingBackground = asDefault ? BolttyBrand.accentOnGlass : .clear
+    button.hoverBackground = asDefault
+      ? BolttyBrand.accentOnGlass.blended(withFraction: 0.18, of: .white) ?? BolttyBrand.accentOnGlass
+      : .clear
+    button.pressScale = asDefault ? AgentPaletteMetrics.controlPressedScale : 1
     button.restingTint = asDefault ? BolttyBrand.onAccent : AgentPaletteMetrics.directoryChipTextColor
+    button.hoverTint = asDefault ? BolttyBrand.onAccent : .white
+    button.layer?.applyPaletteCorner(radius: asDefault ? buttonHeight / 2 : 0)
+  }
+
+  private var defaultButton: NSButton? {
+    answerButtonsInRow.first { !$0.isBordered }
   }
 
   var defaultTitleForTesting: String? {
-    answerButtonsInRow.first { ($0 as? GlassPillLabelButton)?.bezelColor != nil }
-      .map { options[$0.tag].label }
+    defaultButton.map { options[$0.tag].label }
   }
 
   static func isCaptioned(_ options: [AgentQuestion.Option]) -> Bool { noteText(options) != nil }

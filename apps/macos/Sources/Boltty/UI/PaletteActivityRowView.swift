@@ -162,7 +162,7 @@ final class PaletteActivityRowView: NSView {
     let icon = isCompaction ? BolttyIcon.compact
       : value.isThought ? .brain : Self.icon(for: value.state)
     glyph.image = icon.image(
-      size: AgentPaletteMetrics.previewActivityGlyphPointSize,
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityGlyphPointSize),
       description: value.state.rawValue
     )
     glyph.contentTintColor = tint
@@ -174,7 +174,7 @@ final class PaletteActivityRowView: NSView {
     chevron.isHidden = !opens
     button.isEnabled = opens
     chevron.image = (expanded ? BolttyIcon.chevronDown : .chevronRight).image(
-      size: AgentPaletteMetrics.previewActivityChevronPointSize,
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize),
       description: expanded ? "Hide output" : "Show output"
     )
     applyInk()
@@ -234,6 +234,7 @@ final class PaletteActivityRowView: NSView {
     case .running: return .circleDashed
     case .completed: return .checkCircle
     case .failed: return .warning
+    case .interrupted: return .circle
     }
   }
 
@@ -241,7 +242,7 @@ final class PaletteActivityRowView: NSView {
     switch state {
     case .failed: return AgentPaletteMetrics.failureCardAccent
     case .completed: return PaletteInk.secondary
-    case .pending, .running: return PaletteInk.tertiary
+    case .pending, .running, .interrupted: return PaletteInk.tertiary
     }
   }
 
@@ -255,7 +256,7 @@ final class PaletteActivityRowView: NSView {
     glyph.translatesAutoresizingMaskIntoConstraints = false
     glyph.imageScaling = .scaleProportionallyDown
     glyph.image = icon.image(
-      size: AgentPaletteMetrics.previewActivityGlyphPointSize, description: step.status.rawValue)
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityGlyphPointSize), description: step.status.rawValue)
     glyph.contentTintColor = tint
     let label = NSTextField(labelWithString: step.text)
     label.translatesAutoresizingMaskIntoConstraints = false
@@ -340,7 +341,7 @@ final class PaletteActivityGroupView: NSView {
       glyph.imageScaling = .scaleProportionallyDown
     }
     warning.image = BolttyIcon.warning.image(
-      size: AgentPaletteMetrics.previewActivityGlyphPointSize, description: "Something failed")
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityGlyphPointSize), description: "Something failed")
     warning.contentTintColor = AgentPaletteMetrics.failureCardAccent
 
     button.translatesAutoresizingMaskIntoConstraints = false
@@ -417,7 +418,7 @@ final class PaletteActivityGroupView: NSView {
     headline.stringValue = AgentActivityGroup.summary(of: value)
     headline.toolTip = value.filter { !$0.isThought }.map(\.headline).joined(separator: "\n")
     chevron.image = (isExpanded ? BolttyIcon.chevronUp : .chevronDown).image(
-      size: AgentPaletteMetrics.previewWorkPillChevronPointSize,
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewWorkPillChevronPointSize),
       description: isExpanded ? "Hide steps" : "Show steps"
     )
     applyInk()

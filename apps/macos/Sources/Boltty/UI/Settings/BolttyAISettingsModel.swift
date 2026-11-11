@@ -181,6 +181,11 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.playsSounds = newValue } }
   }
 
+  var panelClearGlass: Bool {
+    get { appModel.settings.panelClearGlass }
+    set { appModel.updateSettings { $0.panelClearGlass = newValue } }
+  }
+
   var attachesFinderSelection: Bool {
     get { appModel.settings.attachesFinderSelection }
     set { appModel.updateSettings { $0.attachesFinderSelection = newValue } }

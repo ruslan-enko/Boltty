@@ -19,7 +19,7 @@ final class BolttyAIAnnouncementTests: XCTestCase {
     AgentQuestion(
       kind: .permission, requestID: "p1",
       header: "Permission", prompt: prompt,
-      options: [.init(label: "Allow once", detail: nil, value: "once")],
+      options: [.init(label: "Allow Once", detail: nil, value: "once")],
       allowsMultiple: false, allowsCustom: false
     )
   }

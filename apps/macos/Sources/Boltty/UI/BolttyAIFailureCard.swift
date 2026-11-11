@@ -35,7 +35,7 @@ final class BolttyAIFailureCard: NSView {
     layer?.backgroundColor = AgentPaletteMetrics.failureCardFill.cgColor
 
     symbol.translatesAutoresizingMaskIntoConstraints = false
-    symbol.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.previewBodyFontSize + 3)
+    symbol.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewBodyFontSize + 3))
     symbol.contentTintColor = AgentPaletteMetrics.failureCardAccent
     symbol.setContentHuggingPriority(.required, for: .horizontal)
 
@@ -211,13 +211,13 @@ final class BolttyAIFailureCard: NSView {
     let open = !detailsBox.isHidden
     disclosure.title = "Details"
     disclosure.image = (open ? BolttyIcon.chevronDown : .chevronRight)
-      .image(size: AgentPaletteMetrics.previewActivityChevronPointSize)
+      .image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize))
     disclosure.setAccessibilityValue(open ? "expanded" : "collapsed")
   }
 
   private func applyCopyGlyph(_ icon: BolttyIcon) {
     copyButton.image = icon.image(
-      size: AgentPaletteMetrics.previewFileGlyphPointSize, description: "Copy the details")
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: "Copy the details")
   }
 
   @objc private func retry(_ sender: NSButton) {

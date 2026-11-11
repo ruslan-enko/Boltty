@@ -172,8 +172,8 @@ final class ReadmeShotsOnScreen: XCTestCase {
       kind: .permission, requestID: "readme", header: "Approval",
       prompt: "Run this command?",
       detail: "brew upgrade --cask --greedy",
-      options: [.init(label: "Allow once", detail: nil, value: "once"),
-                .init(label: "Always allow", detail: "For this conversation.", value: "always"),
+      options: [.init(label: "Allow Once", detail: nil, value: "once"),
+                .init(label: "Always Allow", detail: "For this conversation.", value: "always"),
                 .init(label: "Reject", detail: nil, value: "reject")],
       allowsMultiple: false, allowsCustom: false)
     let request = "Update every app I installed with Homebrew"

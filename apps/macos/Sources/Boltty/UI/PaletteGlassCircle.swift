@@ -32,7 +32,7 @@ final class GlassCircleButton: NSView {
   func setPointSize(_ pointSize: CGFloat) {
     guard pointSize != self.pointSize else { return }
     self.pointSize = pointSize
-    button.image = icon.image(size: pointSize, description: symbolDescription)
+    button.image = icon.image(size: AgentPaletteMetrics.iconSide(pointSize), description: symbolDescription)
   }
 
   init(
@@ -54,7 +54,7 @@ final class GlassCircleButton: NSView {
     button.translatesAutoresizingMaskIntoConstraints = false
     button.title = ""
     button.imagePosition = .imageOnly
-    button.image = icon.image(size: pointSize, description: accessibilityDescription)
+    button.image = icon.image(size: AgentPaletteMetrics.iconSide(pointSize), description: accessibilityDescription)
     button.restingBackground = .clear
     button.hoverBackdropBlurRadius = 0
     if showsGlass {

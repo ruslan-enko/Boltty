@@ -3,7 +3,13 @@ import AppKit
 @MainActor
 final class StatusBarController {
   private var item: NSStatusItem?
+  private var menu: NSMenu?
   private(set) var snapshot = StatusBarSnapshot.idle
+
+  /// A left click opens the limits window under the mark; a right or
+  /// Control-click, and the window's More, open the menu.
+  var onLimits: ((NSRect, NSWindow?) -> Void)?
+  var onMenuWillOpen: (() -> Void)?
 
   var onBolttyAI: (() -> Void)?
   var onSelectAgent: ((UUID) -> Void)?
@@ -20,17 +26,20 @@ final class StatusBarController {
   }
 
   var menuTitlesForTesting: [String] {
-    item?.menu?.items.map(\.title) ?? []
+    menu?.items.map(\.title) ?? []
   }
 
   var menuItemsForTesting: [NSMenuItem] {
-    item?.menu?.items ?? []
+    menu?.items ?? []
   }
 
   func install() {
     guard item == nil else { return }
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     statusItem.button?.setAccessibilityIdentifier("boltty.statusItem")
+    statusItem.button?.target = self
+    statusItem.button?.action = #selector(pressed)
+    statusItem.button?.sendAction(on: [.leftMouseDown, .rightMouseDown])
     item = statusItem
     redraw()
   }
@@ -62,7 +71,30 @@ final class StatusBarController {
   private func redraw() {
     guard let item else { return }
     updateIcon()
-    item.menu = buildMenu(snapshot: snapshot)
+    menu = buildMenu(snapshot: snapshot)
+  }
+
+  func showMenu() {
+    guard let item, let menu else { return }
+    onMenuWillOpen?()
+    item.menu = menu
+    item.button?.performClick(nil)
+    item.menu = nil
+  }
+
+  func setHighlighted(_ highlighted: Bool) {
+    item?.button?.highlight(highlighted)
+  }
+
+  @objc private func pressed() {
+    guard let button = item?.button, let window = button.window else { return }
+    let event = NSApp.currentEvent
+    let wantsMenu = event?.type == .rightMouseDown || event?.modifierFlags.contains(.control) == true
+    guard !wantsMenu, let onLimits else {
+      showMenu()
+      return
+    }
+    onLimits(window.convertToScreen(button.convert(button.bounds, to: nil)), window)
   }
 
   func remove() {

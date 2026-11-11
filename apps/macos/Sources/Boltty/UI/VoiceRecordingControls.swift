@@ -133,7 +133,7 @@ final class VoiceRecordingControls: NSView {
     button.title = ""
     button.setButtonType(.momentaryChange)
     button.image = icon.image(
-      size: AgentPaletteMetrics.voiceControlsIconSize,
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.voiceControlsIconSize),
       description: icon == .xmark ? "Cancel dictation" : "Send dictation"
     )
     button.toolTip = icon == .xmark ? "Cancel dictation — restore the draft" : "Confirm and send recording"

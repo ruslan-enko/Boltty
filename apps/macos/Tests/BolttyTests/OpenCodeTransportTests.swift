@@ -428,6 +428,32 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(activity.detail, "hello from boltty")
   }
 
+  func test20AToolCutOffWithItsTurnHasNotFailed() {
+    let mapped = events(
+      """
+      {"id":"e","type":"session.tool.failed","data":{"sessionID":"ses_1",      "assistantMessageID":"msg_1","id":"call_1",      "error":{"type":"aborted","message":"Tool execution interrupted"}}}
+      """
+    )
+    guard case let .partUpdated(_, _, part)? = mapped.first,
+          case let .activity(activity) = part
+    else { return XCTFail("expected an activity, got \(mapped)") }
+    XCTAssertEqual(activity.state, .interrupted)
+    XCTAssertNil(activity.detail)
+  }
+
+  func test20AToolThatFailedSaysWhy() {
+    let mapped = events(
+      """
+      {"id":"e","type":"session.tool.failed","data":{"sessionID":"ses_1",      "assistantMessageID":"msg_1","id":"call_1",      "error":{"type":"unknown","message":"no such file"}}}
+      """
+    )
+    guard case let .partUpdated(_, _, part)? = mapped.first,
+          case let .activity(activity) = part
+    else { return XCTFail("expected an activity, got \(mapped)") }
+    XCTAssertEqual(activity.state, .failed)
+    XCTAssertEqual(activity.detail, "no such file")
+  }
+
   func test20EchoesThePromptFromTheInbox() {
     let mapped = events(
       """

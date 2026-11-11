@@ -52,6 +52,25 @@ final class ChatWorkspaceCoordinator {
     )
   }
 
+  // MARK: - Limits under the menu-bar mark
+
+  func usageGlanceRows() -> [UsageGlanceRow] {
+    listedProviderIDs().compactMap(AgentId.init(rawValue:)).map { agent in
+      if engine.registry.installation(for: agent)?.availability.isSignedOut == true {
+        return UsageGlanceRow(agent: agent, content: .signedOut(command: agent.signInCommand ?? agent.program))
+      }
+      if let usage = engine.usageByProvider[agent.rawValue], !usage.windows.isEmpty || !usage.notes.isEmpty {
+        return UsageGlanceRow(agent: agent, content: .limits(usage))
+      }
+      let reports = engine.registry.capabilities(forProviderID: agent.rawValue).contains(.usageLimits)
+      return UsageGlanceRow(agent: agent, content: reports ? .waiting : .noPlanLimit)
+    }
+  }
+
+  func refreshUsageForGlance() async {
+    await engine.refreshUsage()
+  }
+
   // MARK: - Conversations
 
   func resolvedDefaultModel(for providerID: String) -> ModelSelection? {
@@ -242,6 +261,26 @@ final class ChatWorkspaceCoordinator {
       await engine.stop(conversationID: id)
     }
     flushQueuedPrompts(store.conversations)
+    return true
+  }
+
+  /// An answer whose ask is gone goes as the chat's next message, by the path any
+  /// message takes: refused or failed, its words come back to the composer.
+  func deliverLateAnswer(
+    _ answers: [[String]],
+    to prompt: QuestionPrompt,
+    interactionID: String,
+    in id: UUID
+  ) -> Bool {
+    guard store.answerLateQuestion(id: interactionID, in: id, answers: answers) else { return false }
+    questionAnswers[id]?[interactionID] = nil
+    let words = prompt.lateAnswer(answers)
+    if !sendFollowUp(words, to: id) {
+      queuedPanelPrompts[id] = [queuedPanelPrompts[id], words]
+        .compactMap { $0 }.joined(separator: "\n\n")
+      store.objectWillChange.send()
+      flushQueuedPrompts(store.conversations)
+    }
     return true
   }
 

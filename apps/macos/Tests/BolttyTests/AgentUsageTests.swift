@@ -357,8 +357,8 @@ final class PlanUsageRingTests: XCTestCase {
   func testServiceCardsKeepTheirContentAndCanBeMeasuredBeforeDrawing() throws {
     let question = AgentQuestion(kind: .permission, requestID: "p", header: nil,
       prompt: "May I update the files in this project?", detail: "swift build --configuration debug",
-      options: [.init(label: "Allow once", detail: nil, value: "once"),
-                .init(label: "Always allow", detail: "For this conversation.", value: "always"),
+      options: [.init(label: "Allow Once", detail: nil, value: "once"),
+                .init(label: "Always Allow", detail: "For this conversation.", value: "always"),
                 .init(label: "Reject", detail: nil, value: "reject")],
       allowsMultiple: false, allowsCustom: false)
     var queued = BolttyAISessionPreview(id: UUID(), title: "Chat", agent: .codex,

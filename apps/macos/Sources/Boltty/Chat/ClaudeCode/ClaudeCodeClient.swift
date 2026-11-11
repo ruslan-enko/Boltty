@@ -162,11 +162,19 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
+    let live = lock.withLock { sessions[id] }
     guard let transcript = ClaudeCodeTranscript.locate(sessionID: id) else {
-      throw AgentClientError.sessionNotFound
+      // The CLI writes its record after the first reply starts: a session this
+      // early is answered from what is live, not reported gone.
+      guard let live else { throw AgentClientError.sessionNotFound }
+      return RemoteSessionSnapshot(
+        info: RemoteSessionInfo(id: id, title: "Claude Code", directory: live.directory, model: live.model),
+        messages: [],
+        state: live.executionState,
+        openInteractions: live.openInteractions
+      )
     }
     let parsed = ClaudeCodeTranscript.read(at: transcript.url)
-    let live = lock.withLock { sessions[id] }
     let state: ConversationExecutionState = {
       guard let live else { return .idle }
       return live.executionState
@@ -269,6 +277,10 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   func stop(sessionID: String) async throws {
     guard let session = lock.withLock({ sessions[sessionID] }) else { return }
     _ = try? await session.sendControl(["subtype": "interrupt"], timeout: 5)
+    // An interrupt cancels what it was asking; left open, the card outlived the turn.
+    for requestID in session.takeAllPermissions() {
+      emit(.interactionResolved(sessionID: sessionID, requestID: requestID, resolution: .expired))
+    }
     session.executionState = .idle
     emit(.executionStateChanged(sessionID: sessionID, state: .idle))
   }
@@ -301,12 +313,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       response = [
         "behavior": "allow",
         "updatedInput": pending.input,
-        "updatedPermissions": [[
-          "type": "addRules",
-          "rules": [["toolName": pending.toolName]],
-          "behavior": "allow",
-          "destination": "session"
-        ]]
+        "updatedPermissions": pending.sessionRules
       ]
     case .reject:
       response = ["behavior": "deny", "message": Self.denialMessage(saying: message)]
@@ -324,6 +331,63 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       throw AgentClientError.transport("That reply could not be encoded.")
     }
     try session.process.writeLine(line)
+  }
+
+  /// What "Always Allow" adds: the CLI's own suggestions, kept to this session
+  /// (a suggestion may name the project's settings). A bare tool name would
+  /// allow every command once one was allowed.
+  static func sessionRules(
+    suggestions: [[String: Any]],
+    tool: String,
+    input: [String: Any]
+  ) -> [[String: Any]] {
+    let usable = suggestions.compactMap { suggestion -> [String: Any]? in
+      switch suggestion["type"] as? String {
+      case "addRules" where suggestion["behavior"] as? String ?? "allow" == "allow", "addDirectories":
+        break
+      case "setMode" where suggestion["mode"] as? String == "acceptEdits":
+        break
+      default:
+        return nil
+      }
+      var kept = suggestion
+      kept["destination"] = "session"
+      return kept
+    }
+    if !usable.isEmpty { return usable }
+    var rule: [String: Any] = ["toolName": tool]
+    if tool == "Bash", let command = input["command"] as? String, !command.isEmpty {
+      rule["ruleContent"] = command
+    }
+    return [["type": "addRules", "rules": [rule], "behavior": "allow", "destination": "session"]]
+  }
+
+  static func savePatterns(of rules: [[String: Any]]) -> [String] {
+    rules.flatMap { update -> [String] in
+      switch update["type"] as? String {
+      case "addRules":
+        return ((update["rules"] as? [[String: Any]]) ?? []).compactMap { rule in
+          guard let tool = rule["toolName"] as? String else { return nil }
+          guard let content = rule["ruleContent"] as? String, !content.isEmpty else { return tool }
+          return "\(tool)(\(content))"
+        }
+      case "addDirectories":
+        return (update["directories"] as? [String]) ?? []
+      case "setMode":
+        return ["every edit"]
+      default:
+        return []
+      }
+    }
+  }
+
+  static func prompt(for pending: LiveSession.PendingPermission, toolCallID: String?) -> PermissionPrompt {
+    PermissionPrompt(
+      action: pending.toolName,
+      resources: resources(forTool: pending.toolName, input: JSONObject(pending.input)),
+      savePatterns: savePatterns(of: pending.sessionRules),
+      toolCallID: toolCallID
+    )
   }
 
   static func denialMessage(saying words: String?) -> String {
@@ -552,6 +616,12 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     case "control_request":
       handleControlRequest(frame, in: session)
 
+    case "control_cancel_request":
+      guard let requestID = frame.string("request_id"),
+            session.takePermission(requestID) != nil
+      else { return }
+      emit(.interactionResolved(sessionID: session.id, requestID: requestID, resolution: .expired))
+
     case "stream_event":
       handleStreamEvent(frame, in: session)
 
@@ -605,21 +675,15 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       return
     }
 
-    let input = (request["input"] as? [String: Any]) ?? [:]
-    session.rememberPermission(
-      LiveSession.PendingPermission(
-        controlRequestID: requestID,
-        toolName: toolName,
-        input: input
-      )
+    let pending = LiveSession.PendingPermission(
+      controlRequestID: requestID,
+      toolName: toolName,
+      input: (request["input"] as? [String: Any]) ?? [:],
+      suggestions: (request["permission_suggestions"] as? [[String: Any]]) ?? []
     )
+    session.rememberPermission(pending)
     let conversationID = lock.withLock { conversationResolver }?(session.id) ?? UUID()
-    let prompt = PermissionPrompt(
-      action: toolName,
-      resources: Self.resources(forTool: toolName, input: JSONObject(input)),
-      savePatterns: [],
-      toolCallID: request.string("tool_use_id")
-    )
+    let prompt = Self.prompt(for: pending, toolCallID: request.string("tool_use_id"))
     session.executionState = .waiting
     emit(.interactionAsked(PendingInteraction(
       id: requestID,
@@ -693,6 +757,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     for block in message.array("content") where block.string("type") == "tool_use" {
       guard let toolID = block.string("id"), let name = block.string("name") else { continue }
       let input = block.object("input") ?? JSONObject([:])
+      session.rememberTool(toolID, in: messageID)
       emit(.partUpdated(
         sessionID: session.id,
         messageID: messageID,
@@ -709,11 +774,13 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   private func handleToolResult(_ frame: JSONObject, in session: LiveSession) {
-    guard let messageID = session.currentMessageID,
-          let message = frame.object("message")
-    else { return }
+    guard let message = frame.object("message") else { return }
     for block in message.array("content") where block.string("type") == "tool_result" {
-      guard let toolID = block.string("tool_use_id") else { continue }
+      // A subagent's messages move `currentMessageID` on; its result belongs to
+      // the message that called it.
+      guard let toolID = block.string("tool_use_id"),
+            let messageID = session.home(ofTool: toolID) ?? session.currentMessageID
+      else { continue }
       let failed = block.bool("is_error") ?? false
       emit(.partUpdated(
         sessionID: session.id,

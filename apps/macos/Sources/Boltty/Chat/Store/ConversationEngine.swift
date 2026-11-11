@@ -319,6 +319,9 @@ final class ConversationEngine: ObservableObject {
       $0.lastKnownState.blocksSending && $0.remoteSessionID != nil
     }
     guard !running.isEmpty else { return }
+    // Before the stops: their cancellations would read as the person refusing,
+    // and a question left waiting at a quit is still theirs to answer next time.
+    for conversation in running { store.markQuestionsGone(in: conversation.id) }
     let stops = running.compactMap { conversation -> (AgentClient, String)? in
       guard let remote = conversation.remoteSessionID,
             let client = registry.client(forProviderID: conversation.providerID)
@@ -363,7 +366,8 @@ final class ConversationEngine: ObservableObject {
            client.modelListLifetime < Self.modelListLifetime {
           readModels(of: providerID)
         }
-        await resyncAll()
+        // Off the event loop: a re-read per chat held every event behind it.
+        Task { [weak self] in await self?.resyncAll() }
       }
       return
     }
@@ -400,7 +404,8 @@ final class ConversationEngine: ObservableObject {
        let conversation = store.conversation(
          remoteSessionID: sessionID, providerID: envelope.providerID) {
       if state == .idle { nameIfDue(conversation.id) }
-      await refreshContext(conversationID: conversation.id)
+      let id = conversation.id
+      Task { [weak self] in await self?.refreshContext(conversationID: id) }
     }
   }
 
@@ -527,8 +532,16 @@ final class ConversationEngine: ObservableObject {
           askedAt: interactions[index].askedAt
         )
       }
+      // Not asked any more and no turn going on past it: its server went, since
+      // an answer from elsewhere would have the turn working.
+      if snapshot.state != .working {
+        store.markQuestionsGone(in: conversationID, except: Set(interactions.map(\.id)))
+      }
+      // An adapter answering from what is live, before the CLI has written its
+      // record, has no messages: that is not a chat emptied.
+      let known = store.transcript(id: conversationID).messages
       store.replaceMessages(
-        snapshot.messages,
+        snapshot.messages.isEmpty ? known : snapshot.messages,
         in: conversationID,
         openInteractions: interactions
       )
@@ -586,12 +599,14 @@ final class ConversationEngine: ObservableObject {
       await registry.client(forProviderID: conversation.providerID)?.release(sessionID: remote)
     }
     notices[conversationID] = nil
-    return await deliver(
+    let delivered = await deliver(
       text: trimmed,
       attachments: attachments,
       in: conversationID,
       mayStartNewSession: true
     )
+    if delivered { store.letGoOfQuestions(in: conversationID) }
+    return delivered
   }
 
   func keepAskBolttyChat(id: UUID) {
@@ -821,6 +836,7 @@ final class ConversationEngine: ObservableObject {
     else { return }
     do {
       try await client.stop(sessionID: remote)
+      store.letGoOfQuestions(in: conversationID, includingOpen: true)
       await refresh(conversationID: conversationID)
     } catch {
       notices[conversationID] = EngineNotice(
@@ -849,9 +865,11 @@ final class ConversationEngine: ObservableObject {
   func deleteConversation(id: UUID) async {
     if let conversation = store.conversation(id: id),
        let remote = conversation.remoteSessionID,
-       let client = registry.client(forProviderID: conversation.providerID),
-       conversation.lastKnownState.blocksSending {
-      try? await client.stop(sessionID: remote)
+       let client = registry.client(forProviderID: conversation.providerID) {
+      if conversation.lastKnownState.blocksSending { try? await client.stop(sessionID: remote) }
+      attached.remove(remote)
+      settingsInForce[remote] = nil
+      await client.release(sessionID: remote)
     }
     notices[id] = nil
     store.trashConversation(id: id)
@@ -900,6 +918,8 @@ final class ConversationEngine: ObservableObject {
       try await client.rejectQuestion(requestID: interactionID, sessionID: remote)
       store.resolveInteraction(id: interactionID, in: conversationID, with: .rejected)
     } catch AgentClientError.requestGone {
+      // Refused, so it does not stay to be answered late.
+      store.resolveInteraction(id: interactionID, in: conversationID, with: .rejected)
       await putAway(interactionID: interactionID, in: conversationID)
     } catch {
       store.cancelSubmitting(interactionID: interactionID, in: conversationID)

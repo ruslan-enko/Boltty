@@ -458,7 +458,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     let onlyEdits = actions.allSatisfy { $0.string("action") == "write_file" }
     let remedy = onlyEdits
       ? "Turn on Auto Mode for this chat to allow edits, or allow them in Antigravity's settings (permissions.allow)."
-      : "Auto Mode does not cover commands; allow them in Antigravity's settings (permissions.allow)."
+      : "Allow them in Antigravity's settings (permissions.allow)."
     return MessageFailure(
       name: deniedName,
       message: "Antigravity cannot ask for permission when Boltty runs it, so it refused: "

@@ -108,14 +108,26 @@ final class ConversationPersistence {
 
   func load() -> LoadedState {
     var state = LoadedState()
-    guard let data = try? Data(contentsOf: indexURL) else { return state }
+    // Every case that starts empty sets the index aside first: the next save
+    // writes over it.
+    let data: Data
+    do {
+      data = try Data(contentsOf: indexURL)
+    } catch {
+      if FileManager.default.fileExists(atPath: indexURL.path) {
+        log.error("conversation index could not be read; setting it aside")
+        quarantine(indexURL, as: "unread")
+      }
+      return state
+    }
     guard let index = try? decoder.decode(IndexFile.self, from: data) else {
       log.error("conversation index unreadable; quarantining")
       quarantine(indexURL)
       return state
     }
     guard index.version <= Self.formatVersion else {
-      log.error("conversation index written by a newer Boltty; ignoring")
+      log.error("conversation index written by a newer Boltty; setting it aside")
+      quarantine(indexURL, as: "newer")
       return state
     }
     var seen = Set<UUID>()
@@ -147,11 +159,12 @@ final class ConversationPersistence {
     return state
   }
 
-  private func quarantine(_ url: URL) {
+  private func quarantine(_ url: URL, as label: String = "damaged") {
+    guard isPrimary else { return }
     let stamp = ISO8601DateFormatter().string(from: Date())
       .replacingOccurrences(of: ":", with: "-")
     let target = url.deletingPathExtension()
-      .appendingPathExtension("damaged-\(stamp).json")
+      .appendingPathExtension("\(label)-\(stamp).json")
     try? FileManager.default.moveItem(at: url, to: target)
   }
 
@@ -232,7 +245,6 @@ final class ConversationPersistence {
     }
   }
 
-
   func importAttachment(from source: URL, into id: UUID) throws -> URL {
     guard isPrimary else { throw CocoaError(.fileWriteNoPermission) }
     let directory = attachmentsDirectory(id)
@@ -274,5 +286,10 @@ struct ConversationTranscript: Equatable, Sendable {
 
   var openInteraction: PendingInteraction? {
     interactions.first { $0.isOpen }
+  }
+
+  /// Unlike an open ask this holds nothing up: the chat sends as usual.
+  var lateQuestion: PendingInteraction? {
+    interactions.last { $0.isLate }
   }
 }

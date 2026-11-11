@@ -209,9 +209,10 @@ fi
 # Пункт G плану міграції: `sh -lc "command -v \(program)"`. Сьогодні безпечно —
 # імʼя з конфігу. Лінтер не дає цьому шаблону розійтись, поки його не приберуть.
 # OpenCode шукається тим самим `JSONLineProcess.locate`, що й решта.
+# `"-c"` сам по собі — ще не оболонка (`git branch -c`), тож шукаємо його поруч із `sh`.
 ran=$((ran + 1))
 ALLOWED="$SRC/Chat/Agent/JSONLineProcess.swift"
-hits=$(code_only $(swift_files "$SRC") | grep -E '"-lc"|"-c"' | grep -vE "^($ALLOWED):" || true)
+hits=$(code_only $(swift_files "$SRC") | grep -E '"-lc"|"(ba|z)?sh",[[:space:]]*"-c"|/bin/(ba|z)?sh"' | grep -vE "^($ALLOWED):" || true)
 [[ -n "$hits" ]] && report "новий виклик оболонки" \
   "Промпти йдуть у stdin, не в sh. Один відомий виклик — пошук бінарника, і він на обліку." "$hits"
 

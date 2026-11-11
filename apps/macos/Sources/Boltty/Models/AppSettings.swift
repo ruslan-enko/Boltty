@@ -24,6 +24,7 @@ struct AppSettings: Equatable, Sendable {
   var playsSounds: Bool
   var attachesFinderSelection: Bool
   var checksForUpdates: Bool
+  var panelClearGlass: Bool
 
   static let agentPresetKey = "boltty.agentPreset"
   private static let enabledProviderIDsKey = "boltty.enabledProviderIDs"
@@ -49,6 +50,7 @@ struct AppSettings: Equatable, Sendable {
   private static let playsSoundsKey = "boltty.sounds.enabled"
   private static let checksForUpdatesKey = "boltty.updates.automaticChecks"
   private static let attachesFinderSelectionKey = "boltty.finderSelection.enabled"
+  private static let panelClearGlassKey = "boltty.panel.clearGlass"
 
   static var allAdapterProviderIDs: Set<String> {
     Set(AgentId.adapterCases.map(\.rawValue))
@@ -76,7 +78,8 @@ struct AppSettings: Equatable, Sendable {
     askBolttySpeaksAloud: Bool = false,
     playsSounds: Bool = true,
     attachesFinderSelection: Bool = true,
-    checksForUpdates: Bool = true
+    checksForUpdates: Bool = true,
+    panelClearGlass: Bool = true
   ) {
     self.bolttyAIHotkey = bolttyAIHotkey
     self.bolttyAIHotkeyIsChosen = bolttyAIHotkeyIsChosen
@@ -100,6 +103,7 @@ struct AppSettings: Equatable, Sendable {
     self.playsSounds = playsSounds
     self.attachesFinderSelection = attachesFinderSelection
     self.checksForUpdates = checksForUpdates
+    self.panelClearGlass = panelClearGlass
   }
 
   static func load(defaults: UserDefaults = .standard) -> AppSettings {
@@ -123,6 +127,8 @@ struct AppSettings: Equatable, Sendable {
       .map { _ in defaults.bool(forKey: Self.checksForUpdatesKey) } ?? true
     let attachesFinderSelection = defaults.object(forKey: Self.attachesFinderSelectionKey)
       .map { _ in defaults.bool(forKey: Self.attachesFinderSelectionKey) } ?? true
+    let panelClearGlass = defaults.object(forKey: Self.panelClearGlassKey)
+      .map { _ in defaults.bool(forKey: Self.panelClearGlassKey) } ?? true
 
     let preset = defaults.string(forKey: Self.agentPresetKey)
       .flatMap { AgentId(rawValue: $0) }
@@ -171,7 +177,8 @@ struct AppSettings: Equatable, Sendable {
       askBolttySpeaksAloud: defaults.bool(forKey: Self.askBolttySpeaksAloudKey),
       playsSounds: playsSounds,
       attachesFinderSelection: attachesFinderSelection,
-      checksForUpdates: checksForUpdates
+      checksForUpdates: checksForUpdates,
+      panelClearGlass: panelClearGlass
     )
   }
 
@@ -226,6 +233,7 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(playsSounds, forKey: Self.playsSoundsKey)
     defaults.set(attachesFinderSelection, forKey: Self.attachesFinderSelectionKey)
     defaults.set(checksForUpdates, forKey: Self.checksForUpdatesKey)
+    defaults.set(panelClearGlass, forKey: Self.panelClearGlassKey)
   }
 
   func isProviderEnabled(_ providerID: String) -> Bool {

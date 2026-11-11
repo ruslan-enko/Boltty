@@ -228,7 +228,7 @@ final class PaletteFileRowView: NSView {
     button.isBordered = false
     button.title = ""
     button.imagePosition = .imageOnly
-    button.image = icon.image(size: AgentPaletteMetrics.previewFileGlyphPointSize, description: description)
+    button.image = icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: description)
     button.contentTintColor = .white
     button.restingTint = PaletteInk.secondary
     button.hoverTint = .white

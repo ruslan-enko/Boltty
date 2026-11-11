@@ -22,7 +22,9 @@ class PaletteIconButton: NSButton {
     didSet { applyRestingBackground() }
   }
 
-  var hoverBackground: NSColor = PaletteInk.fill
+  var hoverBackground: NSColor = PaletteInk.fill {
+    didSet { if isHovered { layer?.backgroundColor = hoverBackground.cgColor } }
+  }
 
   var hoverBackdropBlurRadius: CGFloat = 0 {
     didSet {

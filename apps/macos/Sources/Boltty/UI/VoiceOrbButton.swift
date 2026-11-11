@@ -24,7 +24,7 @@ final class GlassCircleVoiceButton: PaletteIconButton {
     let mic = !usesSystemGlass
     chrome.isHidden = mic
     image = mic
-      ? BolttyIcon.mic.image(size: restingIconSize, description: "Dictate prompt")
+      ? BolttyIcon.mic.image(size: AgentPaletteMetrics.iconSide(restingIconSize), description: "Dictate prompt")
       : nil
   }
   private var phase: CGFloat = 0
