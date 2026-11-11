@@ -337,7 +337,8 @@ enum AgentBackdropSky {
   }
 
   private static let presets: [String: [String]] = [
-    "daybreak": ["#0e3c94", "#d07c48", "#fff2cc", "#34569e", "#2f6ccc", "#f6bc48"],
+    // Blue and orange mix through grey, so violet stands between them and the cloud light is rose.
+    "daybreak": ["#0f3fa8", "#f06c48", "#ff9f90", "#5448b0", "#6a58d4", "#ff8c50"],
     "citrus": ["#063a3c", "#b2741a", "#ffe08a", "#1c5040", "#1c6a4c", "#e29a28"],
     "candy": ["#0a4250", "#b4687a", "#ffa8b8", "#2a4470", "#3c6478", "#d68a70"],
     "ember": ["#2a0c28", "#a8443c", "#ffc49a", "#5a1c3a", "#5e1c40", "#d8784a"],

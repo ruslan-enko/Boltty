@@ -408,7 +408,7 @@ final class PaletteGlassHostTests: XCTestCase {
     XCTAssertEqual(PaletteSurfaceStyle.bolttyAIComposer, shell)
 
     let prompt = PaletteSurfaceStyle.bolttyAIPrompt
-    XCTAssertEqual(prompt.material, .regular)
+    XCTAssertEqual(prompt.material, .clear)
     XCTAssertEqual(prompt.wash, .bolttyAIPromptRamp)
     XCTAssertEqual(prompt.wash?.glassTintAlpha, 0, "a tint would floor the foot")
     XCTAssertEqual(prompt.edgeAlpha, 0)

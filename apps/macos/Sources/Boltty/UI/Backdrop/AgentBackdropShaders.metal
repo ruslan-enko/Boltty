@@ -108,7 +108,9 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
     const float thick = smoothstep(threshold + 0.04, threshold + 0.32, density);
     const float3 under = mix(horizon * 0.82, underside, smoothstep(0.2, 0.62, h));
     const float3 shade = mix(under, color, 0.5);
-    const float3 light = mix(sunlight, glow, 0.3 + sun * 0.3 + (1.0 - smoothstep(0.0, 0.5, h)) * 0.25);
+    const float3 lowLight = mix(sunlight, glow, 0.3 + sun * 0.3 + (1.0 - smoothstep(0.0, 0.5, h)) * 0.25);
+    // Pale light dimmed by the ceiling and the top's shade reads as grey-brown.
+    const float3 light = mix(lowLight, min(color * 1.7 + 0.04, float3(1.0)), smoothstep(0.5, 0.85, h) * 0.85);
     float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
     body += light * (1.0 - thick) * lit * 0.3;
     body = mix(body, color, haze[layer]);

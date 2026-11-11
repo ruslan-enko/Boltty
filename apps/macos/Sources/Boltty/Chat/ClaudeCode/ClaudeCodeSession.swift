@@ -6,7 +6,12 @@ extension ClaudeCodeClient {
       let controlRequestID: String
       let toolName: String
       let input: [String: Any]
+      var suggestions: [[String: Any]] = []
       let askedAt = Date()
+
+      var sessionRules: [[String: Any]] {
+        ClaudeCodeClient.sessionRules(suggestions: suggestions, tool: toolName, input: input)
+      }
     }
 
     let id: String
@@ -22,6 +27,7 @@ extension ClaudeCodeClient {
     private var storedRateLimit: RateLimitHit?
     private var sent: Set<String> = []
     private var permissions: [String: PendingPermission] = [:]
+    private var toolHome: [String: String] = [:]
     private var control: [String: CheckedContinuation<JSONObject, Error>] = [:]
     private var controlCounter = 0
 
@@ -60,8 +66,30 @@ extension ClaudeCodeClient {
       lock.withLock { permissions[pending.controlRequestID] = pending }
     }
 
+    /// Taking the last one open puts the turn back to working, so ⌘Return
+    /// joins it again.
     func takePermission(_ requestID: String) -> PendingPermission? {
-      lock.withLock { permissions.removeValue(forKey: requestID) }
+      lock.withLock {
+        let taken = permissions.removeValue(forKey: requestID)
+        if taken != nil, permissions.isEmpty, storedState == .waiting { storedState = .working }
+        return taken
+      }
+    }
+
+    func takeAllPermissions() -> [String] {
+      lock.withLock {
+        let ids = Array(permissions.keys)
+        permissions.removeAll()
+        return ids
+      }
+    }
+
+    func rememberTool(_ toolID: String, in messageID: String) {
+      lock.withLock { toolHome[toolID] = messageID }
+    }
+
+    func home(ofTool toolID: String) -> String? {
+      lock.withLock { toolHome[toolID] }
     }
 
     var openInteractions: [PendingInteraction] {
@@ -70,14 +98,7 @@ extension ClaudeCodeClient {
           id: pending.controlRequestID,
           conversationID: UUID(),
           remoteSessionID: id,
-          kind: .permission(PermissionPrompt(
-            action: pending.toolName,
-            resources: ClaudeCodeClient.resources(
-              forTool: pending.toolName, input: JSONObject(pending.input)
-            ),
-            savePatterns: [],
-            toolCallID: nil
-          )),
+          kind: .permission(ClaudeCodeClient.prompt(for: pending, toolCallID: nil)),
           askedAt: pending.askedAt
         )
       }
@@ -220,6 +241,7 @@ enum ClaudeCodeTranscript {
           text, tags: InjectedText.claudeTags, prefixes: InjectedText.claudePrefixes
         ) { return true }
         let id = record.string("uuid") ?? UUID().uuidString
+        guard byID[id] == nil else { return true }
         var built = ConversationMessage(
           id: id, role: .user, createdAt: timestamp, completedAt: timestamp
         )
@@ -244,6 +266,7 @@ enum ClaudeCodeTranscript {
                 text, tags: InjectedText.claudeTags, prefixes: InjectedText.claudePrefixes)
         else { return true }
         let id = record.string("uuid") ?? UUID().uuidString
+        guard byID[id] == nil else { return true }
         var built = ConversationMessage(id: id, role: .user, createdAt: timestamp, completedAt: timestamp)
         built.parts.append(.text(TextPart(id: "\(id)-text", kind: .text, text: text)))
         byID[id] = built

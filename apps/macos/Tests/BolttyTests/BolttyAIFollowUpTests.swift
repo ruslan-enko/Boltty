@@ -92,7 +92,7 @@ final class PermissionCardTextTests: XCTestCase {
       requestID: "r1",
       header: "Permission",
       prompt: "Run rm -rf build?",
-      options: [AgentQuestion.Option(label: "Allow once", detail: nil, value: "once")],
+      options: [AgentQuestion.Option(label: "Allow Once", detail: nil, value: "once")],
       allowsMultiple: multiple,
       allowsCustom: false
     )

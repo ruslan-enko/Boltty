@@ -34,7 +34,7 @@ final class PaletteNoticeView: NSView {
     wantsLayer = true
     layer?.masksToBounds = false
 
-    glyph.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.promptNoteFontSize + 3)
+    glyph.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.promptNoteFontSize + 3))
     glyph.contentTintColor = AgentPaletteMetrics.failureCardAccent
     glyph.setContentHuggingPriority(.required, for: .horizontal)
     glyph.setContentCompressionResistancePriority(.required, for: .horizontal)

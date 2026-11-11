@@ -120,14 +120,14 @@ no adapter; never offer a toggle for them.
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing (the preferred agent). Fixed once the conversation has a session. A chosen agent that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon |
 | Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip until the session exists, then fixed |
-| Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open cards expired |
+| Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
 | One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so. It starts no session or turn (`ConversationEngine.secondCopyRefusal`) and never stores a fallback chord |
 | Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline, waiting for each turn's stop (3 s timer), not the first to answer |
 | Dock click | Brings Settings forward, never the panel |
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Edits only (commands still ask), except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Elsewhere Boltty decides: edits in the folder, and commands `AutoModeCommands` reads as only reading, building, testing or changing files there (each part of a `&&`/`|` line, with `cd` followed); anything it cannot read asks. Except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -168,6 +168,11 @@ a directory they guard is missing or a rule's regex does not compile.
   reporting the exit. A CLI that refuses its arguments says why on stderr and
   exits; `createSession` throws `serverStartFailed` with that line.
 - An exit handler checks it is still current before clearing state.
+- A process kept for many chats (Codex, Grok) that dies ends every turn it was
+  running with a failure, takes its open cards away, and forgets which sessions
+  it had loaded; nothing else would say the turn ended.
+- JSON-RPC requests have a deadline (120 s), but for Grok's `session/prompt`,
+  which answers only when the turn ends.
 - A deadline is a timer, not a check in a read loop. A timer inside a task group
   is not a deadline (the group waits for every child). Model scans race a timer
   per agent (`ConversationEngine.modelList`, 30 s).
@@ -218,6 +223,12 @@ implementation first. Versions say what was measured.
 - A `deny` answer to `can_use_tool` carries a `message`, which the model reads
   as the tool's result; Boltty frames the person's words as theirs
   (`ClaudeCodeClient.denialMessage`).
+- "Always Allow" sends the CLI's own `permission_suggestions` back with every
+  destination set to `session` (`sessionRules`); with none, Bash gets a rule
+  for that exact command. A rule of the tool's name alone allowed every
+  command after the first.
+- An `interrupt` cancels what was asking (`control_cancel_request`, or nothing
+  at all): Stop takes every open permission card away.
 - Text arrives twice (`stream_event` deltas, then the whole `assistant` frame):
   take text and thinking from `stream_event`, tool calls from `assistant`.
 - Words written to stdin mid-turn join that turn (2.1.296) — that is ⌘Return
@@ -231,7 +242,7 @@ implementation first. Versions say what was measured.
 - Read-only chats run with `--tools Read,Glob,Grep` (variadic flag: another
   flag must follow it).
 - `set_model` over the control channel takes effect on the next turn and keeps the
-  process, so "Always allow" rules survive it. `--resume` without `--model` goes on
+  process, so "Always Allow" rules survive it. `--resume` without `--model` goes on
   with the last model used; with it, on that one (2.1.319). Effort and the read-only
   tools are launch flags: the process is let go and resumed, 0.3 s.
 
@@ -295,13 +306,13 @@ implementation first. Versions say what was measured.
   a command also offers always-allow / reject-always. `reject_once` ends the
   turn (`stopReason: cancelled`), so a refusal in words is reject,
   `session/cancel`, and the words as the next message.
-- Permission mode is process-wide; Auto Mode is Boltty answering `edit` asks
-  "allow once"; commands still ask.
+- Permission mode is process-wide; Auto Mode is Boltty answering `edit` asks, and
+  `execute` asks `AutoModeCommands` passes, "allow once".
 - Questions are `x.ai/ask_user_question` (from t3code's adapter, not yet seen
   live); plans are `x.ai/exit_plan_mode` with `planContent`, answered
   `approved` / `cancelled` (+ `feedback`) / `abandoned`. A plan is
   `PendingInteraction.Kind.plan`, drawn as the turn's text with Approve /
-  Request changes / Quit.
+  Request Changes / Quit.
 - `_x.ai/billing` gives the plan's `creditUsagePercent`.
 
 ### Antigravity
@@ -338,8 +349,12 @@ Measured on agy 1.3.4 and 1.4.0 (`AntigravityClient`, `AntigravityTranscript`,
   - Policy (`AntigravityToolPolicy`): reads inside the chat folder, inside
     `~/.gemini/antigravity-cli`, and of files a message carried go quietly;
     everything else, every command, edit, browser, MCP and unknown tool asks.
-    Auto Mode lets edits inside the folder through. "Always allow" lasts for the
-    chat while Boltty runs.
+    Auto Mode lets edits inside the folder through, commands `AutoModeCommands`
+    passes, and reads outside the folder but where credentials live. "Always
+    Allow" lasts for the chat while Boltty runs; for a command it covers the
+    program and its subcommand (`git commit`, `npm test`), else the whole line.
+  - agy's own `--mode auto` is no use here (1.5.3): print mode refused even `ls`,
+    `--sandbox` too, and `agy acp` offers no auto mode.
   - Ask Boltty's read-only prompt tells it to open the screenshot when the
     picture did not come with the message, and that the read is allowed; told
     only "do not use tools", `agy` answered without looking.
@@ -420,8 +435,9 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   2.2.5); the chosen one goes as `model.variant` when the session is made.
 - An effort needs a model (`model.variant`), so a chat with a default model and a
   chosen effort names the default.
-- Auto Mode is Boltty answering `edit` asks "once"; a file outside the folder
-  asks `external_directory` first, and commands still ask.
+- Auto Mode is Boltty answering `edit` asks, and `bash` asks whose every resource
+  `AutoModeCommands` passes, "once"; a file outside the folder asks
+  `external_directory` first.
 - **The free tier refuses a session whose id is not in OpenCode's own
   spelling** (`FreeTierError`, measured 2.0.12–2.0.27; on 2.2.5 it is a 429
   `provider.free-limit`, "Free usage limit reached", which reads as a spent
@@ -436,6 +452,15 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   hears is `session.execution.failed` `provider.no-route` ("Model unavailable: …"),
   with no step and no reply. Unread, the chat stood at Working until Stop.
   `session.execution.interrupted` ends a turn the same way.
+- **Plan limits** (2.2.6): `GET /api/experimental/usage/limits` gives OpenCode
+  Go's `rolling` / `weekly` / `monthly` meters (`percent`, `limited`, `resetsAt`
+  in ms) and the Console's budgets (`spent` of `limit` in dollars), `data: null`
+  until OpenCode is signed in to its Console. The free models' daily allowance
+  is the server's alone: hit after 55, 198 and 141 steps on three days, so no
+  percentage is ever shown. Their `provider.free-limit` error carries
+  `retryAfterMs` (back at 00:00–00:33 UTC), so `OpenCodeFreeUsage` reads the
+  database for the steps taken since the day began and, once spent, when it
+  comes back (`OpenCodeMapper.usage`, shown as notes and a 100% window).
 - `model.updated` / `provider.updated` arrive on `/api/event` when a config edit
   changes the catalogue (seconds, with no restart) and when a folder's instance
   opens; reading `/api/model` raises none.
@@ -526,7 +551,7 @@ The loop that must keep working:
   the field's `performKeyEquivalent`). A hidden or disabled button's key does
   nothing.
 - **A chat's composer foot is two groups.** Left, what shapes the request:
-  + (attach), the model, folder — the folder last, so a long name moves nothing.
+  + (attach), the folder, the model.
   Right, what is read and pressed: the usage ring, the microphone, Send. Send
   is a white disc with Return in black (the composer's one pure-white fill;
   the glass's fill while there is nothing to send, a stop square while
@@ -576,7 +601,19 @@ The loop that must keep working:
   (corner 13), both concentric with their shells; it is nothing while the list
   is up. The placeholder stands beside cards: `isEmptyPrompt` means no words,
   `isWhollyEmpty` nothing at all.
-- **The black ramp** (`bolttyAIPrompt`) is worn by the shell in every state
+- **The black ramp** (`bolttyAIPrompt`) is on clear glass and runs from alpha
+  1 to 0.5; Settings › General › Appearance › Panel glass
+  (`boltty.panel.clearGlass`, on) puts it back on regular glass, same ramp,
+  chosen as the system's Liquid Glass setting is: the shell itself over the
+  desktop's own wallpaper (a system one's `.madesktop` names its downloaded
+  asset and a thumbnail; `DesktopPicture`), a Clear–Frosted slider under it (`PanelGlassChoice`). Regular glass adds a neutral grey to what is behind it (about +30
+  sRGB over a dark wallpaper), so bare at the foot it read as grey, and darkened
+  to hide that it read as too black. The glass lights its own rim, strongest
+  along the foot and thinning up the corners; through the ramp's thin end that
+  crescent read as a second, tighter corner inside the shell's (the outlines
+  themselves agree to a pixel), so the ramp is denser over the rim's two points
+  (`rimShadeLayers`). It is worn by the shell
+  in every state
   — first screen, listening, list and chat — never by the composer, and only
   once the state has settled (`applySurfaceStyle` defers changes *to* a wash to
   the end of the turn).
@@ -624,6 +661,9 @@ The loop that must keep working:
   under their own ids. Pasted text too: its words go inline, and a file written
   beside them is what its card stands on. A card flies there from the strip
   without changing shape. Right click: Quick Look, Show in Finder, Use in Follow-up.
+- A tool cut off with its turn (OpenCode's `error.type` `aborted`) is
+  `AgentActivity.State.interrupted`: no warning and none of "Tool execution
+  interrupted", since the turn's "Stopped" says it.
 - A failure belongs to the turn that produced it; once the agent speaks again
   it draws no card. A failure is never a bubble. One sentence serves every failure,
   but for a used-up plan and a model that has gone (`saysModelIsGone`): that card
@@ -649,10 +689,16 @@ The loop that must keep working:
 - Asked the way a Mac asks: the sentence as title ("Run this command?"), what
   it is about verbatim in a well (tool name as a label, command in mono, long
   commands cut at six lines with "Show N More Lines"), the answers as dialog
-  buttons, right to left from the default. The reach of "Always allow" is a
+  buttons, right to left from the default. The reach of "Always Allow" is a
   caption over the buttons.
 - **Return confirms the first answer**, as the CLIs do. Do not change this
-  without a new reason.
+  without a new reason. On an empty composer ← and → walk the lit answer
+  across the buttons in the order they stand (`moveApprovalFocus`), and Return
+  presses the lit one; with words typed the arrows stay with the words.
+  The lit one is a fill of its own, not the glass's `bezelColor` (the system
+  drops that while the panel is not key), and every answer keeps the width it
+  has on glass, so nothing moves as the light does. Titles are title case, as
+  a Mac's buttons are ("Allow Once").
 - **Words typed on a permission card refuse it and go to the agent**
   (`.permissionMessage` where the protocol carries them; otherwise refuse,
   stop, and queue the words). A refusal this press did not deliver stops and
@@ -660,7 +706,16 @@ The loop that must keep working:
 - Questions: digits answer on an empty composer (not on a permission); a
   question that takes typed answers says so.
 - An ask that is gone (`requestGone`) takes its card away, raises no notice and
-  re-reads the conversation.
+  re-reads the conversation. **A question is the exception: it outlives its
+  ask.** A form lives only in the memory of OpenCode's process (2.2.5), and a
+  real quit stops every turn, so a question left waiting would otherwise be lost
+  with the answer typed to it. It becomes late (`Resolution.askGone`, from a quit,
+  a relaunch, a gone ask, or a read that no longer lists it with no turn working):
+  its card stays, holds nothing up, and its answer goes as the chat's next message
+  saying what it answers (`QuestionPrompt.lateAnswer`, `deliverLateAnswer`), by the
+  path any message takes. Another message or a Stop lets it go; a later read that
+  lists the ask reopens it, as after a crash with the service up. Permissions and
+  plans are never answered late: a yes to a tool no longer waiting means nothing.
 - All cards that ask or wait share one scale and one set of gaps
   (`serviceEyebrow*`, `service*Gap`).
 
@@ -984,7 +1039,12 @@ heard.
   shell (TCC would attribute the request to the shell's app).
 - **The menu-bar mark** (`StatusBarIconRenderer`, the hexagon with soft corners)
   stands still. Moves of its own, blinks and glances, were tried and removed; work is
-  the notch face's to show.
+  the notch face's to show. A click opens **Limits** under it
+  (`UsageGlanceController`, rows from `ChatWorkspaceCoordinator.usageGlanceRows`):
+  each listed agent's face and plan windows on frosted panel glass (clear let the
+  window behind read through), read again as it opens; a click outside or Escape
+  closes it. Its foot has Settings › Usage and More, which is the old menu; a right
+  or Control-click on the mark opens that menu at once.
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
   Shortcuts), standard parts but for what is selected: the sidebar's rows and
   the segments are drawn here (`SettingsSidebarRow`, `SettingsSegments`), since a
@@ -1005,8 +1065,9 @@ heard.
   Preferred, model, reasoning, permissions with the Auto Mode note once, and
   the face's shape, gradient and finish as rows. Never expand every agent on
   the list again. `-boltty.settings.agent claude` opens an agent's page.
-- **Usage**: plan windows per agent (each: what remains and when it
-  comes back, the bar and the activity chart flat in Boltty's accent,
+- **Usage**: plan windows per agent (each: how much is used and when it
+  comes back, as the composer's ring counts it — never what is left; the bar
+  and the activity chart flat in Boltty's accent,
   never the face's gradient), 14 days of activity, and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`). Never summed across
@@ -1153,7 +1214,10 @@ heard.
   Messages' and rolled off under a brightness ceiling (`backdropCeiling`)
   because the prose has no bubbles. The ceiling gives back saturation as it
   dims, and cloud tops carry the sky's glow: dimmed white read as grey and
-  dimmed yellow as olive. Space is near black with only breaths
+  dimmed yellow as olive. High clouds take their light from the sky behind
+  them. A sky between two hues opposite each other has a colour standing
+  between them (Daybreak's violet, with rose cloud light): blue straight into
+  orange mixed through grey. Space is near black with only breaths
   of that sky (its glow low in one corner, its zenith high in the other),
   and stars in four depths: gathered in loose drifts, mostly faint, white,
   bluish, warm or in the face's light, the brightest with a halo and faint
@@ -1191,7 +1255,9 @@ heard.
   a joint, the ink clear of the edge. One colour, outlines only: no icon is a filled version of another. An icon is sized by its box (a chat's composer
   `ComposerControlGroup.iconSize`, a point over `glyph`; elsewhere about a
   fifth over the point size its symbol had, since the ink stops short of the
-  box), and its stroke grows with the box. A small round mark is solid:
+  box), and its stroke grows with the box. In the panel every icon's box then
+  goes through `AgentPaletteMetrics.iconSide` (15% larger, `iconScale`), the
+  buttons round them keeping their size. A small round mark is solid:
   stroked, it reads as a ring round a pinhole. So are the stars of `sparkles`, which
   stroked only fill up; that icon is the maintainer's own drawing, curves and all, kept
   to the letter by the generator and passed over by the check. `NSImage` draws the files as
@@ -1201,7 +1267,7 @@ heard.
   and a stroke breaks to let a small solid detail stand in the gap (a dot, a check).
   Icons stand still: a movement as the pointer came to a button was tried and removed.
 - **Glass is the system's**, in five kinds: the shell (`PaletteGlassHost`, bare
-  regular glass under a black ramp), controls (the same
+  clear glass under a black ramp), controls (regular
   glass), glass buttons (`NSButton` with `.glass` bezel — `GlassCircleButton`,
   `GlassPillLabelButton`), the selected history tab, and help tags
   (`PaletteHelpBackdrop`). Density goes *over* the

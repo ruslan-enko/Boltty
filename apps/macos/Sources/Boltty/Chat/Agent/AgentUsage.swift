@@ -2,6 +2,9 @@ import Foundation
 
 struct AgentUsage: Equatable, Sendable {
   var windows: [AgentUsageWindow]
+  /// What can be said without a percentage (OpenCode's free models: the
+  /// allowance is the server's, so only the steps taken are known).
+  var notes: [String] = []
 
   var pressing: AgentUsageWindow? {
     windows.max { lhs, rhs in
@@ -17,6 +20,7 @@ struct AgentUsageWindow: Equatable, Sendable {
     case session
     case weekly
     case other(minutes: Int)
+    case named(String, order: Int)
 
     init(minutes: Int) {
       switch minutes {
@@ -31,6 +35,7 @@ struct AgentUsageWindow: Equatable, Sendable {
       case .session: 0
       case let .other(minutes): minutes < 10_080 ? 1 : 3
       case .weekly: 2
+      case let .named(_, order): order
       }
     }
 
@@ -40,6 +45,7 @@ struct AgentUsageWindow: Equatable, Sendable {
       case .weekly: "Weekly"
       case let .other(minutes):
         minutes % 1_440 == 0 ? "\(minutes / 1_440)-day" : "\(max(minutes / 60, 1))-hour"
+      case let .named(name, _): name
       }
     }
   }

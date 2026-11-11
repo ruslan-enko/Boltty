@@ -29,6 +29,15 @@ struct PendingInteraction: Identifiable, Codable, Equatable, Sendable {
 
   var isOpen: Bool { resolution == nil }
   var acceptsInput: Bool { resolution == nil && !isSubmitting }
+  var isLate: Bool { resolution == .askGone }
+
+  /// What becomes of this ask when what held it is gone. A permission or a plan
+  /// goes with it, since a late yes to a tool no longer waiting means nothing. A
+  /// question still stands for the person: it can be answered in words.
+  var goneResolution: Resolution {
+    if case .question = kind { return .askGone }
+    return .expired
+  }
 
   enum Kind: Codable, Equatable, Sendable {
     case question(QuestionPrompt)
@@ -43,12 +52,28 @@ struct PendingInteraction: Identifiable, Codable, Equatable, Sendable {
     case plan(PlanDecision)
     case resolvedElsewhere
     case expired
+    /// A question whose ask went with its process or server (a quit, a crash).
+    /// Its card stays, and the answer goes as the chat's next message.
+    case askGone
   }
 }
 
 struct QuestionPrompt: Codable, Equatable, Sendable {
   var items: [QuestionItem]
   var toolCallID: String?
+
+  /// An answer that can only go as a message: the agent has no ask left to tie
+  /// it to, so it says what it answers. Each line is a question and its answer,
+  /// by the labels the person chose among.
+  func lateAnswer(_ answers: [[String]]) -> String {
+    zip(items, answers).map { item, values in
+      let said = values.map { value in
+        item.choices.first { $0.value == value }?.label ?? value
+      }
+      return "«\(item.question)» — \(said.joined(separator: ", "))"
+    }
+    .joined(separator: "\n")
+  }
 }
 
 struct QuestionItem: Codable, Equatable, Sendable {

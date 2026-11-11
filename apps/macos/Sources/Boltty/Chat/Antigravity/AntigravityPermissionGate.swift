@@ -199,11 +199,13 @@ enum AntigravityToolPolicy {
     autoApprove: Bool,
     granted: Set<String>
   ) -> Verdict {
-    let paths = absolutePaths(in: arguments)
+    let paths = absolutePaths(in: arguments, base: arguments.string("Cwd") ?? directory)
     let outside = paths.filter { !inside($0, directory) && !inside($0, agentHome) }
 
     if quiet.contains(tool) {
-      guard let path = outside.first(where: { !granted.contains(readKey($0)) }) else { return .allow }
+      guard let path = outside.first(where: {
+        !granted.contains(readKey($0)) && !(autoApprove && AutoModeCommands.isReadable($0))
+      }) else { return .allow }
       return .ask(action: "read", resources: [path], always: readKey(path))
     }
     if edits.contains(tool) {
@@ -213,10 +215,20 @@ enum AntigravityToolPolicy {
         ? .allow
         : .ask(action: "edit", resources: target.map { [$0] } ?? [], always: "edit")
     }
-    if tool == "run_command" || tool == "send_command_input" {
-      let command = arguments.string("CommandLine") ?? arguments.string("Input") ?? tool
-      let key = "command:\(command)"
-      return granted.contains(key) ? .allow : .ask(action: "command", resources: [command], always: key)
+    if tool == "run_command" {
+      let command = arguments.string("CommandLine") ?? tool
+      if granted.contains("command:\(command)")
+        || AutoModeCommands.allows(
+          command, in: directory, cwd: arguments.string("Cwd"), autoMode: autoApprove, granted: granted
+        ) {
+        return .allow
+      }
+      return .ask(action: "command", resources: [command], always: AutoModeCommands.alwaysKey(for: command))
+    }
+    if tool == "send_command_input" {
+      let input = arguments.string("Input") ?? tool
+      let key = "command:\(input)"
+      return granted.contains(key) ? .allow : .ask(action: "command", resources: [input], always: key)
     }
     return granted.contains(tool) ? .allow : .ask(action: tool, resources: paths, always: tool)
   }
@@ -239,11 +251,19 @@ enum AntigravityToolPolicy {
     return path == folder || path.hasPrefix(folder.hasSuffix("/") ? folder : folder + "/")
   }
 
-  private static func absolutePaths(in arguments: JSONObject) -> [String] {
+  /// `~/x` and `../x` are read too: taken as plain words they counted as inside
+  /// the folder, and Auto Mode let them through.
+  static func absolutePaths(in arguments: JSONObject, base: String) -> [String] {
     arguments.raw.keys.sorted().compactMap { key in
       guard key != "Cwd", let value = arguments.string(key) else { return nil }
       let path = value.hasPrefix("file://") ? String(value.dropFirst(7)) : value
-      return path.hasPrefix("/") && !path.contains("\n") ? path : nil
+      guard !path.contains("\n") else { return nil }
+      if path.hasPrefix("/") { return path }
+      if path == "~" || path.hasPrefix("~/") { return (path as NSString).expandingTildeInPath }
+      if path == ".." || path.hasPrefix("../") || path.contains("/../") || path.hasSuffix("/..") {
+        return ((base as NSString).appendingPathComponent(path) as NSString).standardizingPath
+      }
+      return nil
     }
   }
 }

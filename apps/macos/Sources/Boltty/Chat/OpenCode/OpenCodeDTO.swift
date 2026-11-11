@@ -159,6 +159,7 @@ enum OpenCodeDTO {
 
   struct StringOrObject: Decodable {
     let text: String?
+    var type: String? = nil
 
     init(from decoder: Decoder) throws {
       let container = try decoder.singleValueContainer()
@@ -166,6 +167,7 @@ enum OpenCodeDTO {
         text = value
       } else if let value = try? container.decode(JSONValue.self) {
         text = value["message"]?.stringValue ?? value["error"]?.stringValue
+        type = value["type"]?.stringValue
       } else {
         text = nil
       }

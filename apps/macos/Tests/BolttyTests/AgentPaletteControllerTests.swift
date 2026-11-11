@@ -1637,7 +1637,7 @@ final class BolttyAIBusyQueueTests: XCTestCase {
     let panel = try view(controller)
 
     panel.field.setDraft(PromptDraft("smaller steps"))
-    XCTAssertEqual(panel.trailingHintForTesting, ["Request changes ↵"])
+    XCTAssertEqual(panel.trailingHintForTesting, ["Request Changes ↵"])
     _ = panel.textView(panel.field, doCommandBy: #selector(NSResponder.insertNewline(_:)))
     for _ in 0..<100 where conversations.answered.isEmpty { await Task.yield() }
 

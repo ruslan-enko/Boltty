@@ -193,7 +193,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     guard from.views.contains(directorySlot) else { return }
     from.removeView(directorySlot)
     if chat {
-      leadingControls.addView(directorySlot, in: .leading)
+      let afterAttach = (leadingControls.views(in: .leading).firstIndex(of: attachRestSlot) ?? -1) + 1
+      leadingControls.insertView(directorySlot, at: afterAttach, in: .leading)
     } else {
       let afterRing = (trailingControls.views(in: .leading).firstIndex(of: planRing) ?? -1) + 1
       trailingControls.insertView(directorySlot, at: afterRing, in: .leading)
@@ -1012,7 +1013,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   @objc private func scrollTranscriptToLatest() { previewCard.glideToLatest() }
 
-  static let chatComposerPlaceholder = "Describe a task or ask a question"
+  static let chatComposerPlaceholder = "Describe a task or ask"
 
   static func composerPlaceholder(for preview: BolttyAISessionPreview) -> String {
     if preview.question?.kind == .plan {
@@ -2256,7 +2257,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       syncSelectionOverlay()
     }
 
-    hintLabel.stringValue = "Describe a task or ask a question"
+    hintLabel.stringValue = "Describe a task or ask"
     selectedAgentImage.showMascot(
       conversationID: pendingConversationID,
       emotion: isVoiceListening ? .listening : .curious,
@@ -2452,7 +2453,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     promptForeground.addSubview(recordingHoverSensor)
     promptForeground.addSubview(recordingControls)
 
-    hintLabel.stringValue = "Describe a task or ask a question"
+    hintLabel.stringValue = "Describe a task or ask"
     hintLabel.font = PromptTextView.promptFont
     hintLabel.textColor = AgentPaletteMetrics.chatComposerPlaceholderInk
     hintLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -2828,7 +2829,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let chat = addressedPreview != nil
     applyComposerGlyphSize(chat: chat)
     promptHost.apply(surfaceStyle: chat ? .bolttyAIComposer : .bolttyAI)
-    applySurfaceStyle(.bolttyAIPrompt)
+    applySurfaceStyle(.bolttyAIPrompt(clearGlass: shellUsesClearGlass))
     errorTopToPromptConstraint.constant = AgentPaletteMetrics.errorTopSpacing
     let height = promptCapsuleHeightConstraint.constant
     let grown = height > AgentPaletteMetrics.chatComposerHeight + 1
@@ -2908,6 +2909,15 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private var wantedSurfaceStyle = PaletteSurfaceStyle.bolttyAI
   private var surfaceStyleIsScheduled = false
+
+  var shellUsesClearGlass = true {
+    didSet {
+      guard shellUsesClearGlass != oldValue, surface.currentSurfaceStyle.wash != nil else { return }
+      let style = PaletteSurfaceStyle.bolttyAIPrompt(clearGlass: shellUsesClearGlass)
+      wantedSurfaceStyle = style
+      surface.apply(surfaceStyle: style)
+    }
+  }
 
   private func applySurfaceStyle(_ style: PaletteSurfaceStyle) {
     wantedSurfaceStyle = style
@@ -4379,6 +4389,10 @@ extension AgentPaletteView: NSTextViewDelegate {
       return true
     }
     if commandSelector == #selector(moveLeft(_:)) || commandSelector == #selector(moveRight(_:)) {
+      if addressedPreview != nil, field.isWhollyEmpty,
+         previewCard.moveApprovalFocus(by: commandSelector == #selector(moveLeft(_:)) ? -1 : 1) {
+        return true
+      }
       guard addressedPreview == nil, isResultsExpanded, mode == .picking,
             !isShowingInstallHints, field.isEmptyPrompt else { return false }
       stepHistoryTab(by: commandSelector == #selector(moveLeft(_:)) ? -1 : 1)

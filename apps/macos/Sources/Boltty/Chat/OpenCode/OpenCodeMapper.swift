@@ -74,8 +74,9 @@ enum OpenCodeMapper {
           id: partID,
           name: content.name ?? "tool",
           summary: nil,
-          state: activityState(state?.status),
-          detail: state?.error?.message ?? (outputs?.isEmpty == false ? outputs : nil),
+          state: activityState(state?.status, errorType: state?.error?.type),
+          detail: (isInterruption(state?.error?.type) ? nil : state?.error?.message)
+            ?? (outputs?.isEmpty == false ? outputs : nil),
           files: state?.outputPaths ?? [],
           startedAt: date(content.time?.created),
           endedAt: content.time?.completed.map { Date(timeIntervalSince1970: $0 / 1000) }
@@ -101,8 +102,8 @@ enum OpenCodeMapper {
           id: dto.id,
           name: dto.tool ?? "tool",
           summary: state?.title,
-          state: activityState(state?.status),
-          detail: state?.error?.text ?? state?.output,
+          state: activityState(state?.status, errorType: state?.error?.type),
+          detail: (isInterruption(state?.error?.type) ? nil : state?.error?.text) ?? state?.output,
           files: filePaths(from: state)
         )
       )
@@ -148,11 +149,15 @@ enum OpenCodeMapper {
     return Array(Set(paths)).sorted()
   }
 
-  private static func activityState(_ status: String?) -> AgentActivity.State {
+  /// A tool cut off with its turn did not fail: the turn's own "Stopped" says it,
+  /// so its line ("Tool execution interrupted") is not shown as an error.
+  static func isInterruption(_ errorType: String?) -> Bool { errorType == "aborted" }
+
+  private static func activityState(_ status: String?, errorType: String?) -> AgentActivity.State {
     switch status {
     case "running": return .running
     case "completed": return .completed
-    case "error": return .failed
+    case "error": return isInterruption(errorType) ? .interrupted : .failed
     default: return .pending
     }
   }
@@ -334,5 +339,73 @@ enum OpenCodeMapper {
       ),
       isDefault: isDefault
     )
+  }
+}
+
+// MARK: - Plan limits
+
+extension OpenCodeMapper {
+  /// `/api/experimental/usage/limits` (2.2.6): OpenCode Go's meters and the
+  /// Console's budgets, `data: null` until OpenCode is signed in to the Console.
+  /// The free models' line comes from the database (`OpenCodeFreeUsage`).
+  static func usage(
+    limits: JSONValue?,
+    free: OpenCodeFreeUsage?,
+    now: Date = Date()
+  ) -> AgentUsage {
+    var windows: [AgentUsageWindow] = []
+    var notes: [String] = []
+    let data = limits?["data"]
+
+    func date(_ value: JSONValue?) -> Date? {
+      value?.doubleValue.map { Date(timeIntervalSince1970: $0 / 1_000) }
+    }
+
+    if let go = data?["go"] {
+      let meters: [(String, AgentUsageWindow.Kind)] = [
+        ("rolling", .named("Rolling", order: 0)),
+        ("weekly", .weekly),
+        ("monthly", .named("Monthly", order: 3)),
+      ]
+      for (key, kind) in meters {
+        guard let meter = go[key], let percent = meter["percent"]?.doubleValue else { continue }
+        let used = meter["limited"]?.boolValue == true ? 100 : Int(percent.rounded())
+        windows.append(AgentUsageWindow(kind: kind, usedPercent: used, resetsAt: date(meter["resetsAt"]), label: "Go"))
+      }
+    }
+    for budget in data?["budgets"]?.arrayValue ?? [] {
+      guard let limit = budget["limit"]?.doubleValue, limit > 0,
+            let spent = budget["spent"]?.doubleValue
+      else { continue }
+      windows.append(AgentUsageWindow(
+        kind: .named("\(dollars(spent)) of \(dollars(limit))", order: 4),
+        usedPercent: Int((spent / limit * 100).rounded()),
+        resetsAt: date(budget["resetsAt"]),
+        label: "Console"
+      ))
+    }
+
+    if let free {
+      if let backAt = free.backAt, backAt > now {
+        windows.append(AgentUsageWindow(
+          kind: .named("Daily", order: 1), usedPercent: 100, resetsAt: backAt, label: "Free models"))
+      } else if free.steps > 0 {
+        notes.append("Free models: \(free.steps) \(free.steps == 1 ? "step" : "steps") since \(clock(free.since)). OpenCode does not say how many a day allows.")
+      }
+    }
+    if windows.isEmpty, data == nil || data == .null {
+      notes.append("Go and Console limits show once OpenCode is signed in to its Console.")
+    }
+    return AgentUsage(windows: windows, notes: notes)
+  }
+
+  private static func dollars(_ amount: Double) -> String {
+    amount == amount.rounded() ? "$\(Int(amount))" : String(format: "$%.2f", amount)
+  }
+
+  private static func clock(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.setLocalizedDateFormatFromTemplate("jmm")
+    return formatter.string(from: date)
   }
 }

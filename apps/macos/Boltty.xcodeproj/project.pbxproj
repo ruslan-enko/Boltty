@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B0177A6E0000000000000006 /* OpenCodeFreeUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0177A6E0000000000000005 /* OpenCodeFreeUsage.swift */; };
+		B0177A6E0000000000000004 /* UsageGlanceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0177A6E0000000000000003 /* UsageGlanceController.swift */; };
+		B0177A6E0000000000000002 /* UsageGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0177A6E0000000000000001 /* UsageGlance.swift */; };
 		0016A2C4D67C9E0335296665 /* AgentIconProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4AA1DF27F1B70A8B8E19052 /* AgentIconProvider.swift */; };
 		00513CB7FB07CA1C7B1DC1DB /* PaletteEffectsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C504CC00C75BF69BA78B4124 /* PaletteEffectsTests.swift */; };
 		00E9ED621475937A53D78327 /* AgentHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E5E427F639DAE032007247 /* AgentHistoryTests.swift */; };
@@ -44,6 +47,7 @@
 		1F5EE263EDD6872814E2FE78 /* MascotSnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5329A54E7D125C2DCCC9416E /* MascotSnapshotCache.swift */; };
 		1FD1B38458014718F02A4062 /* replay-cli.py in Resources */ = {isa = PBXBuildFile; fileRef = 8684AE496DE5161D82AF11C8 /* replay-cli.py */; };
 		2059C5CC8864001E069F049E /* OneShotCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7855DFFD4B28A7D6ED1D /* OneShotCommand.swift */; };
+		3EB9BFB65AB5943202E6C280 /* AutoModeCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704F378C31A82A24BA2D1D7E /* AutoModeCommands.swift */; };
 		21EF8C0834EEABCEBA517972 /* InterfaceSounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9219862A1FC6E069C76BC3C2 /* InterfaceSounds.swift */; };
 		2286F4DDD0940FF9B3C3D757 /* VoiceGlowContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722B566E5FB40FC069AE2AFF /* VoiceGlowContactSheet.swift */; };
 		2297D7B6B7BB9D16E171704C /* hum-4.wav in Resources */ = {isa = PBXBuildFile; fileRef = B0DEDDBF371F2F21633C0FAC /* hum-4.wav */; };
@@ -355,6 +359,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B0177A6E0000000000000005 /* OpenCodeFreeUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeFreeUsage.swift; sourceTree = "<group>"; };
+		B0177A6E0000000000000003 /* UsageGlanceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageGlanceController.swift; sourceTree = "<group>"; };
+		B0177A6E0000000000000001 /* UsageGlance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageGlance.swift; sourceTree = "<group>"; };
 		00894897FE655EBA2F6100AE /* CodexRolloutTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexRolloutTranscript.swift; sourceTree = "<group>"; };
 		00B3BEEE3EF8B26671FBD929 /* show-music.m4a */ = {isa = PBXFileReference; path = "show-music.m4a"; sourceTree = "<group>"; };
 		00FE8E7345E352E0598531BE /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -596,6 +603,7 @@
 		AC9C964A66D50A27F8868D9B /* BolttyAIConversations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAIConversations.swift; sourceTree = "<group>"; };
 		ADB8AEF15F2CAAEBE357DD4B /* SetupWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWindow.swift; sourceTree = "<group>"; };
 		ADFA7855DFFD4B28A7D6ED1D /* OneShotCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneShotCommand.swift; sourceTree = "<group>"; };
+		704F378C31A82A24BA2D1D7E /* AutoModeCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoModeCommands.swift; sourceTree = "<group>"; };
 		AE5D761A363AB33E7DA402E9 /* MascotSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotSettingsTests.swift; sourceTree = "<group>"; };
 		AE6B0EAE0CBAE353B27A31E2 /* WorkingDirectoryChipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryChipTests.swift; sourceTree = "<group>"; };
 		AEB660AC56C85CE9AF562F7A /* AccessPermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessPermissions.swift; sourceTree = "<group>"; };
@@ -1057,6 +1065,7 @@
 				2F785EE57760EE2F5CF97DE4 /* ScreenSelection.swift */,
 				6AF66C6E3BDDC29927D19BDB /* ShortcutBinding.swift */,
 				2E4DEB206C8959E487FD2707 /* SpokenText.swift */,
+				B0177A6E0000000000000001 /* UsageGlance.swift */,
 				49CEFC2CF6FD53D0463FF5F9 /* StatusBarSnapshot.swift */,
 				FD1CBA5C4695D3EC2A71C5F9 /* SystemAttentionNotification.swift */,
 				8578BB6E4B097B0EB624895A /* WorkingDirectoryChip.swift */,
@@ -1160,6 +1169,7 @@
 				0D545E1F60C181C3DC305082 /* JSONLineProcess.swift */,
 				EDDA6C284882C1CD41C2FB39 /* JSONObject.swift */,
 				ADFA7855DFFD4B28A7D6ED1D /* OneShotCommand.swift */,
+				704F378C31A82A24BA2D1D7E /* AutoModeCommands.swift */,
 			);
 			path = Agent;
 			sourceTree = "<group>";
@@ -1189,6 +1199,7 @@
 				593B09EF6680F6344FBE5E25 /* GrokChatHistoryTranscript.swift */,
 				EE5380B89E5B8ACBF100B178 /* GrokSessionStore.swift */,
 				46D1157C937F52D72DA6DA1D /* NativeSession.swift */,
+				B0177A6E0000000000000005 /* OpenCodeFreeUsage.swift */,
 				9A8486C95603280076D40033 /* OpenCodeSessionStore.swift */,
 			);
 			path = Native;
@@ -1256,6 +1267,7 @@
 				37B150EECF419B1FAACA3BC0 /* PaletteNoticeView.swift */,
 				EE9B076438A5044E13E31067 /* PaletteTranscript.swift */,
 				56DB3FBF99C5BBD0C57488D3 /* ScreenSelectionOverlay.swift */,
+				B0177A6E0000000000000003 /* UsageGlanceController.swift */,
 				02C0F92311D62750D24F18B5 /* StatusBarController.swift */,
 				C4B173D9F2280D017ACC3F0A /* StatusBarIconRenderer.swift */,
 				36239129D1893F7643859251 /* VoiceEdgeGlow.swift */,
@@ -1597,10 +1609,14 @@
 				8D20DBC49DB616AFE20C48BC /* NativeSession.swift in Sources */,
 				BC2EFAB5F33BA6352D859000 /* NotchMascotController.swift in Sources */,
 				2059C5CC8864001E069F049E /* OneShotCommand.swift in Sources */,
+				B0177A6E0000000000000002 /* UsageGlance.swift in Sources */,
+				B0177A6E0000000000000004 /* UsageGlanceController.swift in Sources */,
+				3EB9BFB65AB5943202E6C280 /* AutoModeCommands.swift in Sources */,
 				8DA5D6B6B81183CCCE08F62B /* OpenCodeClient.swift in Sources */,
 				D1EE766B46C2232E50B4D953 /* OpenCodeDTO.swift in Sources */,
 				FE4F1D4538166FCB6F174ABE /* OpenCodeMapper.swift in Sources */,
 				90D0092F49DA8835BFAB514F /* OpenCodeServer.swift in Sources */,
+				B0177A6E0000000000000006 /* OpenCodeFreeUsage.swift in Sources */,
 				51914BE74EE11700FBB721A0 /* OpenCodeSessionStore.swift in Sources */,
 				33E17469CD8CBE4E079B7952 /* PaletteActivityRowView.swift in Sources */,
 				01F1C518066A6F473601BF96 /* PaletteAnswerText.swift in Sources */,

@@ -546,7 +546,7 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertEqual(client.questionReplies.map { $0.answers }, [[["AppKit"]]])
   }
 
-  func testAnAnswerToAnAskThatIsGoneSaysNothingWent() async throws {
+  func testAnAnswerToAnAskThatIsGoneGoesAsAMessage() async throws {
     let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
     let (id, remote, question) = try await askedQuestion(coordinator)
     client.questionError = .requestGone
@@ -554,8 +554,98 @@ final class ConversationEngineTests: XCTestCase {
 
     let sent = try await coordinator.answer(question, with: ["in the app itself?"])
 
-    XCTAssertFalse(sent)
-    XCTAssertNil(coordinator.preview(for: id)?.question, "the card is put away")
+    XCTAssertTrue(sent)
+    XCTAssertNil(coordinator.preview(for: id)?.question, "it has its answer")
+    for _ in 0..<200 where client.sentMessages.count < 2 { await Task.yield() }
+    XCTAssertEqual(client.sentMessages.map(\.text), ["go", "«Which?» — in the app itself?"])
+  }
+
+  func testALateQuestionIsAnsweredAsAMessage() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, _, _) = try await askedQuestion(coordinator)
+    store.markQuestionsGone(in: id)
+    store.setExecutionState(.interrupted, for: id)
+    let late = try XCTUnwrap(coordinator.preview(for: id)?.question)
+    XCTAssertTrue(late.isLate)
+
+    let sent = try await coordinator.answer(late, with: ["AppKit"])
+    let again = try await coordinator.answer(late, with: ["AppKit"])
+
+    XCTAssertTrue(sent)
+    XCTAssertFalse(again, "a second press sends nothing")
+    for _ in 0..<200 where client.sentMessages.count < 2 { await Task.yield() }
+    XCTAssertEqual(client.sentMessages.map(\.text), ["go", "«Which?» — AppKit"])
+  }
+
+  func testALateQuestionHoldsNothingUpAndAnotherMessageLetsItGo() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, _, _) = try await askedQuestion(coordinator)
+    store.markQuestionsGone(in: id)
+    store.setExecutionState(.interrupted, for: id)
+    XCTAssertNil(store.transcript(id: id).openInteraction)
+
+    let sent = await engine.send(text: "never mind", in: id)
+
+    XCTAssertTrue(sent)
+    XCTAssertNil(coordinator.preview(for: id)?.question)
+  }
+
+  func testStoppingATurnTakesItsQuestionAway() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, remote, _) = try await askedQuestion(coordinator)
+    client.snapshots[remote] = snapshot(remote: remote, state: .idle)
+
+    await engine.stop(conversationID: id)
+
+    XCTAssertNil(coordinator.preview(for: id)?.question)
+  }
+
+  func testAQuitLeavesAQuestionToAnswerLate() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, remote, _) = try await askedQuestion(coordinator)
+
+    await engine.requestStopForAll()
+    store.apply(AgentEventEnvelope(id: "gone", sequence: 2, event: .interactionResolved(
+      sessionID: remote, requestID: "que_1", resolution: .rejected
+    )))
+
+    XCTAssertEqual(store.transcript(id: id).interactions.first?.resolution, .askGone)
+  }
+
+  func testAQuestionWhoseServerWentBecomesLateOnTheNextRead() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, remote, _) = try await askedQuestion(coordinator)
+    client.snapshots[remote] = snapshot(remote: remote, state: .idle)
+
+    await engine.refresh(conversationID: id)
+
+    XCTAssertEqual(coordinator.preview(for: id)?.question?.isLate, true)
+  }
+
+  func testAQuestionAnsweredElsewhereGoesWithTheTurnWorking() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, remote, _) = try await askedQuestion(coordinator)
+    client.snapshots[remote] = snapshot(remote: remote, state: .working)
+
+    await engine.refresh(conversationID: id)
+
+    XCTAssertEqual(store.transcript(id: id).interactions.first?.resolution, .resolvedElsewhere)
+    XCTAssertNil(coordinator.preview(for: id)?.question)
+  }
+
+  func testAnAskThatSurvivedComesBackOpen() async throws {
+    let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
+    let (id, remote, _) = try await askedQuestion(coordinator)
+    let asked = store.transcript(id: id).interactions
+    store.markQuestionsGone(in: id)
+    var stillAsking = snapshot(remote: remote, state: .waiting)
+    stillAsking.openInteractions = asked
+    client.snapshots[remote] = stillAsking
+
+    await engine.refresh(conversationID: id)
+
+    XCTAssertEqual(store.transcript(id: id).openInteraction?.id, "que_1")
+    XCTAssertEqual(coordinator.preview(for: id)?.question?.isLate, false)
   }
 
   func testAGoneAskDoesNotLeaveTheConversationWaiting() async throws {
@@ -603,7 +693,7 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertNotNil(engine.notices[id])
   }
 
-  func testAnAnswerToAQuestionThatIsGonePutsItAway() async throws {
+  func testAQuestionThatIsGoneStaysToAnswerUnlessRefused() async throws {
     let id = newConversation()
     await engine.send(text: "go", in: id)
     let remote = try XCTUnwrap(store.conversation(id: id)?.remoteSessionID)
@@ -629,7 +719,7 @@ final class ConversationEngineTests: XCTestCase {
     client.snapshots[remote] = snapshot(remote: remote, state: .idle)
     await engine.rejectQuestion(interactionID: "que_2", in: id)
 
-    XCTAssertEqual(store.transcript(id: id).interactions.map(\.resolution), [.expired, .expired])
+    XCTAssertEqual(store.transcript(id: id).interactions.map(\.resolution), [.askGone, .rejected])
     XCTAssertNil(engine.notices[id])
     XCTAssertEqual(store.conversation(id: id)?.lastKnownState, .idle)
   }
@@ -742,7 +832,7 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertEqual(store.conversation(id: id)?.lastKnownState, .waiting)
     XCTAssertEqual(question.kind, .plan)
     XCTAssertEqual(question.header, "Rename the tray")
-    XCTAssertEqual(question.options.map(\.label), ["Approve", "Request changes", "Quit"])
+    XCTAssertEqual(question.options.map(\.label), ["Approve", "Request Changes", "Quit"])
     XCTAssertEqual(question.options.map(\.value), ["approved", "cancelled", "abandoned"])
     XCTAssertEqual(question.copyText, Self.plan)
     let preview = try XCTUnwrap(coordinator.preview(for: id))

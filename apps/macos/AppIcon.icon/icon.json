@@ -4,8 +4,8 @@
     {
       "value" : {
         "linear-gradient" : [
-          "display-p3:1.00000,0.92157,0.00392,1.00000",
-          "display-p3:1.00000,0.64706,0.00000,1.00000"
+          "display-p3:1.00000,0.92513,0.01542,1.00000",
+          "display-p3:0.89670,0.59557,0.12049,1.00000"
         ]
       }
     },
@@ -18,12 +18,12 @@
     {
       "layers" : [
         {
-          "blend-mode" : "soft-light",
+          "blend-mode" : "normal",
           "fill-specializations" : [
             {
               "value" : {
                 "linear-gradient" : [
-                  "display-p3:0.85749,0.92216,0.88598,0.00000",
+                  "display-p3:0.85749,0.92216,0.88598,0.50000",
                   "display-p3:1.00000,1.00000,1.00000,1.00000"
                 ],
                 "orientation" : {
@@ -62,7 +62,7 @@
           "name" : "Icon",
           "opacity" : 1,
           "position" : {
-            "scale" : 0.5599999999999999,
+            "scale" : 0.6,
             "translation-in-points" : [
               0,
               0

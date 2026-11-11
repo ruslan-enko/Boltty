@@ -1,5 +1,6 @@
 import AppKit
 import Charts
+import ImageIO
 import SwiftUI
 
 // MARK: - General
@@ -65,6 +66,17 @@ struct GeneralSettingsPage: View {
         .accessibilityIdentifier("boltty.settings.playsSounds")
       } header: {
         SettingsSectionHeader("Behaviour")
+      }
+
+      Section {
+        LabeledContent {
+          PanelGlassChoice(model: model)
+        } label: {
+          Text("Panel glass")
+          Text("Clear lets the colour behind the panel through; frosted softens it.")
+        }
+      } header: {
+        SettingsSectionHeader("Appearance")
       }
 
       Section {
@@ -262,7 +274,7 @@ struct AgentsSettingsPage: View {
     case .claude:
       "Claude Code decides what is safe to run and asks only about the rest."
     default:
-      "edits in the chat's folder go through without asking; commands still ask."
+      "edits in the chat's folder, and commands that only read, build, test or change files there, go through without asking; the rest asks."
     }
   }
 }
@@ -564,7 +576,7 @@ struct UsageSettingsPage: View {
               usageRow(row)
             } footer: {
               if row.id == rows.last?.id {
-                SettingsNote("Read from each agent's own account. Codex counts tokens a day, OpenCode counts steps. OpenCode reports no plan limit.")
+                SettingsNote("Read from each agent's own account. Codex counts tokens a day, OpenCode counts steps. OpenCode reports Go and Console limits once signed in to its Console; how many free steps a day allows it never says, only when they come back.")
               }
             }
           }
@@ -604,6 +616,12 @@ struct UsageSettingsPage: View {
         ForEach(usage.windows, id: \.title) { window in
           UsageLimitCard(window: window)
         }
+        ForEach(usage.notes, id: \.self) { note in
+          Text(note)
+            .font(BolttyInterfaceTypography.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
       if let history = row.history {
         UsageHistoryChart(history: history)
@@ -636,7 +654,7 @@ struct UsageSettingsPage: View {
 private struct UsageLimitCard: View {
   let window: AgentUsageWindow
 
-  private var remaining: Int { max(0, 100 - window.usedPercent) }
+  private var used: Int { min(100, max(0, window.usedPercent)) }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -649,16 +667,16 @@ private struct UsageLimitCard: View {
             .help("Resets \(AgentUsageWindow.resetPhrase(reset))")
         }
         Spacer(minLength: 8)
-        Text("\(remaining)% remaining")
+        Text("\(used)% used")
           .foregroundStyle(.secondary)
       }
       .font(BolttyInterfaceTypography.callout)
       .monospacedDigit()
-      UsageMeter(fraction: Double(remaining) / 100)
+      UsageMeter(fraction: Double(used) / 100)
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
-    .accessibilityValue("\(remaining) percent remaining")
+    .accessibilityValue("\(used) percent used")
   }
 
   private var title: String {
@@ -1215,5 +1233,194 @@ private struct RingedChoiceStyle: ButtonStyle {
     configuration.label
       .scaleEffect(configuration.isPressed && !MotionPreferences.reduceMotion ? 0.94 : 1)
       .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
+  }
+}
+
+// MARK: - Panel glass
+
+private struct PanelGlassChoice: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  @State private var wallpaper: DesktopPicture?
+
+  private static let width: CGFloat = 320
+
+  var body: some View {
+    VStack(spacing: 12) {
+      ZStack {
+        Color.black.opacity(0.4)
+        if let wallpaper {
+          Image(decorative: wallpaper.image, scale: 1)
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fill)
+            .frame(width: Self.width, height: 150)
+            .clipped()
+            .transition(.opacity)
+        }
+        PanelGlassSample(
+          clearGlass: model.panelClearGlass,
+          look: model.mascotLook(for: model.mascotRoster.restingAgent)
+        )
+        .frame(width: PanelGlassSampleView.size.width, height: PanelGlassSampleView.size.height)
+      }
+      .frame(width: Self.width, height: 150)
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .accessibilityHidden(true)
+      .task {
+        let sources = DesktopPicture.sources()
+        let found = await Task.detached(priority: .utility) {
+          DesktopPicture.load(from: sources, maxPixels: 960)
+        }.value
+        withAnimation(SettingsMotion.quick) { wallpaper = found }
+      }
+
+      HStack(spacing: 10) {
+        Text("Clear").foregroundStyle(.secondary)
+        Slider(
+          value: Binding(
+            get: { model.panelClearGlass ? 0 : 1 },
+            set: { model.panelClearGlass = $0 < 0.5 }
+          ),
+          in: 0...1, step: 1
+        ) {
+          Text("Panel glass")
+        }
+        .labelsHidden()
+        .tint(Color(nsColor: BolttyBrand.accentOnGlass))
+        .accessibilityValue(model.panelClearGlass ? "Clear" : "Frosted")
+        .accessibilityIdentifier("boltty.settings.panelGlass")
+        Text("Frosted").foregroundStyle(.secondary)
+      }
+      .frame(width: Self.width)
+    }
+    .padding(.vertical, 6)
+  }
+}
+
+private struct PanelGlassSample: NSViewRepresentable {
+  let clearGlass: Bool
+  let look: MascotLook
+
+  func makeNSView(context: Context) -> PanelGlassSampleView {
+    PanelGlassSampleView(look: look)
+  }
+
+  func updateNSView(_ view: PanelGlassSampleView, context: Context) {
+    view.show(clearGlass: clearGlass, look: look)
+  }
+}
+
+private final class PanelGlassSampleView: NSView {
+  static let size = CGSize(width: 264, height: 48)
+  private static let face: CGFloat = 26
+  private static let inset: CGFloat = 14
+
+  private let face: MascotNSView
+  private let host: PaletteGlassHost
+
+  init(look: MascotLook) {
+    face = MascotNSView(conversationID: UUID(), look: look)
+    face.reduceMotion = MotionPreferences.reduceMotion
+    let row = NSView()
+    let hint = NSTextField(labelWithString: "Describe a task or ask")
+    hint.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
+    hint.textColor = PaletteInk.secondary
+    hint.lineBreakMode = .byTruncatingTail
+    let glyphs = [BolttyIcon.folder, .mic].map { icon -> NSImageView in
+      let view = NSImageView(image: icon.image(size: AgentPaletteMetrics.iconSide(15)) ?? NSImage())
+      view.contentTintColor = PaletteInk.secondary
+      return view
+    }
+    for view in [face, hint] + glyphs {
+      view.translatesAutoresizingMaskIntoConstraints = false
+      row.addSubview(view)
+    }
+    host = PaletteGlassHost(content: row, cornerRadius: Self.size.height / 2, style: .bolttyAIPrompt)
+    super.init(frame: CGRect(origin: .zero, size: Self.size))
+    appearance = NSAppearance(named: .darkAqua)
+    addSubview(host)
+    NSLayoutConstraint.activate([
+      host.leadingAnchor.constraint(equalTo: leadingAnchor),
+      host.trailingAnchor.constraint(equalTo: trailingAnchor),
+      host.topAnchor.constraint(equalTo: topAnchor),
+      host.bottomAnchor.constraint(equalTo: bottomAnchor),
+      face.widthAnchor.constraint(equalToConstant: Self.face),
+      face.heightAnchor.constraint(equalToConstant: Self.face),
+      face.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Self.inset - 2),
+      face.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+      hint.leadingAnchor.constraint(equalTo: face.trailingAnchor, constant: 8),
+      hint.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+      hint.trailingAnchor.constraint(lessThanOrEqualTo: glyphs[0].leadingAnchor, constant: -8),
+      glyphs[0].trailingAnchor.constraint(equalTo: glyphs[1].leadingAnchor, constant: -10),
+      glyphs[0].centerYAnchor.constraint(equalTo: row.centerYAnchor),
+      glyphs[1].trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Self.inset - 2),
+      glyphs[1].centerYAnchor.constraint(equalTo: row.centerYAnchor),
+    ])
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+  func show(clearGlass: Bool, look: MascotLook) {
+    host.apply(surfaceStyle: .bolttyAIPrompt(clearGlass: clearGlass))
+    face.apply(look: look)
+  }
+}
+
+private struct DesktopPicture: @unchecked Sendable {
+  let image: CGImage
+
+  private static let fallback = URL(
+    fileURLWithPath: "/System/Library/Desktop Pictures/.thumbnails/Sonoma.heic")
+
+  @MainActor
+  static func sources() -> [URL] {
+    var urls: [URL] = []
+    if let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen) {
+      if url.pathExtension == "madesktop" {
+        urls += madesktopSources(url)
+      } else {
+        urls.append(url)
+      }
+    }
+    urls.append(fallback)
+    return urls
+  }
+
+  // A system wallpaper is a .madesktop stub: the picture is a mobile asset,
+  // downloaded only once chosen, beside a small thumbnail that always ships.
+  private static func madesktopSources(_ url: URL) -> [URL] {
+    guard
+      let data = try? Data(contentsOf: url),
+      let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+    else { return [] }
+    var urls: [URL] = []
+    if let id = plist["mobileAssetID"] as? String,
+       let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+    {
+      urls.append(support.appendingPathComponent("com.apple.mobileAssetDesktop/\(id).heic"))
+    }
+    if let thumbnail = plist["thumbnailPath"] as? String {
+      urls.append(URL(fileURLWithPath: thumbnail))
+    }
+    return urls
+  }
+
+  static func load(from urls: [URL], maxPixels: CGFloat) -> DesktopPicture? {
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+    ]
+    for url in urls {
+      guard
+        let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+      else { continue }
+      return DesktopPicture(image: image)
+    }
+    return nil
   }
 }

@@ -357,7 +357,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         let result = try await self.request("session/prompt", params: [
           "sessionId": sessionID,
           "prompt": Self.promptBlocks(text: text, attachments: attachments)
-        ])
+        ], deadline: nil)
         self.finishTurn(sessionID: sessionID, stopReason: result.string("stopReason"))
       } catch {
         self.emit(.sessionFailed(sessionID: sessionID, failure: MessageFailure(
@@ -565,7 +565,23 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         }
       }
     }
-    lock.withLock { plans.removeAll() }
+    // A new process has loaded nothing: kept, these sessions skipped
+    // `session/load` and every prompt went to a process that did not know them.
+    let asked = lock.withLock { () -> [(sessionID: String, requestID: String)]? in
+      guard self.process == nil || self.process === process else { return nil }
+      let asked = permissions.map { ($0.value.sessionID, $0.key) }
+        + plans.map { ($0.value.sessionID, $0.key) }
+        + asks.map { ($0.value.sessionID, $0.key) }
+      permissions.removeAll()
+      plans.removeAll()
+      asks.removeAll()
+      sessions.removeAll()
+      return asked
+    }
+    guard let asked else { return }
+    for ask in asked {
+      emit(.interactionResolved(sessionID: ask.sessionID, requestID: ask.requestID, resolution: .expired))
+    }
     failPending(with: AgentClientError.transport("\(agent.displayName) stopped responding."))
     emit(.connection(.offline))
   }
@@ -621,9 +637,21 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       }
     }
 
-    if params.object("toolCall")?.string("kind") == "edit",
-       lock.withLock({ sessions[sessionID]?.autoApprove == true }),
-       let allow = byDecision[.once] {
+    let auto = lock.withLock { () -> (on: Bool, directory: String)? in
+      sessions[sessionID].map { ($0.autoApprove, $0.directory) }
+    }
+    let call = params.object("toolCall")
+    let passes = switch call?.string("kind") {
+    case "edit": true
+    case "execute": call?.object("rawInput")?.string("command").map { command in
+        AutoModeCommands.allows(
+          command, in: auto?.directory ?? NSHomeDirectory(),
+          cwd: call?.object("rawInput")?.string("cwd"), autoMode: true
+        )
+      } ?? false
+    default: false
+    }
+    if passes, auto?.on == true, let allow = byDecision[.once] {
       respond(to: id, result: ["outcome": ["outcome": "selected", "optionId": allow]])
       return
     }
@@ -783,11 +811,16 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     case "tool_call", "tool_call_update":
       guard let toolID = update.string("toolCallId"),
             !isPlanTool(update, id: toolID, in: sessionID) else { return }
+      let state: AgentActivity.State = switch update.string("status") {
+      case "completed": .completed
+      case "failed": .failed
+      default: .running
+      }
       let activity = AgentActivity(
         id: "\(replyID)-\(toolID)",
         name: update.string("title") ?? update.string("kind") ?? "tool",
         summary: update.string("kind"),
-        state: update.string("status") == "completed" ? .completed : .running
+        state: state
       )
       upsert(.activity(activity), in: sessionID, replyID: replyID)
       emit(.partUpdated(sessionID: sessionID, messageID: replyID, part: .activity(activity)))
@@ -843,7 +876,14 @@ final class ACPClient: AgentClient, @unchecked Sendable {
 
   // MARK: - JSON-RPC
 
-  private func request(_ method: String, params: [String: Any]) async throws -> JSONObject {
+  static let requestDeadline: TimeInterval = 120
+
+  /// `session/prompt` answers only when the turn ends, so it alone has no deadline.
+  private func request(
+    _ method: String,
+    params: [String: Any],
+    deadline: TimeInterval? = requestDeadline
+  ) async throws -> JSONObject {
     let id: Int = lock.withLock {
       rpcCounter += 1
       return rpcCounter
@@ -856,10 +896,20 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     return try await withCheckedThrowingContinuation { continuation in
       lock.withLock { pending[id] = continuation }
       do {
-        try lock.withLock({ process })?.writeLine(line)
+        guard let process = lock.withLock({ process }) else {
+          throw AgentClientError.transport("\(agent.displayName) is not running.")
+        }
+        try process.writeLine(line)
       } catch {
         lock.withLock { _ = pending.removeValue(forKey: id) }
         continuation.resume(throwing: error)
+        return
+      }
+      guard let deadline else { return }
+      let name = agent.displayName
+      DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + deadline) { [weak self] in
+        guard let waiting = self?.lock.withLock({ self?.pending.removeValue(forKey: id) }) else { return }
+        waiting.resume(throwing: AgentClientError.transport("\(name) did not answer \(method) in time."))
       }
     }
   }

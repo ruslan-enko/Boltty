@@ -550,8 +550,8 @@ final class PaletteActivityContactSheet: XCTestCase {
           kind: .permission, requestID: "p", header: "Bash",
           prompt: "Run mv on 25 files in ~/Movies/Scooby-Doo?",
           detail: "for f in *.mp4; do mv \"$f\" \"$(rename \"$f\")\"; done",
-          options: [.init(label: "Allow once", detail: nil),
-                    .init(label: "Always allow", detail: "this session"),
+          options: [.init(label: "Allow Once", detail: nil),
+                    .init(label: "Always Allow", detail: "this session"),
                     .init(label: "Deny", detail: nil)],
           allowsMultiple: false, allowsCustom: false)
       }) }),

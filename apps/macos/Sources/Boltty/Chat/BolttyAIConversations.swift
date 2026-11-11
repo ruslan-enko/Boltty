@@ -377,7 +377,9 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       agent: AgentId(rawValue: conversation.providerID) ?? .custom,
       state: pending != nil && conversation.lastKnownState != .waiting ? .running : conversation.lastKnownState.reportedState,
       body: lastAgentText ?? store.subtitle(for: id),
-      question: transcript.openInteraction.flatMap { question(from: $0, in: id) },
+      question: (transcript.openInteraction
+        ?? (pending != nil || conversation.lastKnownState.blocksSending ? nil : transcript.lateQuestion))
+        .flatMap { question(from: $0, in: id) },
       messages: messages,
       canStop: pending != nil
         || (conversation.remoteSessionID != nil && capabilities.canEndTurn),
@@ -404,7 +406,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
 
     switch question.kind {
     case .question:
-      guard let interaction = store.transcript(id: conversationID).openInteraction,
+      let transcript = store.transcript(id: conversationID)
+      guard let interaction = transcript.openInteraction ?? transcript.lateQuestion,
             interaction.id == question.requestID,
             case let .question(prompt) = interaction.kind,
             self.question(from: interaction, in: conversationID) == question else { return false }
@@ -415,11 +418,20 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         store.objectWillChange.send()
         return true
       }
+      if interaction.isLate {
+        return deliverLateAnswer(answers, to: prompt, interactionID: question.requestID, in: conversationID)
+      }
       let delivered = await engine.answer(
         interactionID: question.requestID,
         in: conversationID,
         answers: answers
       )
+      // The ask was gone when the answer reached it: the answer is not.
+      if !delivered,
+         store.transcript(id: conversationID).interactions
+           .first(where: { $0.id == question.requestID })?.isLate == true {
+        return deliverLateAnswer(answers, to: prompt, interactionID: question.requestID, in: conversationID)
+      }
       if store.transcript(id: conversationID).openInteraction?.id != question.requestID {
         questionAnswers[conversationID]?[question.requestID] = nil
       }
@@ -468,7 +480,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
   }
 
   private func question(from interaction: PendingInteraction, in conversationID: UUID) -> AgentQuestion? {
-    guard interaction.isOpen else { return nil }
+    guard interaction.isOpen || interaction.isLate else { return nil }
 
     switch interaction.kind {
     case let .question(prompt):
@@ -484,7 +496,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
           AgentQuestion.Option(label: $0.label, detail: $0.detail, value: $0.value)
         },
         allowsMultiple: item.allowsMultiple,
-        allowsCustom: item.allowsCustom
+        allowsCustom: item.allowsCustom,
+        isLate: interaction.isLate
       )
 
     case let .permission(prompt):
@@ -502,12 +515,12 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         ),
         options: [
           AgentQuestion.Option(
-            label: "Allow once",
+            label: "Allow Once",
             detail: nil,
             value: PermissionDecision.once.rawValue
           ),
           AgentQuestion.Option(
-            label: "Always allow",
+            label: "Always Allow",
             detail: AgentQuestion.alwaysAllowScope(savePatterns: prompt.savePatterns),
             value: PermissionDecision.always.rawValue
           ),
@@ -531,7 +544,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         options: [
           AgentQuestion.Option(label: "Approve", detail: nil, value: PlanDecision.approved.rawValue),
           AgentQuestion.Option(
-            label: "Request changes", detail: nil, value: PlanDecision.cancelled.rawValue),
+            label: "Request Changes", detail: nil, value: PlanDecision.cancelled.rawValue),
           AgentQuestion.Option(label: "Quit", detail: nil, value: PlanDecision.abandoned.rawValue),
         ],
         allowsMultiple: false,

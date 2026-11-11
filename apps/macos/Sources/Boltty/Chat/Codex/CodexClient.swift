@@ -74,10 +74,12 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
   }
 
+  /// Answered on the server that asked: a restarted one never knew the rpc id.
   private struct PendingApproval {
     let rpcID: Int
     let method: String
     let threadID: String
+    let server: JSONLineProcess
   }
 
   // MARK: - Availability
@@ -402,14 +404,19 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     for (index, id) in ids.enumerated() where index < answers.count {
       payload[id] = ["answers": answers[index]]
     }
-    respond(to: pending.rpcID, result: ["answers": payload])
+    try answer(pending, result: ["answers": payload])
   }
 
   func rejectQuestion(requestID: String, sessionID: String) async throws {
     guard let pending = takeApproval(requestID) else {
       throw AgentClientError.requestGone
     }
-    respond(to: pending.rpcID, result: ["answers": [:]])
+    try answer(pending, result: ["answers": [:]])
+  }
+
+  private func answer(_ pending: PendingApproval, result: [String: Any]) throws {
+    guard pending.server.isRunning else { throw AgentClientError.requestGone }
+    respond(to: pending.rpcID, result: result, on: pending.server)
   }
 
   func answerPermission(
@@ -424,9 +431,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     switch pending.method {
     case "item/commandExecution/requestApproval", "item/fileChange/requestApproval",
          "applyPatchApproval", "execCommandApproval":
-      respond(to: pending.rpcID, result: ["decision": Self.decision(for: decision)])
+      try answer(pending, result: ["decision": Self.decision(for: decision)])
     default:
-      respond(to: pending.rpcID, result: ["permissions": [:], "scope": "turn"])
+      try answer(pending, result: ["permissions": [:], "scope": "turn"])
     }
   }
 
@@ -494,9 +501,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         lock.withLock { process = started }
         let lines = started.lines
         try started.start()
-        Task { [weak self] in
+        Task { [weak self, weak started] in
           for await line in lines {
-            self?.handle(line: line)
+            guard let started else { return }
+            self?.handle(line: line, from: started)
           }
         }
         _ = try await requestUnchecked(
@@ -539,20 +547,42 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
   }
 
+  /// A turn already started has no request left waiting, so nothing else
+  /// would say it ended: the chat stood at Working, and Stop asked a new server
+  /// about a turn it never had.
   private func serverExited(_ server: JSONLineProcess, status: Int32, stderr: String) {
-    let waiting: [CheckedContinuation<JSONObject, Error>] = lock.withLock {
+    let (waiting, cutOff, unanswered) = lock.withLock {
+      () -> ([CheckedContinuation<JSONObject, Error>], [String], [(String, String)]) in
       let ids = pending.keys.filter { pending[$0]?.server === server }
       let values = ids.compactMap { pending.removeValue(forKey: $0)?.continuation }
       if process === server {
         process = nil
         startTask = nil
       }
-      return values
+      let asked = approvals.filter { $0.value.server === server }
+      for id in asked.keys { approvals.removeValue(forKey: id) }
+      var cutOff: [String] = []
+      for thread in threads.values where thread.loadedOn === server || thread.loadedOn == nil {
+        thread.loadedOn = nil
+        guard thread.currentTurnID != nil || thread.executionState.blocksSending else { continue }
+        thread.currentTurnID = nil
+        thread.executionState = .failed
+        cutOff.append(thread.id)
+      }
+      return (values, cutOff, asked.map { ($0.value.threadID, $0.key) })
     }
-    let error = AgentClientError.serverStartFailed(
-      stderr.isEmpty ? "Codex exited (status \(status))." : stderr
-    )
+    let detail = stderr.isEmpty ? "Codex exited (status \(status))." : stderr
+    let error = AgentClientError.serverStartFailed(detail)
     for continuation in waiting { continuation.resume(throwing: error) }
+    for (threadID, requestID) in unanswered {
+      emit(.interactionResolved(sessionID: threadID, requestID: requestID, resolution: .expired))
+    }
+    for threadID in cutOff {
+      emit(.sessionFailed(
+        sessionID: threadID,
+        failure: MessageFailure(name: "CodexExited", message: detail)
+      ))
+    }
   }
 
   // MARK: - JSON-RPC
@@ -598,9 +628,20 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           pending.removeValue(forKey: id)?.continuation
         }
         stored?.resume(throwing: error)
+        return
+      }
+      // A deadline, so a server that stops answering cannot hold Stop or a send.
+      DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.requestDeadline) {
+        [weak self] in
+        let stored: CheckedContinuation<JSONObject, Error>? = self?.lock.withLock {
+          self?.pending.removeValue(forKey: id)?.continuation
+        }
+        stored?.resume(throwing: AgentClientError.transport("Codex did not answer \(method) in time."))
       }
     }
   }
+
+  static let requestDeadline: TimeInterval = 120
 
   private func notify(_ method: String, params: [String: Any], on server: JSONLineProcess) {
     guard let line = JSONObject.encode(["jsonrpc": "2.0", "method": method, "params": params])
@@ -608,14 +649,13 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     try? server.writeLine(line)
   }
 
-  private func respond(to rpcID: Int, result: [String: Any]) {
-    guard let server = lock.withLock({ process }),
-          let line = JSONObject.encode(["jsonrpc": "2.0", "id": rpcID, "result": result])
+  private func respond(to rpcID: Int, result: [String: Any], on server: JSONLineProcess) {
+    guard let line = JSONObject.encode(["jsonrpc": "2.0", "id": rpcID, "result": result])
     else { return }
     try? server.writeLine(line)
   }
 
-  private func handle(line: String) {
+  private func handle(line: String, from server: JSONLineProcess) {
     guard let frame = JSONObject(line: line) else { return }
 
     if let id = frame.int("id"), frame["method"] == nil {
@@ -636,15 +676,17 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     let params = frame.object("params") ?? JSONObject([:])
 
     if let id = frame.int("id") {
-      handleServerRequest(method: method, rpcID: id, params: params)
+      handleServerRequest(method: method, rpcID: id, params: params, server: server)
       return
     }
     handleNotification(method: method, params: params)
   }
 
-  private func handleServerRequest(method: String, rpcID: Int, params: JSONObject) {
+  private func handleServerRequest(
+    method: String, rpcID: Int, params: JSONObject, server: JSONLineProcess
+  ) {
     guard let threadID = params.string("threadId") else {
-      respond(to: rpcID, result: [:])
+      respond(to: rpcID, result: [:], on: server)
       return
     }
     let conversationID = lock.withLock { conversationResolver }?(threadID) ?? UUID()
@@ -655,7 +697,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       let interactionID = ([params.string("itemId") ?? "ask"]
         + questions.compactMap { $0.string("id") }).joined(separator: "\u{1F}")
       rememberApproval(interactionID, PendingApproval(
-        rpcID: rpcID, method: method, threadID: threadID
+        rpcID: rpcID, method: method, threadID: threadID, server: server
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,
@@ -687,7 +729,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         ?? params.string("itemId")
         ?? "approval_\(rpcID)"
       rememberApproval(interactionID, PendingApproval(
-        rpcID: rpcID, method: method, threadID: threadID
+        rpcID: rpcID, method: method, threadID: threadID, server: server
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,
@@ -704,7 +746,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     case "item/fileChange/requestApproval", "applyPatchApproval":
       let interactionID = params.string("itemId") ?? "approval_\(rpcID)"
       rememberApproval(interactionID, PendingApproval(
-        rpcID: rpcID, method: method, threadID: threadID
+        rpcID: rpcID, method: method, threadID: threadID, server: server
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,
@@ -721,7 +763,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     case "item/permissions/requestApproval":
       let interactionID = params.string("itemId") ?? "approval_\(rpcID)"
       rememberApproval(interactionID, PendingApproval(
-        rpcID: rpcID, method: method, threadID: threadID
+        rpcID: rpcID, method: method, threadID: threadID, server: server
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,
@@ -736,7 +778,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       )))
 
     default:
-      respond(to: rpcID, result: [:])
+      respond(to: rpcID, result: [:], on: server)
     }
   }
 

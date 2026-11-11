@@ -119,6 +119,8 @@ enum AgentPaletteMetrics {
   )
   static let restingControlsInkInset = onPixelGrid(fromInitialPromptMock(40) * promptPaddingGrowth)
   static let iconSize: CGFloat = fromMock(25)
+  static let iconScale: CGFloat = 1.15
+  static func iconSide(_ size: CGFloat) -> CGFloat { (size * iconScale * 2).rounded() / 2 }
 
   static let mascotOversize: CGFloat = 1.15
   static let promptMascotScale: CGFloat = 1.15 * 1.10
@@ -563,7 +565,7 @@ enum AgentPaletteMetrics {
 
   static let previewWorkPillHeight: CGFloat = 28
   static let previewWorkPillChevronGap: CGFloat = 5
-  static let previewWorkPillChevronWidth: CGFloat = 12
+  static let previewWorkPillChevronWidth: CGFloat = iconSide(12)
   static let previewWorkPillChevronPointSize: CGFloat = 13
   static let previewWorkPillTextInset: CGFloat = 0
   static let previewWorkPillTrailingInset: CGFloat = 0
@@ -598,7 +600,7 @@ enum AgentPaletteMetrics {
   static let previewActivityRowHeight: CGFloat = 22
   static let previewActivityRowSpacing: CGFloat = 2
   static let previewActivityRowsTopMargin: CGFloat = 6
-  static let previewActivityGlyphSize: CGFloat = 14
+  static let previewActivityGlyphSize: CGFloat = iconSide(14)
   static let previewActivityGlyphPointSize: CGFloat = 14
   static let previewActivityChevronPointSize: CGFloat = 12
   static let previewActivityNameFontSize: CGFloat = typeMeta
@@ -875,7 +877,7 @@ enum ComposerControlGroup {
   static let sendDisabledFill = PaletteInk.fill
   static let sendDisabledInk = NSColor.white.withAlphaComponent(0.35)
   static func sendIcon(_ icon: BolttyIcon, description: String) -> NSImage? {
-    icon.image(size: sendIconSize, description: description)
+    icon.image(size: AgentPaletteMetrics.iconSide(sendIconSize), description: description)
   }
 
   @MainActor

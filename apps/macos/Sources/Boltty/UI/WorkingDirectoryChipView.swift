@@ -48,7 +48,7 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     nameLabel.isHidden = true
     addSubview(nameLabel)
 
-    warningIcon.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.directoryChipGlyphPointSize)
+    warningIcon.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.directoryChipGlyphPointSize))
     warningIcon.contentTintColor = AgentPaletteMetrics.directoryChipWarningTint
     warningIcon.imageScaling = .scaleProportionallyUpOrDown
     warningIcon.isHidden = true
@@ -81,7 +81,7 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     let size = named ? ComposerControlGroup.glyph : ComposerControlGroup.iconSize(chat: isChatSized)
     guard size != iconPointSize else { return }
     iconPointSize = size
-    icon.image = BolttyIcon.folder.image(size: size, description: "Working folder")
+    icon.image = BolttyIcon.folder.image(size: AgentPaletteMetrics.iconSide(size), description: "Working folder")
   }
   private var iconPointSize: CGFloat = 0
 

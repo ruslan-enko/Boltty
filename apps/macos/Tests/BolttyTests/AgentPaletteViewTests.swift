@@ -2178,7 +2178,7 @@ final class AgentPaletteViewTests: XCTestCase {
   func testPlaceholderSharesTheBaselineOfTypedText() throws {
     let view = makeScreenSizedView()
     view.layoutSubtreeIfNeeded()
-    XCTAssertEqual(view.promptPlaceholderForTesting, "Describe a task or ask a question")
+    XCTAssertEqual(view.promptPlaceholderForTesting, "Describe a task or ask")
     let placeholder = view.placeholderBaselineInWindowForTesting
 
     view.field.setDraft(PromptDraft("j"))

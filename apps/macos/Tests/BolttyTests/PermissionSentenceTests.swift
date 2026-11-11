@@ -53,7 +53,7 @@ final class PermissionDisclosureTests: XCTestCase {
         prompt: PermissionSentence.sentence(action: "bash", resources: ["rm -rf build"]),
         detail: PermissionSentence.detail(action: "bash", resources: ["rm -rf build"]),
         options: [
-          .init(label: "Allow once", detail: nil, value: "once"),
+          .init(label: "Allow Once", detail: nil, value: "once"),
           .init(label: "Deny", detail: nil, value: "reject"),
         ],
         allowsMultiple: false,
@@ -74,8 +74,8 @@ final class PermissionDisclosureTests: XCTestCase {
   func testTheAnswersAreADialogsButtons() throws {
     let card = permissionCard()
     let bar = try XCTUnwrap(card.approvalBarForTesting)
-    XCTAssertEqual(bar.buttonTitlesForTesting, ["Deny", "Allow once"])
-    XCTAssertEqual(bar.returnTitleForTesting, "Allow once")
+    XCTAssertEqual(bar.buttonTitlesForTesting, ["Deny", "Allow Once"])
+    XCTAssertEqual(bar.returnTitleForTesting, "Allow Once")
 
     XCTAssertTrue(card.moveOptionFocus(by: 1))
     XCTAssertEqual(bar.returnTitleForTesting, "Deny")
@@ -92,8 +92,8 @@ final class PermissionDisclosureTests: XCTestCase {
     card.apply(Self.preview(PermissionCardContactSheet.external))
     card.layoutSubtreeIfNeeded()
     let bar = try XCTUnwrap(card.approvalBarForTesting)
-    XCTAssertEqual(bar.buttonTitlesForTesting, ["Deny", "Always allow", "Allow once"])
-    XCTAssertEqual(bar.noteForTesting, "Always allow: this chat, for /private/var/folders/98/tmp/*")
+    XCTAssertEqual(bar.buttonTitlesForTesting, ["Deny", "Always Allow", "Allow Once"])
+    XCTAssertEqual(bar.noteForTesting, "Always Allow: this chat, for /private/var/folders/98/tmp/*")
     XCTAssertEqual(card.bodyForTesting, "Work outside the project folder?")
   }
 
@@ -166,8 +166,8 @@ final class PermissionCardContactSheet: XCTestCase {
     prompt: PermissionSentence.sentence(action: "external_directory", resources: ["/private/var/folders/98/tmp/*"]),
     detail: PermissionSentence.detail(action: "external_directory", resources: ["/private/var/folders/98/tmp/*"]),
     options: [
-      .init(label: "Allow once", detail: nil, value: "once"),
-      .init(label: "Always allow",
+      .init(label: "Allow Once", detail: nil, value: "once"),
+      .init(label: "Always Allow",
             detail: AgentQuestion.alwaysAllowScope(savePatterns: ["/private/var/folders/98/tmp/*"]),
             value: "always"),
       .init(label: "Deny", detail: nil, value: "reject"),
@@ -187,23 +187,23 @@ final class PermissionCardContactSheet: XCTestCase {
         kind: .permission, requestID: "p2", header: "Bash",
         prompt: PermissionSentence.sentence(action: "bash", resources: ["git push --force origin main"]),
         detail: PermissionSentence.detail(action: "bash", resources: ["git push --force origin main"]),
-        options: [.init(label: "Allow once", detail: nil, value: "accept"),
-                  .init(label: "Always allow", detail: "this session", value: "acceptForSession"),
+        options: [.init(label: "Allow Once", detail: nil, value: "accept"),
+                  .init(label: "Always Allow", detail: "this session", value: "acceptForSession"),
                   .init(label: "Deny", detail: nil, value: "decline")],
         allowsMultiple: false, allowsCustom: false)),
       ("heredoc", AgentQuestion(
         kind: .permission, requestID: "p3", header: "Bash",
         prompt: PermissionSentence.sentence(action: "bash", resources: [heredoc]),
         detail: PermissionSentence.detail(action: "bash", resources: [heredoc]),
-        options: [.init(label: "Allow once", detail: nil, value: "once"),
+        options: [.init(label: "Allow Once", detail: nil, value: "once"),
                   .init(label: "Deny", detail: nil, value: "reject")],
         allowsMultiple: false, allowsCustom: false)),
       ("grok", AgentQuestion(
         kind: .permission, requestID: "p4", header: "Edit",
         prompt: PermissionSentence.sentence(action: "edit", resources: ["/Users/me/Projects/app/Sources/App.swift"]),
         detail: PermissionSentence.detail(action: "edit", resources: ["/Users/me/Projects/app/Sources/App.swift"]),
-        options: [.init(label: "Allow once", detail: nil, value: "allow_once"),
-                  .init(label: "Always allow", detail: nil, value: "allow_always"),
+        options: [.init(label: "Allow Once", detail: nil, value: "allow_once"),
+                  .init(label: "Always Allow", detail: nil, value: "allow_always"),
                   .init(label: "Reject once", detail: nil, value: "reject_once"),
                   .init(label: "Always reject", detail: nil, value: "reject_always")],
         allowsMultiple: false, allowsCustom: false)),
@@ -347,13 +347,13 @@ final class PermissionAnsweringTests: XCTestCase {
     let (view, answered) = panel()
     let bar = try XCTUnwrap(view.previewCardForTesting.approvalBarForTesting)
     key(view, #selector(NSResponder.moveDown(_:)))
-    XCTAssertEqual(bar.returnTitleForTesting, "Always allow")
+    XCTAssertEqual(bar.returnTitleForTesting, "Always Allow")
     key(view, #selector(NSResponder.moveDown(_:)))
     XCTAssertEqual(bar.returnTitleForTesting, "Deny")
     key(view, #selector(NSResponder.moveDown(_:)))
     XCTAssertEqual(bar.returnTitleForTesting, "Deny", "the last answer holds")
     key(view, #selector(NSResponder.moveUp(_:)))
-    XCTAssertEqual(bar.returnTitleForTesting, "Always allow")
+    XCTAssertEqual(bar.returnTitleForTesting, "Always Allow")
     key(view, #selector(NSResponder.insertNewline(_:)))
     XCTAssertEqual(answered(), ["always"])
   }
@@ -367,7 +367,7 @@ final class PermissionAnsweringTests: XCTestCase {
   }
 
   func testClickingAButtonSendsItsAnswer() throws {
-    for (label, value) in [("Allow once", "once"), ("Always allow", "always"), ("Deny", "reject")] {
+    for (label, value) in [("Allow Once", "once"), ("Always Allow", "always"), ("Deny", "reject")] {
       let (view, answered) = panel()
       let bar = try XCTUnwrap(view.previewCardForTesting.approvalBarForTesting)
       try XCTUnwrap(bar.buttonForTesting(label)).performClick(nil)
@@ -404,9 +404,9 @@ final class PermissionAnsweringTests: XCTestCase {
   func testTheAccentMarksWhatReturnPresses() throws {
     let (view, _) = panel()
     let bar = try XCTUnwrap(view.previewCardForTesting.approvalBarForTesting)
-    XCTAssertEqual(bar.defaultTitleForTesting, "Allow once")
+    XCTAssertEqual(bar.defaultTitleForTesting, "Allow Once")
     key(view, #selector(NSResponder.moveDown(_:)))
-    XCTAssertEqual(bar.defaultTitleForTesting, "Always allow")
+    XCTAssertEqual(bar.defaultTitleForTesting, "Always Allow")
   }
 
   func testAnswersThatDoNotFitStandInAColumn() throws {
@@ -417,7 +417,7 @@ final class PermissionAnsweringTests: XCTestCase {
         options: labels.map { .init(label: $0, detail: nil, value: $0) },
         allowsMultiple: false, allowsCustom: false)
     }
-    let grokLabels = ["Allow once", "Always allow", "Reject once", "Always reject"]
+    let grokLabels = ["Allow Once", "Always Allow", "Reject once", "Always reject"]
     let (grok, _) = panel(permission(grokLabels))
     let grokBar = try XCTUnwrap(grok.previewCardForTesting.approvalBarForTesting)
     grokBar.layoutSubtreeIfNeeded()
@@ -426,7 +426,7 @@ final class PermissionAnsweringTests: XCTestCase {
       !BolttyAIApprovalBar.fitsInOneRow(permission(grokLabels).options, width: grokBar.bounds.width))
     try assertEveryButtonFits(grokBar, grokLabels)
 
-    let wordy = ["Allow this edit once", "Always allow edits like it",
+    let wordy = ["Allow this edit once", "Always Allow edits like it",
                  "Reject this edit", "Always reject edits like it"]
     let (long, _) = panel(permission(wordy))
     let column = try XCTUnwrap(long.previewCardForTesting.approvalBarForTesting)
@@ -436,7 +436,7 @@ final class PermissionAnsweringTests: XCTestCase {
     let (three, _) = panel()
     let row = try XCTUnwrap(three.previewCardForTesting.approvalBarForTesting)
     XCTAssertFalse(row.isStacked)
-    try assertEveryButtonFits(row, ["Allow once", "Always allow", "Deny"])
+    try assertEveryButtonFits(row, ["Allow Once", "Always Allow", "Deny"])
   }
 
   private func assertEveryButtonFits(
@@ -456,7 +456,7 @@ final class PermissionAnsweringTests: XCTestCase {
   }
 
   func testTheRowIsDecidedOnTheButtonsAsTheyLayOut() throws {
-    let options: [AgentQuestion.Option] = ["Allow once", "Always allow", "Reject once", "Always reject"]
+    let options: [AgentQuestion.Option] = ["Allow Once", "Always Allow", "Reject once", "Always reject"]
       .map { .init(label: $0, detail: nil, value: $0) }
     let widths = BolttyAIApprovalBar.buttonWidths(for: options)
     XCTAssertEqual(widths.count, options.count)
@@ -501,7 +501,7 @@ final class PermissionAnsweringTests: XCTestCase {
     type("use pnpm", into: view)
     type("", into: view)
     let bar = try XCTUnwrap(view.previewCardForTesting.approvalBarForTesting)
-    XCTAssertEqual(bar.returnTitleForTesting, "Allow once")
+    XCTAssertEqual(bar.returnTitleForTesting, "Allow Once")
     key(view, #selector(NSResponder.insertNewline(_:)))
     XCTAssertEqual(answered(), ["once"])
   }
@@ -614,7 +614,7 @@ final class PlanCardTests: XCTestCase {
       prompt: empty ? PlanPrompt.emptyText : "",
       options: [
         .init(label: "Approve", detail: nil, value: "approved"),
-        .init(label: "Request changes", detail: nil, value: "cancelled"),
+        .init(label: "Request Changes", detail: nil, value: "cancelled"),
         .init(label: "Quit", detail: nil, value: "abandoned"),
       ],
       allowsMultiple: false, allowsCustom: false,
@@ -641,9 +641,9 @@ final class PlanCardTests: XCTestCase {
     let card = card()
     XCTAssertEqual(card.questionTitleForTesting, "Rename the tray")
     let bar = try XCTUnwrap(card.approvalBarForTesting)
-    XCTAssertEqual(bar.buttonTitlesForTesting, ["Quit", "Request changes", "Approve"],
+    XCTAssertEqual(bar.buttonTitlesForTesting, ["Quit", "Request Changes", "Approve"],
                    "set right to left from the default, Quit apart at the leading edge")
-    XCTAssertEqual(bar.rowTitlesForTesting, ["Quit", "Copy", "Request changes", "Approve"])
+    XCTAssertEqual(bar.rowTitlesForTesting, ["Quit", "Copy", "Request Changes", "Approve"])
     XCTAssertEqual(bar.returnTitleForTesting, "Approve")
   }
 
@@ -657,7 +657,7 @@ final class PlanCardTests: XCTestCase {
     let card = card()
     let bar = try XCTUnwrap(card.approvalBarForTesting)
     XCTAssertTrue(card.moveOptionFocus(by: 5))
-    XCTAssertEqual(bar.returnTitleForTesting, "Request changes")
+    XCTAssertEqual(bar.returnTitleForTesting, "Request Changes")
     XCTAssertEqual(Self.plan().returnReachableCount, 2)
   }
 
@@ -697,7 +697,7 @@ final class PlanCardTests: XCTestCase {
     XCTAssertEqual(card.questionTitleForTesting, "Plan")
     XCTAssertEqual(card.bodyForTesting, "No plan written yet")
     let bar = try XCTUnwrap(card.approvalBarForTesting)
-    XCTAssertEqual(bar.buttonTitlesForTesting, ["Quit", "Request changes", "Approve"])
+    XCTAssertEqual(bar.buttonTitlesForTesting, ["Quit", "Request Changes", "Approve"])
     XCTAssertNil(bar.copyButtonForTesting, "nothing to copy")
   }
 

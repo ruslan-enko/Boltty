@@ -768,7 +768,7 @@ final class PaletteCodeBlockView: NSView {
   }
 
   private func applyCopyGlyph(_ icon: BolttyIcon) {
-    copyButton.image = icon.image(size: AgentPaletteMetrics.previewFileGlyphPointSize, description: "Copy code")
+    copyButton.image = icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: "Copy code")
   }
 
   static func attributed(_ code: String) -> NSAttributedString {
