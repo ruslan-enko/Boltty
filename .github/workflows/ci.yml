@@ -16,7 +16,7 @@ jobs:
     if: ${{ !github.event.repository.private }}
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Architecture
         run: apps/macos/scripts/lint-architecture.sh
       - name: Design contract
@@ -28,7 +28,7 @@ jobs:
     # The app needs the macOS 27 SDK; this is GitHub's Xcode 27 image.
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Xcode
         run: xcodebuild -version
       - name: Build
@@ -47,7 +47,7 @@ jobs:
     # A failing XCTest can look like a hang.
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Test
         working-directory: apps/macos
         # Signed to run locally, with the hardened runtime off: the test host
