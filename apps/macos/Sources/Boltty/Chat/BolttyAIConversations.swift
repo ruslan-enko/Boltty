@@ -187,15 +187,17 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     prompt: String, id: UUID, workingDirectory: String, providerID requested: String?,
     pictures: [ConversationAttachment]
   ) -> UUID? {
+    let automatic = requested == nil && routesAutomatically()
     let providerID = requested.map { launchableProviderIDs().contains($0) ? $0 : nil }
-      ?? automaticProviderID()
+      ?? (automatic ? routingOrder(forPictures: !pictures.isEmpty).first : automaticProviderID())
     guard let providerID else { return nil }
     return startConversationInBackground(
       prompt: prompt,
       id: id,
       providerID: providerID,
       workingDirectory: workingDirectory,
-      pictures: pictures
+      pictures: pictures,
+      handsOver: automatic
     ).id
   }
 
@@ -339,7 +341,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
   }
 
   func routingFallback() -> AgentRoutingFallback? {
-    guard let preferredID = preferredProviderID(),
+    guard !routesAutomatically(), let preferredID = preferredProviderID(),
           let preferred = AgentId(rawValue: preferredID),
           isProviderEnabled(preferredID),
           let usedID = automaticProviderID(),
@@ -388,6 +390,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil,
       modelChip: modelChip(for: conversation),
       notice: engine.notices[id]?.text,
+      handOverNote: handOvers[id]?.sentence,
       retryPrompt: failedPanelPrompts[id]
         ?? (pending == nil && !conversation.draft.isEmpty ? conversation.draft : nil)
         ?? requestToRetryOnAnotherModel(in: id),

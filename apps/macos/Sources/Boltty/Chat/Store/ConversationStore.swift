@@ -246,6 +246,24 @@ final class ConversationStore: ObservableObject {
     }
   }
 
+  /// A chat whose first turn another agent takes over: the dead session and
+  /// what it left go, the chat, its name and its sent files stay.
+  func moveToProvider(
+    _ providerID: String, model: ModelSelection?, effort: String?, autoApprove: Bool, for id: UUID
+  ) {
+    guard conversation(id: id) != nil else { return }
+    update(id) {
+      $0.providerID = providerID
+      $0.remoteSessionID = nil
+      $0.model = model
+      $0.reasoningEffort = effort
+      $0.autoApprove = autoApprove
+      $0.lastKnownState = .idle
+    }
+    transcripts[id] = ConversationTranscript()
+    saveTranscriptNow(id)
+  }
+
   func setPanelDraft(_ draft: PromptDraft, for id: UUID) {
     guard conversation(id: id)?.panelDraft != draft else { return }
     let oldAttachments = conversation(id: id)?.panelDraft?.attachments ?? []

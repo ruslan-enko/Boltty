@@ -29,7 +29,7 @@ enum AskBolttyConfiguration {
   }
 
   /// Who answers, in the order they are tried: the agent chosen for this
-  /// question, Ask Boltty's agent, the preferred agent, then the rest.
+  /// question, Ask Boltty's agent, the person's own agent, then the rest.
   static func ranked(settings: AppSettings, candidates: [String], chosen: String? = nil) -> [String] {
     var order: [String] = []
     for id in [chosen, settings.askBolttyProviderID, settings.agentPreset?.rawValue] + candidates.map(Optional.some) {
@@ -54,9 +54,7 @@ enum AskBolttyConfiguration {
   }
 
   static func isSpent(_ usage: AgentUsage?, now: Date) -> Bool {
-    usage?.windows.contains { window in
-      window.severity == .exhausted && (window.resetsAt.map { $0 > now } ?? true)
-    } == true
+    AgentRouting.isSpent(usage, now: now)
   }
 }
 

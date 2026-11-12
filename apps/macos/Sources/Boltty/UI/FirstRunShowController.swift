@@ -9,9 +9,8 @@ final class FirstRunShowController {
     "Ask any agent, from anywhere.",
     "Every chat, by agent.",
     "Select anything, and ask out loud.",
-    "Make each agent yours.",
-    "And voices that stay on this Mac.",
   ]
+  static let placeholder = "Ask anything"
   static let prompt = "Make this launch video small enough to email"
   static let answer = "Done — launch.mp4 is 18 MB, down from 240. It’s right next to the original."
   static let worked = "Worked for 14 s  ›"
@@ -67,6 +66,8 @@ final class FirstRunShowController {
 
   private let agents: [AgentId]
   private let planned: AgentId
+  /// The face the show carries: Boltty's own, where no agent has been chosen.
+  private let hero = MascotLook(shape: .hex, palette: .standard)
   private let screen: NSScreen
   private var backdrop: PassivePanel?
   private var sunset: SunsetView?
@@ -165,7 +166,8 @@ final class FirstRunShowController {
       return panel
     }
     let backdrop = panel(level: .statusBar)
-    let sunset = SunsetView(frame: CGRect(origin: .zero, size: frame.size))
+    let sunset = SunsetView(
+      frame: CGRect(origin: .zero, size: frame.size), sky: hero.palette)
     sunset.onSkip = { [weak self] in self?.finish() }
     backdrop.contentView = sunset
     Motion.applyTimeScale(to: backdrop)
@@ -203,23 +205,10 @@ final class FirstRunShowController {
   }
 
   private var pileFaces: [PileFace] = []
-  private var flash: CAGradientLayer?
 
   private func scenePile() {
-    guard let root, let clock, let faces else { return }
-    let order = [planned] + agents.filter { $0 != planned }
+    guard let clock, let faces else { return }
     let scale = min(1.25, max(1, screen.backingScaleFactor))
-
-    let glow = CAGradientLayer()
-    glow.type = .radial
-    let warm = CGColor(red: 1, green: 0.93, blue: 0.82, alpha: 0.85)
-    glow.colors = [warm, warm.copy(alpha: 0) ?? warm]
-    glow.startPoint = CGPoint(x: 0.5, y: 0.5)
-    glow.endPoint = CGPoint(x: 1, y: 1)
-    glow.frame = space.rect(300, 120, 1200, 900)
-    glow.opacity = 0
-    root.layer?.insertSublayer(glow, at: 0)
-    flash = glow
 
     func square(_ rect: CGRect) -> CGRect {
       let side = max(rect.width, rect.height)
@@ -228,13 +217,12 @@ final class FirstRunShowController {
 
     let home = square(space.rect(Self.cluster[0].rect))
     let tilt = Self.cluster[0].tilt * .pi / 180
-    let face = ShowFace(in: faces, agent: planned, side: home.width, sharpness: scale, clock: clock)
+    let face = ShowFace(in: faces, look: hero, side: home.width, sharpness: scale, clock: clock)
     face.holder.alphaValue = 0
     face.place(at: home, angle: tilt)
     self.face = face
 
-    for (index, agent) in order.prefix(Self.cluster.count).enumerated().dropFirst() {
-      let spot = Self.cluster[index]
+    for (agent, spot) in zip(agents, Self.cluster.dropFirst()) {
       let frame = square(space.rect(spot.rect))
       let holder = NSView(frame: frame)
       holder.wantsLayer = true
@@ -258,16 +246,13 @@ final class FirstRunShowController {
                             width: small, height: small))
       ShowClock.fade(face.holder, to: 1, duration: 0.3)
       face.fly(to: home, response: 0.85, bounce: 0.12, angle: tilt)
-      self.sound(.whoosh, 0)
     }
-    after(0.45) { [weak self] in self?.flashLight() }
     for (index, pile) in pileFaces.enumerated() {
       after(0.85 + 0.08 * Double(index)) { [weak self] in
         guard let self else { return }
         self.move(pile, from: self.tucked(pile, behind: middle), to: pile.tilt, response: 0.6, bounce: 0.16)
       }
     }
-    if !pileFaces.isEmpty { after(0.85) { [weak self] in self?.sound(.whoosh, 1) } }
     let reactions: [MascotReaction] = [.wink, .boing, .doubleHop, .wink, .boing]
     let emotions: [MascotEmotion] = [.curious, .listening, .curious, .focused, .curious]
     after(1.55) { [weak self] in
@@ -282,7 +267,6 @@ final class FirstRunShowController {
     after(2.7) { [weak self] in
       guard let self else { return }
       for pile in self.pileFaces { self.tuck(pile, behind: middle) }
-      if !self.pileFaces.isEmpty { self.sound(.whoosh, 2) }
     }
     after(3.05) { [weak self] in self?.scenePrompt() }
   }
@@ -320,22 +304,9 @@ final class FirstRunShowController {
     after(0.22) { ShowClock.fade(pile.holder, to: 0, duration: 0.2) }
   }
 
-  private func flashLight() {
-    guard let flash else { return }
-    let pulse = CAKeyframeAnimation(keyPath: "opacity")
-    pulse.values = [0, 0.7, 0.18]
-    pulse.keyTimes = [0, 0.2, 1]
-    pulse.duration = 1.2
-    pulse.timingFunctions = [Motion.emphasizedCurve, Motion.standardCurve]
-    flash.opacity = 0.18
-    flash.add(pulse, forKey: "boltty.show.flash")
-  }
-
   private func clearPile() {
     for pile in pileFaces { pile.holder.removeFromSuperview() }
     pileFaces = []
-    flash?.removeFromSuperlayer()
-    flash = nil
   }
 
   // MARK: - The caption
@@ -421,7 +392,6 @@ final class FirstRunShowController {
 
   private func leave(_ view: NSView) {
     guard let clock else { return }
-    sound(.whoosh, 2)
     let size = view.bounds.size
     let lift = space.v(120)
     clock.tween(0.45, curve: CAMediaTimingFunction(controlPoints: 0.4, 0, 0.6, 1)) { t in
@@ -440,7 +410,7 @@ final class FirstRunShowController {
     say(Self.captions[0], middle: Self.panelTop + 470)
     let prompt = keep(ShowPrompt(in: view, space: space, clock: clock,
                                  frame: space.rect(683, Self.panelTop, 434, 92),
-                                 placeholder: "Ask \(planned.shortDisplayName)"))
+                                 placeholder: Self.placeholder))
     self.prompt = prompt
     after(0.1) { [weak self] in
       guard let self else { return }
@@ -450,7 +420,6 @@ final class FirstRunShowController {
 
     face.fly(to: prompt.faceSlot, response: 0.6, bounce: 0.08)
     prompt.face = face
-    if let flash { ShowClock.fade(flash, to: 0, duration: 0.5) }
     after(0.7) { [weak self] in
       face.view.poke(.boing)
       prompt.showCaret()
@@ -458,7 +427,7 @@ final class FirstRunShowController {
     }
 
     var t = 0.75
-    let walk = Self.walk(from: planned, through: agents)
+    let walk = agents.count > 1 ? agents : []
     if !walk.isEmpty {
       let keycap = keep(ShowKeycap(in: view, space: space, clock: clock, keys: "⇧ Tab", under: prompt.frame))
       after(0.85) { keycap.show() }
@@ -470,7 +439,14 @@ final class FirstRunShowController {
           self?.sound(.tap, index)
         }
       }
-      t = 1.1 + 0.42 * Double(walk.count) + 0.3
+      let hero = self.hero
+      after(1.1 + 0.42 * Double(walk.count)) { [weak self] in
+        keycap.press()
+        face.view.apply(look: hero)
+        prompt.placeholder(Self.placeholder)
+        self?.sound(.tap, walk.count)
+      }
+      t = 1.1 + 0.42 * Double(walk.count + 1) + 0.3
       after(t - 0.25) { keycap.hide() }
     }
     after(t - 0.1) { [weak self] in
@@ -495,7 +471,6 @@ final class FirstRunShowController {
       self.after(0.12) { [weak self] in
         card.ask(from: prompt.textFrame, size: prompt.fontSize)
         prompt.clear(placeholder: "Ask anything")
-        self?.sound(.whoosh, 3)
       }
       prompt.becomeComposer()
       self.after(0.85) {
@@ -504,11 +479,6 @@ final class FirstRunShowController {
       }
       self.after(3.6) { [weak self] in self?.sceneList(card: card, prompt: prompt) }
     }
-  }
-
-  static func walk(from planned: AgentId, through agents: [AgentId]) -> [AgentId] {
-    guard agents.count > 1, let start = agents.firstIndex(of: planned) else { return [] }
-    return Array(agents[(start + 1)...]) + Array(agents[..<start]) + [planned]
   }
 
   // MARK: - The chat list
@@ -532,9 +502,9 @@ final class FirstRunShowController {
       prompt.vanish()
       self.undock()
       list.grow(from: from)
+      face.view.apply(look: MascotLook.face(for: self.planned))
       face.fly(to: list.liveSlot, response: 0.6, bounce: 0.1)
       self.say(Self.captions[1], middle: Self.panelTop + ShowChatList.height + 70)
-      self.sound(.whoosh, 3)
     }
     after(2.0) { [weak self] in
       list.choose()
@@ -551,6 +521,7 @@ final class FirstRunShowController {
     undock()
     leave(old)
     say(nil)
+    face.view.apply(look: hero)
     let view = makeScene()
     let window = keep(ShowAppWindow(in: view, space: space, clock: clock, frame: space.rect(368, 263, 1064, 642)))
     window.rise(from: space.v(-177))
@@ -560,14 +531,14 @@ final class FirstRunShowController {
     after(0.4) { [weak self] in self?.say(Self.captions[2]) }
 
     let overlay = ScreenSelectionOverlay(frame: view.bounds)
-    overlay.palette = MascotLook.face(for: planned).palette.light(atLeast: AgentPaletteMetrics.screenSelectionLightness)
+    overlay.palette = hero.palette.light(atLeast: AgentPaletteMetrics.screenSelectionLightness)
     view.addSubview(overlay)
-    let ask = keep(ShowAsk(in: view, face: face, agent: planned, space: space, clock: clock,
+    let ask = keep(ShowAsk(in: view, face: face, look: hero, agent: planned, space: space, clock: clock,
                            blips: makesBlips ? AskBolttyBlips() : nil, answer: Self.askAnswer))
     self.ask = ask
 
     let prompt = keep(ShowPrompt(in: view, space: space, clock: clock, frame: space.rect(683, Self.panelTop, 434, 92),
-                                 placeholder: "Ask \(planned.shortDisplayName)"))
+                                 placeholder: Self.placeholder))
     after(0.2) { [weak self] in
       guard let self else { return }
       prompt.appear(from: self.space.rect(820, -40, 160, 40))
@@ -596,12 +567,10 @@ final class FirstRunShowController {
       } done: {
         overlay.showsHandles = true
       }
-      self.sound(.whoosh, 1)
     }
     after(3.0) { [weak self] in
       face.view.emotion = .listening
       shell.grow()
-      self?.sound(.whoosh, 4)
     }
     let heard = 3.65
     let count = Self.askQuestion.split(separator: " ").count
@@ -619,25 +588,27 @@ final class FirstRunShowController {
     after(sent + 0.3) { [weak self] in
       shell.vanish()
       ask.arrive(beside: to)
-      self?.sound(.whoosh, 3)
     }
     after(sent + 1.0) { ask.think() }
     after(sent + 1.65) { [weak self] in
       guard let self else { return }
       ask.land(at: self.space.point(975, 958))
-      self.sound(.whoosh, 1)
     }
     let answerAt = sent + 2.2
     after(answerAt) { ask.speak() }
     after(answerAt + 0.45) { [weak self] in
       guard let self else { return }
       ask.draw(self.quietStretch(on: ask))
-      self.sound(.whoosh, 4)
     }
     after(answerAt + 1.5) { [weak self] in self?.say(Self.askDrawn) }
     after(answerAt + 5.2) { [weak self] in
+      guard let self else { return }
       ask.end()
-      self?.sceneSettings()
+      self.leave(view)
+      face.leave(by: self.space.v(120))
+      self.say(nil)
+      self.sound(.run, 3)
+      self.after(0.45) { [weak self] in self?.finish() }
     }
   }
 
@@ -671,64 +642,6 @@ final class FirstRunShowController {
       AskBolttyShape(kind: .path(arrow), label: nil),
       AskBolttyShape(kind: .label(at: ask.mark(space.point(tail.x + 20, tail.y - 34))), label: "12 s of silence"),
     ]
-  }
-
-  // MARK: - Scene four: each agent yours
-
-  private func sceneSettings() {
-    guard let clock, let old = scene, let face else { return }
-    leave(old)
-    let view = makeScene()
-    let window = keep(ShowSettingsWindow(in: view, space: space, clock: clock, agents: agents, planned: planned,
-                                         frame: space.rect(338, 300, 1124, 520)))
-    window.rise(from: space.v(-177))
-    sound(.run, 2)
-    after(0.3) {
-      face.view.emotion = .curious
-      face.fly(to: window.faceSlot, response: 0.7, bounce: 0.1)
-    }
-    after(0.4) { [weak self] in self?.say(Self.captions[3]) }
-    let own = MascotLook.face(for: planned)
-    for (index, shape) in window.tries.enumerated() {
-      after(1.4 + 0.6 * Double(index)) { [weak self] in
-        window.pick(shape: shape)
-        face.view.apply(look: MascotLook(shape: shape, palette: own.palette, finish: own.finish))
-        face.view.poke(.boing)
-        self?.sound(.tap, index)
-      }
-    }
-    let sky = 1.4 + 0.6 * Double(window.tries.count) + 0.3
-    after(sky) { [weak self] in
-      window.pick(backdrop: .sky)
-      self?.sound(.tap, 4)
-    }
-    after(sky + 1.5) { [weak self] in
-      guard let self else { return }
-      window.showUsage()
-      face.fly(to: window.usageFaceSlot, response: 0.6, bounce: 0.1)
-      self.sound(.whoosh, 1)
-    }
-    after(sky + 3.7) { [weak self] in
-      guard let self else { return }
-      window.showVoice()
-      face.view.emotion = .listening
-      face.fly(to: window.voiceFaceSlot, response: 0.6, bounce: 0.1)
-      self.say(Self.captions[4])
-      self.sound(.whoosh, 4)
-    }
-    after(sky + 4.9) { [weak self] in
-      window.pickVoice()
-      face.view.nod()
-      self?.sound(.tap, 3)
-    }
-    after(sky + 6.7) { [weak self] in
-      guard let self else { return }
-      self.leave(view)
-      face.leave(by: self.space.v(120))
-      self.say(nil)
-      self.sound(.run, 3)
-      self.after(0.45) { [weak self] in self?.finish() }
-    }
   }
 
   // MARK: - The end
@@ -995,87 +908,36 @@ final class ShowScene: NSView {
 final class ShowGlass: NSView {
   private let host: PaletteGlassHost
   let content = ShowGlassContent()
-  private let contact = CALayer()
-  private let pool = CALayer()
-  private let casts: Bool
   var radius: CGFloat {
     get { host.cornerRadius }
     set {
       host.cornerRadius = newValue
       content.radius = newValue
-      needsLayout = true
     }
   }
 
-  init(frame: CGRect, radius: CGFloat, casts: Bool = false) {
-    host = PaletteGlassHost(content: content, cornerRadius: radius, style: .bolttyAI, hostsContentInGlass: true)
-    self.casts = casts
+  /// `panel` is the panel's shell: its clear glass under the black ramp, with no
+  /// shadow (on the sky the shadows read as a thick black border). Without it
+  /// the glass is a made-up app's window.
+  init(frame: CGRect, radius: CGFloat, panel: Bool = false) {
+    host = panel
+      ? PaletteGlassHost(content: content, cornerRadius: radius, style: .bolttyAIPrompt)
+      : PaletteGlassHost(content: content, cornerRadius: radius, style: .bolttyAI, hostsContentInGlass: true)
     super.init(frame: frame)
     wantsLayer = true
-    if casts {
-      let shadows: [(CALayer, Float, CGFloat, CGSize)] = [
-        (pool, PaletteGlassHost.ambientShadowOpacity * Self.shadowStrength, PaletteGlassHost.ambientShadowRadius,
-         PaletteGlassHost.ambientShadowOffset),
-        (contact, PaletteGlassHost.floatingShadowOpacity * Self.shadowStrength, PaletteGlassHost.floatingShadowRadius,
-         PaletteGlassHost.floatingShadowOffset),
-      ]
-      for (shadow, opacity, blur, offset) in shadows {
-        shadow.shadowColor = NSColor.black.cgColor
-        shadow.shadowOpacity = opacity
-        shadow.shadowRadius = blur * Self.shadowScale
-        shadow.shadowOffset = CGSize(width: offset.width, height: offset.height * Self.shadowScale)
-        let cutout = CAShapeLayer()
-        cutout.fillRule = .evenOdd
-        shadow.mask = cutout
-        layer?.addSublayer(shadow)
-      }
-    }
-    appearance = NSAppearance(named: Self.light ? .aqua : .darkAqua)
+    appearance = NSAppearance(named: panel ? .darkAqua : .aqua)
     host.translatesAutoresizingMaskIntoConstraints = true
     host.frame = bounds
     host.autoresizingMask = [.width, .height]
     addSubview(host)
     content.radius = radius
-    content.shades = Self.light
+    content.shades = !panel
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-  override func layout() {
-    super.layout()
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    if casts, !bounds.isEmpty {
-      let corner = min(radius, bounds.height / 2)
-      let shape = CGPath(roundedRect: bounds, cornerWidth: corner, cornerHeight: corner, transform: nil)
-      let reach = PaletteGlassHost.ambientShadowRadius * Self.shadowScale * 3
-        + abs(PaletteGlassHost.ambientShadowOffset.height) * Self.shadowScale
-      let cutout = CGMutablePath()
-      cutout.addRect(bounds.insetBy(dx: -reach, dy: -reach))
-      cutout.addPath(shape)
-      for shadow in [pool, contact] {
-        shadow.frame = bounds
-        shadow.shadowPath = shape
-        (shadow.mask as? CAShapeLayer)?.frame = bounds
-        (shadow.mask as? CAShapeLayer)?.path = cutout
-      }
-    }
-    CATransaction.commit()
-  }
-
-  private static let shadowScale: CGFloat = 1.5
-  private static let shadowStrength: Float = 0.6
-
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-  static let light: Bool = {
-    #if DEBUG
-    return UserDefaults.standard.string(forKey: "boltty.show.glass") != "dark"
-    #else
-    return true
-    #endif
-  }()
 }
 
 final class ShowGlassContent: NSView {
@@ -1216,10 +1078,10 @@ final class ShowFace {
   var onMove: ((CGRect) -> Void)?
   var rect: CGRect { pose.rect.offsetBy(dx: 0, dy: lift) }
 
-  init(in parent: NSView, agent: AgentId, side: CGFloat, sharpness: CGFloat, clock: ShowClock) {
+  init(in parent: NSView, look: MascotLook, side: CGFloat, sharpness: CGFloat, clock: ShowClock) {
     self.clock = clock
     self.side = side
-    view = MascotNSView(conversationID: UUID(), look: MascotLook.face(for: agent))
+    view = MascotNSView(conversationID: UUID(), look: look)
     view.ownsDisplayLink = true
     view.renderScale = sharpness
     holder.frame = CGRect(x: 0, y: 0, width: side, height: side)
@@ -1344,7 +1206,7 @@ final class ShowPrompt {
     self.clock = clock
     self.frame = frame
     fontSize = space.v(28)
-    glass = ShowGlass(frame: frame, radius: frame.height / 2, casts: true)
+    glass = ShowGlass(frame: frame, radius: frame.height / 2, panel: true)
     glass.alphaValue = 0
     parent.addSubview(glass)
     text = ShowText.label("", size: fontSize)
@@ -1555,7 +1417,7 @@ final class ShowChatCard {
     self.question = question
     reply = answer
     frame = CGRect(x: x, y: bottom, width: width, height: Self.height(answer: answer, width: width, space: space))
-    glass = ShowGlass(frame: frame, radius: space.v(52), casts: true)
+    glass = ShowGlass(frame: frame, radius: space.v(52), panel: true)
     glass.alphaValue = 0
     parent.addSubview(glass)
   }
@@ -1593,13 +1455,16 @@ final class ShowChatCard {
     bubble.layer?.backgroundColor = CGColor(gray: 1, alpha: 0)
     bubble.layer?.cornerRadius = box.height / 2
     bubble.layer?.cornerCurve = .continuous
+    bubble.layer?.maskedCorners = MessageTailView.roundedCorners
+    let tail = MessageTailView(scale: size / AgentPaletteMetrics.typeChat)
+    tail.alphaValue = 0
     for label in [ink, paper] {
       label.frame.origin = CGPoint(x: pad.width, y: pad.height)
       bubble.addSubview(label)
     }
     ink.alphaValue = 0
     let inset = space.v(Self.inset)
-    let end = CGRect(x: frame.maxX - inset - box.width, y: frame.maxY - inset - box.height,
+    let end = CGRect(x: frame.maxX - inset - tail.frame.width - box.width, y: frame.maxY - inset - box.height,
                      width: box.width, height: box.height)
     bubbleBottom = end.minY
     let grown = startSize / size
@@ -1623,9 +1488,13 @@ final class ShowChatCard {
         bubble.frame = place
         bubble.autoresizingMask = [.minXMargin, .minYMargin]
         inside.addSubview(bubble)
+        tail.frame.origin = CGPoint(x: place.maxX, y: place.minY)
+        tail.autoresizingMask = [.minXMargin, .minYMargin]
+        inside.addSubview(tail)
       }
       self?.clock.tween(0.2, curve: Motion.standardCurve) { t in
         bubble.layer?.backgroundColor = CGColor(gray: 1, alpha: t)
+        tail.alphaValue = t
         paper.alphaValue = 1 - t
         ink.alphaValue = t
       }
@@ -1855,7 +1724,7 @@ final class ShowAsk {
 
   private func pt(_ points: CGFloat) -> CGFloat { space.v(points * Self.size) }
 
-  init(in view: NSView, face: ShowFace, agent: AgentId, space: ShowSpace, clock: ShowClock, blips: AskBolttyBlips?,
+  init(in view: NSView, face: ShowFace, look: MascotLook, agent: AgentId, space: ShowSpace, clock: ShowClock, blips: AskBolttyBlips?,
        answer: String) {
     self.space = space
     self.clock = clock
@@ -1866,7 +1735,7 @@ final class ShowAsk {
     let backing = view.window?.backingScaleFactor ?? 2
     let scale = space.v(Self.size)
 
-    let ink = MascotLook.face(for: agent).palette.light(atLeast: Self.drawingLightness)
+    let ink = look.palette.light(atLeast: Self.drawingLightness)
     drawing.contentsScale = backing
     drawing.colours = ink
     drawing.scale = scale
@@ -2254,7 +2123,7 @@ final class ShowKeycap {
     let size = CGSize(width: max(label.frame.width + space.v(32), space.v(48)), height: space.v(44))
     let frame = CGRect(x: rect.midX - size.width / 2, y: rect.minY - space.v(22) - size.height,
                        width: size.width, height: size.height).integral
-    glass = ShowGlass(frame: frame, radius: frame.height / 2, casts: true)
+    glass = ShowGlass(frame: frame, radius: frame.height / 2, panel: true)
     glass.alphaValue = 0
     label.frame.origin = CGPoint(x: ((frame.width - label.frame.width) / 2).rounded(),
                                  y: ((frame.height - label.frame.height) / 2).rounded())
@@ -2323,7 +2192,7 @@ final class ShowChatList {
     self.clock = clock
     self.planned = planned
     self.frame = frame
-    glass = ShowGlass(frame: frame, radius: space.v(40), casts: true)
+    glass = ShowGlass(frame: frame, radius: space.v(40), panel: true)
     glass.alphaValue = 0
     parent.addSubview(glass)
     let content = glass.content
@@ -2485,336 +2354,6 @@ final class ShowChatList {
 }
 
 @MainActor
-final class ShowSettingsWindow {
-  private static let pages: [(symbol: BolttyIcon, title: String)] = [
-    (.settings, "General"), (.people, "Agents"), (.chart, "Usage"), (.waveform, "Voice"),
-    (.pointerRays, "Ask Boltty"), (.keyboard, "Shortcuts"),
-  ]
-  private static let backdrops: [ChatBackdrop] = [.standard, .sky, .space]
-  private static let usage: [(left: CGFloat, words: String)] = [
-    (0.62, "62% left · back in 2 h"), (0.35, "35% left · back on Monday"), (0.81, "81% left · back in 5 h"),
-  ]
-
-  private let space: ShowSpace
-  private let clock: ShowClock
-  private let glass: ShowGlass
-  private let frame: CGRect
-  private let palette: MascotPalette
-  private let sidebarPill = NSView()
-  private let agentsPage = NSView()
-  private let usagePage = NSView()
-  private let voicePage = NSView()
-  private let shapePill = NSView()
-  private let backdropRing = NSView()
-  private let voiceRing = NSView()
-  private var voiceCells: [CGRect] = []
-  private static let voiceLooks: [(palette: String, start: CGPoint, end: CGPoint)] = [
-    ("ember", CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 0)), ("candy", CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)),
-    ("citrus", CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 0)), ("daybreak", CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)),
-    ("slate", CGPoint(x: 1, y: 1), CGPoint(x: 0, y: 0)), ("lagoon", CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)),
-    ("citrus", CGPoint(x: 1, y: 0), CGPoint(x: 0, y: 1)), ("slate", CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)),
-    ("daybreak", CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)), ("candy", CGPoint(x: 1, y: 0), CGPoint(x: 0, y: 1)),
-  ]
-  private var shapeCells: [MascotShape: CGRect] = [:]
-  private var backdropCells: [ChatBackdrop: CGRect] = [:]
-  private let backdrop: AgentBackdropView
-  private var meters: [(fill: CAGradientLayer, track: CGRect, left: CGFloat)] = []
-  let tries: [MascotShape]
-  private(set) var faceSlot: CGRect = .zero
-  private(set) var usageFaceSlot: CGRect = .zero
-  private(set) var voiceFaceSlot: CGRect = .zero
-
-  private func box(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
-    CGRect(x: space.v(x), y: frame.height - space.v(y + h), width: space.v(w), height: space.v(h))
-  }
-
-  private func parent(_ rect: CGRect) -> CGRect { rect.offsetBy(dx: frame.minX, dy: frame.minY) }
-
-  private func fill(_ view: NSView, alpha: CGFloat, radius: CGFloat) {
-    view.wantsLayer = true
-    view.layer?.backgroundColor = CGColor(gray: 1, alpha: alpha)
-    view.layer?.cornerRadius = radius
-    view.layer?.cornerCurve = .continuous
-  }
-
-  private func label(_ words: String, size: CGFloat, alpha: CGFloat = 0.95, weight: NSFont.Weight = .regular,
-                     x: CGFloat, middle: CGFloat, in view: NSView) {
-    let label = ShowText.label(words, size: space.v(size), ink: NSColor.white.withAlphaComponent(alpha),
-                               weight: weight)
-    label.sizeToFit()
-    label.frame.origin = CGPoint(x: space.v(x).rounded(),
-                                 y: (frame.height - space.v(middle) - label.frame.height / 2).rounded())
-    view.addSubview(label)
-  }
-
-  private func ring(_ view: NSView, side: CGFloat) {
-    view.frame = CGRect(x: 0, y: 0, width: side, height: side)
-    view.wantsLayer = true
-    let shape = CAShapeLayer()
-    shape.frame = view.bounds
-    shape.fillRule = .evenOdd
-    shape.fillColor = BolttyBrand.accentOnGlass.cgColor
-    let path = CGMutablePath()
-    path.addEllipse(in: view.bounds)
-    path.addEllipse(in: view.bounds.insetBy(dx: space.v(4), dy: space.v(4)))
-    shape.path = path
-    view.layer?.addSublayer(shape)
-  }
-
-  init(in parent: NSView, space: ShowSpace, clock: ShowClock, agents: [AgentId], planned: AgentId, frame: CGRect) {
-    self.space = space
-    self.clock = clock
-    self.frame = frame
-    let own = MascotLook.face(for: planned)
-    palette = own.palette
-    let shapes = MascotShape.allCases
-    let start = shapes.firstIndex(of: own.shape) ?? 0
-    tries = [shapes[(start + 1) % shapes.count], shapes[(start + 2) % shapes.count], own.shape]
-    glass = ShowGlass(frame: frame, radius: space.v(52), casts: true)
-    glass.alphaValue = 0
-    parent.addSubview(glass)
-    let content = glass.content
-    backdrop = AgentBackdropView(frame: .zero)
-
-    let sidebar = NSView(frame: box(20, 20, 250, 480))
-    fill(sidebar, alpha: 0.12, radius: space.v(32))
-    content.addSubview(sidebar)
-    fill(sidebarPill, alpha: 0.22, radius: space.v(20))
-    sidebarPill.frame = box(32, 34 + 50, 226, 40)
-    content.addSubview(sidebarPill)
-    let sketch = ShowSketch(view: content, space: space, size: frame.size)
-    for (index, page) in Self.pages.enumerated() {
-      let middle = 54 + CGFloat(index) * 50
-      sketch.symbol(page.symbol, at: 62, middle, side: 16, alpha: 0.85)
-      sketch.text(page.title, at: 86, middle: middle, size: 17, alpha: 0.9, weight: .medium)
-    }
-
-    agentsPage.frame = CGRect(origin: .zero, size: frame.size)
-    agentsPage.wantsLayer = true
-    content.addSubview(agentsPage)
-    faceSlot = self.parent(box(300, 34, 104, 104))
-    label(planned.displayName, size: 30, weight: .semibold, x: 420, middle: 74, in: agentsPage)
-    let tag = ShowText.label("Preferred", size: space.v(14), weight: .semibold)
-    tag.sizeToFit()
-    let name = ShowText.label(planned.displayName, size: space.v(30), weight: .semibold)
-    name.sizeToFit()
-    let tagBox = NSView(frame: CGRect(x: space.v(420 + 14) + name.frame.width, y: frame.height - space.v(74 + 14),
-                                      width: tag.frame.width + space.v(20), height: space.v(28)).integral)
-    fill(tagBox, alpha: 0.2, radius: tagBox.frame.height / 2)
-    tag.frame.origin = CGPoint(x: space.v(10).rounded(), y: ((tagBox.frame.height - tag.frame.height) / 2).rounded())
-    tagBox.addSubview(tag)
-    agentsPage.addSubview(tagBox)
-    let line = NSView(frame: box(420, 104, 220, 9))
-    fill(line, alpha: 0.2, radius: line.frame.height / 2)
-    agentsPage.addSubview(line)
-
-    label("Face", size: 15, alpha: 0.55, weight: .semibold, x: 304, middle: 182, in: agentsPage)
-    fill(shapePill, alpha: 0.22, radius: space.v(18))
-    agentsPage.addSubview(shapePill)
-    for (index, shape) in shapes.enumerated() {
-      let cell = box(300 + CGFloat(index) * 132, 196, 70, 70)
-      shapeCells[shape] = cell
-      let side = space.v(54)
-      agentsPage.addSubview(ShowStill.face(MascotLook(shape: shape, palette: own.palette, finish: own.finish),
-                                           in: CGRect(x: cell.midX - side / 2, y: cell.midY - side / 2,
-                                                      width: side, height: side).integral))
-    }
-    shapePill.frame = shapeCells[own.shape] ?? .zero
-
-    label("Chat", size: 15, alpha: 0.55, weight: .semibold, x: 304, middle: 298, in: agentsPage)
-    let diameter: CGFloat = 104
-    let scene: CGFloat = 260
-    ring(backdropRing, side: space.v(diameter + 18))
-    for (index, choice) in Self.backdrops.enumerated() {
-      let x = 312 + CGFloat(index) * 150
-      let cell = box(x, 322, diameter, diameter)
-      backdropCells[choice] = cell.insetBy(dx: -space.v(9), dy: -space.v(9))
-      let window = NSImageView(frame: cell)
-      fill(window, alpha: 0.45, radius: cell.width / 2)
-      window.layer?.backgroundColor = CGColor(gray: 0.5, alpha: 0.45)
-      window.layer?.masksToBounds = true
-      window.imageScaling = .scaleAxesIndependently
-      if let still = AgentBackdropRenderer.still(of: choice, palette: own.palette, scene: scene, pixels: cell.width * 2) {
-        window.image = NSImage(cgImage: still, size: cell.size)
-      } else {
-        let ramp = CAGradientLayer()
-        ramp.frame = window.bounds
-        ramp.colors = [CGColor(gray: 0, alpha: 0), CGColor(gray: 0, alpha: 0.85)]
-        window.layer?.addSublayer(ramp)
-      }
-      agentsPage.addSubview(window)
-      if choice == .sky {
-        backdrop.frame = cell
-        backdrop.sceneScale = diameter / scene
-        agentsPage.addSubview(backdrop)
-        backdrop.layOut(in: cell, corner: cell.width / 2, curve: .circular)
-      }
-      let title = ShowText.label(choice.title, size: space.v(14), ink: NSColor.white.withAlphaComponent(0.75))
-      title.sizeToFit()
-      title.frame.origin = CGPoint(x: (cell.midX - title.frame.width / 2).rounded(),
-                                   y: (cell.minY - space.v(20) - title.frame.height / 2).rounded())
-      agentsPage.addSubview(title)
-    }
-    backdropRing.frame = backdropCells[.standard] ?? .zero
-    agentsPage.addSubview(backdropRing)
-
-    let card = NSView(frame: box(790, 308, 296, 150))
-    fill(card, alpha: 0.12, radius: space.v(24))
-    agentsPage.addSubview(card)
-    for (index, row) in ["Model", "Reasoning", "Auto Mode"].enumerated() {
-      let middle = 308 + 26 + CGFloat(index) * 49
-      label(row, size: 16, x: 812, middle: middle, in: agentsPage)
-      if index < 2 {
-        let value = NSView(frame: box(index == 0 ? 958 : 1000, middle - 4, index == 0 ? 106 : 64, 8))
-        fill(value, alpha: 0.28, radius: value.frame.height / 2)
-        agentsPage.addSubview(value)
-      } else {
-        let track = NSView(frame: box(1016, middle - 13, 48, 26))
-        track.wantsLayer = true
-        track.layer?.backgroundColor = BolttyBrand.accentOnGlass.cgColor
-        track.layer?.cornerRadius = track.frame.height / 2
-        agentsPage.addSubview(track)
-        let knob = NSView(frame: box(1040, middle - 11, 22, 22))
-        fill(knob, alpha: 1, radius: knob.frame.height / 2)
-        agentsPage.addSubview(knob)
-      }
-    }
-
-    voicePage.frame = CGRect(origin: .zero, size: frame.size)
-    voicePage.wantsLayer = true
-    voicePage.alphaValue = 0
-    content.addSubview(voicePage)
-    label("Voice", size: 28, weight: .semibold, x: 304, middle: 66, in: voicePage)
-    voiceFaceSlot = self.parent(box(1006, 26, 84, 84))
-    let rows = NSView(frame: box(300, 112, 790, 148))
-    fill(rows, alpha: 0.12, radius: space.v(24))
-    voicePage.addSubview(rows)
-    let divider = NSView(frame: box(322, 186, 746, 1.5))
-    fill(divider, alpha: 0.14, radius: 0)
-    voicePage.addSubview(divider)
-    for (index, row) in [("Dictation", "Parakeet, on this Mac"), ("Read answers aloud", "When I asked by voice")].enumerated() {
-      let middle = 149 + CGFloat(index) * 74
-      label(row.0, size: 17, x: 324, middle: middle, in: voicePage)
-      let value = ShowText.label(row.1, size: space.v(16), ink: NSColor.white.withAlphaComponent(0.7))
-      value.sizeToFit()
-      value.frame.origin = CGPoint(x: (space.v(1066) - value.frame.width).rounded(),
-                                   y: (frame.height - space.v(middle) - value.frame.height / 2).rounded())
-      voicePage.addSubview(value)
-    }
-    label("Supertonic", size: 15, alpha: 0.55, weight: .semibold, x: 304, middle: 296, in: voicePage)
-    let swatch: CGFloat = 60
-    ring(voiceRing, side: space.v(swatch + 16))
-    for (index, voice) in BolttyAISettingsModel.localVoices.prefix(Self.voiceLooks.count).enumerated() {
-      let x = 308 + CGFloat(index) * 78.5
-      let cell = box(x, 322, swatch, swatch)
-      voiceCells.append(cell.insetBy(dx: -space.v(8), dy: -space.v(8)))
-      let look = Self.voiceLooks[index]
-      let circle = CAGradientLayer()
-      circle.frame = cell
-      circle.cornerRadius = cell.width / 2
-      let colours = (MascotPalette.palette(withID: look.palette) ?? .standard)
-      circle.colors = colours.colors.map(\.cgColor)
-      circle.locations = colours.stopPlaces.map { NSNumber(value: Double($0)) }
-      circle.startPoint = look.start
-      circle.endPoint = look.end
-      voicePage.layer?.addSublayer(circle)
-      let title = ShowText.label(voice.title, size: space.v(13), ink: NSColor.white.withAlphaComponent(0.75))
-      title.sizeToFit()
-      title.frame.origin = CGPoint(x: (cell.midX - title.frame.width / 2).rounded(),
-                                   y: (cell.minY - space.v(20) - title.frame.height / 2).rounded())
-      voicePage.addSubview(title)
-    }
-    voiceRing.frame = voiceCells.indices.contains(7) ? voiceCells[7] : .zero
-    voicePage.addSubview(voiceRing)
-
-    usagePage.frame = CGRect(origin: .zero, size: frame.size)
-    usagePage.wantsLayer = true
-    usagePage.alphaValue = 0
-    content.addSubview(usagePage)
-    label("Usage", size: 28, weight: .semibold, x: 304, middle: 66, in: usagePage)
-    let listed = ([planned] + agents.filter { $0 != planned }).prefix(Self.usage.count)
-    for (index, agent) in listed.enumerated() {
-      let top = 118 + CGFloat(index) * 124
-      let faceBox = box(300, top, 64, 64)
-      if agent == planned {
-        usageFaceSlot = self.parent(faceBox.insetBy(dx: -space.v(6), dy: -space.v(6)))
-      } else {
-        usagePage.addSubview(ShowStill.face(MascotLook.face(for: agent), in: faceBox.insetBy(dx: space.v(6), dy: space.v(6))))
-      }
-      label(agent.displayName, size: 19, weight: .semibold, x: 384, middle: top + 18, in: usagePage)
-      label(Self.usage[index].words, size: 14, alpha: 0.6, x: 384, middle: top + 46, in: usagePage)
-      let track = box(384, top + 68, 690, 20)
-      let trackView = NSView(frame: track)
-      trackView.wantsLayer = true
-      trackView.layer?.backgroundColor = CGColor(gray: 0, alpha: 0.18)
-      trackView.layer?.cornerRadius = track.height / 2
-      trackView.layer?.cornerCurve = .continuous
-      usagePage.addSubview(trackView)
-      let meter = CAGradientLayer()
-      let tint = BolttyBrand.accentOnGlass.cgColor
-      meter.colors = [tint, tint]
-      meter.startPoint = CGPoint(x: 0, y: 0.5)
-      meter.endPoint = CGPoint(x: 1, y: 0.5)
-      meter.cornerRadius = track.height / 2
-      meter.frame = CGRect(x: track.minX, y: track.minY, width: 0, height: track.height)
-      usagePage.layer?.addSublayer(meter)
-      meters.append((meter, track, Self.usage[index].left))
-    }
-  }
-
-  func rise(from distance: CGFloat) {
-    let end = frame
-    let start = end.offsetBy(dx: 0, dy: distance)
-    ShowClock.fade(glass, to: 1, duration: 0.25)
-    clock.spring(0.75, bounce: 0.05) { [weak self] t in self?.glass.frame = ShowClock.mix(start, end, t) }
-  }
-
-  func pick(shape: MascotShape) {
-    guard let cell = shapeCells[shape] else { return }
-    slide(shapePill, to: cell)
-  }
-
-  func pick(backdrop scene: ChatBackdrop) {
-    guard let cell = backdropCells[scene] else { return }
-    slide(backdropRing, to: cell)
-    backdrop.show(scene, palette: palette)
-  }
-
-  func showUsage() {
-    slide(sidebarPill, to: box(32, 34 + 100, 226, 40))
-    ShowClock.fade(agentsPage, to: 0, duration: 0.25)
-    ShowClock.fade(usagePage, to: 1, duration: 0.3)
-    for (index, meter) in meters.enumerated() {
-      DispatchQueue.main.asyncAfter(deadline: .now() + Motion.scaled(0.3 + 0.15 * Double(index))) { [weak self] in
-        self?.clock.tween(0.9) { t in
-          CATransaction.begin()
-          CATransaction.setDisableActions(true)
-          meter.fill.frame = CGRect(x: meter.track.minX, y: meter.track.minY,
-                                    width: max(meter.track.height, meter.track.width * meter.left * t),
-                                    height: meter.track.height)
-          CATransaction.commit()
-        }
-      }
-    }
-  }
-
-  func showVoice() {
-    slide(sidebarPill, to: box(32, 34 + 150, 226, 40))
-    ShowClock.fade(usagePage, to: 0, duration: 0.25)
-    ShowClock.fade(voicePage, to: 1, duration: 0.3)
-  }
-
-  func pickVoice() {
-    guard voiceCells.indices.contains(1) else { return }
-    slide(voiceRing, to: voiceCells[1])
-  }
-
-  private func slide(_ view: NSView, to rect: CGRect) {
-    let from = view.frame
-    clock.spring(0.4, bounce: 0.1, key: ObjectIdentifier(view)) { t in view.frame = ShowClock.mix(from, rect, t) }
-  }
-}
-
 // MARK: - The sunset
 
 final class SunsetView: NSView {
@@ -2834,12 +2373,19 @@ final class SunsetView: NSView {
     ("#9cc8ff", 0.30, CGPoint(x: 0.55, y: 0.78), 29),
   ]
   private let skip = NSTextField(labelWithString: "Skip Intro")
+  private let palette: MascotPalette?
+  private var backdrop: AgentBackdropView?
 
-  override init(frame: CGRect) {
+  /// `sky` draws a chat's Sky backdrop in that face's colours in place of the
+  /// written gradient.
+  init(frame: CGRect, sky palette: MascotPalette? = nil) {
+    self.palette = palette
     super.init(frame: frame)
     wantsLayer = true
     build()
   }
+
+  private static let chatHeight: CGFloat = 680
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -2862,6 +2408,18 @@ final class SunsetView: NSView {
     sky.startPoint = CGPoint(x: 0.5, y: 1)
     sky.endPoint = CGPoint(x: 0.5, y: 0)
     root.addSublayer(sky)
+
+    if let palette {
+      let backdrop = AgentBackdropView(frame: bounds)
+      backdrop.sceneScale = max(1, bounds.height / Self.chatHeight)
+      addSubview(backdrop)
+      backdrop.layOut(in: bounds, corner: 0, curve: .continuous)
+      backdrop.show(.sky, palette: palette)
+      self.backdrop = backdrop
+      night.zPosition = 5
+      finishBuild(root)
+      return
+    }
 
     let ember = HexColor.nsColor("#ff7a2e").cgColor
     horizon.type = .radial
@@ -2888,6 +2446,10 @@ final class SunsetView: NSView {
       lights.append(glow)
     }
 
+    finishBuild(root)
+  }
+
+  private func finishBuild(_ root: CALayer) {
     night.frame = bounds
     night.colors = [Self.dark, Self.dark, Self.dark]
     night.locations = [0, 0.7, 1]
@@ -2899,6 +2461,8 @@ final class SunsetView: NSView {
     skip.textColor = PaletteInk.secondary
     skip.sizeToFit()
     skip.frame.origin = CGPoint(x: bounds.maxX - skip.frame.width - 28, y: 24)
+    skip.wantsLayer = true
+    skip.layer?.zPosition = 10
     addSubview(skip)
   }
 
@@ -2923,6 +2487,7 @@ final class SunsetView: NSView {
     lift.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)
     night.opacity = 0
     night.add(lift, forKey: "boltty.sunset.dawn")
+    guard backdrop == nil else { return }
 
     for (index, glow) in lights.enumerated() {
       let light = Self.lightColours[index]

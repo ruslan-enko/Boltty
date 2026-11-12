@@ -24,9 +24,15 @@ extension BolttyAISettingsModel {
     ).flatMap { AgentId(rawValue: $0.providerID) }
   }
 
-  func chooseAskBolttyAgent(_ agent: AgentId) {
+  /// Nobody chosen: a question goes where a new chat would.
+  var askBolttyIsAutomatic: Bool {
+    guard let stored = appModel.settings.askBolttyProviderID else { return true }
+    return !askBolttyAgents.contains { $0.rawValue == stored }
+  }
+
+  func chooseAskBolttyAgent(_ agent: AgentId?) {
     appModel.updateSettings { settings in
-      settings.askBolttyProviderID = agent.rawValue
+      settings.askBolttyProviderID = agent?.rawValue
       settings.askBolttyModelID = nil
     }
   }
@@ -65,7 +71,7 @@ struct AskBolttySettingsSection: View {
   var body: some View {
     Section {
       AskBolttyAgentPicker(model: model)
-      if !model.askBolttyModels.isEmpty { modelPicker }
+      if !model.askBolttyIsAutomatic, !model.askBolttyModels.isEmpty { modelPicker }
     } header: {
       SettingsSectionHeader("Who answers")
     } footer: {
@@ -73,6 +79,19 @@ struct AskBolttySettingsSection: View {
     }
 
     Section {
+      LabeledContent {
+        SettingsStage(height: 120) {
+          AskAnswerSample(
+            canMakeChanges: !model.askBolttyReadOnly,
+            look: model.mascotLook(
+              for: model.askBolttyAgent ?? model.nextChatAgent ?? model.mascotRoster.restingAgent))
+          .frame(width: AskAnswerSampleView.size.width, height: AskAnswerSampleView.size.height)
+        }
+        .padding(.vertical, 6)
+      } label: {
+        Text("Beside the pointer")
+        Text("The face answers in a sentence or two, word by word.")
+      }
       speaking
       Toggle(isOn: Binding(
         get: { !model.askBolttyReadOnly }, set: { model.askBolttyReadOnly = !$0 }
@@ -138,7 +157,11 @@ struct AskBolttySettingsSection: View {
 
   private var answererNote: String {
     let quick = "Every model thinks as little as it can, so answers come quickly."
-    return model.askBolttyAgents.count > 1 ? "Until you choose, the preferred agent answers. \(quick)" : quick
+    guard model.askBolttyAgents.count > 1 else { return quick }
+    let automatic = model.routesAutomatically
+      ? "Automatic gives a question to whoever has the most of their plan left."
+      : "Automatic gives a question to the agent new chats go to."
+    return "\(automatic) \(quick)"
   }
 }
 
@@ -146,7 +169,8 @@ private struct AskBolttyAgentPicker: View {
   @ObservedObject var model: BolttyAISettingsModel
 
   var body: some View {
-    let chosen = model.askBolttyAgent
+    let automatic = model.askBolttyIsAutomatic
+    let chosen = automatic ? nil : model.askBolttyAgent
     if model.askBolttyAgents.isEmpty {
       LabeledContent("Agent") {
         Text("None ready that can see the screen")
@@ -155,9 +179,18 @@ private struct AskBolttyAgentPicker: View {
       .accessibilityIdentifier("boltty.settings.talkAgent")
     } else {
       ChoiceStrip(title: "Agent", identifier: "boltty.settings.talkAgent") {
+      if model.askBolttyAgents.count > 1 {
+        RingedChoice(title: "Automatic", isChosen: automatic, isRinged: false) {
+          guard !automatic else { return }
+          withAnimation(SettingsMotion.quick) { model.chooseAskBolttyAgent(nil) }
+        } picture: { _ in
+          FaceCluster(looks: model.askBolttyAgents.map { model.mascotLook(for: $0) }, diameter: 52)
+        }
+        .accessibilityIdentifier("boltty.settings.talkAgent.automatic")
+      }
       ForEach(model.askBolttyAgents, id: \.rawValue) { agent in
         RingedChoice(title: agent.shortDisplayName, isChosen: chosen == agent, isRinged: false) {
-          guard agent != chosen || model.appModel.settings.askBolttyProviderID == nil else { return }
+          guard agent != chosen else { return }
           withAnimation(SettingsMotion.quick) { model.chooseAskBolttyAgent(agent) }
         } picture: { _ in
           MascotStill(look: model.mascotLook(for: agent), size: 52)

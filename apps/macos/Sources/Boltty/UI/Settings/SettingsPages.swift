@@ -47,14 +47,27 @@ struct GeneralSettingsPage: View {
       }
 
       Section {
-        Toggle(isOn: Binding(
-          get: { model.attachesFinderSelection },
-          set: { model.attachesFinderSelection = $0 }
-        )) {
+        LabeledContent {
+          VStack(alignment: .trailing, spacing: 12) {
+            SettingsStage(height: 200) {
+              FinderSelectionSample(
+                attaches: model.attachesFinderSelection,
+                look: model.mascotLook(for: model.mascotRoster.restingAgent),
+                clearGlass: model.panelClearGlass)
+              .frame(width: FinderSelectionSampleView.size.width, height: FinderSelectionSampleView.size.height)
+            }
+            Toggle("Use what's open in Finder", isOn: Binding(
+              get: { model.attachesFinderSelection },
+              set: { model.attachesFinderSelection = $0 }
+            ))
+            .labelsHidden()
+            .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
+          }
+          .padding(.vertical, 6)
+        } label: {
           Text("Use what's open in Finder")
           Text("Opening Boltty AI over Finder starts the chat in that folder, with the files selected there in the prompt.")
         }
-        .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
 
         Toggle(isOn: Binding(
           get: { model.playsSounds },
@@ -246,21 +259,26 @@ struct AgentsSettingsPage: View {
   }
 
   private var list: some View {
-    let preferred = model.enabledAdapters.count > 1 ? model.defaultAgent : nil
-    return Form {
+    Form {
+      if model.enabledAdapters.count > 1 {
+        Section {
+          NewChatsPicker(model: model)
+        } header: {
+          SettingsSectionHeader("New Chats")
+        } footer: {
+          SettingsNote(NewChatsPicker.note(model))
+        }
+      }
       Section {
         ForEach(model.adapterRows) { row in
-          AgentSettingsListRow(model: model, row: row, isPreferred: row.agent == preferred) {
+          AgentSettingsListRow(model: model, row: row) {
             navigation.open(agent: row.agent)
           }
-        }
-      } footer: {
-        if model.enabledAdapters.count > 1 {
-          SettingsNote("New chats go to the preferred agent, or to the next enabled one while it isn't ready.")
         }
       }
     }
     .settingsGroupedPage()
+    .task { await model.refreshRouting() }
   }
 
   static func autoModeNote(for agent: AgentId) -> String {
@@ -295,12 +313,78 @@ extension AgentSettingsRow {
   var currentModel: AgentModelOption? {
     models.option(stored: selectedModelID) ?? models.first { $0.isDefault }
   }
+
+}
+
+// MARK: - Who takes a new chat
+
+private struct NewChatsPicker: View {
+  @ObservedObject var model: BolttyAISettingsModel
+
+  var body: some View {
+    let automatic = model.routesAutomatically
+    ChoiceStrip(title: nil, identifier: "boltty.settings.newChats") {
+      RingedChoice(title: "Automatic", isChosen: automatic, isRinged: false) {
+        guard !automatic else { return }
+        withAnimation(SettingsMotion.quick) { model.sendNewChats(to: nil) }
+      } picture: { _ in
+        FaceCluster(looks: model.enabledAdapters.map { model.mascotLook(for: $0) }, diameter: 52)
+      }
+      .accessibilityIdentifier("boltty.settings.newChats.automatic")
+      ForEach(model.enabledAdapters, id: \.rawValue) { agent in
+        let chosen = !automatic && model.defaultAgent == agent
+        RingedChoice(title: agent.shortDisplayName, isChosen: chosen, isRinged: false) {
+          guard !chosen else { return }
+          withAnimation(SettingsMotion.quick) { model.sendNewChats(to: agent) }
+        } picture: { _ in
+          MascotStill(look: model.mascotLook(for: agent), size: 52)
+        }
+        .accessibilityIdentifier("boltty.settings.newChats.\(agent.rawValue)")
+      }
+    }
+  }
+
+  static func note(_ model: BolttyAISettingsModel) -> String {
+    let once = "Shift-Tab on the first screen picks an agent for one chat."
+    guard let next = model.nextChatAgent else { return "No agent is ready. \(once)" }
+    return model.routesAutomatically
+      ? "Automatic gives a new chat to whoever has the most of their plan left: now \(next.shortDisplayName). If it cannot answer, the next one does. \(once)"
+      : "Every new chat goes to \(next.shortDisplayName). \(once)"
+  }
+}
+
+/// The agents' faces arranged like the pips of a die, as the chat list's All tab
+/// wears them.
+struct FaceCluster: View {
+  let looks: [MascotLook]
+  let diameter: CGFloat
+
+  private static let pips: [[CGPoint]] = [
+    [.zero],
+    [CGPoint(x: -0.5, y: -0.5), CGPoint(x: 0.5, y: 0.5)],
+    [CGPoint(x: 0, y: -0.55), CGPoint(x: -0.55, y: 0.45), CGPoint(x: 0.55, y: 0.45)],
+    [CGPoint(x: -0.5, y: -0.5), CGPoint(x: 0.5, y: -0.5), CGPoint(x: -0.5, y: 0.5), CGPoint(x: 0.5, y: 0.5)],
+    [CGPoint(x: -0.6, y: -0.6), CGPoint(x: 0.6, y: -0.6), .zero, CGPoint(x: -0.6, y: 0.6), CGPoint(x: 0.6, y: 0.6)],
+  ]
+
+  var body: some View {
+    let shown = Array(looks.prefix(Self.pips.count))
+    let places = Self.pips[max(shown.count, 1) - 1]
+    let face = diameter * (shown.count <= 1 ? 1 : shown.count <= 4 ? 0.46 : 0.36)
+    let reach = (diameter - face) / 2
+    ZStack {
+      ForEach(Array(shown.enumerated()), id: \.offset) { index, look in
+        MascotStill(look: look, size: face)
+          .offset(x: places[index].x * reach, y: places[index].y * reach)
+      }
+    }
+    .frame(width: diameter, height: diameter)
+  }
 }
 
 private struct AgentSettingsListRow: View {
   @ObservedObject var model: BolttyAISettingsModel
   let row: AgentSettingsRow
-  let isPreferred: Bool
   let open: () -> Void
   @State private var isHovered = false
 
@@ -311,10 +395,7 @@ private struct AgentSettingsListRow: View {
           MascotStill(look: model.mascotLook(for: row.agent), size: 30)
             .opacity(row.isReady ? 1 : 0.45)
           VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-              Text(row.agent.displayName)
-              if isPreferred { SettingsTag("Preferred") }
-            }
+            Text(row.agent.displayName)
             Text((try? AttributedString(markdown: row.summary)) ?? AttributedString(row.summary))
               .font(BolttyInterfaceTypography.callout)
               .foregroundStyle(.secondary)
@@ -326,7 +407,7 @@ private struct AgentSettingsListRow: View {
       }
       .buttonStyle(SettingsRowPressStyle())
       .accessibilityLabel(row.agent.displayName)
-      .accessibilityValue(isPreferred ? "Preferred, \(row.summary)" : row.summary)
+      .accessibilityValue(row.summary)
       .accessibilityHint("Opens its model, permissions and face")
       .accessibilityIdentifier("boltty.settings.agent.\(row.agent.rawValue).open")
 
@@ -346,8 +427,6 @@ private struct AgentSettingsListRow: View {
     .animation(SettingsMotion.quick, value: isHovered)
     .contextMenu {
       Button("Open \(row.agent.shortDisplayName) Settings", action: open)
-      Button("Make Preferred") { model.defaultAgent = row.agent }
-        .disabled(!row.enabled || isPreferred)
     }
   }
 }
@@ -362,7 +441,6 @@ private struct AgentSettingsDetail: View {
 
       if row.enabled {
         Section {
-          if model.enabledAdapters.count > 1 { preferred }
           if row.isReady, row.offersModels { modelRows }
           if row.isReady, row.offersAutoApproval { permissions }
         } footer: {
@@ -414,19 +492,6 @@ private struct AgentSettingsDetail: View {
       AgentEnabledSwitch(model: model, row: row)
     }
     .padding(.vertical, 4)
-  }
-
-  @ViewBuilder
-  private var preferred: some View {
-    LabeledContent("Preferred agent") {
-      if model.defaultAgent == row.agent {
-        Text("New chats start here")
-          .foregroundStyle(.secondary)
-      } else {
-        Button("Make Preferred") { model.defaultAgent = row.agent }
-          .accessibilityIdentifier("boltty.settings.makePreferred.\(row.agent.rawValue)")
-      }
-    }
   }
 
   @ViewBuilder
@@ -528,23 +593,6 @@ private struct SettingsRowPressStyle: ButtonStyle {
     configuration.label
       .opacity(configuration.isPressed ? 0.55 : 1)
       .animation(configuration.isPressed ? nil : SettingsMotion.quick, value: configuration.isPressed)
-  }
-}
-
-private struct SettingsTag: View {
-  let text: String
-
-  init(_ text: String) {
-    self.text = text
-  }
-
-  var body: some View {
-    Text(text)
-      .font(BolttyInterfaceTypography.fixed(size: 11, weight: .medium))
-      .foregroundStyle(Color.bolttyOnAccent)
-      .padding(.horizontal, 6)
-      .padding(.vertical, 1.5)
-      .background(Capsule().fill(Color.bolttyAccent))
   }
 }
 
@@ -685,6 +733,12 @@ private struct UsageLimitCard: View {
   }
 }
 
+extension Color {
+  /// Plan meters and charts: a neutral ink, so the numbers carry no colour of
+  /// their own beside the faces.
+  static var usageInk: Color { .primary }
+}
+
 struct UsageMeter: View {
   let fraction: Double
   var height: CGFloat = 8
@@ -696,7 +750,7 @@ struct UsageMeter: View {
         Capsule().fill(Color.primary.opacity(0.08))
         if filled > 0 {
           Capsule()
-            .fill(Color.bolttyAccent)
+            .fill(Color.usageInk)
             .frame(width: max(filled, height))
         }
       }
@@ -718,7 +772,7 @@ private struct UsageHistoryChart: View {
           width: .ratio(0.62)
         )
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
-        .foregroundStyle(Color.bolttyAccent)
+        .foregroundStyle(Color.usageInk)
       }
       .chartYAxis {
         AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
@@ -796,6 +850,19 @@ struct VoiceSettingsPage: View {
 
   private var dictation: some View {
     Section {
+      LabeledContent {
+        SettingsStage {
+          DictationSample(
+            phrase: SampleText.spoken,
+            look: model.mascotLook(for: model.mascotRoster.restingAgent),
+            clearGlass: model.panelClearGlass)
+          .frame(width: DictationSampleView.size.width, height: DictationSampleView.size.height)
+        }
+        .padding(.vertical, 6)
+      } label: {
+        Text("As you speak")
+        Text("Words arrive as they are heard.")
+      }
       if model.localModels != nil {
         Picker("Engine", selection: Binding(
           get: { model.usesLocalDictation }, set: { model.chooseLocalDictation($0) }
@@ -1114,46 +1181,75 @@ struct VoicePicker: View {
   }
 }
 
+/// Each voice a colour field of its own, mixed from Boltty's gradients, the
+/// mascots' retired ones included: the faces' own gradients alone read as one
+/// pale family of ten circles.
 private struct VoiceSwatch: View {
   let id: String
 
-  private static let looks: [String: (palette: String, start: UnitPoint, end: UnitPoint)] = [
-    "F1": ("ember", .topLeading, .bottomTrailing),
-    "F2": ("candy", .top, .bottom),
-    "F3": ("citrus", .topLeading, .bottomTrailing),
-    "F4": ("daybreak", .top, .bottom),
-    "F5": ("slate", .topTrailing, .bottomLeading),
-    "M1": ("lagoon", .top, .bottom),
-    "M2": ("citrus", .bottomTrailing, .topLeading),
-    "M3": ("slate", .bottomLeading, .topTrailing),
-    "M4": ("daybreak", .bottomLeading, .topTrailing),
-    "M5": ("candy", .bottomTrailing, .topLeading),
+  private static let mixes: [String: (main: String, accent: String, turn: Double)] = [
+    "F1": ("sunset", "rose", 20),
+    "F2": ("candy", "ultraviolet", 140),
+    "F3": ("ember", "solar", 250),
+    "F4": ("cotton", "orchid", 60),
+    "F5": ("dusk", "electric", 300),
+    "M1": ("tide", "lagoon", 200),
+    "M2": ("fjord", "lime", 90),
+    "M3": ("aurora", "frost", 330),
+    "M4": ("abyss", "daybreak", 160),
+    "M5": ("slate", "sunset", 280),
   ]
 
-  private var gradient: LinearGradient {
-    let look = Self.looks[id] ?? ("ember", .top, .bottom)
-    let palette = MascotPalette.palette(withID: look.palette) ?? .standard
-    let stops = zip(palette.colors, palette.stopPlaces).map {
-      Gradient.Stop(color: Color(nsColor: $0), location: $1)
+  /// The stops worth seeing: the palest middle of a gradient is left out, and
+  /// what stays is deepened a little, since a small circle shows little light.
+  private static func inks(_ id: String) -> [Color] {
+    let palette = MascotPalette.palette(withID: id) ?? .standard
+    return palette.colors.compactMap { color -> Color? in
+      guard let rgb = color.usingColorSpace(.sRGB) else { return nil }
+      guard rgb.brightnessComponent < 0.985 || rgb.saturationComponent > 0.12 else { return nil }
+      return Color(nsColor: NSColor(
+        hue: rgb.hueComponent,
+        saturation: min(1, rgb.saturationComponent * 1.25 + 0.08),
+        brightness: rgb.brightnessComponent * 0.94,
+        alpha: 1))
     }
-    return LinearGradient(stops: stops, startPoint: look.start, endPoint: look.end)
   }
 
   var body: some View {
-    Circle().fill(gradient)
+    let mix = Self.mixes[id] ?? ("daybreak", "ember", 0)
+    let main = Self.inks(mix.main)
+    let accent = Self.inks(mix.accent)
+    let pick = { (inks: [Color], index: Int) in inks.isEmpty ? Color.gray : inks[index % inks.count] }
+    MeshGradient(
+      width: 3, height: 3,
+      points: [
+        [0, 0], [0.5, 0], [1, 0],
+        [0, 0.5], [0.58, 0.42], [1, 0.5],
+        [0, 1], [0.5, 1], [1, 1],
+      ],
+      colors: [
+        pick(main, 0), pick(main, 1), pick(accent, 0),
+        pick(main, 2), pick(accent, 1), pick(accent, 2),
+        pick(main, 4), pick(accent, 4), pick(main, 5),
+      ]
+    )
+    .rotationEffect(.degrees(mix.turn))
+    .scaleEffect(1.42)
+    .clipShape(Circle())
   }
 }
 
 struct ChoiceStrip<Choices: View>: View {
-  let title: String
+  /// `nil` where the section's header already names the choice.
+  let title: String?
   let identifier: String
   @ViewBuilder let choices: () -> Choices
 
-  private static var rowInset: CGFloat { 10 }
+  private static var rowInset: CGFloat { SettingsStageMetrics.rowInset }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(title)
+      if let title { Text(title) }
       ScrollView(.horizontal) {
         HStack(alignment: .top, spacing: 14) {
           choices()
@@ -1165,7 +1261,7 @@ struct ChoiceStrip<Choices: View>: View {
       .padding(.horizontal, -Self.rowInset)
       .accessibilityIdentifier(identifier)
     }
-    .padding(.vertical, 8)
+    .padding(.vertical, title == nil ? 0 : 8)
   }
 }
 
@@ -1240,38 +1336,17 @@ private struct RingedChoiceStyle: ButtonStyle {
 
 private struct PanelGlassChoice: View {
   @ObservedObject var model: BolttyAISettingsModel
-  @State private var wallpaper: DesktopPicture?
 
-  private static let width: CGFloat = 320
+  private static var width: CGFloat { SettingsStageMetrics.size.width }
 
   var body: some View {
     VStack(spacing: 12) {
-      ZStack {
-        Color.black.opacity(0.4)
-        if let wallpaper {
-          Image(decorative: wallpaper.image, scale: 1)
-            .resizable()
-            .interpolation(.high)
-            .aspectRatio(contentMode: .fill)
-            .frame(width: Self.width, height: 150)
-            .clipped()
-            .transition(.opacity)
-        }
-        PanelGlassSample(
+      SettingsStage {
+        PromptSample(
           clearGlass: model.panelClearGlass,
           look: model.mascotLook(for: model.mascotRoster.restingAgent)
         )
-        .frame(width: PanelGlassSampleView.size.width, height: PanelGlassSampleView.size.height)
-      }
-      .frame(width: Self.width, height: 150)
-      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-      .accessibilityHidden(true)
-      .task {
-        let sources = DesktopPicture.sources()
-        let found = await Task.detached(priority: .utility) {
-          DesktopPicture.load(from: sources, maxPixels: 960)
-        }.value
-        withAnimation(SettingsMotion.quick) { wallpaper = found }
+        .frame(width: PromptSampleView.size.width, height: PromptSampleView.size.height)
       }
 
       HStack(spacing: 10) {
@@ -1294,133 +1369,5 @@ private struct PanelGlassChoice: View {
       .frame(width: Self.width)
     }
     .padding(.vertical, 6)
-  }
-}
-
-private struct PanelGlassSample: NSViewRepresentable {
-  let clearGlass: Bool
-  let look: MascotLook
-
-  func makeNSView(context: Context) -> PanelGlassSampleView {
-    PanelGlassSampleView(look: look)
-  }
-
-  func updateNSView(_ view: PanelGlassSampleView, context: Context) {
-    view.show(clearGlass: clearGlass, look: look)
-  }
-}
-
-private final class PanelGlassSampleView: NSView {
-  static let size = CGSize(width: 264, height: 48)
-  private static let face: CGFloat = 26
-  private static let inset: CGFloat = 14
-
-  private let face: MascotNSView
-  private let host: PaletteGlassHost
-
-  init(look: MascotLook) {
-    face = MascotNSView(conversationID: UUID(), look: look)
-    face.reduceMotion = MotionPreferences.reduceMotion
-    let row = NSView()
-    let hint = NSTextField(labelWithString: "Describe a task or ask")
-    hint.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
-    hint.textColor = PaletteInk.secondary
-    hint.lineBreakMode = .byTruncatingTail
-    let glyphs = [BolttyIcon.folder, .mic].map { icon -> NSImageView in
-      let view = NSImageView(image: icon.image(size: AgentPaletteMetrics.iconSide(15)) ?? NSImage())
-      view.contentTintColor = PaletteInk.secondary
-      return view
-    }
-    for view in [face, hint] + glyphs {
-      view.translatesAutoresizingMaskIntoConstraints = false
-      row.addSubview(view)
-    }
-    host = PaletteGlassHost(content: row, cornerRadius: Self.size.height / 2, style: .bolttyAIPrompt)
-    super.init(frame: CGRect(origin: .zero, size: Self.size))
-    appearance = NSAppearance(named: .darkAqua)
-    addSubview(host)
-    NSLayoutConstraint.activate([
-      host.leadingAnchor.constraint(equalTo: leadingAnchor),
-      host.trailingAnchor.constraint(equalTo: trailingAnchor),
-      host.topAnchor.constraint(equalTo: topAnchor),
-      host.bottomAnchor.constraint(equalTo: bottomAnchor),
-      face.widthAnchor.constraint(equalToConstant: Self.face),
-      face.heightAnchor.constraint(equalToConstant: Self.face),
-      face.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Self.inset - 2),
-      face.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-      hint.leadingAnchor.constraint(equalTo: face.trailingAnchor, constant: 8),
-      hint.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-      hint.trailingAnchor.constraint(lessThanOrEqualTo: glyphs[0].leadingAnchor, constant: -8),
-      glyphs[0].trailingAnchor.constraint(equalTo: glyphs[1].leadingAnchor, constant: -10),
-      glyphs[0].centerYAnchor.constraint(equalTo: row.centerYAnchor),
-      glyphs[1].trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Self.inset - 2),
-      glyphs[1].centerYAnchor.constraint(equalTo: row.centerYAnchor),
-    ])
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-  override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-  func show(clearGlass: Bool, look: MascotLook) {
-    host.apply(surfaceStyle: .bolttyAIPrompt(clearGlass: clearGlass))
-    face.apply(look: look)
-  }
-}
-
-private struct DesktopPicture: @unchecked Sendable {
-  let image: CGImage
-
-  private static let fallback = URL(
-    fileURLWithPath: "/System/Library/Desktop Pictures/.thumbnails/Sonoma.heic")
-
-  @MainActor
-  static func sources() -> [URL] {
-    var urls: [URL] = []
-    if let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen) {
-      if url.pathExtension == "madesktop" {
-        urls += madesktopSources(url)
-      } else {
-        urls.append(url)
-      }
-    }
-    urls.append(fallback)
-    return urls
-  }
-
-  // A system wallpaper is a .madesktop stub: the picture is a mobile asset,
-  // downloaded only once chosen, beside a small thumbnail that always ships.
-  private static func madesktopSources(_ url: URL) -> [URL] {
-    guard
-      let data = try? Data(contentsOf: url),
-      let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
-    else { return [] }
-    var urls: [URL] = []
-    if let id = plist["mobileAssetID"] as? String,
-       let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-    {
-      urls.append(support.appendingPathComponent("com.apple.mobileAssetDesktop/\(id).heic"))
-    }
-    if let thumbnail = plist["thumbnailPath"] as? String {
-      urls.append(URL(fileURLWithPath: thumbnail))
-    }
-    return urls
-  }
-
-  static func load(from urls: [URL], maxPixels: CGFloat) -> DesktopPicture? {
-    let options: [CFString: Any] = [
-      kCGImageSourceCreateThumbnailFromImageAlways: true,
-      kCGImageSourceCreateThumbnailWithTransform: true,
-      kCGImageSourceThumbnailMaxPixelSize: maxPixels,
-    ]
-    for url in urls {
-      guard
-        let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-        let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
-      else { continue }
-      return DesktopPicture(image: image)
-    }
-    return nil
   }
 }

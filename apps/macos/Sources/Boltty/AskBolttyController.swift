@@ -33,7 +33,7 @@ final class AskBolttyController {
     overlay.onVisibleChange = { [weak self] in self?.syncEscapeKey() }
     overlay.restHint = { [weak self] in Self.restHint(launchKey: self?.launchKeyName?()) }
     session.onSpent = { [weak self] providerID, resetsAt in
-      self?.spentUntil[providerID] = resetsAt ?? Date().addingTimeInterval(Self.spentWithoutReset)
+      self?.coordinator.markSpent(providerID, until: resetsAt)
     }
     session.findPlace = { [weak self] spot in
       guard let self, settings().attachesFinderSelection else { return nil }
@@ -158,30 +158,24 @@ final class AskBolttyController {
         else { return nil }
         return agent.rawValue
       }
-    let ranked = AskBolttyConfiguration.ranked(
-      settings: current, candidates: candidates, chosen: agent?.rawValue)
+    let asked = agent?.rawValue ?? current.askBolttyProviderID
+    let byPlan = asked == nil && current.routesAutomatically
+    let ranked = byPlan
+      ? coordinator.routingOrder(among: candidates)
+      : AskBolttyConfiguration.ranked(settings: current, candidates: candidates, chosen: agent?.rawValue)
     let spent = ranked.filter(isSpent)
     return (ranked.filter { !spent.contains($0) } + spent).map {
       AskBolttyConfiguration.target(for: $0, settings: current, models: engine.modelsByProvider)
     }
   }
 
-  private var spentUntil: [String: Date] = [:]
-  static let spentWithoutReset: TimeInterval = 15 * 60
-
-  private func isSpent(_ providerID: String) -> Bool {
-    let now = Date()
-    if let until = spentUntil[providerID] {
-      if until > now { return true }
-      spentUntil[providerID] = nil
-    }
-    return AskBolttyConfiguration.isSpent(coordinator.engine.usageByProvider[providerID], now: now)
-  }
+  private func isSpent(_ providerID: String) -> Bool { coordinator.isSpent(providerID) }
 
   /// Said beside the face when the agent that would have answered is skipped.
   private func skipNote(wanted: AgentId?, answering: String?) -> String? {
     let current = settings()
-    let first = wanted?.rawValue ?? current.askBolttyProviderID ?? current.agentPreset?.rawValue
+    let first = wanted?.rawValue ?? current.askBolttyProviderID
+      ?? (current.routesAutomatically ? nil : current.agentPreset?.rawValue)
     guard let first, let answering, first != answering, isSpent(first),
           let skipped = AgentId(rawValue: first), let next = AgentId(rawValue: answering)
     else { return nil }

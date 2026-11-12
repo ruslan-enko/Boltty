@@ -21,6 +21,7 @@ final class ChatWorkspaceCoordinator {
 
   var isProviderEnabled: (String) -> Bool = { _ in true }
   var preferredProviderID: () -> String? = { nil }
+  var routesAutomatically: () -> Bool = { false }
   var defaultModelID: (String) -> String? = { _ in nil }
   var defaultEffortID: (String) -> String? = { _ in nil }
   var defaultAutoApprove: (String) -> Bool = { _ in false }
@@ -55,16 +56,24 @@ final class ChatWorkspaceCoordinator {
   // MARK: - Limits under the menu-bar mark
 
   func usageGlanceRows() -> [UsageGlanceRow] {
-    listedProviderIDs().compactMap(AgentId.init(rawValue:)).map { agent in
-      if engine.registry.installation(for: agent)?.availability.isSignedOut == true {
-        return UsageGlanceRow(agent: agent, content: .signedOut(command: agent.signInCommand ?? agent.program))
-      }
-      if let usage = engine.usageByProvider[agent.rawValue], !usage.windows.isEmpty || !usage.notes.isEmpty {
-        return UsageGlanceRow(agent: agent, content: .limits(usage))
-      }
-      let reports = engine.registry.capabilities(forProviderID: agent.rawValue).contains(.usageLimits)
-      return UsageGlanceRow(agent: agent, content: reports ? .waiting : .noPlanLimit)
+    let listed = listedProviderIDs().compactMap(AgentId.init(rawValue:))
+    let next = routesAutomatically() && listed.count > 1 ? routingOrder().first : nil
+    return listed.map { agent in
+      var row = usageGlanceRow(for: agent)
+      row.takesNextChat = agent.rawValue == next
+      return row
     }
+  }
+
+  private func usageGlanceRow(for agent: AgentId) -> UsageGlanceRow {
+    if engine.registry.installation(for: agent)?.availability.isSignedOut == true {
+      return UsageGlanceRow(agent: agent, content: .signedOut(command: agent.signInCommand ?? agent.program))
+    }
+    if let usage = engine.usageByProvider[agent.rawValue], !usage.windows.isEmpty || !usage.notes.isEmpty {
+      return UsageGlanceRow(agent: agent, content: .limits(usage))
+    }
+    let reports = engine.registry.capabilities(forProviderID: agent.rawValue).contains(.usageLimits)
+    return UsageGlanceRow(agent: agent, content: reports ? .waiting : .noPlanLimit)
   }
 
   func refreshUsageForGlance() async {
@@ -112,6 +121,7 @@ final class ChatWorkspaceCoordinator {
   }
 
   func automaticProviderID() -> String? {
+    if routesAutomatically() { return routingOrder().first }
     let readyEnabled = engine.registry.ready.filter {
       isProviderEnabled($0.provider.rawValue)
     }
@@ -122,6 +132,114 @@ final class ChatWorkspaceCoordinator {
       return preferred
     }
     return readyEnabled.first?.provider.rawValue
+  }
+
+  // MARK: - Routing by what is left of each plan
+
+  private var spentUntil: [String: Date] = [:]
+  static let spentWithoutReset: TimeInterval = 15 * 60
+
+  /// An agent that hit its limit here counts as spent until it comes back,
+  /// whatever the last usage read said.
+  func markSpent(_ providerID: String, until reset: Date?, now: Date = Date()) {
+    spentUntil[providerID] = reset.flatMap { $0 > now ? $0 : nil }
+      ?? now.addingTimeInterval(Self.spentWithoutReset)
+  }
+
+  func isSpent(_ providerID: String, now: Date = Date()) -> Bool {
+    AgentRouting.standing(
+      of: providerID, usage: engine.usageByProvider[providerID],
+      spentUntil: spentUntil[providerID], now: now
+    ).isSpent
+  }
+
+  func routingOrder(forPictures: Bool = false, among agents: [String]? = nil) -> [String] {
+    var candidates = agents ?? launchableProviderIDs()
+    if forPictures {
+      let seeing = candidates.filter {
+        AskBolttyConfiguration.canAnswer(engine.registry.capabilities(forProviderID: $0))
+      }
+      if !seeing.isEmpty { candidates = seeing }
+    }
+    return AgentRouting.ranked(
+      candidates: candidates,
+      usage: engine.usageByProvider,
+      spentUntil: spentUntil,
+      sticky: store.orderedConversations.first { !$0.isAskBoltty }?.providerID,
+      preferred: preferredProviderID())
+  }
+
+  // MARK: - Handing a failed first turn over
+
+  private struct AutomaticSend {
+    var prompt: String
+    var pictures: [ConversationAttachment]
+    var tried: [String]
+  }
+
+  private var automaticSends: [UUID: AutomaticSend] = [:]
+  private(set) var handOvers: [UUID: AgentHandOver] = [:]
+
+  /// A chat nobody chose the agent for, whose first turn failed before the agent
+  /// said or did anything, goes to the next agent, each tried once.
+  @discardableResult
+  private func handOverIfDue(_ id: UUID) -> Bool {
+    guard let send = automaticSends[id], let conversation = store.conversation(id: id) else { return false }
+    guard pendingPanelPrompts[id] == nil, !store.isReadOnly else { return false }
+    let state = conversation.lastKnownState
+    let neverSent = failedPanelPrompts[id] != nil && !state.blocksSending
+    guard state == .failed || state == .rateLimited || neverSent else { return false }
+    let messages = store.transcript(id: id).messages
+    let answered = messages.contains { message in
+      message.role == .agent && message.parts.contains { part in
+        if case .reasoning = part { false } else { true }
+      }
+    }
+    let failure = messages.last { $0.failure != nil }?.failure
+    guard !answered, failure?.isAbort != true else {
+      automaticSends[id] = nil
+      return false
+    }
+    let reason: AgentHandOver.Reason
+    if let hit = failure?.rateLimit {
+      reason = .spent
+      markSpent(conversation.providerID, until: hit.resetsAt)
+    } else if state == .rateLimited {
+      reason = .spent
+      markSpent(conversation.providerID, until: nil)
+    } else if failure.map(AgentFailureReport.saysModelIsGone) == true {
+      reason = .modelGone
+    } else {
+      reason = .failed
+    }
+    let next = routingOrder(forPictures: !send.pictures.isEmpty)
+      .first { !send.tried.contains($0) && !isSpent($0) }
+    guard let next, let from = AgentId(rawValue: conversation.providerID),
+          let to = AgentId(rawValue: next)
+    else {
+      automaticSends[id] = nil
+      return false
+    }
+    automaticSends[id]?.tried.append(next)
+    handOvers[id] = AgentHandOver(from: from, to: to, reason: reason)
+    let start = newChatSettings(for: next)
+    engine.handOver(
+      conversationID: id, to: next, model: start.model, effort: start.effort,
+      autoApprove: start.autoApprove)
+    previousStates[id] = .idle
+    sendPanelPrompt(send.prompt, pictures: send.pictures, to: id)
+    return true
+  }
+
+  private func newChatSettings(
+    for provider: String
+  ) -> (model: ModelSelection?, effort: String?, autoApprove: Bool) {
+    var model = resolvedDefaultModel(for: provider)
+    let effort = resolvedDefaultEffort(for: provider, model: model)
+    if model == nil, effort != nil { model = modelOption(for: provider, model: nil)?.selection }
+    let autoApprove = engine.registry.capabilities(forProviderID: provider).contains(.autoApproval)
+      && defaultAutoApprove(provider)
+    return (model, effort, autoApprove)
   }
 
   // MARK: - Ask Boltty
@@ -182,22 +300,23 @@ final class ChatWorkspaceCoordinator {
     id: UUID = UUID(),
     providerID: String? = nil,
     workingDirectory: String? = nil,
-    pictures: [ConversationAttachment] = []
+    pictures: [ConversationAttachment] = [],
+    handsOver: Bool = false
   ) -> Conversation {
     let provider = providerID ?? defaultProviderID()
-    var model = resolvedDefaultModel(for: provider)
-    let effort = resolvedDefaultEffort(for: provider, model: model)
-    if model == nil, effort != nil { model = modelOption(for: provider, model: nil)?.selection }
+    let start = newChatSettings(for: provider)
     let conversation = store.createConversation(
       id: id,
       title: ConversationEngine.title(from: prompt),
       workingDirectory: workingDirectory ?? store.defaultWorkingDirectory(),
       providerID: provider,
-      model: model,
-      reasoningEffort: effort,
-      autoApprove: engine.registry.capabilities(forProviderID: provider).contains(.autoApproval)
-        && defaultAutoApprove(provider)
+      model: start.model,
+      reasoningEffort: start.effort,
+      autoApprove: start.autoApprove
     )
+    if handsOver {
+      automaticSends[conversation.id] = AutomaticSend(prompt: prompt, pictures: pictures, tried: [provider])
+    }
     sendPanelPrompt(prompt, pictures: pictures, to: conversation.id)
     return conversation
   }
@@ -209,6 +328,8 @@ final class ChatWorkspaceCoordinator {
           !conversation.lastKnownState.blocksSending,
           pendingPanelPrompts[conversationID] == nil
     else { return false }
+    automaticSends[conversationID] = nil
+    handOvers[conversationID] = nil
     sendPanelPrompt(prompt, pictures: pictures, to: conversationID)
     return true
   }
@@ -321,12 +442,17 @@ final class ChatWorkspaceCoordinator {
       let sent = await engine.send(text: prompt, attachments: pictures, in: id)
       guard let self, !Task.isCancelled else { return }
       if !sent { self.failedPanelPrompts[id] = prompt }
+      if self.automaticSends[id] != nil {
+        // After this task has let go of the chat: the hand-over sends again.
+        Task { @MainActor [weak self] in self?.handOverIfDue(id) }
+      }
     }
   }
 
   @discardableResult
   func abandonPanelSend(for id: UUID) -> Bool {
     guard let task = panelSendTasks[id] else { return false }
+    automaticSends[id] = nil
     failedPanelPrompts[id] = pendingPanelPrompts[id]?.text
     task.cancel()
     panelSendTasks[id] = nil
@@ -397,14 +523,22 @@ final class ChatWorkspaceCoordinator {
         guard old.blocksSending else { continue }
         status = "Done"
         kind = .finished
+        automaticSends[conversation.id] = nil
         if !conversation.isAskBoltty { onTurnFinished?(conversation) }
       case .waiting:
+        automaticSends[conversation.id] = nil
         let transcript = store.transcript(id: conversation.id)
         status = SystemAttentionNotification.needsWords(
           for: (transcript.openInteraction ?? transcript.interactions.last)?.kind)
-      case .failed: status = "Didn't finish"
-      case .interrupted: continue
-      case .rateLimited: status = "Rate limited"
+      case .failed:
+        if handOverIfDue(conversation.id) { continue }
+        status = "Didn't finish"
+      case .interrupted:
+        automaticSends[conversation.id] = nil
+        continue
+      case .rateLimited:
+        if handOverIfDue(conversation.id) { continue }
+        status = "Rate limited"
       }
       guard store.selectedConversationID != conversation.id, !conversation.isAskBoltty else { continue }
       let agent = AgentId(rawValue: conversation.providerID)?.shortDisplayName
@@ -417,6 +551,8 @@ final class ChatWorkspaceCoordinator {
     }
     let ids = Set(conversations.map(\.id))
     previousStates = previousStates.filter { ids.contains($0.key) }
+    automaticSends = automaticSends.filter { ids.contains($0.key) }
+    handOvers = handOvers.filter { ids.contains($0.key) }
   }
 
   func spokenReply(of id: UUID) -> (messageID: String, text: String)? {

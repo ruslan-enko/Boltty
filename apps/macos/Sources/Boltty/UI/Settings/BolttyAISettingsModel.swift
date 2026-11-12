@@ -216,6 +216,47 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.agentPreset = newValue } }
   }
 
+  // MARK: - Who takes a new chat
+
+  var routesAutomatically: Bool { appModel.settings.routesAutomatically }
+
+  /// `nil` is automatic: whoever has the most of their plan left.
+  func sendNewChats(to agent: AgentId?) {
+    appModel.updateSettings { settings in
+      settings.routesAutomatically = agent == nil
+      if let agent { settings.agentPreset = agent }
+    }
+  }
+
+  private var routableAgents: [AgentId] {
+    let ready = Set(engine.registry.ready.map(\.provider))
+    return enabledAdapters.filter(ready.contains)
+  }
+
+  /// Ready, enabled agents in the order a new chat would try them.
+  var routingStandings: [AgentRouting.Standing] {
+    let candidates = routableAgents.map(\.rawValue)
+    let usage = engine.usageByProvider
+    return AgentRouting.ranked(
+      candidates: candidates,
+      usage: usage,
+      sticky: engine.store.orderedConversations.first { !$0.isAskBoltty }?.providerID,
+      preferred: defaultAgent.rawValue
+    ).map { AgentRouting.standing(of: $0, usage: usage[$0]) }
+  }
+
+  var nextChatAgent: AgentId? {
+    if routesAutomatically {
+      return routingStandings.first.flatMap { AgentId(rawValue: $0.providerID) }
+    }
+    let ready = routableAgents
+    return ready.contains(defaultAgent) ? defaultAgent : ready.first
+  }
+
+  func refreshRouting() async {
+    await engine.refreshUsage()
+  }
+
   var enabledAdapters: [AgentId] {
     AgentHistory.tabOrder.filter { appModel.settings.isProviderEnabled($0.rawValue) }
   }

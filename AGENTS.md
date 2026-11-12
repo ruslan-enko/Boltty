@@ -92,7 +92,8 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Chat backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
-| Settings | `UI/Settings/` |
+| Who takes a new chat | `Models/AgentRouting.swift` (`AgentRouting`, `AgentHandOver`), `ChatWorkspaceCoordinator.routingOrder` / `handOverIfDue` |
+| Settings | `UI/Settings/`; what a setting changes, shown live: `UI/Settings/SettingsStage.swift` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyDrawingLayer.swift`; the region is the panel's (`AgentPaletteController.beginScreenAsk`) |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
@@ -104,6 +105,30 @@ chat asks for; `settingsInForce` is what its session was last told. Before every
 that differ (always, the first time after a relaunch) and
 `AgentClient.prepareSession` closes the gap, never during a turn. A refusal keeps the
 words in the composer and says why. Declared as `.modelSwitching`.
+
+**Who takes a new chat.** Nobody chosen with ⇧Tab, a new chat goes to the ready,
+enabled agent with the most of its plan left (`AgentRouting.ranked`,
+`boltty.agentRouting` = `automatic`, the default; `fixed` is always
+`boltty.agentPreset`). Plans are in different units, so only the percentage used
+and the time it comes back are compared, never summed: the most pressing live
+window counts, at half if it is back within the hour. Within 15 points the agent
+that answered last keeps the chats, then the person's own agent, so the choice
+does not jump about; an agent that reports no percentage comes after those that
+do, a spent one last (soonest back first). A request with pictures goes only
+among agents that take them. The first screen wears the face of who would get
+it, and ⇧Tab still fixes one agent for one chat.
+**A first turn that fails before the agent says or does anything is handed
+over** (`ChatWorkspaceCoordinator.handOverIfDue`): the same words and files go
+to the next agent in that order, each once, in the same chat — its dead session
+is released, its transcript cleared, its name and sent files kept
+(`ConversationEngine.handOver`, `ConversationStore.moveToProvider`). One line
+under the composer says who and why ("Claude Code's limit is used up · Codex
+answers", `AgentHandOver`, the preview's `handOverNote`). Only on the automatic
+route: an agent chosen with ⇧Tab, or by `fixed`, fails as it did. A Stop is not
+a failure, and a second message fixes the agent for good. An agent that hit its
+limit here counts as spent until the reset, else 15 minutes (`markSpent`), for
+the panel and Ask Boltty alike. A limit met in the middle of a chat is not
+handed over: the session is the agent's.
 
 **A provider is added behind `AgentClient` or not at all**: an adapter, and one
 line in `AgentRegistry.live()`. The store, engine, panel and Settings speak that
@@ -117,7 +142,7 @@ no adapter; never offer a toggle for them.
 | Stack | Swift, AppKit; SwiftUI only in `UI/Settings/`. No web view, no embedded terminal |
 | Platform | macOS 26.0+, hardened runtime in Release. Universal DMG on GitHub releases, GPL-3.0-or-later. Not the App Store (private API, no sandbox) |
 | Return in the panel | Starts a conversation **in the background**: no window raised, no `NSApp.activate`. An empty Return starts nothing and plays the system alert |
-| Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing (the preferred agent). Fixed once the conversation has a session. A chosen agent that stops being ready is refused out loud, never swapped |
+| Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing: the agent with the most of its plan left (*Who takes a new chat*), or always one agent when Settings › Agents says so. Fixed once the conversation has a session. An agent the person chose that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon |
 | Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip until the session exists, then fixed |
 | Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
@@ -626,7 +651,10 @@ The loop that must keep working:
 
 ### The transcript
 
-- The question is a white bubble with black text; the answer is prose on the
+- The question is a white bubble with black text and a tail at its foot, as
+  Messages draws one (`MessageTailView`: the side runs straight down and flares
+  into a point on the baseline; that corner is square, the tip stands where the
+  bubble's edge did); the answer is prose on the
   glass, Codex's proportions (headings 1.5/1.25/1.125×, line 24 on 15). A
   turn's last answer always has Copy and, where it can be read, the speaker
   under it; a question's row shows under the pointer.
@@ -731,7 +759,7 @@ The loop that must keep working:
   switched on. All wears the faces of enabled agents, arranged like die pips.
 - **Nothing offers a choice with nothing to choose among.** With one agent there is
   no All, no agent menu on Usage, no ⇧Tab or ←/→ in Settings › Shortcuts and none
-  suggested when it is not ready, no Preferred in Settings › Agents, and the first
+  suggested when it is not ready, no New Chats strip in Settings › Agents, and the first
   run's list and its walk do the same. Any number from two to five is All and that
   many tabs, sharing the strip.
 - Only the chosen tab's face is alive; the live face wakes out of, and returns
@@ -976,11 +1004,12 @@ heard.
   sentences. Claude
   Code's read-only tools include WebSearch and WebFetch, let through without
   asking (`readOnlyAllowedTools`): "find where this news is" needs a search.
-- Who answers: the chosen agent and model if ready, else the preferred agent in
-  its default model, else the first ready agent that takes pictures. **A used-up
+- Who answers: the chosen agent and model if ready; with none chosen
+  ("Automatic", first on the strip and the default), whoever a new chat would go
+  to among agents that take pictures, in its default model. **A used-up
   plan does not refuse a question**: unlike the panel, Ask Boltty passes over an
-  agent, chosen or not (`AskBolttyConfiguration.ranked`, then
-  `AskBolttyController.targets`), whose plan window is exhausted or that hit its
+  agent, chosen or not (`AskBolttyController.targets`, in `AgentRouting`'s order or
+  `AskBolttyConfiguration.ranked`'s), whose plan window is exhausted or that hit its
   limit here (until the reset, else 15 minutes), and says so beside the face
   ("Claude Code's limit is used up · Codex answers"). A turn that fails before
   any word — a limit, a model gone, any failure — gives the same question to the
@@ -988,7 +1017,7 @@ heard.
   says why, with the reset time for a limit. Spent agents are tried last, not
   never, since the usage read may be stale. No model is
   hunted for by name: an "Automatic" that meant Claude Code on Haiku was tried and
-  removed. Chosen in Settings › Ask Boltty as a strip of bare faces, no circle or
+  removed; today's Automatic names no agent and no model. Chosen in Settings › Ask Boltty as a strip of bare faces, no circle or
   ring, the chosen one told by its name in the accent's ink
   (`AskBolttyAgentPicker`, on `RingedChoice` with `isRinged` off); "Can make
   changes" is the one switch for access. Always at the model's lowest
@@ -1021,16 +1050,25 @@ heard.
   Settings…, re-read every 1.5 s. Allow All asks in order, Screen Recording
   last. Permission callbacks are never main-actor isolated (TCC calls them on
   its own queue).
-- **First run**: a show over a sunset (`SunsetView`, `ShowSpace` maps 1800 × 1169
-  slides to the screen; one face carried through every scene; its own clock,
-  `ShowClock`). Its beats, each with a caption: the panel under the notch,
-  ⇧Tab walking the agents, a question answered in a chat whose composer has
-  its model and Send; ↓ to the chat list and its agent's tab; Ask Boltty in an app
-  as one movement (the panel, a dragged region, the orb on its corner with
-  the words out of a blur, the face to the pointer and on to what it names,
-  drawing a loop and an arrow on the app itself); Settings (a face, a backdrop's round window, Usage, Voice). A
-  feature's real gesture changing means this script changes with it. Only the
-  shell's glass casts shadows, so it stands in front of the made-up apps. Then the setup card (agents, faces, keys, voice,
+- **First run**: a show over a sky (`SunsetView` wearing a chat's Sky backdrop
+  in Daybreak, at the screen's size; the written gradient is what README's shots
+  stand on; `ShowSpace` maps 1800 × 1169 slides to the screen; its own clock,
+  `ShowClock`). One face is carried through every scene, and it is Boltty's
+  own, the hexagon in Daybreak (`hero`): the one place Boltty has a face, since
+  no agent has been chosen yet. Its beats, each with a caption: the pile (that
+  face among the agents'), the panel under the notch, ⇧Tab walking the agents
+  and back to "Ask anything", a question answered in a chat whose composer has
+  its model and Send; ↓ to the chat list and its agent's tab, where the face is
+  that agent's; Ask Boltty in an app as one movement (the panel, a dragged
+  region, the orb on its corner with the words out of a blur, the face to the
+  pointer and on to what it names, drawing a loop and an arrow on the app
+  itself). A walk through Settings (a face, a backdrop, Usage, Voice) was there
+  and was removed. A feature's real gesture changing means this script changes
+  with it. The show's panel is the panel's glass (`ShowGlass` with `panel`:
+  clear glass under the black ramp) with no shadow: a light frosted glass with
+  a shadow was refused, and on the sky the panel's own shadows read as a thick
+  black border. The pile comes with no flash of light. Taps, hums and each scene's run are
+  heard; a whoosh on every move was removed. Then the setup card (agents, faces, keys, voice,
   permissions) on the panel's glass. The voice step offers Parakeet and
   Supertonic, both unticked; a ticked one is chosen and downloaded in the
   background once setup ends (`installSetupVoices`), Apple's engine standing
@@ -1043,7 +1081,8 @@ heard.
   (`UsageGlanceController`, rows from `ChatWorkspaceCoordinator.usageGlanceRows`):
   each listed agent's face and plan windows on frosted panel glass (clear let the
   window behind read through), read again as it opens; a click outside or Escape
-  closes it. Its foot has Settings › Usage and More, which is the old menu; a right
+  closes it. On the automatic route the agent a new chat would go to now says
+  "Next chat" beside its name. Its foot has Settings › Usage and More, which is the old menu; a right
   or Control-click on the mark opens that menu at once.
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
   Shortcuts), standard parts but for what is selected: the sidebar's rows and
@@ -1054,21 +1093,38 @@ heard.
   `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The window
   is sized after its view controller is set; the sidebar width modifier is last on
   its column.
+- **A setting that changes what is seen shows it** (`SettingsStage`): the thing
+  itself, a real view of the product in an `NSViewRepresentable`, over the
+  person's own desktop (`DesktopPicture`, read once), 320 × 150 at the row's
+  right, changing as the control does: built of the parts the product draws
+  with (its glass host, faces, backdrop renderer, attachment card, listening
+  words), never a picture of them. Panel glass, Finder's selection
+  (`FinderSelectionSample`), a chat's backdrop over its round windows
+  (`ChatBackdropSample`, at three quarters), dictation's words in the chosen
+  languages (`DictationSample`) and Ask Boltty's answer beside the face
+  (`AskAnswerSample`) have one. A switch of behaviour with nothing to see has
+  none; New Chats and an agent's model had one and lost it.
 - **App icon**: one, `AppIcon.icon` (Icon Composer); `.github/icon.png` is it
   rendered with Xcode's `ictool`. A choice of four was tried and removed: macOS has
   no alternate icons, so it only ever showed while a Boltty window was open.
   `boltty.appIcon` is a retired key, inert on disk.
-- **Settings › Agents** is a list, one row per agent: face, name, a "Preferred"
-  tag, one line of what a new chat would use (or why it can't), its switch.
+- **Settings › Agents** opens on **New Chats** (two agents or more): a strip of
+  bare faces, Automatic first (the enabled agents' faces as die pips,
+  `FaceCluster`) then each enabled agent (`NewChatsPicker`), and under it a line
+  saying who takes the next chat. A picture of the first screen and of each
+  agent's plan under the strip was tried and removed: the strip says it. A
+  "Preferred" tag with a Make Preferred button on each agent's page was there
+  before: to change it one had to open an agent. Then the list, one row per agent: face, name,
+  one line of what a new chat would use (or why it can't), its switch.
   A row opens the agent's own page (`SettingsLocation`, in the back/forward
-  history; only the page is stored): the agent and its switch, Make
-  Preferred, model, reasoning, permissions with the Auto Mode note once, and
+  history; only the page is stored): the agent and its switch,
+  model, reasoning, permissions with the Auto Mode note once, and
   the face's shape, gradient and finish as rows. Never expand every agent on
   the list again. `-boltty.settings.agent claude` opens an agent's page.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar
-  and the activity chart flat in Boltty's accent,
-  never the face's gradient), 14 days of activity, and an overview counted
+  and the activity chart flat in black (the label ink, `Color.usageInk`): in the
+  accent they were the loudest thing on the page and the faces were lost; the overview's grid of days keeps the accent), 14 days of activity, and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`). Never summed across
   agents' different units. Signing in happens in a terminal, so the page asks
@@ -1134,7 +1190,9 @@ heard.
   downloaded with it). Measurements and the plan: `.scratch/local-voice/`.
 - **Supertonic** (`SupertonicSpeaker`, Settings › Voice › Voice, stored as
   `boltty.speech.localVoice` = a preset `F1`…`M5`, default `M3`; chosen on a
-  sideways strip of plain circles in the mascots' gradients, no faces (faces
+  sideways strip of plain circles, each a mesh of two of Boltty's gradients
+  (retired ones too), deepened, no faces (the faces' gradients alone read as
+  one pale family; faces
   were tried and refused; `VoiceSwatch`, `VoicePicker`): a press chooses and
   plays, a press on the chosen one plays again): once
   downloaded it reads every language it speaks, and nothing else is said.
@@ -1175,7 +1233,8 @@ heard.
   stored ids of Mist and Lilac. Retired ids still load.
 - **Every agent wears its own face**, chosen on its page in Settings › Agents; no two alike
   (`MascotRoster`). Stored as names in `boltty.mascotByProvider`. Where no agent
-  speaks, the preferred agent's face is used; Boltty has no face of its own.
+  speaks, the preferred agent's face is used; Boltty has no face of its own,
+  but in the first-run show (the hexagon in Daybreak).
 - One `MTKView` per face, one shared pipeline, drawn on demand from the shared
   60 Hz `MascotClock` timer (a display link measured worse). `currentDrawable`
   only inside `draw(in:)`. Nothing on the canvas may force an offscreen pass (no
@@ -1203,9 +1262,10 @@ heard.
   (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
   was removed; a stored `matrix` reads as Standard. Standard is every
   agent's default, and nothing stores another for the person. The Settings
-  picker is round windows only (`RingedChoice`), with no face in them: the
-  chosen one moves under a ringed edge, the others are stills. There is no
-  mock-chat preview. Over the glass, under the
+  picker is round windows of 42 pt (`RingedChoice`), with no face in them: the
+  chosen one moves under a ringed edge, the others are stills. Over them a
+  chat at three quarters size wears the chosen backdrop over the person's desktop
+  (`ChatBackdropSample`): the backdrop's own renderer, not a mock-up. Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky
   (`AgentBackdropSky`: zenith, horizon, cloud light, cloud shade, middle,
   glow), the feeling of the face's colour rather than a wall of it: a soft
@@ -1299,7 +1359,10 @@ heard.
   (it stands on any screen), and `RingedChoice`'s ring.
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
-  concentric (`outer = inner + inset`). The composer's content stands 16 from
+  concentric (`outer = inner + inset`), in Settings too: a stage that fills its
+  section stands an even `sectionGap` from every edge with the section's corner
+  less that (`SettingsStageMetrics`; the section's 11 and the row inset's 10
+  were read off macOS 26). The composer's content stands 16 from
   its rim, measured to the ink.
 - **Motion**: `Motion.quick`, `.standard`, `emphasizedCurve`, `standardCurve`,
   `pressSpring`; springs as duration + bounce. The panel appears at once. A

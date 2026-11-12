@@ -609,6 +609,24 @@ final class ConversationEngine: ObservableObject {
     return delivered
   }
 
+  func handOver(
+    conversationID: UUID, to providerID: String, model: ModelSelection?, effort: String?,
+    autoApprove: Bool
+  ) {
+    guard let conversation = store.conversation(id: conversationID) else { return }
+    notices[conversationID] = nil
+    contextByConversation[conversationID] = nil
+    processesToRestart.remove(conversationID)
+    store.moveToProvider(
+      providerID, model: model, effort: effort, autoApprove: autoApprove, for: conversationID)
+    guard let remote = conversation.remoteSessionID,
+          let client = registry.client(forProviderID: conversation.providerID)
+    else { return }
+    attached.remove(remote)
+    settingsInForce[remote] = nil
+    Task { await client.release(sessionID: remote) }
+  }
+
   func keepAskBolttyChat(id: UUID) {
     guard let conversation = store.conversation(id: id), conversation.isAskBoltty else { return }
     store.keepAskBolttyChat(id: id)

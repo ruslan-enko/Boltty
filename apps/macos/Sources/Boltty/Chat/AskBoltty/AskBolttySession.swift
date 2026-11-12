@@ -64,14 +64,10 @@ final class AskBolttySession: ObservableObject {
   var findPlace: (@MainActor (FinderSpot) async -> FinderPlace?)?
   var onSpent: ((String, Date?) -> Void)?
 
-  enum HandOverReason { case spent, modelGone, failed }
+  typealias HandOverReason = AgentHandOver.Reason
 
   static func handOverNote(skipped: String, why: HandOverReason, next: String) -> String {
-    switch why {
-    case .spent: "\(skipped)'s limit is used up · \(next) answers"
-    case .modelGone: "\(skipped)'s model is gone · \(next) answers"
-    case .failed: "\(skipped) could not answer · \(next) answers"
-    }
+    AgentHandOver.sentence(skipped: skipped, why: why, next: next)
   }
 
   init(

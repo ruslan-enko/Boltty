@@ -112,6 +112,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       coordinator.preferredProviderID = { [weak appModel] in
         appModel?.settings.agentPreset?.rawValue
       }
+      coordinator.routesAutomatically = { [weak appModel] in
+        appModel?.settings.routesAutomatically ?? true
+      }
       coordinator.defaultModelID = { [weak appModel] id in
         appModel?.settings.defaultModelByProvider[id]
       }

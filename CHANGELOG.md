@@ -2,6 +2,31 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.8.0
+
+**Agents**
+- A new chat goes to the agent with the most of its plan left, unless you pick one
+  with ⇧Tab. Settings › Agents › New Chats chooses between that and always one
+  agent, and shows who takes the next chat.
+- A first request an agent could not take, because its limit is used up, its model
+  is gone or it failed before saying anything, goes to the next agent in the same
+  chat, with a line saying who answers and why.
+- Limits says which agent the next chat goes to.
+- Ask Boltty has Automatic too: a question goes where a new chat would.
+
+**First run**
+- The introduction plays over a moving sky, on the panel's own dark glass, led
+  by Boltty's own face. It ends after Ask Boltty: the walk through Settings is
+  gone, and so is the whoosh on every move.
+- Your messages are bubbles with a tail, as in Messages.
+
+**Settings**
+- Settings that change what you see show it, over your own desktop: a chat's
+  backdrop, Finder's selection in the prompt, dictation's words in your
+  languages, and Ask Boltty's answer beside the face.
+- Plan meters and each agent's activity chart in Usage are black, no longer yellow.
+- Each voice has a livelier colour of its own.
+
 ## 0.7.0
 
 **Chats**

@@ -1463,6 +1463,7 @@ final class BolttyAIPreviewCard: NSView {
 
 final class PaletteChatMessageView: NSView {
   private let bubble = NSView()
+  private let tail = MessageTailView()
   private let bodyStack = NSStackView()
   private var textViews: [NSTextField] = []
   private var answerViews: [PaletteAnswerTextView] = []
@@ -1575,7 +1576,16 @@ final class PaletteChatMessageView: NSView {
     bubble.layer?.backgroundColor = user
       ? AgentPaletteMetrics.previewUserBubbleFill.cgColor
       : NSColor.clear.cgColor
-    if user { bubble.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewUserBubbleCornerRadius) }
+    if user {
+      bubble.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewUserBubbleCornerRadius)
+      bubble.layer?.maskedCorners = MessageTailView.roundedCorners
+      tail.fill = AgentPaletteMetrics.previewUserBubbleFill
+      addSubview(tail)
+      NSLayoutConstraint.activate([
+        tail.leadingAnchor.constraint(equalTo: bubble.trailingAnchor),
+        tail.bottomAnchor.constraint(equalTo: bubble.bottomAnchor),
+      ])
+    }
     bubble.layer?.masksToBounds = user
     let side = user ? AgentPaletteMetrics.previewUserBubbleHorizontalPadding : 0
     let top = user ? AgentPaletteMetrics.previewUserBubbleVerticalPadding : 0
@@ -1591,7 +1601,9 @@ final class PaletteChatMessageView: NSView {
       bubbleTop,
       bubbleBottom,
       userMaxWidth ?? bubble.widthAnchor.constraint(equalTo: widthAnchor),
-      user ? bubble.trailingAnchor.constraint(equalTo: trailingAnchor) : bubble.leadingAnchor.constraint(equalTo: leadingAnchor),
+      user
+        ? bubble.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -MessageTailView.size.width)
+        : bubble.leadingAnchor.constraint(equalTo: leadingAnchor),
       bodyStack.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: side),
       bodyStack.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -side),
       bodyStack.topAnchor.constraint(equalTo: bubble.topAnchor, constant: top),
@@ -2133,6 +2145,7 @@ final class PaletteChatMessageView: NSView {
       let offset = Self.userBubbleOffset(for: message, width: width)
       if abs(userBubbleTop.constant - offset) > 0.5 { userBubbleTop.constant = offset }
       bubble.isHidden = !drawsBubble
+      tail.isHidden = bubble.isHidden
     }
     if message.role == .user {
       placeSentCards()
@@ -2679,5 +2692,54 @@ final class PaletteWorkingLineView: NSView {
     face?.isHidden = isHidden
     if !animates { stopBreathing() }
     needsLayout = true
+  }
+}
+
+/// The tail a sent message's bubble has at its foot, as Messages draws it: the
+/// bubble's side runs straight down and flares out into a point on its baseline.
+/// It stands beside the bubble, whose corner on that side is square.
+final class MessageTailView: NSView {
+  static let size = CGSize(width: 6, height: 11)
+  static let roundedCorners: CACornerMask = [
+    .layerMinXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner,
+  ]
+
+  var fill: NSColor = .white { didSet { needsDisplay = true } }
+  private let scale: CGFloat
+
+  /// `scale` draws it for a bubble larger than the transcript's (the first-run
+  /// show's); the scaled tail is placed by frame.
+  init(scale: CGFloat = 1) {
+    self.scale = scale
+    super.init(frame: CGRect(
+      origin: .zero, size: CGSize(width: Self.size.width * scale, height: Self.size.height * scale)))
+    guard scale == 1 else { return }
+    translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      widthAnchor.constraint(equalToConstant: Self.size.width),
+      heightAnchor.constraint(equalToConstant: Self.size.height),
+    ])
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override var isFlipped: Bool { false }
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+  override func draw(_ dirtyRect: NSRect) {
+    let reach = Self.size.width * scale
+    let radius = Self.size.height * scale
+    let centre = CGPoint(x: radius, y: radius)
+    let tipHeight = radius - (radius * radius - (radius - reach) * (radius - reach)).squareRoot()
+    let path = NSBezierPath()
+    path.move(to: .zero)
+    path.line(to: CGPoint(x: reach, y: 0))
+    path.line(to: CGPoint(x: reach, y: tipHeight))
+    let start = atan2(tipHeight - radius, reach - radius) * 180 / .pi
+    path.appendArc(withCenter: centre, radius: radius, startAngle: start, endAngle: 180, clockwise: true)
+    path.close()
+    fill.setFill()
+    path.fill()
   }
 }

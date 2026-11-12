@@ -1051,7 +1051,26 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       : "Stop response"
   }
 
+  private var showsHandOverNote = false
+
+  private func syncHandOverNote(_ preview: BolttyAISessionPreview) {
+    guard let note = preview.handOverNote else {
+      if showsHandOverNote { hideRoutingFallback() }
+      return
+    }
+    guard routingRow.isHidden || routingLabel.stringValue != note else { return }
+    routingLabel.stringValue = note
+    routingLabel.toolTip = nil
+    routingRow.toolTip = nil
+    routingRow.isHidden = false
+    showsHandOverNote = true
+    announce(note)
+    anchorErrorLabel()
+    onContentSizeChange?()
+  }
+
   func showRoutingFallback(_ fallback: AgentRoutingFallback) {
+    showsHandOverNote = false
     routingLabel.stringValue = fallback.sentence
     routingLabel.toolTip = fallback.tooltip
     routingRow.toolTip = fallback.tooltip
@@ -1062,6 +1081,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   func hideRoutingFallback() {
+    showsHandOverNote = false
     guard !routingRow.isHidden else { return }
     routingRow.isHidden = true
     anchorErrorLabel()
@@ -1288,6 +1308,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     syncModelChip()
     stopIsAvailable = preview.isBusy && preview.canStop
     applyStopAffordance(preview)
+    syncHandOverNote(preview)
     syncSendButton()
     // In the panel first, at its width. The first chat since launch was measured
     // with the card nowhere: its words wrapped narrow, its floor stayed that
@@ -1322,6 +1343,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     syncModelChip()
     stopIsAvailable = preview.isBusy && preview.canStop
     applyStopAffordance(preview)
+    syncHandOverNote(preview)
     syncSendButton()
     previewCard.apply(preview)
     render(

@@ -279,7 +279,7 @@ final class UsageGlanceController: NSObject {
       view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
 
-    place(identity(of: row.agent))
+    place(identity(of: row.agent, takesNextChat: row.takesNextChat))
     switch row.content {
     case let .limits(usage):
       for window in usage.windows.sorted(by: { $0.kind.order < $1.kind.order }) {
@@ -328,7 +328,7 @@ final class UsageGlanceController: NSObject {
     return well
   }
 
-  private func identity(of agent: AgentId) -> NSView {
+  private func identity(of agent: AgentId, takesNextChat: Bool) -> NSView {
     let face = MascotNSView(conversationID: UUID(), look: MascotLook.face(for: agent))
     face.restAsPicture(of: UUID())
     face.translatesAutoresizingMaskIntoConstraints = false
@@ -341,6 +341,15 @@ final class UsageGlanceController: NSObject {
     row.orientation = .horizontal
     row.alignment = .centerY
     row.spacing = 6
+    if takesNextChat {
+      let next = Self.label(
+        UsageGlanceText.takesNextChat, size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
+      next.setContentHuggingPriority(.required, for: .horizontal)
+      let gap = NSView()
+      gap.setContentHuggingPriority(.defaultLow, for: .horizontal)
+      row.addArrangedSubview(gap)
+      row.addArrangedSubview(next)
+    }
     return row
   }
 

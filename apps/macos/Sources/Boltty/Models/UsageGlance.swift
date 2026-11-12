@@ -13,9 +13,13 @@ struct UsageGlanceRow: Equatable {
 
   let agent: AgentId
   let content: Content
+  /// The agent a new chat would go to now, when that is decided by the plans.
+  var takesNextChat = false
 }
 
 enum UsageGlanceText {
+  static let takesNextChat = "Next chat"
+
   static func used(_ window: AgentUsageWindow) -> String {
     "\(min(100, max(0, window.usedPercent)))% used"
   }

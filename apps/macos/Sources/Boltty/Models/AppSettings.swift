@@ -6,6 +6,8 @@ struct AppSettings: Equatable, Sendable {
   var bolttyAIHotkeyIsChosen: Bool
   var bolttyAIHotkeyEnabled: Bool
   var agentPreset: AgentId?
+  /// New chats go to whoever has the most of their plan left; off, always to `agentPreset`.
+  var routesAutomatically: Bool
   var enabledProviderIDs: Set<String>
   var defaultModelByProvider: [String: String]
   var mascotSelections: [String: MascotSelection]
@@ -27,6 +29,8 @@ struct AppSettings: Equatable, Sendable {
   var panelClearGlass: Bool
 
   static let agentPresetKey = "boltty.agentPreset"
+  private static let agentRoutingKey = "boltty.agentRouting"
+  private static let fixedRouting = "fixed"
   private static let enabledProviderIDsKey = "boltty.enabledProviderIDs"
   private static let defaultModelByProviderKey = "boltty.defaultModelByProvider"
   private static let defaultEffortByProviderKey = "boltty.defaultEffortByProvider"
@@ -58,6 +62,7 @@ struct AppSettings: Equatable, Sendable {
 
   init(
     agentPreset: AgentId? = .custom,
+    routesAutomatically: Bool = true,
     enabledProviderIDs: Set<String> = AppSettings.allAdapterProviderIDs,
     defaultModelByProvider: [String: String] = [:],
     defaultEffortByProvider: [String: String] = [:],
@@ -85,6 +90,7 @@ struct AppSettings: Equatable, Sendable {
     self.bolttyAIHotkeyIsChosen = bolttyAIHotkeyIsChosen
     self.bolttyAIHotkeyEnabled = bolttyAIHotkeyEnabled
     self.agentPreset = agentPreset
+    self.routesAutomatically = routesAutomatically
     self.enabledProviderIDs = enabledProviderIDs
     self.defaultModelByProvider = defaultModelByProvider
     self.defaultEffortByProvider = defaultEffortByProvider
@@ -157,6 +163,7 @@ struct AppSettings: Equatable, Sendable {
     }
     return AppSettings(
       agentPreset: preset,
+      routesAutomatically: defaults.string(forKey: agentRoutingKey) != fixedRouting,
       enabledProviderIDs: enabledProviderIDs,
       defaultModelByProvider: defaultModelByProvider,
       defaultEffortByProvider: defaultEffortByProvider,
@@ -205,6 +212,7 @@ struct AppSettings: Equatable, Sendable {
 
   func save(defaults: UserDefaults = .standard) {
     defaults.set(agentPreset?.rawValue, forKey: Self.agentPresetKey)
+    defaults.set(routesAutomatically ? "automatic" : Self.fixedRouting, forKey: Self.agentRoutingKey)
     defaults.set(Array(enabledProviderIDs).sorted(), forKey: Self.enabledProviderIDsKey)
     if let data = try? JSONEncoder().encode(defaultModelByProvider) {
       defaults.set(data, forKey: Self.defaultModelByProviderKey)

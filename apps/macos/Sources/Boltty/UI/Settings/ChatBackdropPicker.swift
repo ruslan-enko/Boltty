@@ -15,8 +15,17 @@ struct ChatBackdropPicker: View {
   private var chosen: ChatBackdrop { ChatBackdrop(rawValue: stored) ?? .standard }
 
   var body: some View {
-    let palette = model.mascotLook(for: agent).palette
-    HStack(spacing: 28) {
+    let look = model.mascotLook(for: agent)
+    let palette = look.palette
+    VStack(spacing: 16) {
+      SettingsStage(width: nil, height: 320, corner: SettingsStageMetrics.fillingCorner) {
+        ChatBackdropSample(backdrop: chosen, look: look, clearGlass: model.panelClearGlass)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .padding(ChatBackdropSampleView.margin)
+      }
+      .padding(.horizontal, SettingsStageMetrics.sectionGap - SettingsStageMetrics.rowInset)
+      .padding(.top, SettingsStageMetrics.sectionGap - SettingsStageMetrics.rowInset)
+      HStack(spacing: 22) {
       ForEach(ChatBackdrop.allCases) { backdrop in
         RingedChoice(title: backdrop.title, isChosen: backdrop == chosen, diameter: BackdropWindow.diameter) {
           withAnimation(SettingsMotion.quick) { stored = backdrop.rawValue }
@@ -25,9 +34,10 @@ struct ChatBackdropPicker: View {
         }
         .accessibilityIdentifier("boltty.settings.chatBackdrop.\(agent.rawValue).\(backdrop.rawValue)")
       }
+      }
     }
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 10)
+    .padding(.bottom, 10)
   }
 }
 
@@ -37,7 +47,7 @@ private struct BackdropWindow: View {
   let isLive: Bool
   @Environment(\.displayScale) private var displayScale
 
-  static let diameter: CGFloat = 84
+  static let diameter: CGFloat = 42
   private static let scene: CGFloat = 260
 
   var body: some View {
