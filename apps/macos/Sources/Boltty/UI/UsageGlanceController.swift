@@ -354,16 +354,10 @@ final class UsageGlanceController: NSObject {
   }
 
   private func meterBlock(for window: AgentUsageWindow) -> NSView {
-    let words = NSMutableAttributedString(
+    let words = NSAttributedString(
       string: window.title,
       attributes: Self.attributes(size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.primary)
     )
-    if let reset = UsageGlanceText.reset(window) {
-      words.append(NSAttributedString(
-        string: " · \(reset)",
-        attributes: Self.attributes(size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.tertiary)
-      ))
-    }
     let title = NSTextField(labelWithAttributedString: words)
     title.isSelectable = false
     title.maximumNumberOfLines = 1
@@ -384,11 +378,18 @@ final class UsageGlanceController: NSObject {
     meter.translatesAutoresizingMaskIntoConstraints = false
     meter.heightAnchor.constraint(equalToConstant: Self.meterHeight).isActive = true
 
-    let block = NSStackView(views: [top, meter])
+    // On its own line, so a long title never cuts it.
+    var lines: [NSView] = [top, meter]
+    if let reset = UsageGlanceText.reset(window) {
+      let when = Self.label(reset, size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.tertiary)
+      when.lineBreakMode = .byTruncatingTail
+      lines.append(when)
+    }
+    let block = NSStackView(views: lines)
     block.orientation = .vertical
     block.alignment = .leading
     block.spacing = 5
-    for view in [top, meter] {
+    for view in lines {
       view.widthAnchor.constraint(equalTo: block.widthAnchor).isActive = true
     }
     block.setAccessibilityElement(true)

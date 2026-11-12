@@ -8,7 +8,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
-    .permissionMessage, .steering
+    .permissionMessage, .steering, .folderMoving
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
@@ -107,7 +107,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       return sessions[id]
     }
     guard let live, live.process.isRunning else { return }
-    guard live.options.effort == options.effort, live.options.readOnly == options.readOnly else {
+    guard live.options.effort == options.effort, live.options.readOnly == options.readOnly,
+          live.options.directory == options.directory else {
       endProcess(of: id)
       return
     }
@@ -476,8 +477,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard let directory = ClaudeCodeTranscript.locate(sessionID: sessionID)?.directory else {
       throw AgentClientError.sessionNotFound
     }
-    var options = lock.withLock { wantedOptions[sessionID] } ?? AgentSessionOptions(directory: directory)
-    options.directory = directory
+    let options = lock.withLock { wantedOptions[sessionID] } ?? AgentSessionOptions(directory: directory)
     return try await startSession(id: sessionID, options: options, resuming: true)
   }
 

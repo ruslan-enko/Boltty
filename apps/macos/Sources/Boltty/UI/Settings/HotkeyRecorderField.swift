@@ -102,6 +102,7 @@ struct MenuShortcutRecorderField: View {
   var canRestore = false
   let onRecord: (ShortcutBinding?) -> Void
   var onRestoreDefault: (() -> Void)?
+  var owner: (ShortcutBinding) -> String? = { _ in nil }
 
   @State private var rejection: ShortcutBindingRejection?
 
@@ -134,6 +135,10 @@ struct MenuShortcutRecorderField: View {
     let recorded = ShortcutBinding(event: event)
     if let refused = ShortcutBindingValidation.reject(recorded) {
       rejection = refused
+      return false
+    }
+    if recorded != binding, let taken = owner(recorded) {
+      rejection = .taken(by: taken)
       return false
     }
     rejection = nil

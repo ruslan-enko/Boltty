@@ -22,6 +22,9 @@ enum KeyboardShortcutCatalog {
       shortcut("closeBoltty", "Close Boltty", "⌘Q", "q", .command)
     ]),
     KeyboardShortcutSection(title: "Edit", shortcuts: [
+      shortcut("undo", "Undo", "⌘Z", "z", .command),
+      shortcut("redo", "Redo", "⇧⌘Z", "z", [.command, .shift]),
+      shortcut("cut", "Cut", "⌘X", "x", .command),
       shortcut("copy", "Copy", "⌘C", "c", .command),
       shortcut("paste", "Paste", "⌘V", "v", .command),
       shortcut("selectAll", "Select All", "⌘A", "a", .command)

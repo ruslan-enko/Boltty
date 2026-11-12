@@ -297,6 +297,25 @@ final class PaletteAnswerTextTests: XCTestCase {
     return range.location
   }
 
+  // MARK: - Line breaks
+
+  func testOneItemALineKeepsItsLines() {
+    let out = render("7 — A lucky number.\n8 — Looks the same rotated.").string
+    XCTAssertFalse(out.contains("number. 8"), out)
+    XCTAssertTrue(out.contains("8 — Looks"), out)
+  }
+
+  func testListsAndHeadingsGetNoStrayBackslash() {
+    let out = render("# Fruits\n1. Apple\n2. Banana\n- Kiwi").string
+    XCTAssertFalse(out.contains("\\"), out)
+    XCTAssertTrue(out.contains("Banana"), out)
+  }
+
+  func testCodeKeepsItsText() {
+    let source = "```\nlet a = 1\nlet b = 2\n```"
+    XCTAssertEqual(PaletteAnswerText.keepingLineBreaks(source), source)
+  }
+
   // MARK: - Tables
 
   private func textBlocks(_ string: NSAttributedString, at index: Int) -> [NSTextBlock] {

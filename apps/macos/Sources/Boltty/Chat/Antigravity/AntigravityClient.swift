@@ -6,7 +6,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
     .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
-    .usageLimits,
+    .usageLimits, .folderMoving,
   ]
 
   static let initDeadline: TimeInterval = 25

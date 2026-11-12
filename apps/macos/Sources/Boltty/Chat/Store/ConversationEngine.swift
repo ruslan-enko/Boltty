@@ -640,6 +640,14 @@ final class ConversationEngine: ObservableObject {
     mayStartNewSession: Bool
   ) async -> Bool {
     guard let conversation = store.conversation(id: conversationID) else { return false }
+    guard !Self.folderIsGone(conversation.workingDirectory) else {
+      notices[conversationID] = EngineNotice(
+        text: "\(Self.abbreviated(conversation.workingDirectory)) is not on this Mac any more.",
+        isBlocking: false,
+        folderIsGone: true
+      )
+      return false
+    }
     let messageID = Self.makeMessageID()
 
     let client: AgentClient
@@ -740,6 +748,16 @@ final class ConversationEngine: ObservableObject {
       )
       return false
     }
+  }
+
+  static func folderIsGone(_ path: String) -> Bool {
+    var isDirectory: ObjCBool = false
+    return !FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+      || !isDirectory.boolValue
+  }
+
+  private static func abbreviated(_ path: String) -> String {
+    (path as NSString).abbreviatingWithTildeInPath
   }
 
   private func agentName(for conversationID: UUID) -> String {
@@ -864,7 +882,12 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  func forgetConversation(id: UUID) {
+  func moveToFolder(_ path: String, conversationID: UUID) {
+    guard store.setWorkingDirectory(path, for: conversationID, movingSession: true) else { return }
+    if notices[conversationID]?.folderIsGone == true { notices[conversationID] = nil }
+  }
+
+    func forgetConversation(id: UUID) {
     guard let conversation = store.conversation(id: id) else { return }
     notices[id] = nil
     store.deleteConversation(id: id)
@@ -1061,6 +1084,7 @@ final class ConversationEngine: ObservableObject {
 struct EngineNotice: Equatable, Sendable {
   var text: String
   var isBlocking: Bool
+  var folderIsGone = false
 }
 
 private final class ConversationSessionLookup: @unchecked Sendable {

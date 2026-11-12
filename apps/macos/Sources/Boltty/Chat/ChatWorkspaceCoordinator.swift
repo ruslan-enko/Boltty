@@ -186,6 +186,10 @@ final class ChatWorkspaceCoordinator {
   private func handOverIfDue(_ id: UUID) -> Bool {
     guard let send = automaticSends[id], let conversation = store.conversation(id: id) else { return false }
     guard pendingPanelPrompts[id] == nil, !store.isReadOnly else { return false }
+    guard engine.notices[id]?.folderIsGone != true else {
+      automaticSends[id] = nil
+      return false
+    }
     let state = conversation.lastKnownState
     let neverSent = failedPanelPrompts[id] != nil && !state.blocksSending
     guard state == .failed || state == .rateLimited || neverSent else { return false }

@@ -79,11 +79,12 @@ struct WorkingDirectoryChip: Equatable, Sendable {
 
   static func forConversation(
     _ conversation: Conversation,
-    honoursWorkingDirectory: Bool
+    honoursWorkingDirectory: Bool,
+    canChange: Bool? = nil
   ) -> WorkingDirectoryChip {
     WorkingDirectoryChip(
       path: conversation.workingDirectory,
-      isEditable: conversation.canChangeWorkingDirectory,
+      isEditable: canChange ?? conversation.canChangeWorkingDirectory,
       isIgnoredByAgent: !honoursWorkingDirectory
     )
   }

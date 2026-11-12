@@ -8,7 +8,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
-    .contextUsage, .compaction, .steering, .activityHistory
+    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "codex-client")
@@ -45,6 +45,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?) {
     lock.withLock { conversationResolver = resolve }
   }
+
+  private var wantedDirectories: [String: String] = [:]
 
   private final class ThreadState {
     let id: String
@@ -163,9 +165,11 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   }
 
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    lock.withLock { wantedDirectories[id] = options.directory }
     let server = try await server()
     try await ensureThread(id: id, on: server)
     lock.withLock {
+      threads[id]?.directory = options.directory
       let changesModel = options.model.map { $0.modelID != threads[id]?.model?.modelID } ?? false
       if let model = options.model { threads[id]?.model = model }
       if let effort = options.effort {
@@ -303,9 +307,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   @discardableResult
   private func resumeThread(id: String, on server: JSONLineProcess) async throws -> JSONObject {
     let resumed: JSONObject
+    var params: [String: Any] = ["threadId": id, "excludeTurns": true]
+    if let directory = lock.withLock({ wantedDirectories[id] }) { params["cwd"] = directory }
     do {
-      resumed = try await requestUnchecked(
-        "thread/resume", params: ["threadId": id, "excludeTurns": true], on: server)
+      resumed = try await requestUnchecked("thread/resume", params: params, on: server)
     } catch let error as RPCFailure {
       if error.code == -32600, error.message == "no rollout found for thread id \(id)" {
         throw AgentClientError.sessionNotFound
@@ -360,6 +365,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     ]
     lock.withLock {
       let thread = threads[sessionID]
+      if let directory = thread?.directory { params["cwd"] = directory }
       if let model = thread?.model { params["model"] = model.modelID }
       if let effort = thread?.effort, !effort.isEmpty { params["effort"] = effort }
       params["approvalPolicy"] = Self.approvalPolicy(autoApprove: thread?.autoApprove ?? false)

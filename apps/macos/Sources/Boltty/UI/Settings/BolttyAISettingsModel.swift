@@ -60,6 +60,9 @@ final class BolttyAISettingsModel: ObservableObject {
     appModel.$settings
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
+    appModel.shortcutBindings.objectWillChange
+      .sink { [weak self] _ in self?.objectWillChange.send() }
+      .store(in: &cancellables)
     appModel.$hotkeyRegistrationFailed
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
@@ -358,6 +361,12 @@ final class BolttyAISettingsModel: ObservableObject {
     return others.count == 1
       ? "Also \(others[0])"
       : "Also \(others.joined(separator: ", "))"
+  }
+
+  func shortcutOwner(of binding: ShortcutBinding, except id: String) -> String? {
+    KeyboardShortcutCatalog.allShortcuts.first {
+      $0.id != id && appModel.shortcutBindings.binding(for: $0.id) == binding
+    }?.title
   }
 
   func setShortcutBinding(_ binding: ShortcutBinding?, for id: String) {

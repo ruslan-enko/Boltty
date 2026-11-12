@@ -7,11 +7,17 @@ struct AgentFailureReport: Equatable, Sendable {
 
   var offersModelChoice = false
 
+  var offersFolderChoice = false
+
   var canRetry: Bool { retryPrompt != nil }
 
   static let universalSentence = "This turn didn't finish — your conversation is saved."
 
   static let modelGoneSentence = "This model isn't available any more. Choose another, then try again."
+
+  static let folderGoneSentence = "This chat's folder is gone. Choose another, then try again."
+
+  static let folderGoneFixedSentence = "This chat's folder is gone. Put it back to go on here."
 
   static func saysModelIsGone(_ failure: MessageFailure) -> Bool {
     if failure.name == "provider.no-route" { return true }
@@ -53,6 +59,14 @@ struct AgentFailureReport: Equatable, Sendable {
     let latestHit = latest?.rateLimit
     let modelGone = preview.modelChip?.isGone == true || latest.map(saysModelIsGone) == true
 
+    if preview.folderIsGone {
+      return AgentFailureReport(
+        sentence: preview.canChooseFolder ? folderGoneSentence : folderGoneFixedSentence,
+        details: evidence.joined(separator: "\n\n"),
+        retryPrompt: preview.retryPrompt,
+        offersFolderChoice: preview.canChooseFolder
+      )
+    }
     return AgentFailureReport(
       sentence: latestHit.map { rateLimitSentence($0) }
         ?? (modelGone ? modelGoneSentence : universalSentence),

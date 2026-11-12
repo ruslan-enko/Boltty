@@ -7,7 +7,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
-    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits
+    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
+    .folderMoving
   ]
 
   private let server: OpenCodeServer
@@ -223,8 +224,11 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         autoApproved.remove(id)
       }
     }
-    guard let model = options.model else { return }
     let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await get("/api/session/\(id)")
+    if let recorded = session.data.location?.directory, recorded != options.directory {
+      try await move(id, to: options.directory)
+    }
+    guard let model = options.model else { return }
     let current = session.data.model
     if current?.id == model.modelID, current?.providerID == model.providerID,
        (current?.variant ?? "default") == (options.effort ?? "default") {
@@ -420,6 +424,22 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         }
     )
     try await postIgnoringResponse("/api/session/\(sessionID)/prompt", body: body)
+  }
+
+  private func move(_ id: String, to directory: String) async throws {
+    let own = await needsOwnServer(directory: directory)
+    do {
+      let _: JSONValue = try await perform(
+        path: "/api/session/\(id)/move", method: "POST",
+        body: OpenCodeDTO.MoveRequest(directory: directory), on: own ? ownServer : server
+      )
+    } catch AgentClientError.sessionNotFound {
+      throw AgentClientError.transport("This OpenCode cannot move a chat to another folder.")
+    } catch let AgentClientError.indeterminate(detail) {
+      throw AgentClientError.transport(detail)
+    }
+    lock.withLock { runsOnOwnServer[id] = own }
+    if own { startOwnStreamIfNeeded() }
   }
 
   func steer(messageID: String, text: String, to sessionID: String) async throws {

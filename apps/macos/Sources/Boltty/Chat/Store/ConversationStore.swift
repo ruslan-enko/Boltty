@@ -130,15 +130,17 @@ final class ConversationStore: ObservableObject {
     WorkingDirectoryResolver.homeDirectoryPath
   }
 
-  func setWorkingDirectory(_ path: String, for id: UUID) {
+  @discardableResult
+  func setWorkingDirectory(_ path: String, for id: UUID, movingSession: Bool = false) -> Bool {
     guard let index = conversations.firstIndex(where: { $0.id == id }),
-          conversations[index].canChangeWorkingDirectory
-    else { return }
-    guard conversations[index].workingDirectory != path else { return }
+          conversations[index].canChangeWorkingDirectory || movingSession
+    else { return false }
+    guard conversations[index].workingDirectory != path else { return true }
     conversations[index].workingDirectory = path
     conversations[index].updatedAt = clock()
     saveIndexNow()
     objectWillChange.send()
+    return true
   }
 
   func keepAskBolttyChat(id: UUID) {

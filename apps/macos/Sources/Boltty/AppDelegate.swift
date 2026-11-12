@@ -787,6 +787,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let editMenu = NSMenu(title: "Edit")
     editMenuItem.submenu = editMenu
     bindings?.bind(
+      editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z"),
+      to: "undo"
+    )
+    bindings?.bind(
+      editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z"),
+      to: "redo"
+    )
+    editMenu.addItem(NSMenuItem.separator())
+    bindings?.bind(
+      editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"),
+      to: "cut"
+    )
+    bindings?.bind(
       editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"),
       to: "copy"
     )

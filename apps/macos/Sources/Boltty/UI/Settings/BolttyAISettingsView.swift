@@ -12,6 +12,8 @@ struct BolttyAISettingsView: View {
     } detail: {
       page
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Scrolled up, a page ran under the clear title bar, behind Back and the title.
+        .clipped()
         .background(Color(nsColor: SettingsSurfacePalette.background).ignoresSafeArea())
         .navigationTitle(navigation.title)
         .toolbar { history }

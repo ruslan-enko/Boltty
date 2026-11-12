@@ -144,7 +144,7 @@ no adapter; never offer a toggle for them.
 | Return in the panel | Starts a conversation **in the background**: no window raised, no `NSApp.activate`. An empty Return starts nothing and plays the system alert |
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing: the agent with the most of its plan left (*Who takes a new chat*), or always one agent when Settings › Agents says so. Fixed once the conversation has a session. An agent the person chose that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon |
-| Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip until the session exists, then fixed |
+| Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip; once the session exists, changed only where the agent declares `.folderMoving` (all but Grok), applied before the next send |
 | Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
 | One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so. It starts no session or turn (`ConversationEngine.secondCopyRefusal`) and never stores a fallback chord |
 | Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline, waiting for each turn's stop (3 s timer), not the first to answer |
@@ -207,6 +207,10 @@ a directory they guard is missing or a rule's regex does not compile.
   a grandchild that holds the pipe.
 - A provider that has forgotten a session is recoverable: the engine drops the
   dead id and opens a new session, once per send (`ConversationEngine.deliver`).
+- A chat whose folder is gone sends nothing (`ConversationEngine.folderIsGone`,
+  checked before every send): every CLI then fails in a way that reads as a
+  forgotten session. The card says so and offers Choose Folder… where the
+  agent can move.
 - Work per token is coalesced: tray rebuilds on a changed snapshot, preview
   observers once per run-loop turn, the SSE parser resumes its scan.
 
@@ -270,6 +274,9 @@ implementation first. Versions say what was measured.
   process, so "Always Allow" rules survive it. `--resume` without `--model` goes on
   with the last model used; with it, on that one (2.1.319). Effort and the read-only
   tools are launch flags: the process is let go and resumed, 0.3 s.
+- `--resume <id>` from another folder goes on in that conversation, working in
+  the new folder; the record stays in the first folder's project file, its `cwd`
+  changing from then on (2.1.322). So a folder change lets the process go too.
 
 ### Codex
 
@@ -295,6 +302,8 @@ implementation first. Versions say what was measured.
   `## My request for Codex:`; `CodexRolloutTranscript.request(in:)` unwraps it
   *after* dropping scaffolding (the reviewer's wrapper carries the heading too).
 - Read-only chats use `sandbox: read-only`.
+- `thread/resume` and `turn/start` take `cwd`; on a turn it holds for the turns
+  after (0.167 schema). Boltty sends the chat's folder with both.
 - `turn/start` takes `model` and `effort`, per turn; the rollout's `turn_context`
   shows each (0.167). Neither has a "none": a level stays until another is sent,
   so Codex and Grok do not declare `.effortReset` and their menu offers no way back
@@ -316,6 +325,9 @@ implementation first. Versions say what was measured.
   in a new session.
 - `session/set_model` and `session/set_config_option` work on a loaded session; the
   session keeps its model across a load (`summary.json`'s `current_model_id`).
+- A session cannot change folder: `session/load` with another `cwd` answers
+  "Path not found" (1.0.77), the record living under the first folder's name. So
+  Grok does not declare `.folderMoving`.
 - `session/prompt` returns only when the turn ends; streaming is
   `session/update`. `session/cancel` is a notification, not a request.
 - `session/set_config_option` takes `configId`; `reasoning_effort` is the one
@@ -388,7 +400,9 @@ Measured on agy 1.3.4 and 1.4.0 (`AntigravityClient`, `AntigravityTranscript`,
 - `--conversation <id> --model <other> --effort <level>` goes on in that conversation
   on the other model (1.5.2); both are launch flags, so an idle process is let go.
   With neither, `init` names no model. A conversation resumed after a relaunch gets
-  its folder from `prepareSession`.
+  its folder from `prepareSession`, so a folder change lets the idle process go
+  and `--conversation` goes on in the new one. Declared `.folderMoving`, not yet
+  seen live in another folder.
 - SIGINT stops a turn (`result` with `error: "interrupted"`, exit 1): declared
   `.interrupt`, not `.terminableTurn`.
 - Effort is part of the model id (`gemini-3.8-flash-high`); `--model` takes the
@@ -469,6 +483,10 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   plan but is not). So the server names every session: any chat can be switched
   onto a free model later. A chat from before that, on a Boltty id, still fails the
   same way on a free model. Do not report this upstream on the person's behalf.
+- `POST /api/session/{id}/move` `{directory}` moves a session to another folder
+  (2.2.7, from the OpenAPI document; answers 204). `prepareSession` moves it when
+  the record's `location.directory` differs, on the server that can open the new
+  folder. A prompt to a session whose folder is gone answers 404.
 - `POST /api/session/{id}/model` `{model: {id, providerID, variant?}}` answers 204
   and the next turn runs it (2.2.5). Each switch leaves a `model-switched` record,
   which the transcript reader passes over, so an unchanged chat sends none. 1.18 has
@@ -680,6 +698,9 @@ The loop that must keep working:
   (`MascotPalette.arrivalLight`). A face of one hue (Ember, Mist, Lilac)
   has its light fanned 80° round that hue: lifted as it was, it was one
   pastel and read as no light at all.
+  A single newline in an answer is a line, as in Messages: plain markdown read
+  it as a space and one-item-a-line answers ran together
+  (`PaletteAnswerText.keepingLineBreaks`).
 - Only files a turn **made** get file rows (`PaletteFileRowView`, with their
   actions in reach); reads and searches leave activity rows only. Pictures get
   Quick Look thumbnails that resolve out of a blur.
@@ -875,8 +896,11 @@ Recording is asked the first time; refusals are said in the panel.
 Home is the folder glyph alone; elsewhere the folder's name (and git branch,
 read from the repo's files without running `git`) on a light pill. A click opens
 a menu: Show in Finder, Copy Path, Open on GitHub, No Folder, Recent (up to
-five, from Boltty's chats), Open Folder…. Once a chat has a session, only the
-actions remain.
+five, from Boltty's chats), Open Folder…. Once a chat has a session the folder
+can still be changed where the agent declares `.folderMoving`
+(`canChangeWorkingDirectory(of:)`); the session goes on in the new folder from
+the next message (`ConversationEngine.moveToFolder`, carried by
+`prepareSession`). Elsewhere, and in Ask Boltty chats, only the actions remain.
 
 ### Listening
 
@@ -937,7 +961,7 @@ heard.
   "here". The window is told by its name and a point in it, from what Finder
   lists (`parsePlace`), never by a guess: Recents, a search, a refusal or no
   answer name no folder and the prompt says to ask. The chat works in that folder:
-  a session cannot move, so one warmed up elsewhere, or going on from another
+  Ask Boltty does not move a session, so one warmed up elsewhere, or going on from another
   folder, gives way to one started there (`reopen`).
 - Tags: `<point x y label/>`, `<circle>`, `<box>`, `<arrow>`, `<line>`,
   `<path d>`, `<label>`, `<board>…</board>`, coordinates 0–1000 of the picture.
@@ -1318,7 +1342,8 @@ heard.
   box), and its stroke grows with the box. In the panel every icon's box then
   goes through `AgentPaletteMetrics.iconSide` (15% larger, `iconScale`), the
   buttons round them keeping their size. A small round mark is solid:
-  stroked, it reads as a ring round a pinhole. So are the stars of `sparkles`, which
+  stroked, it reads as a ring round a pinhole. So is Stop's square, which
+  stroked read as an empty frame on the Send disc. So are the stars of `sparkles`, which
   stroked only fill up; that icon is the maintainer's own drawing, curves and all, kept
   to the letter by the generator and passed over by the check. `NSImage` draws the files as
   template images, so they are black, not `currentColor`, and **it blurs an
@@ -1407,6 +1432,8 @@ heard.
   rebindable row must reach a live `NSMenuItem` (a DEBUG assertion checks).
   Shortcut ids are a storage format. `BuiltInKeyCatalog` lists every non-menu
   key; a key added to the panel is added there in the same change.
+  The Edit menu carries Undo, Redo and Cut: without them ⌘Z and ⌘X did nothing in
+  the prompt. The recorder refuses a chord another row holds and names it.
 - Never use `Date.FormatStyle`: on a locale with a regional override
   (`en_US@rg=uazzzz`) it returns empty strings. Use `DateFormatter` built from
   templates.
@@ -1502,9 +1529,11 @@ heard.
     (`AppDelegate.isHostingUnitTests`) and runs as `.accessory`. Live tests shut
     down any CLI they start.
 11. **Write few comments.** Most code needs none: no comment on what the code
-    already says, no doc comment by habit, no history of what was tried. One earns
-    its place only where the reason is not obvious and would be missed (a measured
-    CLI quirk, a trap), and then it is short and says why. Who decided and when
+    already says, no doc comment by habit, no history of what was tried, no
+    story of the bug a change fixes (that is the commit message). One earns its
+    place only where the reason is not obvious and would be missed (a measured
+    CLI quirk, a trap), and then it is one or two lines and says why. A fact
+    already in this file is not repeated in a comment. Who decided and when
     belongs in git.
 12. **Keep this file current in the same change** that makes it stale. Where this
     file and the code disagree and it's unclear which is right, ask.

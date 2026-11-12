@@ -84,6 +84,8 @@ struct BolttyAISessionPreview: Equatable, Sendable {
   var autoMode: Bool? = nil
   var modelChip: BolttyAIModelChip? = nil
   var notice: String? = nil
+  var folderIsGone = false
+  var canChooseFolder = false
   var handOverNote: String? = nil
   var retryPrompt: String? = nil
   var queuedPrompt: String? = nil
