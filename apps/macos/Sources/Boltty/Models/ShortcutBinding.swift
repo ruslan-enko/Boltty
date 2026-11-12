@@ -71,6 +71,7 @@ extension ShortcutBinding {
 enum ShortcutBindingRejection: Equatable, Sendable {
   case noModifier
   case reservedBySystem
+  case taken(by: String)
 
   var message: String {
     switch self {
@@ -78,6 +79,8 @@ enum ShortcutBindingRejection: Equatable, Sendable {
       KeyChordSymbols.noModifierMessage
     case .reservedBySystem:
       "macOS reserves that shortcut."
+    case let .taken(owner):
+      "\(owner) already uses that shortcut."
     }
   }
 }

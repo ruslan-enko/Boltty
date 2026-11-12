@@ -134,13 +134,48 @@ enum PaletteAnswerText {
 
   private static func parse(_ markdown: String) -> AttributedString? {
     try? AttributedString(
-      markdown: markdown,
+      markdown: keepingLineBreaks(markdown),
       options: .init(
         allowsExtendedAttributes: true,
         interpretedSyntax: .full,
         failurePolicy: .returnPartiallyParsedIfPossible
       )
     )
+  }
+
+  /// In markdown a single newline is a space; an agent writing one item a line means a line.
+  static func keepingLineBreaks(_ markdown: String) -> String {
+    let lines = markdown.components(separatedBy: "\n")
+    var out: [String] = []
+    var inFence = false
+    for (index, line) in lines.enumerated() {
+      let trimmed = line.trimmingCharacters(in: .whitespaces)
+      let isFence = trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~")
+      if isFence { inFence.toggle() }
+      let next = index + 1 < lines.count ? lines[index + 1].trimmingCharacters(in: .whitespaces) : ""
+      let joinsNext = !inFence && !isFence && !trimmed.isEmpty
+        && !trimmed.hasPrefix("#") && !trimmed.hasPrefix("|")
+        && continuesParagraph(next)
+        && !trimmed.hasSuffix("\\") && !line.hasSuffix("  ")
+      out.append(joinsNext ? line + "\\" : line)
+    }
+    return out.joined(separator: "\n")
+  }
+
+  /// A line that opens no block of its own; a break before anything else would
+  /// stand as a literal backslash.
+  private static func continuesParagraph(_ line: String) -> Bool {
+    guard !line.isEmpty else { return false }
+    for opener in ["#", ">", "|", "```", "~~~", "- ", "* ", "+ "] where line.hasPrefix(opener) {
+      return false
+    }
+    if line.allSatisfy({ $0 == "-" || $0 == "=" || $0 == "*" || $0 == "_" || $0 == " " }) { return false }
+    let digits = line.prefix { $0.isNumber }
+    if !digits.isEmpty, digits.count <= 9 {
+      let rest = line.dropFirst(digits.count)
+      if rest.hasPrefix(". ") || rest.hasPrefix(") ") { return false }
+    }
+    return true
   }
 
   private static func blocks(of parsed: AttributedString) -> [AttributedSubstring] {

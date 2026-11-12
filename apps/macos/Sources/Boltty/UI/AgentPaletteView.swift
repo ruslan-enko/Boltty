@@ -7,6 +7,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var onSubmit: ((PromptDraft) -> Void)?
   var onSubmitSteering: ((PromptDraft) -> Void)?
   var currentDraft: PromptDraft { field.draft }
+  var isSearchingChats: Bool { mode == .search }
   var onCancel: (() -> Void)?
   var onDraftChange: (() -> Void)?
   private var isRestoringChatDraft = false
@@ -1206,6 +1207,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     surfaceReady = false
     pendingConversationID = UUID()
     if !resumingChat {
+      // The field holds a list search as its text; reopened, it read as a new request.
+      if mode == .search { field.clearPrompt() }
       mode = .prompt
       collapseResults(animated: false)
       leaveAddressing(animated: false)
@@ -1455,6 +1458,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         self.onRetryPrompt?(id, prompt)
       }
       previewCard.onChooseModel = { [weak self] in self?.onModelMenu?() }
+      previewCard.onChooseFolder = { [weak self] in self?.onChooseWorkingDirectory?() }
       previewCard.onCancelQueued = { [weak self] prompt in
         guard let self, let id = self.addressedPreview?.id else { return }
         var draft = self.currentDraft
@@ -1542,7 +1546,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
     if let previousID, let index = resultItems.firstIndex(where: { $0.id == previousID }) {
       selectedResultIndex = index
-    } else if let currentIndex = resultItems.firstIndex(where: \.isCurrent) {
+    } else if mode != .search, let currentIndex = resultItems.firstIndex(where: \.isCurrent) {
       selectedResultIndex = currentIndex
     } else {
       selectedResultIndex = resultItems.isEmpty ? -1 : 0
@@ -2279,7 +2283,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       syncSelectionOverlay()
     }
 
-    hintLabel.stringValue = "Describe a task or ask"
+    // An agent chosen with ⇧Tab can wear the same face as the default route.
+    hintLabel.stringValue = chosenAgent.map { "Ask \($0.displayName)" } ?? "Describe a task or ask"
     selectedAgentImage.showMascot(
       conversationID: pendingConversationID,
       emotion: isVoiceListening ? .listening : .curious,
@@ -2682,6 +2687,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     routingRow.spacing = 8
     routingRow.translatesAutoresizingMaskIntoConstraints = false
     routingRow.setViews([routingLabel, routingButton], in: .leading)
+    routingRow.edgeInsets = NSEdgeInsets(top: 4, left: 12, bottom: 4, right: 4)
+    routingRow.wantsLayer = true
+    PaletteHelpBackdrop.install(in: routingRow)
     routingRow.isHidden = true
 
     bottomBar.orientation = .vertical
@@ -4547,7 +4555,7 @@ extension AgentPaletteView: NSTextViewDelegate {
     syncPromptExpansion()
     hintLabel.isHidden = !field.isEmptyPrompt
     if isResultsExpanded {
-      refreshResults(keepingSelection: true)
+      refreshResults(keepingSelection: mode != .search)
     }
   }
 

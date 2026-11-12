@@ -3,11 +3,13 @@ import AppKit
 final class BolttyAIFailureCard: NSView {
   var onRetry: ((String) -> Void)?
   var onChooseModel: (() -> Void)?
+  var onChooseFolder: (() -> Void)?
 
   private let symbol = NSImageView()
   private let sentence = NSTextField(wrappingLabelWithString: "")
   private let retryButton = GlassPillButton.titled("Retry")
   private let chooseModelButton = GlassPillButton.titled("Choose Model")
+  private let chooseFolderButton = GlassPillButton.titled("Choose Folder…")
   private let disclosure = PaletteDisclosureButton()
   private let detailsText = NSTextField(wrappingLabelWithString: "")
   private let copyButton = PaletteIconButton()
@@ -44,7 +46,7 @@ final class BolttyAIFailureCard: NSView {
     sentence.textColor = PaletteInk.primary
     sentence.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-    for button in [retryButton, chooseModelButton, disclosure, copyButton] as [NSView] {
+    for button in [retryButton, chooseModelButton, chooseFolderButton, disclosure, copyButton] as [NSView] {
       button.translatesAutoresizingMaskIntoConstraints = false
     }
     retryButton.button.target = self
@@ -54,6 +56,10 @@ final class BolttyAIFailureCard: NSView {
     chooseModelButton.button.action = #selector(chooseModel(_:))
     chooseModelButton.setAccessibilityIdentifier("boltty.ask.failure.model")
     chooseModelButton.isHidden = true
+    chooseFolderButton.button.target = self
+    chooseFolderButton.button.action = #selector(chooseFolder(_:))
+    chooseFolderButton.setAccessibilityIdentifier("boltty.ask.failure.folder")
+    chooseFolderButton.isHidden = true
     disclosure.font = roundedAppFont(size: AgentPaletteMetrics.previewActivityNameFontSize)
     disclosure.imagePosition = .imageTrailing
     disclosure.contentTintColor = PaletteInk.secondary
@@ -104,7 +110,7 @@ final class BolttyAIFailureCard: NSView {
     controls.alignment = .centerY
     controls.spacing = 8
     controls.translatesAutoresizingMaskIntoConstraints = false
-    controls.setViews([chooseModelButton, retryButton, disclosure], in: .leading)
+    controls.setViews([chooseFolderButton, chooseModelButton, retryButton, disclosure], in: .leading)
 
     column.orientation = .vertical
     column.alignment = .leading
@@ -182,6 +188,7 @@ final class BolttyAIFailureCard: NSView {
     retryButton.isHidden = !report.canRetry
     retryButton.button.isEnabled = report.canRetry
     chooseModelButton.isHidden = !report.offersModelChoice
+    chooseFolderButton.isHidden = !report.offersFolderChoice
     if isNewFailure { collapseDetails() }
     applyCopyGlyph(.copy)
     setAccessibilityLabel(report.sentence)
@@ -227,6 +234,7 @@ final class BolttyAIFailureCard: NSView {
   }
 
   @objc private func chooseModel(_ sender: NSButton) { onChooseModel?() }
+  @objc private func chooseFolder(_ sender: NSButton) { onChooseFolder?() }
 
   @objc private func copyDetails(_ sender: NSButton) {
     guard let details = report?.details else { return }

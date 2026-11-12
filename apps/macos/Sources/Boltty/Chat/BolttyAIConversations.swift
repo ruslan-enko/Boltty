@@ -24,6 +24,8 @@ protocol BolttyAIConversations: AnyObject {
 
   func setWorkingDirectory(_ path: String, for id: UUID)
 
+  func canChangeWorkingDirectory(of id: UUID) -> Bool
+
   func recentWorkingDirectories() -> [String]
 
   func honoursWorkingDirectory(providerID: String) -> Bool
@@ -204,7 +206,15 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
   func defaultWorkingDirectory() -> String { store.defaultWorkingDirectory() }
 
   func setWorkingDirectory(_ path: String, for id: UUID) {
-    store.setWorkingDirectory(path, for: id)
+    guard canChangeWorkingDirectory(of: id) else { return }
+    engine.moveToFolder(path, conversationID: id)
+  }
+
+  func canChangeWorkingDirectory(of id: UUID) -> Bool {
+    guard let conversation = store.conversation(id: id) else { return false }
+    if conversation.canChangeWorkingDirectory { return true }
+    return !conversation.isAskBoltty
+      && engine.registry.capabilities(forProviderID: conversation.providerID).contains(.folderMoving)
   }
 
   func recentWorkingDirectories() -> [String] {
@@ -390,6 +400,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil,
       modelChip: modelChip(for: conversation),
       notice: engine.notices[id]?.text,
+      folderIsGone: engine.notices[id]?.folderIsGone == true,
+      canChooseFolder: canChangeWorkingDirectory(of: id),
       handOverNote: handOvers[id]?.sentence,
       retryPrompt: failedPanelPrompts[id]
         ?? (pending == nil && !conversation.draft.isEmpty ? conversation.draft : nil)

@@ -47,27 +47,25 @@ struct GeneralSettingsPage: View {
       }
 
       Section {
-        LabeledContent {
-          VStack(alignment: .trailing, spacing: 12) {
-            SettingsStage(height: 200) {
-              FinderSelectionSample(
-                attaches: model.attachesFinderSelection,
-                look: model.mascotLook(for: model.mascotRoster.restingAgent),
-                clearGlass: model.panelClearGlass)
-              .frame(width: FinderSelectionSampleView.size.width, height: FinderSelectionSampleView.size.height)
-            }
-            Toggle("Use what's open in Finder", isOn: Binding(
-              get: { model.attachesFinderSelection },
-              set: { model.attachesFinderSelection = $0 }
-            ))
-            .labelsHidden()
-            .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
-          }
-          .padding(.vertical, 6)
-        } label: {
+        Toggle(isOn: Binding(
+          get: { model.attachesFinderSelection },
+          set: { model.attachesFinderSelection = $0 }
+        )) {
           Text("Use what's open in Finder")
           Text("Opening Boltty AI over Finder starts the chat in that folder, with the files selected there in the prompt.")
         }
+        .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
+        HStack {
+          Spacer(minLength: 0)
+          SettingsStage(height: 200) {
+            FinderSelectionSample(
+              attaches: model.attachesFinderSelection,
+              look: model.mascotLook(for: model.mascotRoster.restingAgent),
+              clearGlass: model.panelClearGlass)
+            .frame(width: FinderSelectionSampleView.size.width, height: FinderSelectionSampleView.size.height)
+          }
+        }
+        .padding(.vertical, 6)
 
         Toggle(isOn: Binding(
           get: { model.playsSounds },
@@ -1084,7 +1082,8 @@ struct ShortcutsSettingsPage: View {
         isRowHovered: isHovered,
         canRestore: model.isShortcutCustomized(shortcut.id),
         onRecord: { model.setShortcutBinding($0, for: shortcut.id) },
-        onRestoreDefault: { model.restoreDefaultShortcut(shortcut.id) }
+        onRestoreDefault: { model.restoreDefaultShortcut(shortcut.id) },
+        owner: { model.shortcutOwner(of: $0, except: shortcut.id) }
       )
       .accessibilityIdentifier("boltty.settings.shortcut.\(shortcut.id)")
     }
@@ -1160,7 +1159,7 @@ struct VoicePicker: View {
   @ObservedObject var model: BolttyAISettingsModel
 
   var body: some View {
-    ChoiceStrip(title: "Voice", identifier: "boltty.settings.localVoice") {
+    ChoiceStrip(title: "Voice", identifier: "boltty.settings.localVoice", chosen: model.localVoice) {
       ForEach(BolttyAISettingsModel.localVoices, id: \.id) { voice in
         let chosen = voice.id == model.localVoice
         RingedChoice(
@@ -1175,6 +1174,7 @@ struct VoicePicker: View {
         } picture: { _ in
           VoiceSwatch(id: voice.id)
         }
+        .id(voice.id)
         .accessibilityIdentifier("boltty.settings.localVoice.\(voice.id)")
       }
     }
@@ -1243,6 +1243,8 @@ struct ChoiceStrip<Choices: View>: View {
   /// `nil` where the section's header already names the choice.
   let title: String?
   let identifier: String
+  /// Scrolled into view as the strip appears.
+  var chosen: String? = nil
   @ViewBuilder let choices: () -> Choices
 
   private static var rowInset: CGFloat { SettingsStageMetrics.rowInset }
@@ -1250,14 +1252,20 @@ struct ChoiceStrip<Choices: View>: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       if let title { Text(title) }
-      ScrollView(.horizontal) {
-        HStack(alignment: .top, spacing: 14) {
-          choices()
+      ScrollViewReader { reader in
+        ScrollView(.horizontal) {
+          HStack(alignment: .top, spacing: 14) {
+            choices()
+          }
+          .padding(.horizontal, Self.rowInset)
+          .padding(.vertical, 6)
         }
-        .padding(.horizontal, Self.rowInset)
-        .padding(.vertical, 6)
+        .scrollIndicators(.never)
+        .onAppear {
+          guard let chosen else { return }
+          reader.scrollTo(chosen, anchor: .center)
+        }
       }
-      .scrollIndicators(.never)
       .padding(.horizontal, -Self.rowInset)
       .accessibilityIdentifier(identifier)
     }

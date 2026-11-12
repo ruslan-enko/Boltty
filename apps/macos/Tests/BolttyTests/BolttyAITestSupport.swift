@@ -122,6 +122,10 @@ final class FakeBolttyAIConversations: BolttyAIConversations {
     conversationsByID[id]?.workingDirectory = path
   }
 
+  func canChangeWorkingDirectory(of id: UUID) -> Bool {
+    conversationsByID[id]?.canChangeWorkingDirectory ?? false
+  }
+
   func honoursWorkingDirectory(providerID: String) -> Bool {
     !agentsIgnoringWorkingDirectory.contains(providerID)
   }

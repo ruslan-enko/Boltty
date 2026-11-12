@@ -35,6 +35,10 @@ enum OpenCodeDTO {
     var variant: String?
   }
 
+  struct MoveRequest: Encodable {
+    var directory: String
+  }
+
   struct SwitchModelRequest: Encodable {
     var model: ModelRef
   }

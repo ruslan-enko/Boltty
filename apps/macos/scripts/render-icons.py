@@ -141,7 +141,7 @@ w("arrow-down", P(line((8, 2.25), (8, 13.5 - APEX)), poly([(3.25, 8.75), (8, 13.
 
 # Circles
 w("circle", C(8, 8, 6.25))
-w("stop", R(2.75, 2.75, 10.5, 10.5, B))
+w("stop", R(4, 4, 8, 8, J).replace("/>", ' fill="#000"/>'))
 w("circle-dashed", *[P(arc(8, 8, 6.25, k * 45 - 90 + 9.5, k * 45 - 90 + 35.5)) for k in range(8)])
 w("circle-dotted", *[D(*pol(8, 8, 6.25, k * 30 - 90), 0.8) for k in range(12)])
 w("check-circle", P(arc(8, 8, 6.25, -5, 293)), P(poly([(5, 7.75), (7.5, 10.25), (13.5, 3.75)])))

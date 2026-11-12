@@ -860,7 +860,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
           conversation,
           honoursWorkingDirectory: conversations.honoursWorkingDirectory(
             providerID: conversation.providerID
-          )
+          ),
+          canChange: conversations.canChangeWorkingDirectory(of: id)
         ).withBranch(GitRepository.read(at: conversation.workingDirectory)?.branch)
       )
       return
@@ -1035,7 +1036,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private func chooseWorkingDirectory() {
     guard let conversations else { return }
     if let id = panelView.addressedSessionID {
-      guard conversations.conversation(id: id)?.canChangeWorkingDirectory == true else { return }
+      guard conversations.canChangeWorkingDirectory(of: id) else { return }
     }
     let pick = directoryPicker ?? { [weak self] current in
       self?.runOpenPanel(startingAt: current)
@@ -1047,7 +1048,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private func useWorkingDirectory(_ path: String) {
     guard let conversations else { return }
     if let id = panelView.addressedSessionID {
-      guard conversations.conversation(id: id)?.canChangeWorkingDirectory == true else { return }
+      guard conversations.canChangeWorkingDirectory(of: id) else { return }
       conversations.setWorkingDirectory(path, for: id)
     } else {
       pendingWorkingDirectory = path
@@ -1154,7 +1155,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     guard let conversations else { return nil }
     let chatID = panelView.addressedSessionID
     let conversation = chatID.flatMap(conversations.conversation(id:))
-    let canChoose = conversation.map(\.canChangeWorkingDirectory) ?? true
+    let canChoose = chatID.map(conversations.canChangeWorkingDirectory(of:)) ?? true
     let home = conversations.defaultWorkingDirectory()
     let current = currentWorkingDirectory()
     return WorkingDirectoryMenu.make(
@@ -1589,7 +1590,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     if let id = panelView.addressedSessionID {
       conversations?.saveDraft(panelView.currentDraft, for: id)
     } else {
-      newPromptDraft = panelView.currentDraft
+      // A search left open is not words for a new chat.
+      newPromptDraft = panelView.isSearchingChats ? PromptDraft("") : panelView.currentDraft
     }
   }
 

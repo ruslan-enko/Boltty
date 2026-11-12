@@ -36,6 +36,8 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let effortReset = AgentCapabilities(rawValue: 1 << 20)
 
+  static let folderMoving = AgentCapabilities(rawValue: 1 << 21)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }

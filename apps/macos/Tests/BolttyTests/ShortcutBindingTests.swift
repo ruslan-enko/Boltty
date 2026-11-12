@@ -197,7 +197,7 @@ final class KeyboardShortcutCatalogTests: XCTestCase {
     XCTAssertEqual(
       Set(KeyboardShortcutCatalog.customizableIDs),
       Set([
-        "copy", "paste", "selectAll",
+        "undo", "redo", "cut", "copy", "paste", "selectAll",
         "minimize",
         "settings", "closeBoltty"
       ])

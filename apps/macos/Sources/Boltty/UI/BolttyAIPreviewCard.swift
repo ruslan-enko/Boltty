@@ -79,6 +79,7 @@ final class BolttyAIPreviewCard: NSView {
   }
   var onRetry: ((String) -> Void)?
   var onChooseModel: (() -> Void)?
+  var onChooseFolder: (() -> Void)?
   private let recoverButton = GlassPillButton.titled("Restore unsent message")
   private let failureCard = BolttyAIFailureCard()
   var onCancelQueued: ((String) -> Void)?
@@ -284,6 +285,7 @@ final class BolttyAIPreviewCard: NSView {
     failureCard.isHidden = true
     failureCard.onRetry = { [weak self] prompt in self?.onRetry?(prompt) }
     failureCard.onChooseModel = { [weak self] in self?.onChooseModel?() }
+    failureCard.onChooseFolder = { [weak self] in self?.onChooseFolder?() }
     scroll.documentView = content
     scroll.contentView.scroll(to: restingScrollOrigin)
     scroll.translatesAutoresizingMaskIntoConstraints = false
@@ -1039,8 +1041,13 @@ final class BolttyAIPreviewCard: NSView {
           !preview.withholdsAnswer else { return nil }
     let body = preview.displayBody.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !body.isEmpty else { return nil }
+    // With nothing answered the body is the person's own request.
+    let isRequest = [preview.retryPrompt, preview.title].contains {
+      $0?.trimmingCharacters(in: .whitespacesAndNewlines) == body
+    }
     return ConversationMessage(
-      id: "body-\(preview.id)", role: .agent, createdAt: .distantPast, completedAt: .distantPast,
+      id: "body-\(preview.id)", role: isRequest ? .user : .agent,
+      createdAt: .distantPast, completedAt: .distantPast,
       parts: [.text(TextPart(id: "body", kind: .text, text: body))])
   }
 
