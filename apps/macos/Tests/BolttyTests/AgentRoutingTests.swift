@@ -61,8 +61,8 @@ final class AgentRoutingTests: XCTestCase {
 
   func testALimitHitHereCountsUntilItComesBack() {
     let plans = ["claude": usage(10), "codex": usage(40)]
-    XCTAssertEqual(ranked(plans, spentUntil: ["claude": now + 60]), ["codex", "claude"])
-    XCTAssertEqual(ranked(plans, spentUntil: ["claude": now - 60]), ["claude", "codex"])
+    XCTAssertEqual(ranked(plans, spentUntil: ["claude": now + 60]), ["codex", "grok", "claude"])
+    XCTAssertEqual(ranked(plans, spentUntil: ["claude": now - 60]), ["claude", "codex", "grok"])
   }
 
   func testAWindowAlreadyBackCountsForNothing() {
