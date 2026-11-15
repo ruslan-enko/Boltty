@@ -2,6 +2,13 @@ import Combine
 import XCTest
 @testable import Boltty
 
+/// The folders tests send chats from. The engine sends nothing from a folder that is gone.
+func makeTestFolders(_ paths: String...) throws {
+  for path in paths {
+    try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+  }
+}
+
 @MainActor
 final class FakeBolttyAIConversations: BolttyAIConversations {
   private(set) var startedPrompts: [String] = []

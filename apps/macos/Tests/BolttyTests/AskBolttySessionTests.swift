@@ -29,6 +29,7 @@ final class AskBolttySessionTests: XCTestCase {
   private var directory: URL!
 
   override func setUp() async throws {
+    try makeTestFolders("/tmp/from-finder")
     directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("talk-tests-\(UUID().uuidString)", isDirectory: true)
     store = ConversationStore(persistence: ConversationPersistence(

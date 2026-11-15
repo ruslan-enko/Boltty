@@ -10,6 +10,7 @@ final class ConversationEngineTests: XCTestCase {
 
   override func setUp() async throws {
     try await super.setUp()
+    try makeTestFolders("/tmp/work")
     root = URL(fileURLWithPath: NSTemporaryDirectory())
       .appendingPathComponent("boltty-engine-\(UUID().uuidString)")
     store = ConversationStore(persistence: ConversationPersistence(

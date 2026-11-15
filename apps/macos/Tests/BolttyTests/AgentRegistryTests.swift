@@ -11,6 +11,7 @@ final class AgentRegistryTests: XCTestCase {
 
   override func setUp() async throws {
     try await super.setUp()
+    try makeTestFolders("/tmp/work")
     root = URL(fileURLWithPath: NSTemporaryDirectory())
       .appendingPathComponent("boltty-registry-\(UUID().uuidString)")
     store = ConversationStore(persistence: ConversationPersistence(root: root))
