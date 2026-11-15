@@ -291,7 +291,8 @@ enum AgentPaletteMetrics {
 
   static let previewCloseDiameter: CGFloat = 36
   static let previewCloseGlyphPointSize: CGFloat = 18
-  static let previewCloseGlyphNudge: CGFloat = 1
+  static let discArrowGlyphPointSize: CGFloat = 15.5
+  static let previewCloseGlyphNudge: CGFloat = 1.5
   static let previewCloseInset: CGFloat = {
     let radius = previewCloseDiameter / 2
     let fromArcCentre = cardCornerRadius - shellContentInset - radius

@@ -162,7 +162,7 @@ struct UsageOverviewSection: View {
               .foregroundStyle(.secondary)
           }
           if summary.tokens > 0 {
-            UsageMeter(fraction: Double(row.tokens) / Double(total), height: 6)
+            UsageMeter(fraction: Double(row.tokens) / Double(total))
               .accessibilityLabel("\(row.id) share of tokens")
           }
         }

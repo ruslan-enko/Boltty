@@ -649,7 +649,8 @@ The loop that must keep working:
   (`boltty.panel.clearGlass`, on) puts it back on regular glass, same ramp,
   chosen as the system's Liquid Glass setting is: the shell itself over the
   desktop's own wallpaper (a system one's `.madesktop` names its downloaded
-  asset and a thumbnail; `DesktopPicture`), a Clear–Frosted slider under it (`PanelGlassChoice`). Regular glass adds a neutral grey to what is behind it (about +30
+  asset and a thumbnail; an aerial is named only in the wallpaper store's
+  `Index.plist`, and its video's first frame is used; `DesktopPicture`), a Clear–Frosted slider under it (`PanelGlassChoice`). Regular glass adds a neutral grey to what is behind it (about +30
   sRGB over a dark wallpaper), so bare at the foot it read as grey, and darkened
   to hide that it read as too black. The glass lights its own rim, strongest
   along the foot and thinning up the corners; through the ramp's thin end that
@@ -1147,10 +1148,11 @@ heard.
   the list again. `-boltty.settings.agent claude` opens an agent's page.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar
-  and the activity chart flat in black (the label ink, `Color.usageInk`): in the
-  accent they were the loudest thing on the page and the faces were lost; the overview's grid of days keeps the accent), 14 days of activity, and an overview counted
+  4 high and flat in black (the label ink, `Color.usageInk`): in the
+  accent it was the loudest thing on the page and the faces were lost; the overview's grid of days keeps the accent), and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
-  `Application Support/Boltty/Usage/statistics.json`). Never summed across
+  `Application Support/Boltty/Usage/statistics.json`); a chart of 14 days under
+  each agent was there and was removed. Never summed across
   agents' different units. Signing in happens in a terminal, so the page asks
   every CLI again whether it is signed in before reading limits: when shown,
   when its window comes forward (at most every 30 s), and on Refresh. A

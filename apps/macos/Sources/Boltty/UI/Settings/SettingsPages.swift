@@ -1,5 +1,4 @@
 import AppKit
-import Charts
 import ImageIO
 import SwiftUI
 
@@ -622,7 +621,7 @@ struct UsageSettingsPage: View {
               usageRow(row)
             } footer: {
               if row.id == rows.last?.id {
-                SettingsNote("Read from each agent's own account. Codex counts tokens a day, OpenCode counts steps. OpenCode reports Go and Console limits once signed in to its Console; how many free steps a day allows it never says, only when they come back.")
+                SettingsNote("Read from each agent's own account. OpenCode reports Go and Console limits once signed in to its Console; how many free steps a day allows it never says, only when they come back.")
               }
             }
           }
@@ -668,9 +667,6 @@ struct UsageSettingsPage: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }
-      }
-      if let history = row.history {
-        UsageHistoryChart(history: history)
       }
     }
     .padding(.vertical, 6)
@@ -732,14 +728,14 @@ private struct UsageLimitCard: View {
 }
 
 extension Color {
-  /// Plan meters and charts: a neutral ink, so the numbers carry no colour of
+  /// Plan meters: a neutral ink, so the numbers carry no colour of
   /// their own beside the faces.
   static var usageInk: Color { .primary }
 }
 
 struct UsageMeter: View {
   let fraction: Double
-  var height: CGFloat = 8
+  var height: CGFloat = 4
 
   var body: some View {
     GeometryReader { proxy in
@@ -754,78 +750,6 @@ struct UsageMeter: View {
       }
     }
     .frame(height: height)
-  }
-}
-
-private struct UsageHistoryChart: View {
-  let history: AgentActivityHistory
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      headline
-      Chart(history.days) { day in
-        BarMark(
-          x: .value("Day", day.date, unit: .day),
-          y: .value(history.unit.title.capitalized, day.value),
-          width: .ratio(0.62)
-        )
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4, style: .continuous))
-        .foregroundStyle(Color.usageInk)
-      }
-      .chartYAxis {
-        AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
-          AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
-            .foregroundStyle(Color.primary.opacity(0.15))
-          AxisValueLabel {
-            if let number = value.as(Double.self) {
-              Text(AgentActivityHistory.compact(number))
-            }
-          }
-        }
-      }
-      .chartXAxis {
-        AxisMarks(values: .stride(by: .day, count: 7)) { value in
-          AxisValueLabel {
-            if let date = value.as(Date.self) { Text(Self.dayFormatter.string(from: date)) }
-          }
-        }
-      }
-      .frame(height: 96)
-      .accessibilityLabel("\(history.unit.title.capitalized) per day, last \(AgentActivityHistory.window) days")
-
-      if let caption {
-        Text(caption)
-          .font(BolttyInterfaceTypography.callout)
-          .foregroundStyle(.secondary)
-      }
-    }
-  }
-
-  private var headline: some View {
-    HStack(alignment: .firstTextBaseline) {
-      Text("Last \(AgentActivityHistory.window) days")
-        .font(BolttyInterfaceTypography.headline)
-      Spacer(minLength: 8)
-      Text("\(AgentActivityHistory.compact(history.days.reduce(0) { $0 + $1.value })) \(history.unit.title)")
-        .font(BolttyInterfaceTypography.callout)
-        .foregroundStyle(.secondary)
-        .monospacedDigit()
-    }
-  }
-
-  private static let dayFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.setLocalizedDateFormatFromTemplate("d MMM")
-    return formatter
-  }()
-
-  private var caption: String? {
-    var parts: [String] = []
-    if let streak = history.streakDays, streak > 0 {
-      parts.append(streak == 1 ? "1-day streak" : "\(streak)-day streak")
-    }
-    if let summary = history.summary { parts.append(summary) }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 }
 

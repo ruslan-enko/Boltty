@@ -1,3 +1,4 @@
+import AVFoundation
 import AppKit
 import SwiftUI
 
@@ -38,7 +39,7 @@ struct SettingsStage<Content: View>: View {
         return
       }
       let found = await Task.detached(priority: .utility) {
-        DesktopPicture.load(from: sources, maxPixels: 960)
+        await DesktopPicture.load(from: sources, maxPixels: 960)
       }.value
       DesktopPicture.cached = found
       withAnimation(SettingsMotion.quick) { wallpaper = found }
@@ -576,7 +577,7 @@ struct DesktopPicture: @unchecked Sendable {
 
   @MainActor
   static func sources() -> [URL] {
-    var urls: [URL] = []
+    var urls = aerialSources()
     if let screen = NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen) {
       if url.pathExtension == "madesktop" {
         urls += madesktopSources(url)
@@ -607,13 +608,46 @@ struct DesktopPicture: @unchecked Sendable {
     return urls
   }
 
-  static func load(from urls: [URL], maxPixels: CGFloat) -> DesktopPicture? {
+  // An aerial wallpaper is not what `desktopImageURL` names (it keeps naming
+  // the last still): the wallpaper store names its asset, a video beside a thumbnail.
+  private static func aerialSources() -> [URL] {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+      .appendingPathComponent("Library/Application Support/com.apple.wallpaper")
+    guard
+      let data = try? Data(contentsOf: home.appendingPathComponent("Store/Index.plist")),
+      let index = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+      let all = index["AllSpacesAndDisplays"] as? [String: Any],
+      let desktop = all["Desktop"] as? [String: Any],
+      let content = desktop["Content"] as? [String: Any],
+      let choice = (content["Choices"] as? [[String: Any]])?.first,
+      choice["Provider"] as? String == "com.apple.wallpaper.choice.aerials",
+      let configuration = choice["Configuration"] as? Data,
+      let decoded = try? PropertyListSerialization.propertyList(from: configuration, format: nil) as? [String: Any],
+      let id = decoded["assetID"] as? String
+    else { return [] }
+    let aerials = home.appendingPathComponent("aerials")
+    return [
+      aerials.appendingPathComponent("videos/\(id).mov"),
+      aerials.appendingPathComponent("thumbnails/\(id).png"),
+    ]
+  }
+
+  static func load(from urls: [URL], maxPixels: CGFloat) async -> DesktopPicture? {
     let options: [CFString: Any] = [
       kCGImageSourceCreateThumbnailFromImageAlways: true,
       kCGImageSourceCreateThumbnailWithTransform: true,
       kCGImageSourceThumbnailMaxPixelSize: maxPixels,
     ]
     for url in urls {
+      if url.pathExtension == "mov" {
+        guard FileManager.default.fileExists(atPath: url.path) else { continue }
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+        generator.maximumSize = CGSize(width: maxPixels, height: maxPixels)
+        if let frame = try? await generator.image(at: .zero).image {
+          return DesktopPicture(image: frame, source: urls.first)
+        }
+        continue
+      }
       guard
         let source = CGImageSourceCreateWithURL(url as CFURL, nil),
         let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)

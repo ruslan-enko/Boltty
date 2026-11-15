@@ -96,12 +96,17 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     button.imagePosition = .noImage
     button.font = AgentPaletteView.modelChipFont
     (button.cell as? NSButtonCell)?.lineBreakMode = .byTruncatingMiddle
+    button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     return button
   }()
-  private static let modelChipFont = roundedAppFont(size: AgentPaletteMetrics.typeSecondary, weight: .medium)
+  private static let modelChipFont = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
   private static let modelChipMaxWidth: CGFloat = 164
   private let modelChipSlot = NSView()
-  private lazy var modelChipWidth = modelChipSlot.widthAnchor.constraint(equalToConstant: 0)
+  private lazy var modelChipWidth: NSLayoutConstraint = {
+    let width = modelChipSlot.widthAnchor.constraint(equalToConstant: 0)
+    width.priority = .defaultHigh
+    return width
+  }()
   private var shownModelChip: BolttyAIModelChip?
   var onModelMenu: (() -> Void)?
   private lazy var latestPillConstraints: [NSLayoutConstraint] = [
@@ -116,7 +121,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       icon: .arrowDown,
       accessibilityDescription: "Latest",
       diameter: AgentPaletteMetrics.previewCloseDiameter,
-      size: AgentPaletteMetrics.previewCloseGlyphPointSize
+      size: AgentPaletteMetrics.discArrowGlyphPointSize
     )
     disc.button.toolTip = "Latest"
     return disc
@@ -2476,6 +2481,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         equalTo: promptForeground.leadingAnchor,
         constant: AgentPaletteMetrics.chatComposerControlsTrailingInset),
       leadingControls.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
+      // The model chip gives way (truncating in its middle) before the foot's two groups meet.
+      leadingControls.trailingAnchor.constraint(
+        lessThanOrEqualTo: trailingControls.leadingAnchor,
+        constant: -ComposerControlGroup.gap),
     ])
     promptForeground.addSubview(recordingHoverSensor)
     promptForeground.addSubview(recordingControls)

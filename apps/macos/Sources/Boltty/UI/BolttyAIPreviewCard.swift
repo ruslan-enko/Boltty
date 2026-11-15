@@ -80,7 +80,21 @@ final class BolttyAIPreviewCard: NSView {
   var onRetry: ((String) -> Void)?
   var onChooseModel: (() -> Void)?
   var onChooseFolder: (() -> Void)?
-  private let recoverButton = GlassPillButton.titled("Restore unsent message")
+  private let recoverButton: PaletteIconButton = {
+    let button = PaletteIconButton()
+    button.translatesAutoresizingMaskIntoConstraints = false
+    button.isBordered = false
+    button.title = "Restore Unsent Message"
+    button.font = roundedAppFont(size: AgentPaletteMetrics.previewActivityNameFontSize)
+    button.image = BolttyIcon.undoCircle.image(
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityNameFontSize + 2))
+    button.imagePosition = .imageLeading
+    button.imageHugsTitle = true
+    button.restingTint = PaletteInk.secondary
+    button.hoverTint = PaletteInk.primary
+    button.hoverBackground = .clear
+    return button
+  }()
   private let failureCard = BolttyAIFailureCard()
   var onCancelQueued: ((String) -> Void)?
   private let queuedRow = PaletteServiceStack(frame: .zero)
@@ -113,7 +127,7 @@ final class BolttyAIPreviewCard: NSView {
     icon: .chevronLeft,
     accessibilityDescription: "Back",
     diameter: AgentPaletteMetrics.previewCloseDiameter,
-    size: AgentPaletteMetrics.previewCloseGlyphPointSize
+    size: AgentPaletteMetrics.discArrowGlyphPointSize
   )
   var closeButtonUsesSystemGlassForTesting: Bool { closeButton.usesSystemGlass }
   var isCloseVisibleForTesting: Bool { !closeButton.isHidden }
@@ -279,8 +293,8 @@ final class BolttyAIPreviewCard: NSView {
       in: .leading
     )
     streamingTail.isHidden = true
-    recoverButton.button.target = self
-    recoverButton.button.action = #selector(recoverPrompt)
+    recoverButton.target = self
+    recoverButton.action = #selector(recoverPrompt)
     recoverButton.isHidden = true
     failureCard.isHidden = true
     failureCard.onRetry = { [weak self] prompt in self?.onRetry?(prompt) }
@@ -293,7 +307,7 @@ final class BolttyAIPreviewCard: NSView {
     configureScrollEdge()
     addSubview(scroll)
     closeButton.button.image = BolttyIcon.chevronLeft.image(
-      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewCloseGlyphPointSize),
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.discArrowGlyphPointSize),
       nudgedLeft: AgentPaletteMetrics.previewCloseGlyphNudge,
       description: "Back"
     )
@@ -780,7 +794,7 @@ final class BolttyAIPreviewCard: NSView {
   @objc private func recoverPrompt() {
     guard let prompt = displayedPreview?.retryPrompt else { return }
     onRecover?(prompt)
-    recoverButton.button.isEnabled = false
+    recoverButton.isEnabled = false
   }
 
   private func applyStreamingTail(_ preview: BolttyAISessionPreview) {
@@ -855,7 +869,8 @@ final class BolttyAIPreviewCard: NSView {
     let failureHeight = failureCard.isHidden
       ? 0
       : failureCard.measuredHeight(width: width) + AgentPaletteMetrics.previewMessageSpacing
-    let recoverHeight = recoverButton.isHidden ? 0 : CGFloat(48)
+    let recoverHeight = recoverButton.isHidden
+      ? 0 : recoverButton.fittingSize.height + AgentPaletteMetrics.previewOptionsTopSpacing
     let queuedHeight = queuedRow.isHidden
       ? 0
       : PaletteServiceStack.eyebrowTopInset + PaletteServiceStack.eyebrowHeight
@@ -1006,7 +1021,7 @@ final class BolttyAIPreviewCard: NSView {
       status = "No output yet."
     }
     recoverButton.isHidden = preview.retryPrompt == nil || report != nil
-    if previous?.retryPrompt != preview.retryPrompt { recoverButton.button.isEnabled = true }
+    if previous?.retryPrompt != preview.retryPrompt { recoverButton.isEnabled = true }
     statusLabel.stringValue = status
     statusLabel.isHidden = status.isEmpty
     layoutSubtreeIfNeeded()

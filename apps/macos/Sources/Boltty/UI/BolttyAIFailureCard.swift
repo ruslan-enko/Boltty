@@ -100,11 +100,10 @@ final class BolttyAIFailureCard: NSView {
     detailsBox.addSubview(copyButton)
     detailsBox.isHidden = true
 
-    let headline = NSStackView(views: [symbol, sentence])
-    headline.orientation = .horizontal
-    headline.alignment = .firstBaseline
-    headline.spacing = 6
+    let headline = NSView()
     headline.translatesAutoresizingMaskIntoConstraints = false
+    headline.addSubview(symbol)
+    headline.addSubview(sentence)
 
     controls.orientation = .horizontal
     controls.alignment = .centerY
@@ -127,6 +126,13 @@ final class BolttyAIFailureCard: NSView {
       column.topAnchor.constraint(equalTo: topAnchor, constant: pad),
       column.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -pad),
       headline.widthAnchor.constraint(equalTo: column.widthAnchor),
+      symbol.leadingAnchor.constraint(equalTo: headline.leadingAnchor),
+      symbol.centerYAnchor.constraint(
+        equalTo: sentence.firstBaselineAnchor, constant: -(sentence.font?.capHeight ?? 0) / 2),
+      sentence.leadingAnchor.constraint(equalTo: symbol.trailingAnchor, constant: 6),
+      sentence.trailingAnchor.constraint(equalTo: headline.trailingAnchor),
+      sentence.topAnchor.constraint(equalTo: headline.topAnchor),
+      sentence.bottomAnchor.constraint(equalTo: headline.bottomAnchor),
       detailsBox.widthAnchor.constraint(equalTo: column.widthAnchor),
 
       detailsText.leadingAnchor.constraint(

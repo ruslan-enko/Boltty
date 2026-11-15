@@ -58,11 +58,12 @@
               }
             }
           ],
-          "image-name" : "Icon.png",
-          "name" : "Icon",
+          "hidden" : false,
+          "image-name" : "Subtract 3.png",
+          "name" : "Subtract 3",
           "opacity" : 1,
           "position" : {
-            "scale" : 0.6,
+            "scale" : 0.52,
             "translation-in-points" : [
               0,
               0
