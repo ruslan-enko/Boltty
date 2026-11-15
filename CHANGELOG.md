@@ -2,6 +2,30 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.9.0
+
+**Chats**
+- A chat can move to another folder after it has started, with every agent but
+  Grok: the folder chip's choice holds from the next message.
+- A chat whose folder is gone sends nothing and offers Choose Folder….
+- A single line break in an answer is a line, as in Messages.
+- ⌘Z, ⇧⌘Z and ⌘X work in the prompt.
+- The model chip is smaller and shortens its name before it crowds the
+  composer's other buttons.
+- Restore Unsent Message is a quiet row under the chat, not a button.
+
+**Settings**
+- Usage shows each agent's plan windows on a thinner meter; the 14-day chart
+  under each agent is gone.
+- The shortcut recorder refuses a key another shortcut holds, and says which.
+- Pages no longer run under the title bar.
+- Panel glass shows an aerial wallpaper too.
+
+**Elsewhere**
+- A new app icon.
+- Limits puts each window's reset time on a line of its own.
+- Stop's square is solid.
+
 ## 0.8.0
 
 **Agents**
