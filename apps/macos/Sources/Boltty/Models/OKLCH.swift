@@ -37,7 +37,8 @@ struct Oklab: Hashable, Sendable {
   }
 
   init(_ color: NSColor) {
-    let srgb = color.usingColorSpace(.sRGB) ?? color
+    // Extended, so a Display P3 colour past sRGB is read whole, not clipped.
+    let srgb = color.usingColorSpace(.extendedSRGB) ?? color
     let (r, g, b) = (
       Self.decode(Double(srgb.redComponent)),
       Self.decode(Double(srgb.greenComponent)),

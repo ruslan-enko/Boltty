@@ -1006,11 +1006,10 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(content.opacity, 1)
   }
 
-  func testShiftTabSwapsTheAgentMarkThroughABlurAndLeavesThePlaceholderStill() throws {
+  func testShiftTabSwapsTheAgentMarkThroughABlurAndNamesTheAgent() throws {
     try XCTSkipIf(MotionPreferences.reduceMotion, "Reduce Motion swaps the mark at once")
     let view = makeView(targets: [.opencode, .claude])
     view.layoutSubtreeIfNeeded()
-    let placeholder = view.promptPlaceholderForTesting
 
     XCTAssertTrue(
       view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:)))
@@ -1030,11 +1029,8 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(resolve.preferredFrameRateRange.preferred, 120)
     XCTAssertEqual(try XCTUnwrap(layer.filters as? [CIFilter]).count, 1)
 
-    XCTAssertEqual(view.promptPlaceholderForTesting, placeholder, "precondition: the words stay")
-    let still = try XCTUnwrap(view.placeholderLayerForTesting)
-    XCTAssertNil(still.animation(forKey: kCATransition), "unchanged words do not crossfade")
-    XCTAssertNil(still.animation(forKey: "targetSwapBlur"), "unchanged words do not blur")
-    XCTAssertNil(still.filters)
+    XCTAssertEqual(view.promptPlaceholderForTesting, "Ask \(view.agentForNewPrompt?.displayName ?? "")")
+    XCTAssertNotNil(view.agentForNewPrompt, "⇧Tab chose an agent")
 
     XCTAssertNil(view.promptForegroundLayerForTesting?.filters)
     XCTAssertFalse(view.promptCapsuleRendersOffscreenForTesting)

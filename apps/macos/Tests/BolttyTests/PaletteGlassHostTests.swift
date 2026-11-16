@@ -83,7 +83,7 @@ final class PaletteGlassHostTests: XCTestCase {
     }
   }
 
-  func testThePromptRampRunsFromABlackCrownToNothingAtTheFoot() throws {
+  func testThePromptRampRunsFromABlackCrownToHalfAtTheFoot() throws {
     try XCTSkipIf(PaletteGlassHost.prefersReducedTransparency, "Reduce Transparency has a flat fill, not the ramp")
     let host = PaletteGlassHost(
       content: NSView(),
@@ -103,14 +103,12 @@ final class PaletteGlassHostTests: XCTestCase {
     XCTAssertEqual(crown.greenComponent, 0, accuracy: 0.005)
     XCTAssertEqual(crown.blueComponent, 0, accuracy: 0.005)
     XCTAssertEqual(crown.alphaComponent, 1, accuracy: 0.005)
-    XCTAssertEqual(foot.alphaComponent, 0, accuracy: 0.01, "the glass alone at the foot")
-
-    XCTAssertEqual(foot.alphaComponent, 0, accuracy: 0.01, "0% at the foot")
+    XCTAssertEqual(foot.alphaComponent, 0.5, accuracy: 0.01, "50% at the foot")
 
     XCTAssertEqual(host.effectiveGlassTintAlpha, 0, accuracy: 0.001)
     XCTAssertEqual(host.glassTintAlphaForTesting, 0, accuracy: 0.001)
     let composite = 1 - (1 - foot.alphaComponent) * (1 - host.effectiveGlassTintAlpha)
-    XCTAssertEqual(composite, 0, accuracy: 0.01, "at the foot it is the bare glass")
+    XCTAssertEqual(composite, 0.5, accuracy: 0.01, "at the foot only the ramp is over the glass")
   }
 
   func testGlassTintBelongsToTheOverlayNotTheHost() throws {
@@ -331,9 +329,9 @@ final class PaletteGlassHostTests: XCTestCase {
       XCTAssertEqual(stop.blueComponent, 0, accuracy: 0.005)
       XCTAssertEqual(
         stop.alphaComponent,
-        1 - location,
+        1 - 0.5 * location,
         accuracy: 0.01,
-        "the gradient is linear from 100% to 0%"
+        "the gradient is linear from 100% to 50%"
       )
     }
   }
