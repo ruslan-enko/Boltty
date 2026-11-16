@@ -2,6 +2,10 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.9.1
+
+- A redrawn app icon.
+
 ## 0.9.0
 
 **Chats**

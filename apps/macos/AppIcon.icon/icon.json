@@ -1,69 +1,38 @@
 {
   "color-space-for-untagged-svg-colors" : "display-p3",
-  "fill-specializations" : [
-    {
-      "value" : {
-        "linear-gradient" : [
-          "display-p3:1.00000,0.92513,0.01542,1.00000",
-          "display-p3:0.89670,0.59557,0.12049,1.00000"
-        ]
-      }
-    },
-    {
-      "appearance" : "dark",
-      "value" : "system-dark"
-    }
-  ],
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:1.00000,0.92513,0.01542,1.00000",
+      "display-p3:0.89670,0.59557,0.12049,1.00000"
+    ]
+  },
   "groups" : [
     {
       "layers" : [
         {
           "blend-mode" : "normal",
-          "fill-specializations" : [
-            {
-              "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.85749,0.92216,0.88598,0.50000",
-                  "display-p3:1.00000,1.00000,1.00000,1.00000"
-                ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.5,
-                    "y" : 1
-                  },
-                  "stop" : {
-                    "x" : 0.5,
-                    "y" : 0
-                  }
-                }
-              }
-            },
-            {
-              "appearance" : "dark",
-              "value" : {
-                "linear-gradient" : [
-                  "display-p3:1.00000,0.71959,0.08371,1.00000",
-                  "display-p3:1.00000,1.00000,1.00000,1.00000"
-                ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.5,
-                    "y" : 1
-                  },
-                  "stop" : {
-                    "x" : 0.5,
-                    "y" : 0
-                  }
-                }
+          "fill" : {
+            "linear-gradient" : [
+              "display-p3:1.00000,1.00000,1.00000,1.00000",
+              "display-p3:1.00000,1.00000,1.00000,1.00000"
+            ],
+            "orientation" : {
+              "start" : {
+                "x" : 0.5,
+                "y" : 1
+              },
+              "stop" : {
+                "x" : 0.5,
+                "y" : 0
               }
             }
-          ],
+          },
           "hidden" : false,
-          "image-name" : "Subtract 3.png",
-          "name" : "Subtract 3",
+          "image-name" : "213 2.png",
+          "name" : "213 2",
           "opacity" : 1,
           "position" : {
-            "scale" : 0.52,
+            "scale" : 0.5499999999999999,
             "translation-in-points" : [
               0,
               0
