@@ -706,7 +706,7 @@ final class BolttyAIApprovalBar: NSView {
     button.isBordered = !asDefault
     button.restingBackground = asDefault ? BolttyBrand.accentOnGlass : .clear
     button.hoverBackground = asDefault
-      ? BolttyBrand.accentOnGlass.blended(withFraction: 0.18, of: .white) ?? BolttyBrand.accentOnGlass
+      ? BolttyBrand.accentOnGlassHover
       : .clear
     button.pressScale = asDefault ? AgentPaletteMetrics.controlPressedScale : 1
     button.restingTint = asDefault ? BolttyBrand.onAccent : AgentPaletteMetrics.directoryChipTextColor

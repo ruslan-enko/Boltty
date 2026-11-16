@@ -422,7 +422,7 @@ enum AgentPaletteMetrics {
   static let resultsRowTextTrailing: CGFloat = fromHistoryMock(12)
   static let resultsUnreadDotDiameter: CGFloat = 8
   static let resultsUnreadDotGap: CGFloat = 8
-  static let resultsUnreadDotFill = HexColor.nsColor("#0A84FF")
+  static let resultsUnreadDotFill = OKLCH(0.624, 0.206, 255.5).color
   static var resultsRowFacedTextLeading: CGFloat {
     resultsRowTextLeading + resultsMascotSize + resultsRowIconTextSpacing
   }

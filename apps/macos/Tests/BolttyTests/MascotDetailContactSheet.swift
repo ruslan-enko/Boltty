@@ -311,19 +311,19 @@ final class MascotPosterRender: XCTestCase {
     let context = try XCTUnwrap(CGContext(
       data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-    let colours = SunsetView.colours.map { HexColor.nsColor($0).cgColor } as CFArray
-    let locations = SunsetView.locations.map { CGFloat(truncating: $0) }
+    let colours = OklabGradient.cgColors(SunsetView.colours.map(\.color)) as CFArray
+    let locations = SunsetView.skyLocations(SunsetView.locations).map { CGFloat(truncating: $0) }
     let gradient = try XCTUnwrap(CGGradient(
       colorsSpace: space, colors: colours, locations: locations))
     context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: Self.height), end: CGPoint(x: 0, y: 0), options: [])
     context.setBlendMode(.screen)
-    let lights: [(String, CGFloat, CGPoint)] = [
-      ("#ffb36b", 0.38, CGPoint(x: 0.28, y: 0.3)),
-      ("#ff86b0", 0.26, CGPoint(x: 0.74, y: 0.42)),
-      ("#9cc8ff", 0.30, CGPoint(x: 0.55, y: 0.78)),
+    let lights: [(OKLCH, CGFloat, CGPoint)] = [
+      (OKLCH(0.825, 0.125, 63.1), 0.38, CGPoint(x: 0.28, y: 0.3)),
+      (OKLCH(0.765, 0.153, 359.3), 0.26, CGPoint(x: 0.74, y: 0.42)),
+      (OKLCH(0.821, 0.091, 254.3), 0.30, CGPoint(x: 0.55, y: 0.78)),
     ]
-    for (hex, alpha, centre) in lights {
-      let colour = HexColor.nsColor(hex).cgColor
+    for (stop, alpha, centre) in lights {
+      let colour = stop.cgColor
       let glow = try XCTUnwrap(CGGradient(
         colorsSpace: space,
         colors: [colour.copy(alpha: alpha)!, colour.copy(alpha: 0)!] as CFArray,

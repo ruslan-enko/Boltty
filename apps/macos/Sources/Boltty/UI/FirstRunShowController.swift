@@ -1245,8 +1245,9 @@ final class ShowPrompt {
       send.addSubview(glyph)
     }
     glass.content.addSubview(send)
-    caret.colors = [HexColor.nsColor("#7fb2ff").cgColor, CGColor(gray: 1, alpha: 1),
-                    HexColor.nsColor("#ffc24f").cgColor]
+    caret.colors = OklabGradient.cgColors([
+      OKLCH(0.759, 0.124, 258.4).color, .white, OKLCH(0.849, 0.146, 80.1).color
+    ])
     caret.cornerRadius = space.v(1.5)
     caret.opacity = 0
     parent.layer?.addSublayer(caret)
@@ -1645,10 +1646,10 @@ final class ShowAppWindow {
     sketch.block(471, 482, 16, 10, alpha: 0.95, radius: 5)
   }
 
-  private static let wallpaper = [
-    HexColor.nsColor("#3a5aa6").cgColor, HexColor.nsColor("#8ea3d0").cgColor,
-    HexColor.nsColor("#f1b97c").cgColor, HexColor.nsColor("#e4744a").cgColor,
-  ]
+  private static let wallpaper = OklabGradient.cgColors([
+    OKLCH(0.483, 0.128, 264.9).color, OKLCH(0.716, 0.07, 265.2).color,
+    OKLCH(0.823, 0.101, 68).color, OKLCH(0.681, 0.15, 40.7).color,
+  ])
 
   func rise(from distance: CGFloat) {
     let end = frame
@@ -2359,18 +2360,26 @@ final class ShowChatList {
 final class SunsetView: NSView {
   var onSkip: (() -> Void)?
 
-  static let colours = ["#22468f", "#3a6db0", "#5a8ac0", "#a9a0b4", "#e8a67c", "#f4a24e", "#e2461b"]
+  static let colours = [
+    OKLCH(0.411, 0.128, 262.5), OKLCH(0.532, 0.119, 256), OKLCH(0.622, 0.097, 252.3),
+    OKLCH(0.72, 0.03, 305.9), OKLCH(0.779, 0.096, 53.3), OKLCH(0.778, 0.139, 63.7),
+    OKLCH(0.613, 0.199, 35.2)
+  ]
   static let locations: [NSNumber] = [0, 0.3, 0.46, 0.6, 0.72, 0.84, 1]
   static let drifted: [NSNumber] = [0, 0.25, 0.41, 0.55, 0.69, 0.82, 1]
+
+  static func skyLocations(_ places: [NSNumber]) -> [NSNumber] {
+    OklabGradient.numbers(places.map { CGFloat(truncating: $0) })
+  }
 
   private let sky = CAGradientLayer()
   private let horizon = CAGradientLayer()
   private let night = CAGradientLayer()
   private var lights: [CAGradientLayer] = []
-  private static let lightColours: [(hex: String, alpha: CGFloat, centre: CGPoint, period: Double)] = [
-    ("#ffb36b", 0.38, CGPoint(x: 0.28, y: 0.3), 26),
-    ("#ff86b0", 0.26, CGPoint(x: 0.74, y: 0.42), 33),
-    ("#9cc8ff", 0.30, CGPoint(x: 0.55, y: 0.78), 29),
+  private static let lightColours: [(colour: OKLCH, alpha: CGFloat, centre: CGPoint, period: Double)] = [
+    (OKLCH(0.825, 0.125, 63.1), 0.38, CGPoint(x: 0.28, y: 0.3), 26),
+    (OKLCH(0.765, 0.153, 359.3), 0.26, CGPoint(x: 0.74, y: 0.42), 33),
+    (OKLCH(0.821, 0.091, 254.3), 0.30, CGPoint(x: 0.55, y: 0.78), 29),
   ]
   private let skip = NSTextField(labelWithString: "Skip Intro")
   private let palette: MascotPalette?
@@ -2397,14 +2406,14 @@ final class SunsetView: NSView {
     if !skip.isHidden, skip.frame.insetBy(dx: -14, dy: -10).contains(point) { onSkip?() }
   }
 
-  private static let dark = HexColor.nsColor("#0c111d").cgColor
-  private static let ember = HexColor.nsColor("#3a1d0a").cgColor
+  private static let dark = OKLCH(0.179, 0.026, 266.5).color.cgColor
+  private static let ember = OKLCH(0.267, 0.054, 51.5).color.cgColor
 
   private func build() {
     guard let root = layer else { return }
     sky.frame = bounds
-    sky.colors = Self.colours.map { HexColor.nsColor($0).cgColor }
-    sky.locations = Self.locations
+    sky.colors = OklabGradient.cgColors(Self.colours.map(\.color))
+    sky.locations = Self.skyLocations(Self.locations)
     sky.startPoint = CGPoint(x: 0.5, y: 1)
     sky.endPoint = CGPoint(x: 0.5, y: 0)
     root.addSublayer(sky)
@@ -2421,7 +2430,7 @@ final class SunsetView: NSView {
       return
     }
 
-    let ember = HexColor.nsColor("#ff7a2e").cgColor
+    let ember = OKLCH(0.725, 0.182, 46.2).color.cgColor
     horizon.type = .radial
     horizon.frame = bounds
     horizon.colors = [ember, ember.copy(alpha: 0) ?? ember]
@@ -2434,7 +2443,7 @@ final class SunsetView: NSView {
     for light in Self.lightColours {
       let glow = CAGradientLayer()
       glow.type = .radial
-      let colour = HexColor.nsColor(light.hex).cgColor
+      let colour = light.colour.cgColor
       glow.colors = [colour.copy(alpha: light.alpha) ?? colour, colour.copy(alpha: 0) ?? colour]
       glow.startPoint = CGPoint(x: 0.5, y: 0.5)
       glow.endPoint = CGPoint(x: 1, y: 1)
@@ -2514,8 +2523,8 @@ final class SunsetView: NSView {
     }
 
     let drift = CABasicAnimation(keyPath: "locations")
-    drift.fromValue = Self.locations
-    drift.toValue = Self.drifted
+    drift.fromValue = Self.skyLocations(Self.locations)
+    drift.toValue = Self.skyLocations(Self.drifted)
     drift.duration = 14
     drift.autoreverses = true
     drift.repeatCount = .infinity

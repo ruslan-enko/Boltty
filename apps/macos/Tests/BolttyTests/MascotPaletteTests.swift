@@ -19,16 +19,13 @@ final class MascotPaletteTests: XCTestCase {
     XCTAssertEqual(MascotPalette.palette(withID: "slate")?.displayName, "Lilac")
   }
 
-  func testEveryPaletteHasSixParsableStops() {
+  func testEveryPaletteHasSixStopsInRange() {
     for palette in MascotPalette.catalog {
-      XCTAssertEqual(palette.hexes.count, Int(MASCOT_STOP_COUNT), "\(palette.id) is not six stops")
-      for hex in palette.hexes {
-        XCTAssertTrue(hex.hasPrefix("#"), "\(palette.id): \(hex) has no #")
-        XCTAssertEqual(hex.count, 7, "\(palette.id): \(hex) is not 6 digits")
-        XCTAssertNotNil(
-          UInt64(hex.dropFirst(), radix: 16),
-          "\(palette.id): \(hex) is not hexadecimal"
-        )
+      XCTAssertEqual(palette.stops.count, Int(MASCOT_STOP_COUNT), "\(palette.id) is not six stops")
+      for stop in palette.stops {
+        XCTAssertTrue((0...1).contains(stop.l), "\(palette.id): \(stop) lightness")
+        XCTAssertTrue((0...0.4).contains(stop.c), "\(palette.id): \(stop) chroma")
+        XCTAssertTrue((0..<360).contains(stop.h), "\(palette.id): \(stop) hue")
       }
     }
     for palette in MascotPalette.catalog {
@@ -119,7 +116,7 @@ final class MascotPaletteTests: XCTestCase {
     for id in retired {
       let palette = try XCTUnwrap(MascotPalette.palette(withID: id), id)
       XCTAssertEqual(palette.id, id)
-      XCTAssertEqual(palette.hexes.count, Int(MASCOT_STOP_COUNT))
+      XCTAssertEqual(palette.stops.count, Int(MASCOT_STOP_COUNT))
       XCTAssertFalse(offered.contains(id), "\(id) is retained for a stored choice")
     }
   }
@@ -135,8 +132,11 @@ final class MascotPaletteTests: XCTestCase {
   func testTheStandardMascotIsTheBlueSunriseAndIsPinnedByID() throws {
     XCTAssertEqual(MascotPalette.standard.id, "daybreak")
     XCTAssertEqual(
-      MascotPalette.standard.hexes,
-      ["#3f73e6", "#7eaaf2", "#eef0f4", "#ffe98a", "#ffc24f", "#ff6f61"]
+      MascotPalette.standard.stops,
+      [
+        OKLCH(0.583, 0.183, 263.5), OKLCH(0.735, 0.115, 259.9), OKLCH(0.955, 0.006, 264.5),
+        OKLCH(0.932, 0.118, 96.7), OKLCH(0.849, 0.146, 80.1), OKLCH(0.715, 0.178, 28)
+      ]
     )
     let top = try XCTUnwrap(MascotPalette.standard.colors.first?.usingColorSpace(.sRGB))
     let bottom = try XCTUnwrap(MascotPalette.standard.colors.last?.usingColorSpace(.sRGB))

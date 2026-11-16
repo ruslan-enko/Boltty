@@ -34,7 +34,7 @@ enum ComposerChord: CaseIterable {
 }
 
 enum PromptLinkStyle {
-  static let color = HexColor.nsColor("#5AC8FA")
+  static let color = OKLCH(0.789, 0.122, 230.8).color
   static let key = NSAttributedString.Key("boltty.promptLink")
 }
 

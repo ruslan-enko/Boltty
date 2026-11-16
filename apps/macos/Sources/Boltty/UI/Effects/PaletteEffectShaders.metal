@@ -1,5 +1,6 @@
 #include <metal_stdlib>
 #include "PaletteEffectUniforms.h"
+#include "OklabShading.h"
 
 using namespace metal;
 
@@ -147,7 +148,7 @@ static inline float pingPong(float x) {
 static inline float3 glowColour(float t, constant PaletteSelectionGlowUniforms &u) {
   const float scaled = saturate(t) * float(PaletteSelectionGlowStops - 1);
   const int i = min(int(floor(scaled)), PaletteSelectionGlowStops - 2);
-  return mix(u.colors[i].rgb, u.colors[i + 1].rgb, scaled - float(i));
+  return srgbMix(u.colors[i].rgb, u.colors[i + 1].rgb, scaled - float(i));
 }
 
 fragment float4 selectionGlowFragment(

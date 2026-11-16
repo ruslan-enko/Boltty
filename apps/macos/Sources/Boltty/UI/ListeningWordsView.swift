@@ -282,8 +282,6 @@ final class ListeningWordsView: NSView {
     guard colors.count > 1, bounds.width > 0 else { return colors.first ?? PaletteInk.primary }
     let t = max(0, min(1, x / bounds.width)) * CGFloat(colors.count - 1)
     let index = min(Int(t), colors.count - 2)
-    let from = colors[index].usingColorSpace(.sRGB) ?? colors[index]
-    let to = colors[index + 1].usingColorSpace(.sRGB) ?? colors[index + 1]
-    return from.blended(withFraction: t - CGFloat(index), of: to) ?? from
+    return OklabGradient.mix(colors[index], colors[index + 1], t - CGFloat(index))
   }
 }
