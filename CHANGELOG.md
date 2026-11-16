@@ -2,6 +2,12 @@
 
 What changed from release to release. The newest is at the top.
 
+## Unreleased
+
+- The backdrop is one choice in Settings › General, for every agent, and the
+  chat list wears it too, in greys on the All tab. Its sky moves a little faster,
+  and switching tabs blends its colours instead of jumping.
+
 ## 0.9.1
 
 - A redrawn app icon.

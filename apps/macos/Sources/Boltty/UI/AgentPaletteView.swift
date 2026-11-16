@@ -1643,6 +1643,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private func selectHistoryAgent(_ agent: AgentId?) {
     guard agent != activeHistoryAgent else { return }
     activeHistoryAgent = agent
+    syncBackdropPalette()
     resultsScroll.contentView.setBoundsOrigin(.zero)
     resultsScroll.reflectScrolledClipView(resultsScroll.contentView)
     refreshResults(keepingSelection: false)
@@ -3076,12 +3077,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let curve = surface.renderedCornerCurve
     voiceGlow.surfaceCornerRadius = corner
     voiceGlow.surfaceCornerCurve = curve
-    let agent = addressedPreview?.agent
-    let chosen = isChat ? ChatBackdrop.chosen(for: agent) : .standard
     if !isDrippingIn {
       let skySize = dripTarget != nil ? resizeTarget.size : surfaceMotion.destination.size
       backdrop.morphingTo = surfaceMotion.isMoving ? skySize : nil
-      backdrop.show(chosen, palette: chosen == .standard ? .standard : MascotPalette.face(for: agent))
+      showBackdrop()
       backdrop.layOut(in: rect, corner: corner, curve: curve)
     }
     layoutListeningWords(in: rect, corner: corner, curve: curve)
@@ -3114,6 +3113,25 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       content.layer?.mask = mask
     }
     CATransaction.commit()
+  }
+
+  /// The open chat and the list wear the backdrop; the first screen and the
+  /// listening orb stay glass, too small for a sky.
+  private func showBackdrop() {
+    let isChat = addressedPreview != nil && !showsCompactListening
+    let isList = addressedPreview == nil && isResultsExpanded
+    let chosen = isChat || isList ? ChatBackdrop.chosen() : .standard
+    let palette: MascotPalette? = if let preview = addressedPreview {
+      MascotPalette.face(for: preview.agent)
+    } else {
+      activeHistoryAgent.map { MascotPalette.face(for: $0) }
+    }
+    backdrop.show(chosen, palette: palette)
+  }
+
+  private func syncBackdropPalette() {
+    guard surfaceReady, !isDrippingIn else { return }
+    showBackdrop()
   }
 
   private func layoutListeningWords(in rect: CGRect, corner: CGFloat, curve: CALayerCornerCurve) {

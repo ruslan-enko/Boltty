@@ -196,16 +196,16 @@ struct SettingsSegments<Value: Hashable>: View {
       Text(title)
         .fontWeight(chosen.isSelected ? .medium : .regular)
         .foregroundStyle(chosen.ink)
-        .padding(.horizontal, 12)
-        .frame(height: 22)
-        .background {
-          if let fill = chosen.fill {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-              .fill(fill)
-              .matchedGeometryEffect(id: "thumb", in: thumb)
-          }
+      .padding(.horizontal, 12)
+      .frame(height: 22)
+      .background {
+        if let fill = chosen.fill {
+          RoundedRectangle(cornerRadius: 7, style: .continuous)
+            .fill(fill)
+            .matchedGeometryEffect(id: "thumb", in: thumb)
         }
-        .contentShape(Rectangle())
+      }
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityAddTraits(chosen.isSelected ? .isSelected : [])

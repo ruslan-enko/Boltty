@@ -6,8 +6,10 @@ import simd
 @MainActor
 final class AgentBackdropView: MTKView, MTKViewDelegate {
   private let renderer: AgentBackdropRenderer?
-  private var palette = MascotPalette.standard
+  private var palette: MascotPalette? = .standard
   private var backdrop = ChatBackdrop.standard
+  private var ramp = AgentBackdropSky.slots(for: .standard)
+  private var blend: (from: [AgentBackdropSky.Tone], to: [AgentBackdropSky.Tone], start: CFTimeInterval)?
   private var clock: CGFloat = 0
   private var targetOpacity: CGFloat = 0
   private var lastTick: CFTimeInterval = 0
@@ -64,13 +66,28 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     if onScreen, !isHidden { startClock() } else { stopClock() }
   }
 
-  func show(_ backdrop: ChatBackdrop, palette: MascotPalette) {
+  /// How much faster than the scene's own seconds the sky drifts.
+  static let pace: CGFloat = 1.6
+  static let paletteBlend: CFTimeInterval = 0.6
+
+  /// A `nil` palette is the neutral sky, worn where no one face is shown.
+  func show(_ backdrop: ChatBackdrop, palette: MascotPalette?) {
     let target: CGFloat = backdrop == .standard ? 0 : 1
     if backdrop != .standard {
-      if backdrop != self.backdrop || palette != self.palette {
+      let recolours = palette != self.palette
+      let showing = !isHidden && targetOpacity > 0 && backdrop == self.backdrop
+      if backdrop != self.backdrop || recolours {
         self.backdrop = backdrop
         self.palette = palette
-        if !isHidden { draw() }
+        let next = AgentBackdropSky.slots(for: palette)
+        if recolours, showing, !MotionPreferences.reduceMotion {
+          blend = (ramp, next, Motion.now)
+          startClock()
+        } else {
+          blend = nil
+          ramp = next
+          if !isHidden { draw() }
+        }
       }
     }
     guard target != targetOpacity else { return }
@@ -95,7 +112,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       self.stopClock()
     }
     alphaValue = target
-    if target <= 0, !MotionPreferences.reduceMotion {
+    if !MotionPreferences.reduceMotion {
       let fade = CABasicAnimation(keyPath: "opacity")
       fade.fromValue = from
       fade.toValue = Float(target)
@@ -118,7 +135,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       CGSize(width: max(1, (size.width * scale).rounded()), height: max(1, (size.height * scale).rounded()))
     }
     if let destination = morphingTo {
-      layer?.contentsGravity = .top
+      cover(rect.size, with: destination)
       guard !isHidden, targetOpacity > 0 else { return }
       let size = pixels(destination)
       if drawableSize != size || sceneSize != destination {
@@ -129,14 +146,31 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       return
     }
     layer?.contentsGravity = .resize
+    if layer?.contentsRect != CGRect(x: 0, y: 0, width: 1, height: 1) {
+      layer?.contentsRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+    }
     sceneSize = nil
     let size = pixels(rect.size)
     if drawableSize != size { drawableSize = size }
     if !isHidden { draw() }
   }
 
+  /// While the shell morphs, the sky drawn at the size it is going to is shown
+  /// 1:1 from its top; where the shell is still wider or taller than that, it is
+  /// scaled up just enough to cover, so no edge goes bare. The scale reaches 1 as
+  /// the shell arrives, and the live sky takes over on the same frame.
+  private func cover(_ shown: CGSize, with destination: CGSize) {
+    guard let layer, destination.width > 0, destination.height > 0 else { return }
+    layer.contentsGravity = .resize
+    let scale = max(1, shown.width / destination.width, shown.height / destination.height)
+    let width = min(1, shown.width / scale / destination.width)
+    let height = min(1, shown.height / scale / destination.height)
+    let top = layer.contentsAreFlipped() ? 0 : 1 - height
+    layer.contentsRect = CGRect(x: (1 - width) / 2, y: top, width: width, height: height)
+  }
+
   private func startClock() {
-    guard link == nil, window != nil, renderer != nil else { return }
+    guard link == nil, window != nil, renderer != nil, !isHidden else { return }
     lastTick = Motion.now
     let link = displayLink(target: self, selector: #selector(tick))
     link.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 20, preferred: 20)
@@ -153,10 +187,22 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     let now = Motion.now
     let dt = CGFloat(min(now - lastTick, 0.1))
     lastTick = now
-    guard morphingTo == nil else { return }
-    if !MotionPreferences.reduceMotion { clock += dt }
+    let blending = stepBlend(at: now)
+    guard morphingTo == nil || blending else { return }
+    if !MotionPreferences.reduceMotion, morphingTo == nil { clock += dt * Self.pace }
     draw()
-    if MotionPreferences.reduceMotion { stopClock() }
+    if MotionPreferences.reduceMotion, blend == nil { stopClock() }
+  }
+
+  private func stepBlend(at now: CFTimeInterval) -> Bool {
+    guard let blend else { return false }
+    let linear = min(1, max(0, (now - blend.start) / Motion.scaled(Self.paletteBlend)))
+    let t = linear * linear * (3 - 2 * linear)
+    ramp = zip(blend.from, blend.to).map { from, to in
+      AgentBackdropSky.Tone(l: from.l + (to.l - from.l) * t, a: from.a + (to.a - from.a) * t, b: from.b + (to.b - from.b) * t)
+    }
+    if linear >= 1 { self.blend = nil }
+    return true
   }
 
   func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -173,7 +219,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       backdrop: backdrop,
       clock: clock,
       opacity: 1,
-      palette: palette
+      ramp: ramp
     )
   }
 }
@@ -219,7 +265,7 @@ final class AgentBackdropRenderer {
     if let cached = stills[key] { return cached }
     let u = uniforms(
       size: CGSize(width: scene, height: scene * 2), pixelSize: scene / pixels, backdrop: backdrop,
-      clock: 24, opacity: 1, palette: palette
+      clock: 24, opacity: 1, ramp: AgentBackdropSky.slots(for: palette)
     )
     let side = pixels.rounded()
     guard let whole = shared?.image(of: u, scale: pixels / scene),
@@ -231,7 +277,7 @@ final class AgentBackdropRenderer {
 
   static func uniforms(
     size: CGSize, pixelSize: CGFloat, backdrop: ChatBackdrop,
-    clock: CGFloat, opacity: CGFloat, palette: MascotPalette
+    clock: CGFloat, opacity: CGFloat, ramp: [AgentBackdropSky.Tone]
   ) -> AgentBackdropUniforms {
     var u = AgentBackdropUniforms()
     u.size = simd_float2(Float(size.width), Float(size.height))
@@ -239,7 +285,6 @@ final class AgentBackdropRenderer {
     u.scene = backdrop.sceneIndex
     u.clock = Float(clock)
     u.opacity = Float(min(1, max(0, opacity)))
-    let ramp = AgentBackdropSky.ramp(for: palette)
     withUnsafeMutableBytes(of: &u.sky) { raw in
       let slots = raw.bindMemory(to: simd_float4.self)
       for (index, tone) in ramp.enumerated() {
@@ -328,6 +373,17 @@ final class AgentBackdropRenderer {
 
 enum AgentBackdropSky {
   typealias Tone = Oklab
+
+  /// A `nil` palette is the neutral sky.
+  static func slots(for palette: MascotPalette?) -> [Tone] {
+    palette.map(ramp(for:)) ?? neutral.map(\.oklab)
+  }
+
+  /// Greys, faintly cool, for the list's All tab: every face is there, so none colours it.
+  private static let neutral = [
+    OKLCH(0.205, 0.008, 258), OKLCH(0.43, 0.017, 258), OKLCH(0.93, 0.007, 258),
+    OKLCH(0.28, 0.013, 258), OKLCH(0.31, 0.014, 258), OKLCH(0.57, 0.018, 258)
+  ]
 
   /// Zenith, horizon, cloud light, cloud shade, middle, glow.
   static func ramp(for palette: MascotPalette) -> [Tone] {

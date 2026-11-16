@@ -85,6 +85,7 @@ struct GeneralSettingsPage: View {
           Text("Panel glass")
           Text("Clear lets the colour behind the panel through; frosted softens it.")
         }
+        ChatBackdropPicker(model: model)
       } header: {
         SettingsSectionHeader("Appearance")
       }
@@ -459,14 +460,6 @@ private struct AgentSettingsDetail: View {
             .disabled(!model.canRestoreDefaultMascot(for: row.agent))
             .accessibilityIdentifier("boltty.settings.mascot.\(row.agent.rawValue).reset")
         }
-      }
-
-      Section {
-        ChatBackdropPicker(model: model, agent: row.agent)
-      } header: {
-        SettingsSectionHeader("Chat")
-      } footer: {
-        SettingsNote("Drawn behind \(row.agent.shortDisplayName)'s open chats, in its face's colours: a new face recolours it.")
       }
     }
     .settingsGroupedPage()

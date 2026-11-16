@@ -27,15 +27,12 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
     self == .space ? backing : 0.5
   }
 
-  static func storageKey(for agent: AgentId) -> String {
-    "boltty.chatBackdrop.\(agent.rawValue)"
-  }
+  static let storageKey = "boltty.backdrop"
 
   nonisolated(unsafe) static var chosenForTesting: ChatBackdrop?
 
-  static func chosen(for agent: AgentId?, defaults: UserDefaults = .standard) -> ChatBackdrop {
+  static func chosen(defaults: UserDefaults = .standard) -> ChatBackdrop {
     if let chosenForTesting { return chosenForTesting }
-    guard let agent else { return .standard }
-    return defaults.string(forKey: storageKey(for: agent)).flatMap(ChatBackdrop.init(rawValue:)) ?? .standard
+    return defaults.string(forKey: storageKey).flatMap(ChatBackdrop.init(rawValue:)) ?? .standard
   }
 }

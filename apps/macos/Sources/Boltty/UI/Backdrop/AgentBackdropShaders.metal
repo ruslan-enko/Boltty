@@ -119,7 +119,7 @@ static float3 backdropStarColor(float k, float3 face) {
   const float3 warm = float3(1.0, 0.84, 0.64);
   float3 c = srgbMix(blue, float3(1.0), smoothstep(0.0, 0.35, k));
   c = srgbMix(c, warm, smoothstep(0.75, 1.0, k));
-  return srgbMix(c, face, step(0.82, fract(k * 7.31)) * 0.6);
+  return srgbMix(c, face, step(0.62, fract(k * 7.31)) * 0.75);
 }
 
 static float3 backdropStarLayer(
@@ -158,14 +158,18 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
   const float3 zenith = sky[0].rgb;
   const float3 horizon = sky[1].rgb;
   const float3 light = sky[2].rgb;
+  const float3 middle = sky[4].rgb;
   const float3 glow = sky[5].rgb;
 
   const float breath = backdropFBM(local / 380.0 + float2(t * 0.004, 0.0), 3);
-  float3 color = float3(0.006, 0.007, 0.011);
+  // The face's own hue has to read through the dark, or every face's space is the same black.
+  float3 color = float3(0.006, 0.007, 0.011) + zenith * 0.1;
   const float dawn = exp(-pow(length(float2((x - 0.82) * 1.1, h + 0.08)), 2.0) * 3.2);
-  color += srgbMix(horizon, glow, 0.4) * dawn * (0.13 + 0.05 * breath);
+  color += srgbMix(horizon, glow, 0.4) * dawn * (0.3 + 0.08 * breath);
   const float dusk = exp(-pow(length(float2((x - 0.08) * 1.2, h - 0.95)), 2.0) * 3.5);
-  color += zenith * dusk * (0.08 + 0.04 * breath);
+  color += zenith * dusk * (0.22 + 0.06 * breath);
+  const float haze = smoothstep(0.42, 0.8, backdropFBM(local / 260.0 + float2(t * 0.008, 3.0), 4));
+  color += middle * haze * 0.12 * (1.0 - 0.6 * h);
 
   float3 stars = backdropStarLayer(local, 7.0, 0.11, 0.3, 0.5, 0.0, 0.15, false, t, pixel, light) * 0.45;
   stars += backdropStarLayer(local, 16.0, 0.13, 0.5, 0.9, 17.0, 0.15, false, t, pixel, light) * 0.75;
