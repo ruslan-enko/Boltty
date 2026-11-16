@@ -288,15 +288,6 @@ final class AgentBackdropRenderer {
     withUnsafeMutableBytes(of: &u.sky) { raw in
       let slots = raw.bindMemory(to: simd_float4.self)
       for (index, tone) in ramp.enumerated() {
-        let color = tone.color(fitting: true).usingColorSpace(.sRGB) ?? .black
-        slots[index] = simd_float4(
-          Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent), 1
-        )
-      }
-    }
-    withUnsafeMutableBytes(of: &u.skyLab) { raw in
-      let slots = raw.bindMemory(to: simd_float4.self)
-      for (index, tone) in ramp.enumerated() {
         slots[index] = simd_float4(Float(tone.l), Float(tone.a), Float(tone.b), 1)
       }
     }

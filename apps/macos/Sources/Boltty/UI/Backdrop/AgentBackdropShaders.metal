@@ -114,17 +114,25 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *l
 
 // MARK: - Space
 
-static float3 backdropStarColor(float k, float3 face) {
-  const float3 blue = float3(0.72, 0.82, 1.0);
-  const float3 warm = float3(1.0, 0.84, 0.64);
-  float3 c = srgbMix(blue, float3(1.0), smoothstep(0.0, 0.35, k));
-  c = srgbMix(c, warm, smoothstep(0.75, 1.0, k));
-  return srgbMix(c, face, step(0.62, fract(k * 7.31)) * 0.75);
+// Light is added up linear, as light adds; each source is tinted in Oklab first.
+// Brightnesses were judged on encoded values, hence the 2.2; a shape (a pixel's
+// coverage, a glow's falloff) is how much of that light lands, so it stays linear.
+static inline float asLight(float brightness) { return pow(max(brightness, 0.0), 2.2); }
+
+static float3 backdropStarTint(float k, float3 face) {
+  const float3 blue = oklch(0.86, 0.06, 258.0);
+  const float3 white = oklch(1.0, 0.0, 0.0);
+  const float3 warm = oklch(0.90, 0.075, 72.0);
+  float3 c = mix(blue, white, smoothstep(0.0, 0.35, k));
+  c = mix(c, warm, smoothstep(0.75, 1.0, k));
+  // The face's light at the star's own lightness, so a tinted star is no dimmer.
+  const float3 lit = float3(c.x, face.yz);
+  return mix(c, lit, step(0.82, fract(k * 7.31)) * 0.6);
 }
 
 static float3 backdropStarLayer(
   float2 local, float cellSize, float chance, float radius, float drift, float seed,
-  float margin, bool rays, float t, float pixel, float3 face
+  float margin, bool rays, float gain, float t, float pixel, float3 face
 ) {
   const float2 at = local + float2(t * drift, 0.0);
   const float2 cell = floor(at / cellSize);
@@ -139,43 +147,51 @@ static float3 backdropStarLayer(
   const float distance = length(d);
   // Never thinner than a pixel, or a faint star flickers as it drifts.
   const float r = max(size, pixel * 0.75);
-  float light = smoothstep(r + pixel, max(r - pixel, 0.0), distance) * (0.35 + 0.65 * magnitude);
-  light += exp(-distance / (r * 2.6)) * 0.22 * magnitude;
+  const float twinkle = 1.0 - (0.45 - 0.3 * magnitude)
+    * (0.5 + 0.5 * sin(t * (0.6 + jitter.x * 1.6) + jitter.y * 40.0));
+  const float bright = asLight((0.35 + 0.65 * magnitude) * twinkle * gain);
+  float light = smoothstep(r + pixel, max(r - pixel, 0.0), distance) * bright;
+  light += exp(-distance / (r * 1.6)) * 0.06 * magnitude * bright;
   if (rays && magnitude > 0.45) {
     const float reach = r * 9.0;
     const float along = 1.0 - smoothstep(0.0, reach, max(abs(d.x), abs(d.y)));
     const float thin = exp(-min(abs(d.x), abs(d.y)) / max(pixel, 0.35));
-    light += along * along * thin * 0.35 * smoothstep(0.45, 1.0, magnitude);
+    light += along * along * thin * 0.12 * smoothstep(0.45, 1.0, magnitude) * bright;
   }
-  const float twinkle = 1.0 - (0.45 - 0.3 * magnitude)
-    * (0.5 + 0.5 * sin(t * (0.6 + jitter.x * 1.6) + jitter.y * 40.0));
-  return backdropStarColor(backdropHash(cell + seed + 5.3), face) * light * twinkle;
+  return oklabToLight(backdropStarTint(backdropHash(cell + seed + 5.3), face)) * light;
 }
 
-static float3 backdropSpace(float2 local, float2 size, float t, float pixel, constant float4 *sky) {
+static float3 backdropSpace(float2 local, float2 size, float t, float pixel, constant float4 *lab) {
   const float h = local.y / size.y;
   const float x = local.x / size.x;
-  const float3 zenith = sky[0].rgb;
-  const float3 horizon = sky[1].rgb;
-  const float3 light = sky[2].rgb;
-  const float3 middle = sky[4].rgb;
-  const float3 glow = sky[5].rgb;
+  const float3 zenith = lab[0].xyz;
+  const float3 face = lab[2].xyz;
+  const float3 middle = lab[4].xyz;
+  const float3 glow = lab[5].xyz;
 
   const float breath = backdropFBM(local / 380.0 + float2(t * 0.004, 0.0), 3);
-  // The face's own hue has to read through the dark, or every face's space is the same black.
-  float3 color = float3(0.006, 0.007, 0.011) + zenith * 0.1;
-  const float dawn = exp(-pow(length(float2((x - 0.82) * 1.1, h + 0.08)), 2.0) * 3.2);
-  color += srgbMix(horizon, glow, 0.4) * dawn * (0.3 + 0.08 * breath);
-  const float dusk = exp(-pow(length(float2((x - 0.08) * 1.2, h - 0.95)), 2.0) * 3.5);
-  color += zenith * dusk * (0.22 + 0.06 * breath);
-  const float haze = smoothstep(0.42, 0.8, backdropFBM(local / 260.0 + float2(t * 0.008, 3.0), 4));
-  color += middle * haze * 0.12 * (1.0 - 0.6 * h);
+  // The night sky: the face's ramp from a soft light in the middle, through
+  // middle, to zenith at the edges, drifting; quiet in lightness and chroma.
+  const float lean = backdropFBM(local / size * 1.1 + float2(t * 0.005, 3.7), 3) - 0.5;
+  const float r = length(float2((x - 0.5) * size.x, (h - 0.45) * size.y)) / (0.55 * max(size.x, size.y));
+  const float g = clamp(r * 0.8 + lean * 0.7, 0.0, 1.0);
+  // Dark orange reads as mud, so the middle of the ramp leads, the glow only warming it.
+  const float3 heart = mix(middle, glow, 0.3);
+  float3 hue = mix(heart, middle, smoothstep(0.05, 0.85, g));
+  hue = mix(hue, zenith, smoothstep(0.45, 1.0, g));
+  const float chroma = length(hue.yz);
+  const float2 toward = chroma > 1e-4 ? hue.yz / chroma : float2(0.0);
+  const float depth = 0.105 + 0.02 * breath;
+  float3 light = oklabToLight(float3(depth, toward * min(chroma * 0.22, 0.026)));
+  const float centre = exp(-r * r * 1.8);
+  const float3 soft = float3(heart.x, heart.yz * 0.35);
+  light += oklabToLight(soft) * centre * asLight(0.06 + 0.02 * breath);
 
-  float3 stars = backdropStarLayer(local, 7.0, 0.11, 0.3, 0.5, 0.0, 0.15, false, t, pixel, light) * 0.45;
-  stars += backdropStarLayer(local, 16.0, 0.13, 0.5, 0.9, 17.0, 0.15, false, t, pixel, light) * 0.75;
-  stars += backdropStarLayer(local, 38.0, 0.12, 0.8, 1.5, 41.0, 0.2, false, t, pixel, light) * 1.1;
-  stars += backdropStarLayer(local, 84.0, 0.26, 1.1, 2.4, 73.0, 0.25, true, t, pixel, light) * 1.15;
-  color += stars * (1.0 - 0.7 * dawn);
+  float3 stars = backdropStarLayer(local, 7.0, 0.11, 0.3, 0.5, 0.0, 0.15, false, 0.45, t, pixel, face);
+  stars += backdropStarLayer(local, 16.0, 0.13, 0.5, 0.9, 17.0, 0.15, false, 0.75, t, pixel, face);
+  stars += backdropStarLayer(local, 38.0, 0.12, 0.8, 1.5, 41.0, 0.2, false, 1.1, t, pixel, face);
+  stars += backdropStarLayer(local, 84.0, 0.26, 1.1, 2.4, 73.0, 0.25, true, 1.15, t, pixel, face);
+  light += stars;
 
   const float period = 11.0;
   const float which = floor(t / period);
@@ -191,9 +207,14 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
     const float tail = smoothstep(110.0, 0.0, along) * step(0.0, along);
     const float streak = tail * smoothstep(0.9 + pixel, 0.0, across);
     const float fade = smoothstep(0.0, 0.1, age) * smoothstep(0.9, 0.55, age);
-    color += srgbMix(float3(1.0), light, 0.25) * streak * fade * 0.8;
+    const float3 white = oklch(1.0, 0.0, 0.0);
+    light += oklabToLight(mix(white, float3(white.x, face.yz), 0.25)) * streak * fade * asLight(0.8);
   }
-  return oklabToSRGB(oklabCeiling(srgbToOklab(color), 0.35, 0.565));
+
+  float3 color = oklabCeiling(linearToOklab(light), 0.35, 0.565);
+  // Dark at the top for the prose: lightness alone, so what colour there is stays.
+  color.x *= mix(1.0, 0.557, smoothstep(0.62, 1.0, h));
+  return oklabToSRGB(color);
 }
 
 // MARK: - The frame
@@ -211,10 +232,9 @@ fragment float4 agentBackdropFragment(
   if (u.scene > 1.5) {
     color = backdropSpace(in.local, size, t, u.pixelSize, u.sky);
   } else {
-    color = backdropSky(in.local, size, t, u.skyLab);
+    color = backdropSky(in.local, size, t, u.sky);
+    color *= mix(1.0, 0.45, smoothstep(0.62, 1.0, h));
   }
-
-  color *= mix(1.0, 0.45, smoothstep(0.62, 1.0, h));
   color += (backdropHash(in.position.xy + fract(t)) - 0.5) / 255.0;
 
   return float4(max(color, 0.0) * u.opacity, u.opacity);

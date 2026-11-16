@@ -31,10 +31,9 @@ typedef struct {
   float opacity;
   /// The sky's own ramp for this face (`AgentBackdropSky`): zenith, horizon,
   /// the light on the clouds, their shaded undersides, the sky between
-  /// zenith and horizon, the glow where the sun is. sRGB, for Space.
+  /// zenith and horizon, the glow where the sun is. Oklab (L, a, b): both
+  /// scenes mix in it.
   simd_float4 sky[6];
-  /// The same ramp in Oklab (L, a, b), which the sky mixes in.
-  simd_float4 skyLab[6];
 } AgentBackdropUniforms;
 
 #endif /* AgentBackdropUniforms_h */

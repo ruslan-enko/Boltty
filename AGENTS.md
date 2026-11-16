@@ -1310,16 +1310,19 @@ heard.
   bubbles. The sky mixes in Oklab and its ceiling (`oklabCeiling`) lowers
   lightness alone, chroma kept, and cloud tops carry the sky's glow: dimmed in
   sRGB, white read as grey and yellow as olive. High clouds take their light from
-  the sky behind them; Space adds its light in sRGB, as light adds, and tints
-  and dims it in Oklab. A sky between two hues opposite each other has a colour standing
+  the sky behind them. Space reads the same Oklab ramp: each light (the
+  glows, the stars, written in OKLCH, tinted toward the face's light at their
+  own lightness) is tinted in Oklab and added in linear light, as light adds,
+  then goes under the ceiling and darkens at the top by lightness alone. A sky between two hues opposite each other has a colour standing
   between them (Daybreak's violet, with rose cloud light): blue straight into
-  orange mixed through grey. Space is near black with breaths
-  of that sky strong enough to tell one face's from another's (its glow low in
-  one corner, its zenith high in the other, a faint haze of its middle colour),
-  and stars in four depths: gathered in loose drifts, mostly faint, white,
+  orange mixed through grey. Space is a night of that sky: the
+  ramp from a soft light in the middle (the middle tone, warmed a little by
+  the glow: dark orange read as mud on Daybreak) to zenith at the edges, its shape loosened by drifting noise, at a lightness of
+  about 0.1 and a fifth of its chroma, so the colour is seen to change, quietly
+  (a near-black field with one blurred glow in a corner read as a stain; the
+  same field coloured from that corner, as too loud), and stars in four depths: gathered in loose drifts, mostly faint, white,
   bluish, warm or in the face's light, the brightest with a halo and faint
-  rays. No clouds, no milky way, no night colour (each was tried and
-  refused). The sky is after
+  rays. No clouds, no milky way (each was tried and refused). The sky is after
   Messages' (read off `DynamicBackgroundPosterExtension`'s `clouds.vfx`:
   sprites warped by two scrolling noises, edges choked, ramp-tinted, three
   depths), with noise in place of their textures. **The corner is the
