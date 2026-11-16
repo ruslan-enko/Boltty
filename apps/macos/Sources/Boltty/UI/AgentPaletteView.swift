@@ -3058,6 +3058,51 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     drawSurface(at: surfaceFrame)
   }
 
+  private struct CornerMorph {
+    let shape: AgentPaletteMetrics.SurfaceShape
+    let from: CGFloat
+    let start: CGRect
+    let end: CGRect
+  }
+
+  private var cornerMorph: CornerMorph?
+  private var shownShape: AgentPaletteMetrics.SurfaceShape?
+  private var shownCorner: CGFloat = 0
+
+  /// A new state's corner is reached along the shell's spring, so the clear
+  /// glass's lit rim moves with the shape rather than ahead of it.
+  private func shellCorner(
+    for shape: AgentPaletteMetrics.SurfaceShape, at rect: CGRect
+  ) -> CGFloat {
+    let wanted = AgentPaletteMetrics.surfaceCornerRadius(forHeight: rect.height, shape: shape)
+    let previousShape = shownShape
+    shownShape = shape
+    guard surfaceMotion.isMoving, !MotionPreferences.reduceMotion else {
+      cornerMorph = nil
+      shownCorner = wanted
+      return wanted
+    }
+    let end = surfaceMotion.destination
+    if let previousShape, previousShape != shape {
+      cornerMorph = CornerMorph(shape: shape, from: shownCorner, start: rect, end: end)
+    } else if let morph = cornerMorph, morph.end != end {
+      cornerMorph = CornerMorph(shape: shape, from: shownCorner, start: rect, end: end)
+    }
+    guard let morph = cornerMorph, morph.shape == shape else {
+      shownCorner = wanted
+      return wanted
+    }
+    let spans = [
+      (end.height - morph.start.height, rect.height - morph.start.height),
+      (end.width - morph.start.width, rect.width - morph.start.width),
+    ]
+    let (span, gone) = spans.max { abs($0.0) < abs($1.0) } ?? (0, 0)
+    let t = abs(span) < 1 ? 1 : min(1, max(0, gone / span))
+    let corner = min(morph.from + (wanted - morph.from) * t, max(0, rect.height) / 2)
+    shownCorner = corner
+    return corner
+  }
+
   private func drawSurface(at rect: CGRect) {
     surfaceFrame = rect
     rideAttachmentBand(at: rect)
@@ -3068,9 +3113,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     voiceGlow.frame = rect
     let isChat = addressedPreview != nil && !showsCompactListening
     let isList = addressedPreview == nil && isResultsExpanded
-    surface.cornerRadius = AgentPaletteMetrics.surfaceCornerRadius(
-      forHeight: rect.height,
-      shape: isChat ? .chat : (isList ? .list : (showsInitialPrompt ? .initial : .pill))
+    surface.cornerRadius = shellCorner(
+      for: isChat ? .chat : (isList ? .list : (showsInitialPrompt ? .initial : .pill)),
+      at: rect
     )
     surface.layoutSubtreeIfNeeded()
     let corner = surface.renderedCornerRadius
