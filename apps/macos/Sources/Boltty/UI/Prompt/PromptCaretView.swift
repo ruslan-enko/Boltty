@@ -143,16 +143,17 @@ final class PromptCaretView: NSView {
 
     context.clip(to: CGRect(x: 0, y: 0, width: width, height: height), mask: mask)
     let pale = colors[1]
-    let ends = [colors[0], colors[2]].map { $0.blended(withFraction: endPaleness, of: pale) ?? $0 }
-    let stops = [ends[0], ends[0], pale, ends[1], ends[1]]
+    let ends = [colors[0], colors[2]].map { OklabGradient.mix($0, pale, endPaleness) }
+    let stops = OklabGradient.colors([ends[0], ends[0], pale, ends[1], ends[1]])
       .compactMap { $0.usingColorSpace(.sRGB)?.withAlphaComponent(look.glowAlpha).cgColor }
     let span = look.barSize.height + look.glowMargin * 2
     let top = look.glowMargin / span
     let foot = 1 - top
-    guard stops.count == 5,
+    let places = OklabGradient.locations([0, top, 0.5, foot, 1])
+    guard stops.count == places.count,
           let gradient = CGGradient(
             colorsSpace: srgb, colors: stops as CFArray,
-            locations: [0, top, 0.5, foot, 1])
+            locations: places)
     else { return nil }
     context.drawLinearGradient(
       gradient, start: CGPoint(x: 0, y: CGFloat(height)), end: .zero, options: [])

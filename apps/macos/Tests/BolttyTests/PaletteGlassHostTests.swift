@@ -595,11 +595,19 @@ final class ReducedTransparencyFallbackTests: XCTestCase {
     XCTAssertEqual(colour.alphaComponent, 1, accuracy: 0.001)
   }
 
-  func testHexColourStillParses() throws {
-    let blue = try XCTUnwrap(HexColor.nsColor("#4396ff").usingColorSpace(.sRGB))
-    XCTAssertEqual(blue.redComponent, 0x43 / 255, accuracy: 0.001)
-    XCTAssertEqual(blue.greenComponent, 0x96 / 255, accuracy: 0.001)
-    XCTAssertEqual(blue.blueComponent, 1, accuracy: 0.001)
-    XCTAssertEqual(HexColor.nsColor("nope"), NSColor.windowBackgroundColor)
+  func testOKLCHRoundTripsThroughSRGB() throws {
+    let blue = NSColor(srgbRed: 0x43 / 255, green: 0x96 / 255, blue: 1, alpha: 1)
+    let back = try XCTUnwrap(Oklab(blue).oklch.color.usingColorSpace(.sRGB))
+    XCTAssertEqual(back.redComponent, 0x43 / 255, accuracy: 0.002)
+    XCTAssertEqual(back.greenComponent, 0x96 / 255, accuracy: 0.002)
+    XCTAssertEqual(back.blueComponent, 1, accuracy: 0.002)
+  }
+
+  func testOKLCHPastDisplayP3KeepsItsHue() throws {
+    let wild = OKLCH(0.7, 0.4, 145)
+    let fitted = Oklab(wild.color).oklch
+    XCTAssertEqual(fitted.l, 0.7, accuracy: 0.01)
+    XCTAssertEqual(fitted.h, 145, accuracy: 1.5)
+    XCTAssertLessThan(fitted.c, 0.4)
   }
 }

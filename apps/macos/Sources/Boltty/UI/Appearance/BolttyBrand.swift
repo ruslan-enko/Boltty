@@ -3,13 +3,15 @@ import SwiftUI
 
 enum BolttyBrand {
   static let accent = dynamic(
-    light: NSColor(displayP3Red: 1, green: 0.75, blue: 0, alpha: 1),
+    light: NSColor(oklch: 0.845, 0.2, 82.7),
     dark: accentOnGlass
   )
 
   static let onAccent = NSColor.black
 
-  static let accentOnGlass = NSColor(displayP3Red: 1, green: 0.784, blue: 0.002, alpha: 1)
+  static let accentOnGlass = NSColor(oklch: 0.86, 0.203, 87.2)
+
+  static let accentOnGlassHover = NSColor(oklch: 0.9, 0.17, 87.2)
 
   private static func dynamic(light: NSColor, dark: NSColor) -> NSColor {
     NSColor(name: nil) { appearance in

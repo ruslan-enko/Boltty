@@ -2629,7 +2629,7 @@ final class PaletteWorkingLineView: NSView {
   }
 
   private func paintLight() {
-    let colors = light.map(\.cgColor)
+    let colors = OklabGradient.cgColors(light)
     band.colors = colors
     halo.colors = colors
   }

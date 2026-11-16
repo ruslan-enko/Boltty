@@ -823,13 +823,14 @@ final class AskBolttyOverlayController {
   private func paintShimmer(_ look: MascotLook) {
     let light = look.palette.arrivalLight
     guard let first = light.first, let last = light.last else { return }
-    shimmerBand.colors = ([first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)])
-      .map(\.cgColor)
+    shimmerBand.colors = OklabGradient.cgColors(
+      [first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)]
+    )
     let inner = AgentPaletteMetrics.resultsShimmerFade
     let steps = max(1, light.count - 1)
-    shimmerBand.locations = ([0] + light.indices.map {
+    shimmerBand.locations = OklabGradient.numbers([0] + light.indices.map {
       inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
-    } + [1]).map { NSNumber(value: Double($0)) }
+    } + [1])
   }
 
   private func cutShimmerWords() {
@@ -1066,7 +1067,7 @@ final class AskBolttyPointerMark: CALayer {
   var colours: [NSColor] = [] {
     didSet {
       let shades = colours.isEmpty ? [NSColor.white] : colours
-      fill.colors = (shades.count > 1 ? shades : shades + shades).map(\.cgColor)
+      fill.colors = OklabGradient.cgColors(shades.count > 1 ? shades : shades + shades)
     }
   }
 

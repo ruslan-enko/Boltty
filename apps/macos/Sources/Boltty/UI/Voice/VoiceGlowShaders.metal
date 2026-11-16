@@ -1,5 +1,6 @@
 #include <metal_stdlib>
 #include "VoiceGlowUniforms.h"
+#include "../Effects/OklabShading.h"
 
 using namespace metal;
 
@@ -62,11 +63,11 @@ static inline float rayNoise(float x, float period, float y, float seed) {
   return mix(mix(a, b, sx), mix(c, d, sx), sy);
 }
 
-static inline float3 ringColor(constant VoiceGlowUniforms &u, float v) {
+static inline float3 ringOklab(constant VoiceGlowUniforms &u, float v) {
   const float pos = saturate(v) * float(VOICE_GLOW_COLOR_COUNT - 1);
   const int i = min(int(floor(pos)), VOICE_GLOW_COLOR_COUNT - 2);
   const float f = smoothstep(0.0, 1.0, pos - float(i));
-  return mix(u.colors[i].rgb, u.colors[i + 1].rgb, f);
+  return mix(srgbToOklab(u.colors[i].rgb), srgbToOklab(u.colors[i + 1].rgb), f);
 }
 
 static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float level, float carry);
@@ -95,10 +96,9 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
   const float f = u.flow;
   const float span = mix(0.46, 1.0, level);
   const float centre = 0.5 + 0.30 * sin(f * 0.23 + 1.0) + 0.14 * sin(f * 0.57 + 4.0);
-  float3 colour = ringColor(u, saturate(centre + (n - 0.5) * span));
-
-  const float luma = dot(colour, float3(0.2126, 0.7152, 0.0722));
-  colour = saturate(mix(float3(luma), colour, 1.35));
+  float3 lab = ringOklab(u, saturate(centre + (n - 0.5) * span));
+  lab.yz *= 1.35;
+  float3 colour = oklabToSRGB(lab);
 
   // A palette's pale stop is the brightest thing in it and would take white
   // words, or a light band, with it — so what is close to white is carried
@@ -107,7 +107,7 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
   // brightness: a yellow is bright and still a colour, and darkening it by
   // brightness turned it to olive.
   const float whiteness = smoothstep(0.50, 0.88, min(colour.r, min(colour.g, colour.b)));
-  return mix(colour, u.colors[0].rgb * 0.92, whiteness * carry);
+  return srgbMix(colour, u.colors[0].rgb * 0.92, whiteness * carry);
 }
 
 fragment float4 voiceGlowFragment(

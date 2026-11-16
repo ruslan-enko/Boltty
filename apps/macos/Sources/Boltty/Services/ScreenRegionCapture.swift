@@ -13,8 +13,8 @@ enum ScreenRegionCapture {
   static let screenLongEdge: CGFloat = 1568
   static let regionLongEdge: CGFloat = 2048
   static let outlineWidth: CGFloat = 4
-  static let outlineColor = "#FF3B30"
-  static let hiddenColor = "#1C1C1E"
+  static let outlineColor = OKLCH(0.654, 0.232, 28.7)
+  static let hiddenColor = OKLCH(0.227, 0.004, 286.1)
   static let recognizedTextByteLimit = PromptExpansion.inlineTextByteLimit
 
   @MainActor
@@ -177,7 +177,7 @@ enum ScreenRegionCapture {
     let whole = CGRect(origin: .zero, size: size)
     if let layers {
       let scaledImage = scaled(image, longEdge: longEdge, outlining: nil) ?? image
-      context.setFillColor(HexColor.nsColor(hiddenColor).cgColor)
+      context.setFillColor(hiddenColor.cgColor)
       context.fill(whole)
       for layer in layers {
         let box = CGRect(
@@ -204,7 +204,7 @@ enum ScreenRegionCapture {
         width: outlining.width * scale,
         height: outlining.height * scale
       ).insetBy(dx: -outlineWidth / 2, dy: -outlineWidth / 2)
-      context.setStrokeColor(HexColor.nsColor(outlineColor).cgColor)
+      context.setStrokeColor(outlineColor.cgColor)
       context.setLineWidth(outlineWidth)
       context.stroke(box)
     }

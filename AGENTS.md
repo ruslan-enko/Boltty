@@ -1255,8 +1255,8 @@ heard.
   harmonic-distance field computed once per outline; eyes and smile are black
   plugs set into the cloth; matte soft-touch lighting in Oklab under a written
   studio of four softboxes; finishes velvet and fur.
-- Six gradients (`MascotPalette`), mixed in Oklab; `lagoon` and `slate` are the
-  stored ids of Mist and Lilac. Retired ids still load.
+- Six gradients (`MascotPalette`), written in OKLCH and mixed in Oklab; `lagoon` and
+  `slate` are the stored ids of Mist and Lilac. Retired ids still load.
 - **Every agent wears its own face**, chosen on its page in Settings › Agents; no two alike
   (`MascotRoster`). Stored as names in `boltty.mascotByProvider`. Where no agent
   speaks, the preferred agent's face is used; Boltty has no face of its own,
@@ -1294,14 +1294,15 @@ heard.
   (`ChatBackdropSample`): the backdrop's own renderer, not a mock-up. Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky
   (`AgentBackdropSky`: zenith, horizon, cloud light, cloud shade, middle,
-  glow), the feeling of the face's colour rather than a wall of it: a soft
-  gradient through a few related shades, leaning across the chat and
-  breathing, with clouds shaded in the sky's own colour; deeper than
-  Messages' and rolled off under a brightness ceiling (`backdropCeiling`)
-  because the prose has no bubbles. The ceiling gives back saturation as it
-  dims, and cloud tops carry the sky's glow: dimmed white read as grey and
-  dimmed yellow as olive. High clouds take their light from the sky behind
-  them. A sky between two hues opposite each other has a colour standing
+  glow, written in OKLCH), the feeling of the face's colour rather than a wall
+  of it: a soft gradient through a few related shades, leaning across the chat
+  and breathing, with clouds shaded in the sky's own colour; deeper than
+  Messages' and rolled off under a brightness ceiling because the prose has no
+  bubbles. The sky mixes in Oklab and its ceiling (`oklabCeiling`) lowers
+  lightness alone, chroma kept, and cloud tops carry the sky's glow: dimmed in
+  sRGB, white read as grey and yellow as olive. High clouds take their light from
+  the sky behind them; Space adds its light in sRGB, as light adds, and tints
+  and dims it in Oklab. A sky between two hues opposite each other has a colour standing
   between them (Daybreak's violet, with rose cloud light): blue straight into
   orange mixed through grey. Space is near black with only breaths
   of that sky (its glow low in one corner, its zenith high in the other),
@@ -1370,6 +1371,12 @@ heard.
   take the typed size), and so is the notch badge's digit at 9. Whole points only, SF Pro Rounded everywhere, no `.kern`.
 - **Colour**: `PaletteInk` — system label colours (dynamic) and fills written as
   values (they end up as `CGColor`). Pure white only for primary-action fills.
+  **A colour with a hue is written in OKLCH** (`OKLCH(l, c, h)`, `Models/OKLCH.swift`),
+  never as hex or RGB, and lands in Display P3, giving up chroma, never hue, past it.
+  White, black, greys and the system's colours stay as they are. **Colours are mixed in
+  Oklab**: a gradient of hues goes through `OklabGradient`, since Core Animation and
+  Core Graphics mix stops in RGB and two far hues met in grey, and a shader mixes
+  through `UI/Effects/OklabShading.h` (`srgbMix`, `oklabToSRGB`, `oklabCeiling`).
 - **The accent is Boltty's, not the system's** (`BolttyBrand`, off the app icon;
   [BRAND.md](BRAND.md) says where it goes). `controlAccentColor` and
   `Color.accentColor` are not used: an `NSAccentColorName` counts only while the

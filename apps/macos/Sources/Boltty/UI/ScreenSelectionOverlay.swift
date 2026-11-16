@@ -220,7 +220,7 @@ final class ScreenSelectionOverlay: NSView {
     gradient.startPoint = CGPoint(x: 0.5, y: 0.5)
     gradient.endPoint = CGPoint(x: 0.5, y: 0)
     let colors = palette.isEmpty ? [NSColor.white] : palette
-    gradient.colors = (colors + [colors[0]]).map(\.cgColor)
+    gradient.colors = OklabGradient.cgColors(colors + [colors[0]])
     gradient.opacity = opacity
     let stroke = CAShapeLayer()
     stroke.frame = gradient.bounds

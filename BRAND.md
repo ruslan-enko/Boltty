@@ -51,15 +51,18 @@ A soft hexagon of light on a honey field. It is defined in
 
 ## Colour
 
-Values are Display P3 where the code writes them so; the hex is the sRGB reading.
+Every colour with a hue is written in OKLCH (`OKLCH(l, c, h)`, `NSColor(oklch:)`:
+lightness 0–1, chroma, hue in degrees), which lands in Display P3; the hex is the
+sRGB reading, for people. A variant of a colour moves its lightness alone, so its hue
+holds, and colours are mixed in Oklab.
 
 | Token | Light | Dark | Swift | For |
 |---|---|---|---|---|
 | **Honey** | `#FFEB01` | | icon only | the field's top |
 | **Amber** | `#FFA500` | | icon only | the field's foot |
-| **Accent** | `#FFBF00` | `#FFC800` | `BolttyBrand.accent`, `Color.bolttyAccent` | always a fill: what is selected, a switch that is on, a meter, chart bars, a chosen ring, a tag, the one prominent button |
+| **Accent** | `#FFBF00` `oklch(0.845 0.2 82.7)` | `#FFC800` `oklch(0.86 0.203 87.2)` | `BolttyBrand.accent`, `Color.bolttyAccent` | always a fill: what is selected, a switch that is on, a meter, chart bars, a chosen ring, a tag, the one prominent button |
 | **On accent** | `#000000` | `#000000` | `BolttyBrand.onAccent`, `Color.bolttyOnAccent` | words and glyphs on an accent fill |
-| **Accent on glass** | | `#FFC800` | `BolttyBrand.accentOnGlass` | the accent on the panel's glass, always dark; fixed because it ends up as a `CGColor` |
+| **Accent on glass** | | `#FFC800` `oklch(0.86 0.203 87.2)` | `BolttyBrand.accentOnGlass` | the accent on the panel's glass, always dark; fixed because it ends up as a `CGColor` |
 
 ### Contrast, measured
 
