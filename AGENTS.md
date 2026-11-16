@@ -1283,16 +1283,19 @@ heard.
 - The listening orb is the shell's glass and draws no light of its own: the
   glow view clears once and draws no more frames while `fillsShell`; its clock
   still times the take.
-- **Backdrops** (`AgentBackdropView`): what the panel's shell wears behind
-  its content in every state (first screen, list, listening, open chat), one
-  choice for every agent in Settings › General › Backdrop (`boltty.backdrop`):
-  Standard (the glass), Sky, Space, in the colours of the face shown (the
-  chat's agent, the list tab's, else the first screen's). It was a choice per
-  agent for open chats only; `boltty.chatBackdrop.<agent>` is retired, inert.
-  Matrix was removed; a stored `matrix` reads as Standard. Standard is the
-  default, and nothing stores another for the person. The Settings
-  picker is round windows of 42 pt (`RingedChoice`), with no face in them: the
-  chosen one moves under a ringed edge, the others are stills. Over them a
+- **Backdrops** (`AgentBackdropView`): what the chat list and the open chat
+  wear behind their content, one choice for every agent in Settings › General ›
+  Appearance (`boltty.backdrop`): Standard (the glass), Sky, Space. The first
+  screen and the listening orb stay glass: a sky squeezed into them read as
+  flattened. Its colours are the face shown (the chat's agent, the list tab's);
+  the list's All tab wears a neutral grey sky (`AgentBackdropSky.slots(for: nil)`),
+  and a change of face blends the ramp over 0.6 s rather than jumping. The sky
+  drifts at 1.6× its scene clock (`AgentBackdropView.pace`) and fades both in and
+  out. It was a choice per agent for open chats only;
+  `boltty.chatBackdrop.<agent>` is retired, inert. Matrix was removed; a stored
+  `matrix` reads as Standard. Standard is the default, and nothing stores
+  another for the person. The Settings control is `SettingsSegments`, each
+  segment with the backdrop's still in a 14 pt dot. Under it a
   chat at three quarters size wears the chosen backdrop over the person's desktop
   (`ChatBackdropSample`): the backdrop's own renderer, not a mock-up. Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky

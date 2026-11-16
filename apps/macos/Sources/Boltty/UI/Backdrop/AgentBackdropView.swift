@@ -6,8 +6,10 @@ import simd
 @MainActor
 final class AgentBackdropView: MTKView, MTKViewDelegate {
   private let renderer: AgentBackdropRenderer?
-  private var palette = MascotPalette.standard
+  private var palette: MascotPalette? = .standard
   private var backdrop = ChatBackdrop.standard
+  private var ramp = AgentBackdropSky.slots(for: .standard)
+  private var blend: (from: [simd_float4], to: [simd_float4], start: CFTimeInterval)?
   private var clock: CGFloat = 0
   private var targetOpacity: CGFloat = 0
   private var lastTick: CFTimeInterval = 0
@@ -64,13 +66,28 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     if onScreen, !isHidden { startClock() } else { stopClock() }
   }
 
-  func show(_ backdrop: ChatBackdrop, palette: MascotPalette) {
+  /// How much faster than the scene's own seconds the sky drifts.
+  static let pace: CGFloat = 1.6
+  static let paletteBlend: CFTimeInterval = 0.6
+
+  /// A `nil` palette is the neutral sky, worn where no one face is shown.
+  func show(_ backdrop: ChatBackdrop, palette: MascotPalette?) {
     let target: CGFloat = backdrop == .standard ? 0 : 1
     if backdrop != .standard {
-      if backdrop != self.backdrop || palette != self.palette {
+      let recolours = palette != self.palette
+      let showing = !isHidden && targetOpacity > 0 && backdrop == self.backdrop
+      if backdrop != self.backdrop || recolours {
         self.backdrop = backdrop
         self.palette = palette
-        if !isHidden { draw() }
+        let next = AgentBackdropSky.slots(for: palette)
+        if recolours, showing, !MotionPreferences.reduceMotion {
+          blend = (ramp, next, Motion.now)
+          startClock()
+        } else {
+          blend = nil
+          ramp = next
+          if !isHidden { draw() }
+        }
       }
     }
     guard target != targetOpacity else { return }
@@ -95,7 +112,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       self.stopClock()
     }
     alphaValue = target
-    if target <= 0, !MotionPreferences.reduceMotion {
+    if !MotionPreferences.reduceMotion {
       let fade = CABasicAnimation(keyPath: "opacity")
       fade.fromValue = from
       fade.toValue = Float(target)
@@ -136,7 +153,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   }
 
   private func startClock() {
-    guard link == nil, window != nil, renderer != nil else { return }
+    guard link == nil, window != nil, renderer != nil, !isHidden else { return }
     lastTick = Motion.now
     let link = displayLink(target: self, selector: #selector(tick))
     link.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 20, preferred: 20)
@@ -153,10 +170,20 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     let now = Motion.now
     let dt = CGFloat(min(now - lastTick, 0.1))
     lastTick = now
-    guard morphingTo == nil else { return }
-    if !MotionPreferences.reduceMotion { clock += dt }
+    let blending = stepBlend(at: now)
+    guard morphingTo == nil || blending else { return }
+    if !MotionPreferences.reduceMotion, morphingTo == nil { clock += dt * Self.pace }
     draw()
-    if MotionPreferences.reduceMotion { stopClock() }
+    if MotionPreferences.reduceMotion, blend == nil { stopClock() }
+  }
+
+  private func stepBlend(at now: CFTimeInterval) -> Bool {
+    guard let blend else { return false }
+    let linear = min(1, max(0, (now - blend.start) / Motion.scaled(Self.paletteBlend)))
+    let t = Float(linear * linear * (3 - 2 * linear))
+    ramp = zip(blend.from, blend.to).map { simd_mix($0, $1, simd_float4(repeating: t)) }
+    if linear >= 1 { self.blend = nil }
+    return true
   }
 
   func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -173,7 +200,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       backdrop: backdrop,
       clock: clock,
       opacity: 1,
-      palette: palette
+      ramp: ramp
     )
   }
 }
@@ -219,7 +246,7 @@ final class AgentBackdropRenderer {
     if let cached = stills[key] { return cached }
     let u = uniforms(
       size: CGSize(width: scene, height: scene * 2), pixelSize: scene / pixels, backdrop: backdrop,
-      clock: 24, opacity: 1, palette: palette
+      clock: 24, opacity: 1, ramp: AgentBackdropSky.slots(for: palette)
     )
     let side = pixels.rounded()
     guard let whole = shared?.image(of: u, scale: pixels / scene),
@@ -231,7 +258,7 @@ final class AgentBackdropRenderer {
 
   static func uniforms(
     size: CGSize, pixelSize: CGFloat, backdrop: ChatBackdrop,
-    clock: CGFloat, opacity: CGFloat, palette: MascotPalette
+    clock: CGFloat, opacity: CGFloat, ramp: [simd_float4]
   ) -> AgentBackdropUniforms {
     var u = AgentBackdropUniforms()
     u.size = simd_float2(Float(size.width), Float(size.height))
@@ -241,12 +268,7 @@ final class AgentBackdropRenderer {
     u.opacity = Float(min(1, max(0, opacity)))
     withUnsafeMutableBytes(of: &u.sky) { raw in
       let slots = raw.bindMemory(to: simd_float4.self)
-      for (index, color) in AgentBackdropSky.ramp(for: palette).enumerated() {
-        let color = color.usingColorSpace(.sRGB) ?? color
-        slots[index] = simd_float4(
-          Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent), 1
-        )
-      }
+      for (index, color) in ramp.prefix(slots.count).enumerated() { slots[index] = color }
     }
     return u
   }
@@ -320,6 +342,17 @@ final class AgentBackdropRenderer {
 }
 
 enum AgentBackdropSky {
+  static func slots(for palette: MascotPalette?) -> [simd_float4] {
+    let colors = palette.map(ramp(for:)) ?? neutral.map(HexColor.nsColor)
+    return colors.map { color in
+      let color = color.usingColorSpace(.sRGB) ?? color
+      return simd_float4(Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent), 1)
+    }
+  }
+
+  /// Greys, faintly cool, for the list's All tab: every face is there, so none colours it.
+  private static let neutral = ["#14171c", "#4a505a", "#e6e9ee", "#262a31", "#2e333b", "#737a85"]
+
   static func ramp(for palette: MascotPalette) -> [NSColor] {
     if let hexes = presets[palette.id] { return hexes.map(HexColor.nsColor) }
     let stops = palette.colors.map { $0.usingColorSpace(.sRGB) ?? $0 }

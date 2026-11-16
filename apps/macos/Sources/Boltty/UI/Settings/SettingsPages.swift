@@ -85,16 +85,9 @@ struct GeneralSettingsPage: View {
           Text("Panel glass")
           Text("Clear lets the colour behind the panel through; frosted softens it.")
         }
-      } header: {
-        SettingsSectionHeader("Appearance")
-      }
-
-      Section {
         ChatBackdropPicker(model: model)
       } header: {
-        SettingsSectionHeader("Backdrop")
-      } footer: {
-        SettingsNote("Drawn inside the panel for every agent: the first screen, the list, listening and the open chat. Its colours are the face of the agent shown.")
+        SettingsSectionHeader("Appearance")
       }
 
       Section {

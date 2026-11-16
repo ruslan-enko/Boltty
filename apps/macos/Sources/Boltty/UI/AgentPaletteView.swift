@@ -1169,7 +1169,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if let look = selectedAgentImage.mascotLook { listeningFace.apply(look: look) }
     listeningWords.colors = VoiceEdgeGlowLayout.rayColors(from: palette)
     field.caretPalette = palette
-    syncBackdropPalette()
   }
 
   /// `CADisplayLink` retains its target, so a spring in flight when the view is
@@ -3116,16 +3115,18 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     CATransaction.commit()
   }
 
+  /// The open chat and the list wear the backdrop; the first screen and the
+  /// listening orb stay glass, too small for a sky.
   private func showBackdrop() {
-    let chosen = ChatBackdrop.chosen()
-    backdrop.show(chosen, palette: chosen == .standard ? .standard : backdropPalette)
-  }
-
-  private var backdropPalette: MascotPalette {
-    if let preview = addressedPreview { return MascotPalette.face(for: preview.agent) }
-    if isResultsExpanded, let agent = activeHistoryAgent { return MascotPalette.face(for: agent) }
-    return selectedAgentImage.mascotPaletteID.flatMap(MascotPalette.palette(withID:))
-      ?? MascotPalette.face(for: agentForNewPrompt)
+    let isChat = addressedPreview != nil && !showsCompactListening
+    let isList = addressedPreview == nil && isResultsExpanded
+    let chosen = isChat || isList ? ChatBackdrop.chosen() : .standard
+    let palette: MascotPalette? = if let preview = addressedPreview {
+      MascotPalette.face(for: preview.agent)
+    } else {
+      activeHistoryAgent.map { MascotPalette.face(for: $0) }
+    }
+    backdrop.show(chosen, palette: palette)
   }
 
   private func syncBackdropPalette() {

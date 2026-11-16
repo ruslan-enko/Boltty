@@ -9,42 +9,40 @@ struct ChatBackdropPicker: View {
 
   var body: some View {
     let look = model.mascotLook(for: model.mascotRoster.restingAgent)
-    let palette = look.palette
-    VStack(spacing: 16) {
+    VStack(alignment: .leading, spacing: 12) {
+      LabeledContent {
+        SettingsSegments(
+          title: "Backdrop",
+          options: ChatBackdrop.allCases.map { ($0, $0.title) },
+          selection: Binding(get: { chosen }, set: { stored = $0.rawValue }),
+          icon: { AnyView(BackdropSwatch(backdrop: $0, palette: look.palette)) }
+        )
+        .accessibilityIdentifier("boltty.settings.backdrop")
+      } label: {
+        Text("Backdrop")
+        Text("Behind the chat list and open chats, for every agent, in the colours of the face shown. The list's All tab wears it in greys.")
+      }
       SettingsStage(width: nil, height: 320, corner: SettingsStageMetrics.fillingCorner) {
         ChatBackdropSample(backdrop: chosen, look: look, clearGlass: model.panelClearGlass)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .padding(ChatBackdropSampleView.margin)
       }
-      .padding(.horizontal, SettingsStageMetrics.sectionGap - SettingsStageMetrics.rowInset)
-      .padding(.top, SettingsStageMetrics.sectionGap - SettingsStageMetrics.rowInset)
-      HStack(spacing: 22) {
-      ForEach(ChatBackdrop.allCases) { backdrop in
-        RingedChoice(title: backdrop.title, isChosen: backdrop == chosen, diameter: BackdropWindow.diameter) {
-          withAnimation(SettingsMotion.quick) { stored = backdrop.rawValue }
-        } picture: { _ in
-          BackdropWindow(backdrop: backdrop, palette: palette, isLive: backdrop == chosen)
-        }
-        .accessibilityIdentifier("boltty.settings.backdrop.\(backdrop.rawValue)")
-      }
-      }
     }
-    .frame(maxWidth: .infinity)
-    .padding(.bottom, 10)
+    .padding(.vertical, 6)
   }
 }
 
-private struct BackdropWindow: View {
+/// The backdrop's own still in a dot, as a segment's icon.
+private struct BackdropSwatch: View {
   let backdrop: ChatBackdrop
   let palette: MascotPalette
-  let isLive: Bool
   @Environment(\.displayScale) private var displayScale
 
-  static let diameter: CGFloat = 42
+  private static let diameter: CGFloat = 14
   private static let scene: CGFloat = 260
 
   var body: some View {
-    ZStack {
+    Group {
       if let still = AgentBackdropRenderer.still(
         of: backdrop, palette: palette, scene: Self.scene, pixels: Self.diameter * displayScale
       ) {
@@ -52,51 +50,10 @@ private struct BackdropWindow: View {
           .resizable()
           .interpolation(.high)
       } else {
-        Color.gray.opacity(0.45)
-        LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-      }
-      if isLive, backdrop != .standard, !MotionPreferences.reduceMotion {
-        LiveBackdrop(backdrop: backdrop, palette: palette, sceneScale: Self.diameter / Self.scene)
+        Color.primary.opacity(0.18)
       }
     }
+    .frame(width: Self.diameter, height: Self.diameter)
     .clipShape(Circle())
-  }
-}
-
-private struct LiveBackdrop: NSViewRepresentable {
-  let backdrop: ChatBackdrop
-  let palette: MascotPalette
-  let sceneScale: CGFloat
-
-  func makeNSView(context: Context) -> LiveBackdropHost {
-    LiveBackdropHost(sceneScale: sceneScale)
-  }
-
-  func updateNSView(_ host: LiveBackdropHost, context: Context) {
-    host.view.show(backdrop, palette: palette)
-  }
-}
-
-private final class LiveBackdropHost: NSView {
-  let view = AgentBackdropView(frame: .zero)
-
-  init(sceneScale: CGFloat) {
-    super.init(frame: .zero)
-    clipsToBounds = true
-    view.sceneScale = sceneScale
-    addSubview(view)
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-
-  override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-  override func layout() {
-    super.layout()
-    let scene = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height * 2)
-    view.layOut(in: scene, corner: 0, curve: .continuous)
   }
 }
