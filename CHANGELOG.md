@@ -2,6 +2,11 @@
 
 What changed from release to release. The newest is at the top.
 
+## Unreleased
+
+- The backdrop is one choice in Settings › General, for every agent, and the
+  panel wears it everywhere: the first screen, the list, listening and the chat.
+
 ## 0.9.1
 
 - A redrawn app icon.

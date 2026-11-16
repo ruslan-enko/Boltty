@@ -89,7 +89,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons`, drawn by `scripts/render-icons.py` and judged by `scripts/check-icons.py` |
 | Brand colours | `UI/Appearance/BolttyBrand.swift`, [BRAND.md](BRAND.md) |
 | Shader effects | `UI/Effects/` |
-| Chat backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
+| Backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
 | Who takes a new chat | `Models/AgentRouting.swift` (`AgentRouting`, `AgentHandOver`), `ChatWorkspaceCoordinator.routingOrder` / `handOverIfDue` |
@@ -1283,11 +1283,14 @@ heard.
 - The listening orb is the shell's glass and draws no light of its own: the
   glow view clears once and draws no more frames while `fillsShell`; its clock
   still times the take.
-- **Chat backdrops** (`AgentBackdropView`): what an open chat wears behind
-  its transcript, chosen per agent in Settings › Agents › Chat
-  (`boltty.chatBackdrop.<agent>`): Standard (the glass), Sky, Space. Matrix
-  was removed; a stored `matrix` reads as Standard. Standard is every
-  agent's default, and nothing stores another for the person. The Settings
+- **Backdrops** (`AgentBackdropView`): what the panel's shell wears behind
+  its content in every state (first screen, list, listening, open chat), one
+  choice for every agent in Settings › General › Backdrop (`boltty.backdrop`):
+  Standard (the glass), Sky, Space, in the colours of the face shown (the
+  chat's agent, the list tab's, else the first screen's). It was a choice per
+  agent for open chats only; `boltty.chatBackdrop.<agent>` is retired, inert.
+  Matrix was removed; a stored `matrix` reads as Standard. Standard is the
+  default, and nothing stores another for the person. The Settings
   picker is round windows of 42 pt (`RingedChoice`), with no face in them: the
   chosen one moves under a ringed edge, the others are stills. Over them a
   chat at three quarters size wears the chosen backdrop over the person's desktop

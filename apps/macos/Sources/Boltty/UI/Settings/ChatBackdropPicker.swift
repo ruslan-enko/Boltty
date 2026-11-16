@@ -3,19 +3,12 @@ import SwiftUI
 
 struct ChatBackdropPicker: View {
   @ObservedObject var model: BolttyAISettingsModel
-  let agent: AgentId
-  @AppStorage private var stored: String
-
-  init(model: BolttyAISettingsModel, agent: AgentId) {
-    self.model = model
-    self.agent = agent
-    _stored = AppStorage(wrappedValue: ChatBackdrop.standard.rawValue, ChatBackdrop.storageKey(for: agent))
-  }
+  @AppStorage(ChatBackdrop.storageKey) private var stored = ChatBackdrop.standard.rawValue
 
   private var chosen: ChatBackdrop { ChatBackdrop(rawValue: stored) ?? .standard }
 
   var body: some View {
-    let look = model.mascotLook(for: agent)
+    let look = model.mascotLook(for: model.mascotRoster.restingAgent)
     let palette = look.palette
     VStack(spacing: 16) {
       SettingsStage(width: nil, height: 320, corner: SettingsStageMetrics.fillingCorner) {
@@ -32,7 +25,7 @@ struct ChatBackdropPicker: View {
         } picture: { _ in
           BackdropWindow(backdrop: backdrop, palette: palette, isLive: backdrop == chosen)
         }
-        .accessibilityIdentifier("boltty.settings.chatBackdrop.\(agent.rawValue).\(backdrop.rawValue)")
+        .accessibilityIdentifier("boltty.settings.backdrop.\(backdrop.rawValue)")
       }
       }
     }

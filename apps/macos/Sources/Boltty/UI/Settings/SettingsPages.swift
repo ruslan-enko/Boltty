@@ -90,6 +90,14 @@ struct GeneralSettingsPage: View {
       }
 
       Section {
+        ChatBackdropPicker(model: model)
+      } header: {
+        SettingsSectionHeader("Backdrop")
+      } footer: {
+        SettingsNote("Drawn inside the panel for every agent: the first screen, the list, listening and the open chat. Its colours are the face of the agent shown.")
+      }
+
+      Section {
         LabeledContent {
           HStack(spacing: 8) {
             Button("Show in Finder") {
@@ -459,14 +467,6 @@ private struct AgentSettingsDetail: View {
             .disabled(!model.canRestoreDefaultMascot(for: row.agent))
             .accessibilityIdentifier("boltty.settings.mascot.\(row.agent.rawValue).reset")
         }
-      }
-
-      Section {
-        ChatBackdropPicker(model: model, agent: row.agent)
-      } header: {
-        SettingsSectionHeader("Chat")
-      } footer: {
-        SettingsNote("Drawn behind \(row.agent.shortDisplayName)'s open chats, in its face's colours: a new face recolours it.")
       }
     }
     .settingsGroupedPage()
