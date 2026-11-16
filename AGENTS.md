@@ -1148,8 +1148,8 @@ heard.
   the list again. `-boltty.settings.agent claude` opens an agent's page.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar
-  4 high and flat in black (the label ink, `Color.usageInk`): in the
-  accent it was the loudest thing on the page and the faces were lost; the overview's grid of days keeps the accent), and an overview counted
+  4 high and flat in the accent, `UsageMeter`; in black it read as no brand at
+  all), and an overview counted
   off every CLI's own records (`AgentStatisticsReader`, cached per file in
   `Application Support/Boltty/Usage/statistics.json`); a chart of 14 days under
   each agent was there and was removed. Never summed across

@@ -720,12 +720,6 @@ private struct UsageLimitCard: View {
   }
 }
 
-extension Color {
-  /// Plan meters: a neutral ink, so the numbers carry no colour of
-  /// their own beside the faces.
-  static var usageInk: Color { .primary }
-}
-
 struct UsageMeter: View {
   let fraction: Double
   var height: CGFloat = 4
@@ -737,7 +731,7 @@ struct UsageMeter: View {
         Capsule().fill(Color.primary.opacity(0.08))
         if filled > 0 {
           Capsule()
-            .fill(Color.usageInk)
+            .fill(Color.bolttyAccent)
             .frame(width: max(filled, height))
         }
       }
