@@ -63,7 +63,7 @@ final class AskBolttyDrawingLayer: CALayer {
       let gradient = CAGradientLayer()
       gradient.contentsScale = contentsScale
       gradient.frame = bounds
-      gradient.colors = (colours.isEmpty ? [NSColor.white] : colours).map(\.cgColor)
+      gradient.colors = OklabGradient.cgColors(colours.isEmpty ? [NSColor.white] : colours)
       gradient.startPoint = CGPoint(x: 0, y: 1)
       gradient.endPoint = CGPoint(x: 1, y: 0)
       let line = CAShapeLayer()

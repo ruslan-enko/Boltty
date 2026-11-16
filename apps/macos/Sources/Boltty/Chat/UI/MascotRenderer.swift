@@ -181,33 +181,22 @@ final class MascotRenderer {
   private static var stopCache: [String: [simd_float4]] = [:]
 
   static func oklabStops(for palette: MascotPalette) -> [simd_float4] {
-    if let cached = stopCache[palette.id], cached.count == palette.hexes.count {
+    if let cached = stopCache[palette.id], cached.count == palette.stops.count {
       return cached
     }
-    let stops = zip(palette.colors, palette.stopPlaces)
+    let stops = zip(palette.stops, palette.stopPlaces)
       .prefix(Int(MASCOT_STOP_COUNT))
-      .map { color, position in simd_float4(oklab(color), Float(position)) }
+      .map { stop, position in
+        let lab = stop.oklab
+        return simd_float4(Float(lab.l), Float(lab.a), Float(lab.b), Float(position))
+      }
     stopCache[palette.id] = stops
     return stops
   }
 
   static func oklab(_ color: NSColor) -> simd_float3 {
-    let srgb = color.usingColorSpace(.sRGB) ?? color
-    func linear(_ c: CGFloat) -> Float {
-      let v = Float(c)
-      return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
-    }
-    let r = linear(srgb.redComponent)
-    let g = linear(srgb.greenComponent)
-    let b = linear(srgb.blueComponent)
-    let l = cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
-    let m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
-    let s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
-    return simd_float3(
-      0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-      1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
-    )
+    let lab = Oklab(color)
+    return simd_float3(Float(lab.l), Float(lab.a), Float(lab.b))
   }
 
   private static func setStop(_ uniforms: inout MascotUniforms, at index: Int, _ value: simd_float4) {

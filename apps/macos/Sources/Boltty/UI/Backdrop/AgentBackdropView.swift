@@ -9,7 +9,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   private var palette: MascotPalette? = .standard
   private var backdrop = ChatBackdrop.standard
   private var ramp = AgentBackdropSky.slots(for: .standard)
-  private var blend: (from: [simd_float4], to: [simd_float4], start: CFTimeInterval)?
+  private var blend: (from: [AgentBackdropSky.Tone], to: [AgentBackdropSky.Tone], start: CFTimeInterval)?
   private var clock: CGFloat = 0
   private var targetOpacity: CGFloat = 0
   private var lastTick: CFTimeInterval = 0
@@ -197,8 +197,10 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   private func stepBlend(at now: CFTimeInterval) -> Bool {
     guard let blend else { return false }
     let linear = min(1, max(0, (now - blend.start) / Motion.scaled(Self.paletteBlend)))
-    let t = Float(linear * linear * (3 - 2 * linear))
-    ramp = zip(blend.from, blend.to).map { simd_mix($0, $1, simd_float4(repeating: t)) }
+    let t = linear * linear * (3 - 2 * linear)
+    ramp = zip(blend.from, blend.to).map { from, to in
+      AgentBackdropSky.Tone(l: from.l + (to.l - from.l) * t, a: from.a + (to.a - from.a) * t, b: from.b + (to.b - from.b) * t)
+    }
     if linear >= 1 { self.blend = nil }
     return true
   }
@@ -275,7 +277,7 @@ final class AgentBackdropRenderer {
 
   static func uniforms(
     size: CGSize, pixelSize: CGFloat, backdrop: ChatBackdrop,
-    clock: CGFloat, opacity: CGFloat, ramp: [simd_float4]
+    clock: CGFloat, opacity: CGFloat, ramp: [AgentBackdropSky.Tone]
   ) -> AgentBackdropUniforms {
     var u = AgentBackdropUniforms()
     u.size = simd_float2(Float(size.width), Float(size.height))
@@ -285,7 +287,18 @@ final class AgentBackdropRenderer {
     u.opacity = Float(min(1, max(0, opacity)))
     withUnsafeMutableBytes(of: &u.sky) { raw in
       let slots = raw.bindMemory(to: simd_float4.self)
-      for (index, color) in ramp.prefix(slots.count).enumerated() { slots[index] = color }
+      for (index, tone) in ramp.enumerated() {
+        let color = tone.color(fitting: true).usingColorSpace(.sRGB) ?? .black
+        slots[index] = simd_float4(
+          Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent), 1
+        )
+      }
+    }
+    withUnsafeMutableBytes(of: &u.skyLab) { raw in
+      let slots = raw.bindMemory(to: simd_float4.self)
+      for (index, tone) in ramp.enumerated() {
+        slots[index] = simd_float4(Float(tone.l), Float(tone.a), Float(tone.b), 1)
+      }
     }
     return u
   }
@@ -359,40 +372,66 @@ final class AgentBackdropRenderer {
 }
 
 enum AgentBackdropSky {
-  static func slots(for palette: MascotPalette?) -> [simd_float4] {
-    let colors = palette.map(ramp(for:)) ?? neutral.map(HexColor.nsColor)
-    return colors.map { color in
-      let color = color.usingColorSpace(.sRGB) ?? color
-      return simd_float4(Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent), 1)
-    }
+  typealias Tone = Oklab
+
+  /// A `nil` palette is the neutral sky.
+  static func slots(for palette: MascotPalette?) -> [Tone] {
+    palette.map(ramp(for:)) ?? neutral.map(\.oklab)
   }
 
   /// Greys, faintly cool, for the list's All tab: every face is there, so none colours it.
-  private static let neutral = ["#14171c", "#4a505a", "#e6e9ee", "#262a31", "#2e333b", "#737a85"]
+  private static let neutral = [
+    OKLCH(0.205, 0.008, 258), OKLCH(0.43, 0.017, 258), OKLCH(0.93, 0.007, 258),
+    OKLCH(0.28, 0.013, 258), OKLCH(0.31, 0.014, 258), OKLCH(0.57, 0.018, 258)
+  ]
 
-  static func ramp(for palette: MascotPalette) -> [NSColor] {
-    if let hexes = presets[palette.id] { return hexes.map(HexColor.nsColor) }
-    let stops = palette.colors.map { $0.usingColorSpace(.sRGB) ?? $0 }
+  /// Zenith, horizon, cloud light, cloud shade, middle, glow.
+  static func ramp(for palette: MascotPalette) -> [Tone] {
+    if let preset = presets[palette.id] { return preset.map(\.oklab) }
+    let stops = palette.colors.map(Tone.init)
     guard stops.count >= 5, let first = stops.first, let last = stops.last else {
-      return (presets["lagoon"] ?? []).map(HexColor.nsColor)
+      return (presets["lagoon"] ?? []).map(\.oklab)
     }
     return [
-      first.blended(withFraction: 0.75, of: .black) ?? first,
-      last.blended(withFraction: 0.45, of: .black) ?? last,
-      stops[2].blended(withFraction: 0.4, of: .white) ?? stops[2],
-      first.blended(withFraction: 0.6, of: .black) ?? first,
-      stops[1].blended(withFraction: 0.6, of: .black) ?? stops[1],
-      stops[4].blended(withFraction: 0.25, of: .black) ?? stops[4]
+      darker(first, 0.36), darker(last, 0.65), lighter(stops[2], 0.4),
+      darker(first, 0.5), darker(stops[1], 0.5), darker(stops[4], 0.8)
     ]
   }
 
-  private static let presets: [String: [String]] = [
+  /// Lightness alone goes down, so a dark sky keeps its colour.
+  private static func darker(_ tone: Tone, _ scale: Double) -> Tone {
+    Tone(l: tone.l * scale, a: tone.a, b: tone.b)
+  }
+
+  private static func lighter(_ tone: Tone, _ amount: Double) -> Tone {
+    Tone(l: tone.l + (1 - tone.l) * amount, a: tone.a * (1 - amount), b: tone.b * (1 - amount))
+  }
+
+  private static let presets: [String: [OKLCH]] = [
     // Blue and orange mix through grey, so violet stands between them and the cloud light is rose.
-    "daybreak": ["#0f3fa8", "#f06c48", "#ff9f90", "#5448b0", "#6a58d4", "#ff8c50"],
-    "citrus": ["#063a3c", "#b2741a", "#ffe08a", "#1c5040", "#1c6a4c", "#e29a28"],
-    "candy": ["#0a4250", "#b4687a", "#ffa8b8", "#2a4470", "#3c6478", "#d68a70"],
-    "ember": ["#2a0c28", "#a8443c", "#ffc49a", "#5a1c3a", "#5e1c40", "#d8784a"],
-    "lagoon": ["#0a3888", "#3c80cc", "#f2f7ff", "#4c78bc", "#1c5cb4", "#8ab8e4"],
-    "slate": ["#1a1240", "#7c5ca4", "#f2e6fc", "#3e3074", "#3e2c72", "#b480b4"]
+    "daybreak": [
+      OKLCH(0.412, 0.176, 262.8), OKLCH(0.686, 0.171, 36.2), OKLCH(0.796, 0.117, 29.5),
+      OKLCH(0.473, 0.159, 283.7), OKLCH(0.545, 0.183, 285.2), OKLCH(0.755, 0.158, 46.6)
+    ],
+    "citrus": [
+      OKLCH(0.318, 0.051, 198.9), OKLCH(0.610, 0.124, 69.8), OKLCH(0.914, 0.111, 90.3),
+      OKLCH(0.391, 0.062, 169.7), OKLCH(0.469, 0.089, 163.1), OKLCH(0.740, 0.146, 72.8)
+    ],
+    "candy": [
+      OKLCH(0.352, 0.059, 219.4), OKLCH(0.607, 0.099, 5.2), OKLCH(0.821, 0.104, 7.6),
+      OKLCH(0.388, 0.082, 260.4), OKLCH(0.482, 0.055, 231.2), OKLCH(0.705, 0.101, 39.6)
+    ],
+    "ember": [
+      OKLCH(0.217, 0.066, 330.2), OKLCH(0.519, 0.134, 27.2), OKLCH(0.864, 0.087, 56.7),
+      OKLCH(0.334, 0.097, 353.7), OKLCH(0.343, 0.104, 350.3), OKLCH(0.671, 0.134, 45.3)
+    ],
+    "lagoon": [
+      OKLCH(0.367, 0.142, 261.0), OKLCH(0.593, 0.136, 253.2), OKLCH(0.975, 0.012, 259.8),
+      OKLCH(0.572, 0.116, 258.8), OKLCH(0.486, 0.154, 257.8), OKLCH(0.766, 0.080, 247.8)
+    ],
+    "slate": [
+      OKLCH(0.225, 0.083, 285.5), OKLCH(0.538, 0.114, 303.3), OKLCH(0.941, 0.032, 309.9),
+      OKLCH(0.363, 0.112, 289.1), OKLCH(0.354, 0.115, 291.2), OKLCH(0.669, 0.095, 326.6)
+    ]
   ]
 }

@@ -65,7 +65,7 @@ final class MascotRendererTests: XCTestCase {
   func testTheMatteBodyKeepsItsPigmentUnderTheSoftbox() throws {
     let blue = MascotPalette(
       id: "renderer-test-matte-blue", displayName: "Matte blue",
-      hexes: Array(repeating: "#4885C7", count: Int(MASCOT_STOP_COUNT))
+      stops: Array(repeating: OKLCH(0.606, 0.119, 252), count: Int(MASCOT_STOP_COUNT))
     )
     let frame = try XCTUnwrap(stillFace(blue, size: 96).lastFrame)
     let pixels = try image(movingEyesOffTheBody(frame))
@@ -120,7 +120,7 @@ final class MascotRendererTests: XCTestCase {
   func testTheEyesAreSetIntoTheBodyNotStoodOnIt() throws {
     let bright = MascotPalette(
       id: "renderer-test-solid-bright", displayName: "Solid bright",
-      hexes: Array(repeating: "#F5F2D7", count: Int(MASCOT_STOP_COUNT))
+      stops: Array(repeating: OKLCH(0.956, 0.036, 101.9), count: Int(MASCOT_STOP_COUNT))
     )
     for shape in MascotShape.allCases {
       var profile = try XCTUnwrap(stillFace(bright, size: 128, shape: shape).lastFrame)
@@ -158,7 +158,7 @@ final class MascotRendererTests: XCTestCase {
   func testEveryBodyIsACushionInProfile() throws {
     let bright = MascotPalette(
       id: "renderer-test-solid-bright", displayName: "Solid bright",
-      hexes: Array(repeating: "#F5F2D7", count: Int(MASCOT_STOP_COUNT))
+      stops: Array(repeating: OKLCH(0.956, 0.036, 101.9), count: Int(MASCOT_STOP_COUNT))
     )
     for shape in MascotShape.allCases {
       var side = try XCTUnwrap(stillFace(bright, size: 128, shape: shape).lastFrame)
@@ -182,7 +182,7 @@ final class MascotRendererTests: XCTestCase {
   func testTheBodyOccludesTheEyesWhenViewedFromBehind() throws {
     let bright = MascotPalette(
       id: "renderer-test-solid-bright", displayName: "Solid bright",
-      hexes: Array(repeating: "#F5F2D7", count: Int(MASCOT_STOP_COUNT))
+      stops: Array(repeating: OKLCH(0.956, 0.036, 101.9), count: Int(MASCOT_STOP_COUNT))
     )
     for shape: MascotShape in [.bloom, .daisy, .hex] {
       var back = try XCTUnwrap(stillFace(bright, size: 128, shape: shape).lastFrame)

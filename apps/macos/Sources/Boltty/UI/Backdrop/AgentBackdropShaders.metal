@@ -1,5 +1,6 @@
 #include <metal_stdlib>
 #include "AgentBackdropUniforms.h"
+#include "../Effects/OklabShading.h"
 
 using namespace metal;
 
@@ -51,27 +52,17 @@ static inline float backdropFBM(float2 p, int octaves) {
 
 static inline float backdropFBM(float2 p) { return backdropFBM(p, 5); }
 
-static inline float3 backdropCeiling(float3 c, float knee, float ceiling) {
-  const float y = dot(c, float3(0.2126, 0.7152, 0.0722));
-  if (y <= knee) { return c; }
-  const float room = ceiling - knee;
-  const float ratio = (knee + room * (1.0 - exp(-(y - knee) / room))) / y;
-  const float3 dimmed = c * ratio;
-  const float grey = y * ratio;
-  return max(mix(float3(grey), dimmed, 1.0 + 0.7 * (1.0 - ratio)), 0.0);
-}
-
 // MARK: - Sky
 
-static float3 backdropSky(float2 local, float2 size, float t, constant float4 *sky) {
+static float3 backdropSky(float2 local, float2 size, float t, constant float4 *lab) {
   const float h = local.y / size.y;
   const float2 uv = local / 420.0;
-  const float3 zenith = sky[0].rgb;
-  const float3 horizon = sky[1].rgb;
-  const float3 sunlight = sky[2].rgb;
-  const float3 underside = sky[3].rgb;
-  const float3 middle = sky[4].rgb;
-  const float3 glow = sky[5].rgb;
+  const float3 zenith = lab[0].xyz;
+  const float3 horizon = lab[1].xyz;
+  const float3 sunlight = lab[2].xyz;
+  const float3 underside = lab[3].xyz;
+  const float3 middle = lab[4].xyz;
+  const float3 glow = lab[5].xyz;
 
   const float x = local.x / size.x;
   const float lean = (backdropFBM(local / size * 1.3 + float2(t * 0.006, 0.0), 3) - 0.5) * 0.3;
@@ -106,18 +97,19 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
     const float toward = backdropFBM(at + float2(0.05, 0.16), 4);
     const float lit = clamp((density - toward) * 5.0 + 0.4, 0.0, 1.0);
     const float thick = smoothstep(threshold + 0.04, threshold + 0.32, density);
-    const float3 under = mix(horizon * 0.82, underside, smoothstep(0.2, 0.62, h));
+    const float3 under = mix(float3(horizon.x * 0.865, horizon.yz), underside, smoothstep(0.2, 0.62, h));
     const float3 shade = mix(under, color, 0.5);
     const float3 lowLight = mix(sunlight, glow, 0.3 + sun * 0.3 + (1.0 - smoothstep(0.0, 0.5, h)) * 0.25);
-    // Pale light dimmed by the ceiling and the top's shade reads as grey-brown.
-    const float3 light = mix(lowLight, min(color * 1.7 + 0.04, float3(1.0)), smoothstep(0.5, 0.85, h) * 0.85);
+    // High clouds are lit by the sky behind them: its own colour, lighter.
+    const float3 skyLight = float3(min(color.x * 1.47 + 0.05, 0.97), color.yz);
+    const float3 light = mix(lowLight, skyLight, smoothstep(0.5, 0.85, h) * 0.85);
     float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
     body += light * (1.0 - thick) * lit * 0.3;
     body = mix(body, color, haze[layer]);
     color = mix(color, body, cloud);
   }
 
-  return backdropCeiling(color, 0.28, 0.52);
+  return oklabToSRGB(oklabCeiling(color, 0.39, 0.62));
 }
 
 // MARK: - Space
@@ -125,9 +117,9 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *s
 static float3 backdropStarColor(float k, float3 face) {
   const float3 blue = float3(0.72, 0.82, 1.0);
   const float3 warm = float3(1.0, 0.84, 0.64);
-  float3 c = mix(blue, float3(1.0), smoothstep(0.0, 0.35, k));
-  c = mix(c, warm, smoothstep(0.75, 1.0, k));
-  return mix(c, face, step(0.62, fract(k * 7.31)) * 0.75);
+  float3 c = srgbMix(blue, float3(1.0), smoothstep(0.0, 0.35, k));
+  c = srgbMix(c, warm, smoothstep(0.75, 1.0, k));
+  return srgbMix(c, face, step(0.62, fract(k * 7.31)) * 0.75);
 }
 
 static float3 backdropStarLayer(
@@ -173,7 +165,7 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
   // The face's own hue has to read through the dark, or every face's space is the same black.
   float3 color = float3(0.006, 0.007, 0.011) + zenith * 0.1;
   const float dawn = exp(-pow(length(float2((x - 0.82) * 1.1, h + 0.08)), 2.0) * 3.2);
-  color += mix(horizon, glow, 0.4) * dawn * (0.3 + 0.08 * breath);
+  color += srgbMix(horizon, glow, 0.4) * dawn * (0.3 + 0.08 * breath);
   const float dusk = exp(-pow(length(float2((x - 0.08) * 1.2, h - 0.95)), 2.0) * 3.5);
   color += zenith * dusk * (0.22 + 0.06 * breath);
   const float haze = smoothstep(0.42, 0.8, backdropFBM(local / 260.0 + float2(t * 0.008, 3.0), 4));
@@ -199,9 +191,9 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
     const float tail = smoothstep(110.0, 0.0, along) * step(0.0, along);
     const float streak = tail * smoothstep(0.9 + pixel, 0.0, across);
     const float fade = smoothstep(0.0, 0.1, age) * smoothstep(0.9, 0.55, age);
-    color += mix(float3(1.0), light, 0.25) * streak * fade * 0.8;
+    color += srgbMix(float3(1.0), light, 0.25) * streak * fade * 0.8;
   }
-  return backdropCeiling(color, 0.24, 0.46);
+  return oklabToSRGB(oklabCeiling(srgbToOklab(color), 0.35, 0.565));
 }
 
 // MARK: - The frame
@@ -219,7 +211,7 @@ fragment float4 agentBackdropFragment(
   if (u.scene > 1.5) {
     color = backdropSpace(in.local, size, t, u.pixelSize, u.sky);
   } else {
-    color = backdropSky(in.local, size, t, u.sky);
+    color = backdropSky(in.local, size, t, u.skyLab);
   }
 
   color *= mix(1.0, 0.45, smoothstep(0.62, 1.0, h));

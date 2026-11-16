@@ -246,17 +246,18 @@ final class BolttyAISessionRowView: NSView {
     let light = MascotPalette.face(for: item.agent).arrivalLight
     guard let first = light.first, let last = light.last else { return }
     if still {
-      shimmerBand.colors = light.map(\.cgColor)
+      shimmerBand.colors = OklabGradient.cgColors(light)
       shimmerBand.locations = nil
       return
     }
-    shimmerBand.colors = ([first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)])
-      .map(\.cgColor)
+    shimmerBand.colors = OklabGradient.cgColors(
+      [first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)]
+    )
     let inner = AgentPaletteMetrics.resultsShimmerFade
     let steps = max(1, light.count - 1)
-    shimmerBand.locations = ([0] + light.indices.map {
+    shimmerBand.locations = OklabGradient.numbers([0] + light.indices.map {
       inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
-    } + [1]).map { NSNumber(value: Double($0)) }
+    } + [1])
   }
 
   private func cutShimmerWords() {

@@ -31,6 +31,7 @@
 		1157C36AF2DA7CC9C161E6E0 /* PaletteNoticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37B150EECF419B1FAACA3BC0 /* PaletteNoticeView.swift */; };
 		11C4635E69A88DF91126F14F /* MascotRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38577C65A950939B7E9BD2CB /* MascotRenderer.swift */; };
 		137336FA54619A9558663594 /* AgentPaletteSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ABE2E3E17268380CACF8788 /* AgentPaletteSubviews.swift */; };
+		142F7703476B0C454E6D84B0 /* OKLCH.swift in Sources */ = {isa = PBXBuildFile; fileRef = 439FB80ED6DD52BCA955DA0B /* OKLCH.swift */; };
 		145D4CAD835ACE0C71282C6D /* VoiceGlowPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FE0089A218D7229D3E597A /* VoiceGlowPhase.swift */; };
 		172C453C71577761CF47F172 /* SupertonicSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6906F4A20354BB8B1003130 /* SupertonicSpeaker.swift */; };
 		188C990C07EDC5AC16852949 /* AgentRoutingFallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = D649BF997C3A20692101B70F /* AgentRoutingFallback.swift */; };
@@ -181,7 +182,6 @@
 		7A43FCE2ECC18DAB35AF9220 /* PaletteCornerScrollIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E17179297F2494F7A24BA4C /* PaletteCornerScrollIndicator.swift */; };
 		7AEF2EE60256477C14CDC7CA /* CodexRolloutTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00894897FE655EBA2F6100AE /* CodexRolloutTranscript.swift */; };
 		7BCF5B1132A53F0E2CE63267 /* UsageGlanceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33E194657B11ED8F8C82DF17 /* UsageGlanceController.swift */; };
-		7BEE05C4DBEC026A74043DB0 /* HexColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62577DE382EAB09C90865567 /* HexColor.swift */; };
 		7DDE39E53BDA5F6AE37BE508 /* ChatWorkspaceCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D3798CD140E6DEF22329BA /* ChatWorkspaceCoordinator.swift */; };
 		7E2DD7FFF1552FE455B5F271 /* CodexSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C25ED4E6C89BC193C19E2C /* CodexSessionStore.swift */; };
 		7EC393E18E554172E0D346B6 /* AccessPermissionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913F16BC66A4A26F851F48A4 /* AccessPermissionsTests.swift */; };
@@ -462,6 +462,7 @@
 		3E6CE8FCF46B26A25BFFEEC8 /* MascotPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotPickerView.swift; sourceTree = "<group>"; };
 		3F37401FC4BDADB023EFF8F9 /* AppPresence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresence.swift; sourceTree = "<group>"; };
 		4352A75AF91BCAE69E82E60F /* DictationLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguage.swift; sourceTree = "<group>"; };
+		439FB80ED6DD52BCA955DA0B /* OKLCH.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OKLCH.swift; sourceTree = "<group>"; };
 		4525A6BE7A99D634522D6764 /* run-4.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "run-4.wav"; sourceTree = "<group>"; };
 		453CE9624DF49865DD80F707 /* BolttyAISettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAISettingsModel.swift; sourceTree = "<group>"; };
 		46433876239854EA012C3755 /* attention.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = attention.wav; sourceTree = "<group>"; };
@@ -506,7 +507,6 @@
 		618F1C84AB4A26914BE9E308 /* OpenCodeTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeTransportTests.swift; sourceTree = "<group>"; };
 		619451B1F867904AE48A8214 /* SiteFilmsOnScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteFilmsOnScreen.swift; sourceTree = "<group>"; };
 		61D3798CD140E6DEF22329BA /* ChatWorkspaceCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspaceCoordinator.swift; sourceTree = "<group>"; };
-		62577DE382EAB09C90865567 /* HexColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexColor.swift; sourceTree = "<group>"; };
 		66D54AB79F7CC5CA3B74D316 /* PaletteEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteEffects.swift; sourceTree = "<group>"; };
 		66E7B6E9D4F60D13EB0064AA /* whoosh-1.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "whoosh-1.wav"; sourceTree = "<group>"; };
 		66FC94BE90F53DCAC344AD9D /* BolttyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BolttyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -566,6 +566,7 @@
 		8E887A001098AB79849B0EF9 /* BolttyIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyIconView.swift; sourceTree = "<group>"; };
 		8F2E86A8A7369DF2D83796D2 /* AntigravityLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntigravityLiveTests.swift; sourceTree = "<group>"; };
 		8F4B62BE9BC6246C2FDED10C /* RecentFolders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentFolders.swift; sourceTree = "<group>"; };
+		8F7F7C3293ACABE9D83195CA /* OklabShading.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OklabShading.h; sourceTree = "<group>"; };
 		8FFFE90DB0AF895622BF308C /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
 		9031AEEB7B83368A06CB5BA7 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		90B3F3C67107DC67362F0E92 /* AgentUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentUsageTests.swift; sourceTree = "<group>"; };
@@ -1062,13 +1063,13 @@
 				015093B9A9DA564E415717BD /* ChatBackdrop.swift */,
 				4352A75AF91BCAE69E82E60F /* DictationLanguage.swift */,
 				C0DC676CFC8F17C526B963FB /* GitRepository.swift */,
-				62577DE382EAB09C90865567 /* HexColor.swift */,
 				0D0AA9540C316BC09F651135 /* HotkeyBinding.swift */,
 				3BCCF4252E4B67631A42284B /* HotkeySuggestions.swift */,
 				E6FE779A4276523C14A9C11A /* KeyboardShortcutCatalog.swift */,
 				DCCC2ED2098097D921491C57 /* MascotLook.swift */,
 				0F79BA33EC53D187DB02481E /* MascotPalette.swift */,
 				D2D6ADE090D4AF8C188208C9 /* MascotShape.swift */,
+				439FB80ED6DD52BCA955DA0B /* OKLCH.swift */,
 				7779689A8FD508ED41806AB3 /* PermissionSentence.swift */,
 				3683073E836756574F681566 /* PromptAttachment.swift */,
 				1A76929C06A967BB968AAE5A /* PromptDraft.swift */,
@@ -1220,6 +1221,7 @@
 		DBA0F5833EE52443E7AF2CAA /* Effects */ = {
 			isa = PBXGroup;
 			children = (
+				8F7F7C3293ACABE9D83195CA /* OklabShading.h */,
 				66D54AB79F7CC5CA3B74D316 /* PaletteEffects.swift */,
 				D86DE02654E768427DBE5C8B /* PaletteEffectShaders.metal */,
 				BBBA0E08F373D6874843EC51 /* PaletteEffectUniforms.h */,
@@ -1594,7 +1596,6 @@
 				1C747CE305746503C55676F6 /* GrokChatHistoryTranscript.swift in Sources */,
 				AE6924139F699EF1A2E2EFAA /* GrokClient.swift in Sources */,
 				D1215D8ABEBDF663E72E5035 /* GrokSessionStore.swift in Sources */,
-				7BEE05C4DBEC026A74043DB0 /* HexColor.swift in Sources */,
 				CFFB378A217FEDC181F7BF85 /* HotkeyBinding.swift in Sources */,
 				9C0E1CEF7593902E2E01AD6A /* HotkeyRecorderField.swift in Sources */,
 				C17BA2F80E0EA07EC2467D93 /* HotkeySuggestions.swift in Sources */,
@@ -1623,6 +1624,7 @@
 				8F1D075E77EE650AD66B8F37 /* MotionPreferences.swift in Sources */,
 				8D20DBC49DB616AFE20C48BC /* NativeSession.swift in Sources */,
 				BC2EFAB5F33BA6352D859000 /* NotchMascotController.swift in Sources */,
+				142F7703476B0C454E6D84B0 /* OKLCH.swift in Sources */,
 				2059C5CC8864001E069F049E /* OneShotCommand.swift in Sources */,
 				8DA5D6B6B81183CCCE08F62B /* OpenCodeClient.swift in Sources */,
 				D1EE766B46C2232E50B4D953 /* OpenCodeDTO.swift in Sources */,
