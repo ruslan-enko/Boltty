@@ -2,11 +2,17 @@
 
 What changed from release to release. The newest is at the top.
 
-## Unreleased
+## 0.9.2
 
 - The backdrop is one choice in Settings › General, for every agent, and the
   chat list wears it too, in greys on the All tab. Its sky moves a little faster,
-  and switching tabs blends its colours instead of jumping.
+  and switching tabs blends its colours instead of jumping. The choice is a glass
+  thumb that slides between the segments.
+- Space is a quiet night of the face's own sky.
+- Faces, skies and lights are mixed in Oklab: gradients between far hues no
+  longer pass through grey.
+- The panel's corners change with its shape as it moves between states.
+- Usage's plan meters are in Boltty's accent again.
 
 ## 0.9.1
 
