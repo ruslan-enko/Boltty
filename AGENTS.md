@@ -1294,8 +1294,9 @@ heard.
   out. It was a choice per agent for open chats only;
   `boltty.chatBackdrop.<agent>` is retired, inert. Matrix was removed; a stored
   `matrix` reads as Standard. Standard is the default, and nothing stores
-  another for the person. The Settings control is `SettingsSegments`, each
-  segment with the backdrop's still in a 14 pt dot. Under it a
+  another for the person. The Settings control is the system's segmented
+  `Picker`, whose glass thumb slides between the choices (the one place it
+  stands in for `SettingsSegments`). Under it a
   chat at three quarters size wears the chosen backdrop over the person's desktop
   (`ChatBackdropSample`): the backdrop's own renderer, not a mock-up. Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky
@@ -1309,8 +1310,9 @@ heard.
   dimmed yellow as olive. High clouds take their light from the sky behind
   them. A sky between two hues opposite each other has a colour standing
   between them (Daybreak's violet, with rose cloud light): blue straight into
-  orange mixed through grey. Space is near black with only breaths
-  of that sky (its glow low in one corner, its zenith high in the other),
+  orange mixed through grey. Space is near black with breaths
+  of that sky strong enough to tell one face's from another's (its glow low in
+  one corner, its zenith high in the other, a faint haze of its middle colour),
   and stars in four depths: gathered in loose drifts, mostly faint, white,
   bluish, warm or in the face's light, the brightest with a halo and faint
   rays. No clouds, no milky way, no night colour (each was tried and
@@ -1322,7 +1324,9 @@ heard.
   in the shader did not match. Sky draws a pixel per two points, Space at
   full scale; while the shell morphs (`morphingTo`) the sky is drawn
   once at the size it is going to, pinned to the shell's top and uncovered
-  as it grows, with its clock stopped so the live sky that takes over on
+  as it grows; where the shell is still wider or taller than that size it is
+  scaled up just enough to cover (`cover`, through `contentsRect`), since bare
+  edges read as a black rim, with its clock stopped so the live sky that takes over on
   settling is the same frame (redrawn at every size of the spring, the
   list-to-chat morph stuttered; held back, it popped in late); 20 fps, and the clock stops while the window is occluded (a hidden
   panel keeps the view).

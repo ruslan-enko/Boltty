@@ -173,7 +173,6 @@ struct SettingsSegments<Value: Hashable>: View {
   let title: String
   let options: [(value: Value, title: String)]
   @Binding var selection: Value
-  var icon: ((Value) -> AnyView)?
   @Environment(\.controlActiveState) private var activeState
   @Namespace private var thumb
 
@@ -194,12 +193,9 @@ struct SettingsSegments<Value: Hashable>: View {
     return Button {
       withAnimation(SettingsMotion.arrival) { selection = value }
     } label: {
-      HStack(spacing: 5) {
-        icon?(value)
-        Text(title)
-          .fontWeight(chosen.isSelected ? .medium : .regular)
-          .foregroundStyle(chosen.ink)
-      }
+      Text(title)
+        .fontWeight(chosen.isSelected ? .medium : .regular)
+        .foregroundStyle(chosen.ink)
       .padding(.horizontal, 12)
       .frame(height: 22)
       .background {

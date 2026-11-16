@@ -11,12 +11,12 @@ struct ChatBackdropPicker: View {
     let look = model.mascotLook(for: model.mascotRoster.restingAgent)
     VStack(alignment: .leading, spacing: 12) {
       LabeledContent {
-        SettingsSegments(
-          title: "Backdrop",
-          options: ChatBackdrop.allCases.map { ($0, $0.title) },
-          selection: Binding(get: { chosen }, set: { stored = $0.rawValue }),
-          icon: { AnyView(BackdropSwatch(backdrop: $0, palette: look.palette)) }
-        )
+        Picker("Backdrop", selection: Binding(get: { chosen }, set: { stored = $0.rawValue })) {
+          ForEach(ChatBackdrop.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
         .accessibilityIdentifier("boltty.settings.backdrop")
       } label: {
         Text("Backdrop")
@@ -29,31 +29,5 @@ struct ChatBackdropPicker: View {
       }
     }
     .padding(.vertical, 6)
-  }
-}
-
-/// The backdrop's own still in a dot, as a segment's icon.
-private struct BackdropSwatch: View {
-  let backdrop: ChatBackdrop
-  let palette: MascotPalette
-  @Environment(\.displayScale) private var displayScale
-
-  private static let diameter: CGFloat = 14
-  private static let scene: CGFloat = 260
-
-  var body: some View {
-    Group {
-      if let still = AgentBackdropRenderer.still(
-        of: backdrop, palette: palette, scene: Self.scene, pixels: Self.diameter * displayScale
-      ) {
-        Image(decorative: still, scale: displayScale)
-          .resizable()
-          .interpolation(.high)
-      } else {
-        Color.primary.opacity(0.18)
-      }
-    }
-    .frame(width: Self.diameter, height: Self.diameter)
-    .clipShape(Circle())
   }
 }

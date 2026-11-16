@@ -135,7 +135,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       CGSize(width: max(1, (size.width * scale).rounded()), height: max(1, (size.height * scale).rounded()))
     }
     if let destination = morphingTo {
-      layer?.contentsGravity = .top
+      cover(rect.size, with: destination)
       guard !isHidden, targetOpacity > 0 else { return }
       let size = pixels(destination)
       if drawableSize != size || sceneSize != destination {
@@ -146,10 +146,27 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
       return
     }
     layer?.contentsGravity = .resize
+    if layer?.contentsRect != CGRect(x: 0, y: 0, width: 1, height: 1) {
+      layer?.contentsRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+    }
     sceneSize = nil
     let size = pixels(rect.size)
     if drawableSize != size { drawableSize = size }
     if !isHidden { draw() }
+  }
+
+  /// While the shell morphs, the sky drawn at the size it is going to is shown
+  /// 1:1 from its top; where the shell is still wider or taller than that, it is
+  /// scaled up just enough to cover, so no edge goes bare. The scale reaches 1 as
+  /// the shell arrives, and the live sky takes over on the same frame.
+  private func cover(_ shown: CGSize, with destination: CGSize) {
+    guard let layer, destination.width > 0, destination.height > 0 else { return }
+    layer.contentsGravity = .resize
+    let scale = max(1, shown.width / destination.width, shown.height / destination.height)
+    let width = min(1, shown.width / scale / destination.width)
+    let height = min(1, shown.height / scale / destination.height)
+    let top = layer.contentsAreFlipped() ? 0 : 1 - height
+    layer.contentsRect = CGRect(x: (1 - width) / 2, y: top, width: width, height: height)
   }
 
   private func startClock() {
