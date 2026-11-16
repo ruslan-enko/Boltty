@@ -1294,9 +1294,11 @@ heard.
   out. It was a choice per agent for open chats only;
   `boltty.chatBackdrop.<agent>` is retired, inert. Matrix was removed; a stored
   `matrix` reads as Standard. Standard is the default, and nothing stores
-  another for the person. The Settings control is the system's segmented
-  `Picker`, whose glass thumb slides between the choices (the one place it
-  stands in for `SettingsSegments`). Under it a
+  another for the person. The Settings control is `GlassSegments`: a dark
+  capsule with one thumb of the system's glass, untinted, stretching toward the
+  choice (its far edge leading) and swelling while pressed; it can be dragged.
+  The system's segmented `Picker` drew the person's blue with no glass, and
+  `NSSegmentedControl` has no glass thumb outside a toolbar. Under it a
   chat at three quarters size wears the chosen backdrop over the person's desktop
   (`ChatBackdropSample`): the backdrop's own renderer, not a mock-up. Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky

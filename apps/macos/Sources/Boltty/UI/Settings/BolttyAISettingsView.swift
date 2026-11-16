@@ -282,3 +282,105 @@ struct SettingsAgentTitle: View {
     }
   }
 }
+
+/// A segmented control as macOS 26 draws one outside a toolbar: a dark capsule
+/// with one glass thumb that stretches toward the segment chosen, its far
+/// edge leading and the near one following, and swells while pressed.
+struct GlassSegments<Value: Hashable>: View {
+  let title: String
+  let options: [(value: Value, title: String)]
+  @Binding var selection: Value
+
+  @State private var frames: [Int: CGRect] = [:]
+  @State private var lead: CGFloat = 0
+  @State private var trail: CGFloat = 0
+  @State private var hovered: Int?
+  @State private var pressed = false
+  @State private var placed = false
+
+  private static var height: CGFloat { 28 }
+  private static var inset: CGFloat { 2 }
+  private static var front: Animation { Animation.spring(duration: 0.28, bounce: 0.18) }
+  private static var back: Animation { Animation.spring(duration: 0.46, bounce: 0.12) }
+
+  private var chosenIndex: Int { options.firstIndex { $0.value == selection } ?? 0 }
+
+  var body: some View {
+    HStack(spacing: 0) {
+      ForEach(Array(options.enumerated()), id: \.offset) { index, option in
+        Text(option.title)
+          .fontWeight(.medium)
+          .foregroundStyle(.primary.opacity(index == chosenIndex ? 1 : (hovered == index ? 0.85 : 0.7)))
+          .padding(.horizontal, 14)
+          .frame(height: Self.height - 2 * Self.inset)
+          .contentShape(Rectangle())
+          .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
+            frames[index] = $0
+            if index == chosenIndex, !placed { place(on: index, animated: false) }
+          }
+          .onHover { hovered = $0 ? index : (hovered == index ? nil : hovered) }
+          .accessibilityElement()
+          .accessibilityLabel(option.title)
+          .accessibilityAddTraits(index == chosenIndex ? [.isButton, .isSelected] : .isButton)
+          .accessibilityAction { selection = option.value }
+      }
+    }
+    .padding(Self.inset)
+    .coordinateSpace(.named(Self.space))
+    .background(alignment: .leading) { thumb }
+    .background(Color.primary.opacity(0.08), in: Capsule())
+    .textSelection(.disabled)
+    .highPriorityGesture(press)
+    .onChange(of: selection) { place(on: chosenIndex, animated: true) }
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(title)
+  }
+
+  private var thumb: some View {
+    Capsule()
+      .fill(.clear)
+      .glassEffect(.regular, in: Capsule())
+      .frame(width: max(0, trail - lead), height: Self.height - 2 * Self.inset)
+      .scaleEffect(pressed ? 1.08 : 1)
+      .offset(x: lead)
+      .opacity(placed ? 1 : 0)
+      .allowsHitTesting(false)
+  }
+
+  private var press: some Gesture {
+    DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
+      .onChanged { drag in
+        if !pressed { withAnimation(.spring(duration: 0.22, bounce: 0.3)) { pressed = true } }
+        if let index = index(at: drag.location.x), index != shownIndex { place(on: index, animated: true) }
+      }
+      .onEnded { drag in
+        withAnimation(.spring(duration: 0.3, bounce: 0.25)) { pressed = false }
+        if let index = index(at: drag.location.x) {
+          selection = options[index].value
+        }
+        place(on: chosenIndex, animated: true)
+      }
+  }
+
+  @State private var shownIndex: Int?
+
+  private func index(at x: CGFloat) -> Int? {
+    frames.min { abs($0.value.midX - x) < abs($1.value.midX - x) }?.key
+  }
+
+  private func place(on index: Int, animated: Bool) {
+    guard let frame = frames[index] else { return }
+    shownIndex = index
+    guard animated, placed else {
+      lead = frame.minX
+      trail = frame.maxX
+      placed = true
+      return
+    }
+    let rightward = frame.midX > (lead + trail) / 2
+    withAnimation(rightward ? Self.front : Self.back) { trail = frame.maxX }
+    withAnimation(rightward ? Self.back : Self.front) { lead = frame.minX }
+  }
+
+  private static var space: String { "glassSegments" }
+}

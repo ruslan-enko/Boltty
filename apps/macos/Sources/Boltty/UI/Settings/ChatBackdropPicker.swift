@@ -11,11 +11,11 @@ struct ChatBackdropPicker: View {
     let look = model.mascotLook(for: model.mascotRoster.restingAgent)
     VStack(alignment: .leading, spacing: 12) {
       LabeledContent {
-        Picker("Backdrop", selection: Binding(get: { chosen }, set: { stored = $0.rawValue })) {
-          ForEach(ChatBackdrop.allCases) { Text($0.title).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
+        GlassSegments(
+          title: "Backdrop",
+          options: ChatBackdrop.allCases.map { ($0, $0.title) },
+          selection: Binding(get: { chosen }, set: { stored = $0.rawValue })
+        )
         .fixedSize()
         .accessibilityIdentifier("boltty.settings.backdrop")
       } label: {
