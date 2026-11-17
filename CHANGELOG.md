@@ -2,6 +2,19 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.9.3
+
+- Settings is redrawn. Each page in the sidebar has a tile of its own, and the
+  page you are on is marked in grey. The window opens smaller.
+- Panel glass and the backdrop are picked from small live tiles at the top of
+  General, side by side, in place of a slider and two large previews.
+- The other previews open their groups at full width, and show your current
+  wallpaper, the animated Mac ones included.
+- Every shortcut that can be changed is a grey key; a key being recorded no
+  longer shifts its row. Shortcuts can be filtered.
+- Usage's tabs slide like the rest; a click anywhere on an agent's row opens it.
+- A file's card breaks its path after a slash, so the name stays whole.
+
 ## 0.9.2
 
 - The backdrop is one choice in Settings › General, for every agent, and the
