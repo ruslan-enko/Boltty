@@ -13,6 +13,7 @@ enum BolttyIcon: String, CaseIterable {
   case folder
   case lock
   case power
+  case magnifier
   case reload
   case sync
   case chevronRight = "chevron-right"

@@ -257,20 +257,18 @@ final class AgentBackdropRenderer {
   private static let shared = AgentBackdropRenderer(pixelFormat: .bgra8Unorm)
   private static var stills: [String: CGImage] = [:]
 
+  /// The backdrop as a picture of a `scene` points across, at `scale` pixels a point.
   static func still(
-    of backdrop: ChatBackdrop, palette: MascotPalette, scene: CGFloat, pixels: CGFloat
+    of backdrop: ChatBackdrop, palette: MascotPalette, scene: CGSize, scale: CGFloat
   ) -> CGImage? {
-    guard backdrop != .standard else { return nil }
-    let key = "\(backdrop.rawValue).\(palette.id).\(Int(scene)).\(Int(pixels))"
+    guard backdrop != .standard, scene.width > 0, scene.height > 0 else { return nil }
+    let key = "\(backdrop.rawValue).\(palette.id).\(Int(scene.width))x\(Int(scene.height)).\(scale)"
     if let cached = stills[key] { return cached }
     let u = uniforms(
-      size: CGSize(width: scene, height: scene * 2), pixelSize: scene / pixels, backdrop: backdrop,
+      size: scene, pixelSize: 1 / scale, backdrop: backdrop,
       clock: 24, opacity: 1, ramp: AgentBackdropSky.slots(for: palette)
     )
-    let side = pixels.rounded()
-    guard let whole = shared?.image(of: u, scale: pixels / scene),
-          let image = whole.cropping(to: CGRect(x: 0, y: CGFloat(whole.height) - side, width: side, height: side))
-    else { return nil }
+    guard let image = shared?.image(of: u, scale: scale) else { return nil }
     stills[key] = image
     return image
   }

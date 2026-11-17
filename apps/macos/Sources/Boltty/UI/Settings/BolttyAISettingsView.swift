@@ -29,7 +29,7 @@ struct BolttyAISettingsView: View {
 
   private var sidebar: some View {
     ScrollView {
-      VStack(spacing: 0) {
+      VStack(spacing: 2) {
         ForEach(SettingsPage.allCases) { page in
           SettingsSidebarRow(page: page, isSelected: navigation.current == page) {
             select(page)
@@ -56,7 +56,7 @@ struct BolttyAISettingsView: View {
       }
     }
     .toolbar(removing: .sidebarToggle)
-    .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 280)
+    .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
   }
 
   private func select(_ page: SettingsPage) {
@@ -122,25 +122,21 @@ private struct SettingsSidebarRow: View {
   let page: SettingsPage
   let isSelected: Bool
   let action: () -> Void
-  @Environment(\.controlActiveState) private var activeState
   @State private var isHovered = false
 
   var body: some View {
-    let selection = SettingsSelection(isSelected: isSelected, activeState: activeState)
     Button(action: action) {
       HStack(spacing: 8) {
-        BolttyIconView(icon: page.icon, size: 17)
-          .foregroundStyle(isSelected ? selection.ink : Color.secondary)
-          .frame(width: 24)
+        SettingsPageTile(page: page)
         Text(page.title)
           .fontWeight(isSelected ? .semibold : .regular)
-          .foregroundStyle(selection.ink)
+          .foregroundStyle(.primary)
         Spacer(minLength: 0)
       }
-      .padding(.horizontal, 8)
+      .padding(.horizontal, 6)
       .frame(height: 32)
       .background(
-        selection.fill ?? Color.primary.opacity(isHovered ? 0.06 : 0),
+        Color.primary.opacity(isSelected ? 0.08 : (isHovered ? 0.04 : 0)),
         in: RoundedRectangle(cornerRadius: 10, style: .continuous)
       )
       .contentShape(Rectangle())
@@ -153,62 +149,36 @@ private struct SettingsSidebarRow: View {
   }
 }
 
-struct SettingsSelection {
-  let isSelected: Bool
-  let activeState: ControlActiveState
+/// A page's own tile (`Resources/Icons/Settings`), drawn square and given its corner here.
+struct SettingsPageTile: View {
+  let page: SettingsPage
+  var side: CGFloat = 24
 
-  private var isLit: Bool { activeState == .key || activeState == .active }
+  @MainActor private static var images: [SettingsPage: NSImage] = [:]
 
-  var fill: Color? {
-    guard isSelected else { return nil }
-    return isLit ? Color.bolttyAccent : Color.primary.opacity(0.12)
+  @MainActor private var image: NSImage? {
+    if let kept = Self.images[page] { return kept }
+    guard let url = Bundle.main.url(forResource: page.rawValue, withExtension: "png", subdirectory: "Icons/Settings"),
+          let made = NSImage(contentsOf: url)
+    else {
+      assertionFailure("No tile \(page.rawValue) in Resources/Icons/Settings")
+      return nil
+    }
+    Self.images[page] = made
+    return made
   }
-
-  var ink: Color {
-    isSelected && isLit ? Color.bolttyOnAccent : Color.primary
-  }
-}
-
-struct SettingsSegments<Value: Hashable>: View {
-  let title: String
-  let options: [(value: Value, title: String)]
-  @Binding var selection: Value
-  @Environment(\.controlActiveState) private var activeState
-  @Namespace private var thumb
 
   var body: some View {
-    HStack(spacing: 0) {
-      ForEach(options, id: \.value) { option in
-        segment(option.value, title: option.title)
+    Group {
+      if let image {
+        Image(nsImage: image).resizable().interpolation(.high)
+      } else {
+        Color.clear
       }
     }
-    .padding(2)
-    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-    .accessibilityElement(children: .contain)
-    .accessibilityLabel(title)
-  }
-
-  private func segment(_ value: Value, title: String) -> some View {
-    let chosen = SettingsSelection(isSelected: value == selection, activeState: activeState)
-    return Button {
-      withAnimation(SettingsMotion.arrival) { selection = value }
-    } label: {
-      Text(title)
-        .fontWeight(chosen.isSelected ? .medium : .regular)
-        .foregroundStyle(chosen.ink)
-      .padding(.horizontal, 12)
-      .frame(height: 22)
-      .background {
-        if let fill = chosen.fill {
-          RoundedRectangle(cornerRadius: 7, style: .continuous)
-            .fill(fill)
-            .matchedGeometryEffect(id: "thumb", in: thumb)
-        }
-      }
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .accessibilityAddTraits(chosen.isSelected ? .isSelected : [])
+    .frame(width: side, height: side)
+    .clipShape(RoundedRectangle(cornerRadius: side * 0.26, style: .continuous))
+    .accessibilityHidden(true)
   }
 }
 

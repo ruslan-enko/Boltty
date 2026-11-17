@@ -89,7 +89,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons`, drawn by `scripts/render-icons.py` and judged by `scripts/check-icons.py` |
 | Brand colours | `UI/Appearance/BolttyBrand.swift`, [BRAND.md](BRAND.md) |
 | Shader effects | `UI/Effects/` |
-| Backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, picker in `UI/Settings/ChatBackdropPicker.swift` |
+| Backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, chosen beside the panel's glass in `UI/Settings/ChatBackdropPicker.swift` (`AppearancePicker`) |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
 | Who takes a new chat | `Models/AgentRouting.swift` (`AgentRouting`, `AgentHandOver`), `ChatWorkspaceCoordinator.routingOrder` / `handOverIfDue` |
@@ -650,7 +650,9 @@ The loop that must keep working:
   chosen as the system's Liquid Glass setting is: the shell itself over the
   desktop's own wallpaper (a system one's `.madesktop` names its downloaded
   asset and a thumbnail; an aerial is named only in the wallpaper store's
-  `Index.plist`, and its video's first frame is used; `DesktopPicture`), a Clear–Frosted slider under it (`PanelGlassChoice`). Regular glass adds a neutral grey to what is behind it (about +30
+  `Index.plist`, under `Desktop`, or `Linked` while the screen saver shares the
+  choice (macOS 27), and its video's first frame is used; `DesktopPicture`), as a
+  Clear and a Frosted tile (`AppearancePicker`, `GlassSwatch`). Regular glass adds a neutral grey to what is behind it (about +30
   sRGB over a dark wallpaper), so bare at the foot it read as grey, and darkened
   to hide that it read as too black. The glass lights its own rim, strongest
   along the foot and thinning up the corners; through the ramp's thin end that
@@ -1111,23 +1113,39 @@ heard.
   or Control-click on the mark opens that menu at once.
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
   Shortcuts), standard parts but for what is selected: the sidebar's rows and
-  the segments are drawn here (`SettingsSidebarRow`, `SettingsSegments`), since a
-  `List`'s selection and a segmented `Picker` take the person's accent. The sidebar
+  the segments are drawn here, since a `List`'s selection and a segmented
+  `Picker` take the person's accent. A row (`SettingsSidebarRow`) leads with its page's
+  tile (`SettingsPageTile`): a square picture, the maintainer's own, in
+  `Resources/Icons/Settings/<page raw value>.png`, given its continuous corner
+  (26 % of its side) in code so all six agree; the chosen row a
+  quiet grey fill with semibold words: a yellow fill there shouted over the
+  page. Every segmented choice is `GlassSegments` (one glass thumb on a grey
+  track); a yellow one was drawn beside it on Usage and was retired. The sidebar
   takes the focus as it appears, so the arrows walk the pages and no control opens
   wearing a ring. The selected page is
   `boltty.settings.page` (`-boltty.settings.page agents` opens a page). The window
+  opens at 760 × 560 (`BolttySettings` keeps its frame; the older
+  `BolttySettingsWindow` and `BolttySettingsSidebarWindow` frames are inert) and
   is sized after its view controller is set; the sidebar width modifier is last on
-  its column.
+  its column. Every key that can be changed is a grey capsule
+  (`ShortcutRecorderCapsule`, 128 × 24, the accent while it listens, the same size
+  either way so its row does not jump), and a built-in key is plain text, so what
+  can be clicked shows; Shortcuts has a filter over its sections
+  (`SettingsFilterField`). A whole agent row opens its page, its padding too.
 - **A setting that changes what is seen shows it** (`SettingsStage`): the thing
   itself, a real view of the product in an `NSViewRepresentable`, over the
-  person's own desktop (`DesktopPicture`, read once), 320 × 150 at the row's
-  right, changing as the control does: built of the parts the product draws
-  with (its glass host, faces, backdrop renderer, attachment card, listening
-  words), never a picture of them. Panel glass, Finder's selection
-  (`FinderSelectionSample`), a chat's backdrop over its round windows
-  (`ChatBackdropSample`, at three quarters), dictation's words in the chosen
-  languages (`DictationSample`) and Ask Boltty's answer beside the face
-  (`AskAnswerSample`) have one. A switch of behaviour with nothing to see has
+  person's own desktop (`DesktopPicture`, read once), changing as the control
+  does: built of the parts the product draws with (its glass host, faces,
+  backdrop renderer, attachment card, listening words), never a picture of them.
+  Either it opens its group, the row's whole width an even 8 from the group's
+  edges (`SettingsPreview`): Finder's selection (`FinderSelectionSample`),
+  dictation's words (`DictationSample`) and Ask Boltty's answer beside the face
+  (`AskAnswerSample`). Or the choice itself is tiles, each the thing in small
+  (`AppearancePicker`, on `RingedChoice` with a `tile`): Panel glass's Clear and
+  Frosted (`GlassSwatch`) beside Backdrop's Standard, Sky and Space
+  (`BackdropSwatch`, the sky a still from the backdrop's own renderer,
+  `AgentBackdropRenderer.still`). A slider and three large stages there made
+  General three screens long. A switch of behaviour with nothing to see has
   none; New Chats and an agent's model had one and lost it.
 - **App icon**: one, `AppIcon.icon` (Icon Composer); `.github/icon.png` is it
   rendered with Xcode's `ictool`. A choice of four was tried and removed: macOS has
@@ -1294,13 +1312,13 @@ heard.
   out. It was a choice per agent for open chats only;
   `boltty.chatBackdrop.<agent>` is retired, inert. Matrix was removed; a stored
   `matrix` reads as Standard. Standard is the default, and nothing stores
-  another for the person. The Settings control is `GlassSegments`: a dark
-  capsule with one thumb of the system's glass, untinted, stretching toward the
-  choice (its far edge leading) and swelling while pressed; it can be dragged.
-  The system's segmented `Picker` drew the person's blue with no glass, and
-  `NSSegmentedControl` has no glass thumb outside a toolbar. Under it a
-  chat at three quarters size wears the chosen backdrop over the person's desktop
-  (`ChatBackdropSample`): the backdrop's own renderer, not a mock-up. Over the glass, under the
+  another for the person. Settings chooses it on tiles beside the panel's
+  glass, each an open chat in small over the person's desktop wearing that
+  backdrop (`BackdropSwatch`): the backdrop's own renderer, not a mock-up. It
+  was `GlassSegments` over a large live chat; the segments are Usage's now (a
+  dark capsule with one thumb of the system's glass, untinted, stretching toward
+  the choice and swelling while pressed; the system's segmented `Picker` drew the
+  person's blue, and `NSSegmentedControl` has no glass thumb outside a toolbar). Over the glass, under the
   transcript, dark at the top for the white prose. Each face has its own sky
   (`AgentBackdropSky`: zenith, horizon, cloud light, cloud shade, middle,
   glow, written in OKLCH), the feeling of the face's colour rather than a wall
@@ -1354,7 +1372,7 @@ heard.
   a blob of it. So nothing is sharp or nearly so, no curve is by hand, and a shape's
   two sides are one number. An icon is changed in `scripts/render-icons.py`, never in its file,
   and `scripts/check-icons.py` then judges the files: lines and arcs only, no kink at
-  a joint, the ink clear of the edge. One colour, outlines only: no icon is a filled version of another. An icon is sized by its box (a chat's composer
+  a joint, the ink clear of the edge. One colour, outlines only: no icon is a filled version of another. On a tile of its own colour (the permission window) it stands in white; Settings' sidebar tiles are pictures of their own. An icon is sized by its box (a chat's composer
   `ComposerControlGroup.iconSize`, a point over `glyph`; elsewhere about a
   fifth over the point size its symbol had, since the ink stops short of the
   box), and its stroke grows with the box. In the panel every icon's box then
@@ -1410,8 +1428,9 @@ heard.
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
   concentric (`outer = inner + inset`), in Settings too: a stage that fills its
   section stands an even `sectionGap` from every edge with the section's corner
-  less that (`SettingsStageMetrics`; the section's 11 and the row inset's 10
-  were read off macOS 26). The composer's content stands 16 from
+  less that (`SettingsStageMetrics`; the section's 11 and the rows' insets, 10
+  each way, read off the pixels on macOS 27, not by eye: a `Form` ignores
+  `listRowInsets` across). The composer's content stands 16 from
   its rim, measured to the ink.
 - **Motion**: `Motion.quick`, `.standard`, `emphasizedCurve`, `standardCurve`,
   `pressSpring`; springs as duration + bounce. The panel appears at once. A

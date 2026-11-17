@@ -109,7 +109,7 @@ final class PromptAttachmentCard: NSView {
   static func fitted(path: String, font: NSFont, width: CGFloat, lines: Int) -> String {
     let room = CGFloat(lines) * AgentPaletteMetrics.attachmentCardLineHeight + 0.5
     func fits(_ candidate: String) -> Bool {
-      wordsText(candidate, font: font, ink: .white).boundingRect(
+      pathText(candidate, font: font, ink: .white).boundingRect(
         with: NSSize(width: width, height: .greatestFiniteMagnitude),
         options: [.usesLineFragmentOrigin, .usesFontLeading]
       ).height <= room
@@ -129,6 +129,12 @@ final class PromptAttachmentCard: NSView {
       if fits(cut) { return cut }
     }
     return name.middleTruncated(to: 8)
+  }
+
+  /// A path breaks after a slash where it can, so a name is not cut in two
+  /// while the folder before it would have made room.
+  private static func pathText(_ path: String, font: NSFont, ink: NSColor) -> NSAttributedString {
+    wordsText(path.replacingOccurrences(of: "/", with: "/\u{200B}"), font: font, ink: ink, breaks: .byWordWrapping)
   }
 
   private static func wordsText(
@@ -408,7 +414,7 @@ final class PromptAttachmentCard: NSView {
     let font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
     switch look.words {
     case let .path(path):
-      wordsLabel.attributedStringValue = Self.wordsText(
+      wordsLabel.attributedStringValue = Self.pathText(
         Self.fitted(path: path, font: font, width: width, lines: AgentPaletteMetrics.attachmentCardLines),
         font: font, ink: PaletteInk.primary)
     case let .excerpt(text):

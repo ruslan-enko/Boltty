@@ -79,18 +79,12 @@ struct AskBolttySettingsSection: View {
     }
 
     Section {
-      LabeledContent {
-        SettingsStage(height: 120) {
-          AskAnswerSample(
-            canMakeChanges: !model.askBolttyReadOnly,
-            look: model.mascotLook(
-              for: model.askBolttyAgent ?? model.nextChatAgent ?? model.mascotRoster.restingAgent))
-          .frame(width: AskAnswerSampleView.size.width, height: AskAnswerSampleView.size.height)
-        }
-        .padding(.vertical, 6)
-      } label: {
-        Text("Beside the pointer")
-        Text("The face answers in a sentence or two, word by word.")
+      SettingsPreview(height: AskAnswerSampleView.size.height + 28) {
+        AskAnswerSample(
+          canMakeChanges: !model.askBolttyReadOnly,
+          look: model.mascotLook(
+            for: model.askBolttyAgent ?? model.nextChatAgent ?? model.mascotRoster.restingAgent))
+        .frame(width: AskAnswerSampleView.size.width, height: AskAnswerSampleView.size.height)
       }
       speaking
       Toggle(isOn: Binding(
@@ -103,7 +97,7 @@ struct AskBolttySettingsSection: View {
     } header: {
       SettingsSectionHeader("Answers")
     } footer: {
-      SettingsNote("Open Boltty AI, drag across what you mean, and ask out loud. The agent answers beside the pointer. It is sent the window under that area and the menu bar; the rest of the screen is hidden from it unless you select all of it.")
+      SettingsNote("Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the window under that area and the menu bar; the rest of the screen is hidden from it unless you select all of it.")
     }
   }
 
@@ -178,7 +172,7 @@ private struct AskBolttyAgentPicker: View {
       }
       .accessibilityIdentifier("boltty.settings.talkAgent")
     } else {
-      ChoiceStrip(title: "Agent", identifier: "boltty.settings.talkAgent") {
+      ChoiceStrip(title: nil, identifier: "boltty.settings.talkAgent") {
       if model.askBolttyAgents.count > 1 {
         RingedChoice(title: "Automatic", isChosen: automatic, isRinged: false) {
           guard !automatic else { return }

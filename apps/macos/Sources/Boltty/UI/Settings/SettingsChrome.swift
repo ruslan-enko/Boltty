@@ -3,20 +3,6 @@ import SwiftUI
 
 enum SettingsSurfacePalette {
   static let background = NSColor.windowBackgroundColor
-  static let separator = NSColor.separatorColor
-
-  static func background(for appearance: NSAppearance?) -> NSColor {
-    resolved(background, for: appearance)
-  }
-
-  static func resolved(_ color: NSColor, for appearance: NSAppearance?) -> NSColor {
-    guard let appearance else { return color }
-    var result = color
-    appearance.performAsCurrentDrawingAppearance {
-      result = color.usingColorSpace(.sRGB) ?? color
-    }
-    return result
-  }
 }
 
 extension View {
@@ -86,5 +72,39 @@ struct SettingsRefreshButton: View {
     }
     .help(isBusy ? busyHelp : help)
     .accessibilityIdentifier(identifier)
+  }
+}
+
+/// A field that narrows a long page down, as a search field does.
+struct SettingsFilterField: View {
+  let prompt: String
+  @Binding var text: String
+
+  var body: some View {
+    HStack(spacing: 6) {
+      BolttyIconView(icon: .magnifier, size: 14)
+        .foregroundStyle(.secondary)
+      TextField(prompt, text: $text)
+        .textFieldStyle(.plain)
+        .onExitCommand { text = "" }
+      if !text.isEmpty {
+        Button {
+          text = ""
+        } label: {
+          BolttyIconView(icon: .xmark, size: 10)
+            .foregroundStyle(.secondary)
+            .frame(width: 18, height: 18)
+            .background(Circle().fill(Color.primary.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
+        .help("Clear")
+        .transition(.opacity)
+      }
+    }
+    .padding(.horizontal, 10)
+    .frame(height: 30)
+    .background(Color.primary.opacity(0.06), in: Capsule())
+    .animation(SettingsMotion.quick, value: text.isEmpty)
+    .accessibilityIdentifier("boltty.settings.filter")
   }
 }
