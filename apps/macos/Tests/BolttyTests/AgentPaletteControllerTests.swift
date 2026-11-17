@@ -42,6 +42,11 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     conversations.notifyChanged()
     conversations.notifyChanged()
+    // Waits for the coalesced read rather than a fixed time: a busy CI runner took longer than 50 ms.
+    let deadline = Date().addingTimeInterval(2)
+    while conversations.switcherReads < readsAtShow + 2, Date() < deadline {
+      RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+    }
     RunLoop.main.run(until: Date().addingTimeInterval(0.05))
     XCTAssertEqual(conversations.switcherReads, readsAtShow + 2, "kept current, once per turn")
   }
