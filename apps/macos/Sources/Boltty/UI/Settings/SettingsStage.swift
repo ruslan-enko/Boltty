@@ -49,13 +49,28 @@ struct SettingsStage<Content: View>: View {
 
 enum SettingsStageMetrics {
   static let size = CGSize(width: 320, height: 150)
-  /// A grouped section's corner and its rows' inset, read off macOS 26.
+  /// A grouped section's corner and its rows' insets, read off the pixels on macOS 27.
   static let sectionCorner: CGFloat = 11
   static let rowInset: CGFloat = 10
+  static let rowVerticalInset: CGFloat = 10
   /// A stage that fills its section stands this far from every edge, its
   /// corner concentric with the section's.
-  static let sectionGap: CGFloat = 6
+  static let sectionGap: CGFloat = 8
   static var fillingCorner: CGFloat { sectionCorner - sectionGap }
+}
+
+/// A stage that opens its group: the row's whole width, an even gap from the
+/// group's edges, its corner concentric with the group's.
+struct SettingsPreview<Content: View>: View {
+  let height: CGFloat
+  @ViewBuilder let content: () -> Content
+
+  var body: some View {
+    let gap = SettingsStageMetrics.sectionGap
+    SettingsStage(width: nil, height: height, corner: SettingsStageMetrics.fillingCorner, content: content)
+      .padding(.horizontal, gap - SettingsStageMetrics.rowInset)
+      .padding(.vertical, gap - SettingsStageMetrics.rowVerticalInset)
+  }
 }
 
 // MARK: - The first screen
@@ -148,91 +163,40 @@ final class PromptSampleRow: NSView {
   func apply(look: MascotLook) { face.apply(look: look) }
 }
 
-// MARK: - A chat's backdrop
+// MARK: - Tiles
 
-struct ChatBackdropSample: NSViewRepresentable {
-  let backdrop: ChatBackdrop
-  let look: MascotLook
+/// The first screen in small, for the glass's tile: the shell, the face, the microphone.
+struct GlassSwatch: NSViewRepresentable {
   let clearGlass: Bool
+  let look: MascotLook
 
-  func makeNSView(context: Context) -> ChatBackdropSampleView { ChatBackdropSampleView(look: look) }
+  func makeNSView(context: Context) -> GlassSwatchView { GlassSwatchView(look: look) }
 
-  func updateNSView(_ view: ChatBackdropSampleView, context: Context) {
-    view.show(backdrop, look: look, clearGlass: clearGlass)
+  func updateNSView(_ view: GlassSwatchView, context: Context) {
+    view.show(clearGlass: clearGlass, look: look)
   }
 }
 
-/// An open chat at half its size: the panel's shell, the backdrop drawn by the
-/// chat's own renderer, a question and the start of an answer.
-final class ChatBackdropSampleView: NSView {
-  static let size = CGSize(width: 440, height: 220)
-  /// Even on every side of the stage.
-  static let margin: CGFloat = 28
-  private static let inset: CGFloat = 18
-  private static let corner: CGFloat = 26
-  private static let bubbleCorner: CGFloat = 13
+final class GlassSwatchView: NSView {
+  private static let shell = CGSize(width: 64, height: 30)
+  private static let face: CGFloat = 20
 
   private let host: PaletteGlassHost
-  private let backdrop = AgentBackdropView(frame: .zero)
   private let face: MascotNSView
-  private let question = NSView()
+  private let mic = NSImageView()
 
   init(look: MascotLook) {
     face = MascotNSView(conversationID: UUID(), look: look)
     face.reduceMotion = MotionPreferences.reduceMotion
-    host = PaletteGlassHost(content: NSView(), cornerRadius: Self.corner, style: .bolttyAIPrompt)
-    super.init(frame: CGRect(origin: .zero, size: Self.size))
+    host = PaletteGlassHost(content: NSView(), cornerRadius: Self.shell.height / 2, style: .bolttyAIPrompt)
+    super.init(frame: .zero)
     appearance = NSAppearance(named: .darkAqua)
-    backdrop.sceneScale = 0.75
-
-    let asked = NSTextField(labelWithString: SampleText.request)
-    asked.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
-    asked.textColor = .black
-    asked.isSelectable = false
-    question.wantsLayer = true
-    question.layer?.backgroundColor = NSColor.white.cgColor
-    question.layer?.cornerRadius = Self.bubbleCorner
-    question.layer?.cornerCurve = .continuous
-    question.layer?.maskedCorners = MessageTailView.roundedCorners
-    let tail = MessageTailView()
-
-    let answer = NSTextField(wrappingLabelWithString: SampleText.chatAnswer)
-    answer.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
-    answer.textColor = PaletteInk.primary
-    answer.isSelectable = false
-    answer.maximumNumberOfLines = 3
-
-    for view in [host, backdrop] as [NSView] {
+    mic.image = BolttyIcon.mic.image(size: 13)
+    mic.contentTintColor = PaletteInk.secondary
+    for view in [host, face, mic] as [NSView] {
       view.translatesAutoresizingMaskIntoConstraints = true
-      view.frame = bounds
       addSubview(view)
     }
-    for view in [question, asked, answer, face] as [NSView] {
-      view.translatesAutoresizingMaskIntoConstraints = false
-    }
-    question.addSubview(asked)
-    addSubview(question)
-    addSubview(tail)
-    addSubview(answer)
-    addSubview(face)
-    NSLayoutConstraint.activate([
-      question.topAnchor.constraint(equalTo: topAnchor, constant: Self.inset),
-      question.trailingAnchor.constraint(
-        equalTo: trailingAnchor, constant: -Self.inset - MessageTailView.size.width),
-      tail.leadingAnchor.constraint(equalTo: question.trailingAnchor),
-      tail.bottomAnchor.constraint(equalTo: question.bottomAnchor),
-      asked.leadingAnchor.constraint(equalTo: question.leadingAnchor, constant: 11),
-      asked.trailingAnchor.constraint(equalTo: question.trailingAnchor, constant: -11),
-      asked.topAnchor.constraint(equalTo: question.topAnchor, constant: 6),
-      asked.bottomAnchor.constraint(equalTo: question.bottomAnchor, constant: -6),
-      answer.topAnchor.constraint(equalTo: question.bottomAnchor, constant: 12),
-      answer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset + 2),
-      answer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.inset - 16),
-      face.widthAnchor.constraint(equalToConstant: 26),
-      face.heightAnchor.constraint(equalToConstant: 26),
-      face.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.inset),
-      face.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.inset + 2),
-    ])
   }
 
   @available(*, unavailable)
@@ -242,16 +206,103 @@ final class ChatBackdropSampleView: NSView {
 
   override func layout() {
     super.layout()
-    host.frame = bounds
-    host.layoutSubtreeIfNeeded()
-    backdrop.layOut(in: bounds, corner: host.renderedCornerRadius, curve: host.renderedCornerCurve)
+    let shell = CGRect(
+      x: ((bounds.width - Self.shell.width) / 2).rounded(), y: ((bounds.height - Self.shell.height) / 2).rounded(),
+      width: Self.shell.width, height: Self.shell.height)
+    host.frame = shell
+    host.cornerRadius = shell.height / 2
+    let inset = (shell.height - Self.face) / 2
+    face.frame = CGRect(x: shell.minX + inset, y: shell.minY + inset, width: Self.face, height: Self.face)
+    mic.frame = CGRect(x: shell.maxX - inset - 15, y: shell.minY + (shell.height - 13) / 2, width: 13, height: 13)
   }
 
-  func show(_ chosen: ChatBackdrop, look: MascotLook, clearGlass: Bool) {
+  func show(clearGlass: Bool, look: MascotLook) {
     host.apply(surfaceStyle: .bolttyAIPrompt(clearGlass: clearGlass))
     face.apply(look: look)
-    backdrop.show(chosen, palette: chosen == .standard ? .standard : look.palette)
+  }
+}
+
+/// An open chat in small, for a backdrop's tile: the shell, the backdrop drawn
+/// by the chat's own renderer, and the question's bubble.
+struct BackdropSwatch: NSViewRepresentable {
+  let backdrop: ChatBackdrop
+  let palette: MascotPalette
+  let clearGlass: Bool
+  /// The tile's corner, so the shell inside stays concentric with it.
+  let corner: CGFloat
+
+  func makeNSView(context: Context) -> BackdropSwatchView { BackdropSwatchView() }
+
+  func updateNSView(_ view: BackdropSwatchView, context: Context) {
+    view.show(backdrop, palette: palette, clearGlass: clearGlass, corner: corner)
+  }
+}
+
+final class BackdropSwatchView: NSView {
+  private static let inset: CGFloat = 6
+  /// How much of a chat the shell stands for: the sky's clouds are sized for a whole one.
+  private static let sceneScale: CGFloat = 3
+
+  private let host = PaletteGlassHost(content: NSView(), cornerRadius: 6, style: .bolttyAIPrompt)
+  private let sky = NSView()
+  private let bubble = NSView()
+  private var shown: (backdrop: ChatBackdrop, palette: String, size: CGSize)?
+  private var backdrop = ChatBackdrop.standard
+  private var palette = MascotPalette.standard
+  private var corner: CGFloat = 12
+
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    appearance = NSAppearance(named: .darkAqua)
+    sky.wantsLayer = true
+    sky.layer?.masksToBounds = true
+    sky.layer?.contentsGravity = .resizeAspectFill
+    bubble.wantsLayer = true
+    bubble.layer?.backgroundColor = NSColor.white.cgColor
+    bubble.layer?.cornerCurve = .continuous
+    // Over the glass, as a chat's backdrop is, and the question over both.
+    for view in [host, sky, bubble] {
+      view.translatesAutoresizingMaskIntoConstraints = true
+      addSubview(view)
+    }
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+  func show(_ backdrop: ChatBackdrop, palette: MascotPalette, clearGlass: Bool, corner: CGFloat) {
+    host.apply(surfaceStyle: .bolttyAIPrompt(clearGlass: clearGlass))
+    self.backdrop = backdrop
+    self.palette = palette
+    self.corner = corner
     needsLayout = true
+  }
+
+  override func layout() {
+    super.layout()
+    let shell = bounds.insetBy(dx: Self.inset, dy: Self.inset)
+    host.frame = shell
+    host.cornerRadius = max(0, corner - Self.inset)
+    host.layoutSubtreeIfNeeded()
+
+    sky.frame = shell
+    sky.layer?.applyPaletteCorner(radius: host.renderedCornerRadius)
+    sky.layer?.cornerCurve = host.renderedCornerCurve
+    let scale = window?.backingScaleFactor ?? 2
+    if shown?.backdrop != backdrop || shown?.palette != palette.id || shown?.size != shell.size {
+      shown = (backdrop, palette.id, shell.size)
+      let scene = CGSize(width: shell.width * Self.sceneScale, height: shell.height * Self.sceneScale)
+      sky.layer?.contents = AgentBackdropRenderer.still(
+        of: backdrop, palette: palette, scene: scene, scale: scale / Self.sceneScale)
+      sky.layer?.contentsScale = scale
+    }
+
+    let side = CGSize(width: (shell.width * 0.42).rounded(), height: 9)
+    bubble.frame = CGRect(
+      x: shell.maxX - 5 - side.width, y: shell.maxY - 5 - side.height, width: side.width, height: side.height)
+    bubble.layer?.cornerRadius = side.height / 2
   }
 }
 
@@ -489,8 +540,6 @@ final class DictationSampleView: NSView {
 /// samples follow Boltty's own language once it can be chosen.
 enum SampleText {
   static let placeholder = String(localized: "Describe a task or ask", comment: "The first screen's placeholder, in a Settings sample")
-  static let request = String(localized: "Rename these photos by date", comment: "A request in a Settings sample chat")
-  static let chatAnswer = String(localized: "Done: 24 photos now start with the day they were taken, oldest first.", comment: "An answer in a Settings sample chat")
   static let spoken = String(localized: "Rename the photos on my desktop by date", comment: "Words being dictated, in a Settings sample")
   static let lookedAndAnswered = String(localized: "Export is in the File menu, third from the bottom.", comment: "Ask Boltty's answer when it only looks, in a Settings sample")
   static let didIt = String(localized: "Renamed 24 photos by the day they were taken.", comment: "Ask Boltty's answer when it can make changes, in a Settings sample")
@@ -617,7 +666,8 @@ struct DesktopPicture: @unchecked Sendable {
       let data = try? Data(contentsOf: home.appendingPathComponent("Store/Index.plist")),
       let index = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
       let all = index["AllSpacesAndDisplays"] as? [String: Any],
-      let desktop = all["Desktop"] as? [String: Any],
+      // "Linked" while the desktop and the screen saver share one choice.
+      let desktop = (all["Desktop"] ?? all["Linked"]) as? [String: Any],
       let content = desktop["Content"] as? [String: Any],
       let choice = (content["Choices"] as? [[String: Any]])?.first,
       choice["Provider"] as? String == "com.apple.wallpaper.choice.aerials",

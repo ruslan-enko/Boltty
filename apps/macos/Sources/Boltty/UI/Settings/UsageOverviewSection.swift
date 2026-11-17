@@ -45,7 +45,7 @@ struct UsageOverviewSection: View {
 
   private var controls: some View {
     HStack(spacing: 12) {
-      SettingsSegments(
+      GlassSegments(
         title: "View",
         options: Tab.allCases.map { (value: $0, title: $0.title) },
         selection: $tab
@@ -67,7 +67,7 @@ struct UsageOverviewSection: View {
         .fixedSize()
       }
 
-      SettingsSegments(
+      GlassSegments(
         title: "Range",
         options: AgentStatisticsRange.allCases.map { (value: $0, title: $0.title) },
         selection: $range

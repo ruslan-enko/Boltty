@@ -115,7 +115,6 @@ struct MenuShortcutRecorderField: View {
       isConflicting: isConflicting,
       isRowHovered: isRowHovered,
       canClear: true,
-      isInline: true,
       onEvent: handleEvent,
       onRestoreDefault: canRestore ? onRestoreDefault : nil,
       status: rejection.map { (text: $0.message, isWarning: true) }

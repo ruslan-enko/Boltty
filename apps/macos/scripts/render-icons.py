@@ -147,6 +147,7 @@ w("circle-dotted", *[D(*pol(8, 8, 6.25, k * 30 - 90), 0.8) for k in range(12)])
 w("check-circle", P(arc(8, 8, 6.25, -5, 293)), P(poly([(5, 7.75), (7.5, 10.25), (13.5, 3.75)])))
 w("hex-grid", D(8, 8, 1.05), *[D(*pol(8, 8, 5.25, k * 60 - 90), 1.05) for k in range(6)])
 w("power", P(line((8, 1.75), (8, 7.25))), P(arc(8, 8.25, 6, -50, 230)))
+w("magnifier", C(7, 7, 5), P(line(pol(7, 7, 5, 45), (14, 14))))
 
 # Arrows round
 def reload_head(a, r=6.25):

@@ -3,7 +3,8 @@ import Carbon
 import SwiftUI
 
 enum ShortcutRecorderMetrics {
-  static let width: CGFloat = 116
+  static let size = CGSize(width: 128, height: 24)
+  static let corner: CGFloat = 7
 }
 
 struct ShortcutRecorderCapsule: View {
@@ -15,7 +16,6 @@ struct ShortcutRecorderCapsule: View {
   var isRowHovered = false
   var restoreAlwaysShown = false
   var canClear = false
-  var isInline = false
   let onEvent: (NSEvent) -> Bool
   var onRestoreDefault: (() -> Void)?
 
@@ -23,6 +23,7 @@ struct ShortcutRecorderCapsule: View {
 
   @State private var isRecording = false
   @State private var isRestoreHovered = false
+  @State private var isHovered = false
 
   var body: some View {
     HStack(spacing: 8) {
@@ -40,7 +41,6 @@ struct ShortcutRecorderCapsule: View {
         isRecording: isRecording,
         isEnabled: isEnabled,
         isConflicting: isConflicting,
-        isInline: isInline,
         accessibilityName: accessibilityName,
         accessibilityIdentifier: accessibilityIdentifier,
         help: isRecording
@@ -52,8 +52,14 @@ struct ShortcutRecorderCapsule: View {
         onEvent: handle(event:),
         onCancel: { isRecording = false }
       )
-      .frame(width: ShortcutRecorderMetrics.width)
-      .fixedSize(horizontal: false, vertical: true)
+      .frame(width: ShortcutRecorderMetrics.size.width, height: ShortcutRecorderMetrics.size.height)
+      .background(
+        RoundedRectangle(cornerRadius: ShortcutRecorderMetrics.corner, style: .continuous)
+          .fill(fill)
+      )
+      .onHover { isHovered = $0 }
+      .animation(SettingsMotion.quick, value: isHovered)
+      .animation(SettingsMotion.quick, value: isRecording)
     }
     .animation(SettingsMotion.quick, value: isRowHovered)
     .animation(SettingsMotion.quick, value: status?.text)
@@ -66,6 +72,13 @@ struct ShortcutRecorderCapsule: View {
     .onDisappear {
       BolttyShortcutRouter.setSuspended(false)
     }
+  }
+
+  /// Grey like any key that can be changed, the accent while it listens.
+  private var fill: Color {
+    if isRecording { return .bolttyAccent }
+    guard isEnabled else { return Color.primary.opacity(0.04) }
+    return Color.primary.opacity(isHovered ? 0.11 : 0.07)
   }
 
   private var restoreButton: some View {
@@ -116,7 +129,6 @@ private struct RecorderButton: NSViewRepresentable {
   let isRecording: Bool
   let isEnabled: Bool
   let isConflicting: Bool
-  let isInline: Bool
   let accessibilityName: String
   let accessibilityIdentifier: String?
   let help: String
@@ -151,7 +163,6 @@ private struct RecorderButton: NSViewRepresentable {
     view.isEnabled = isEnabled
     view.chord = display
     view.isConflicting = isConflicting
-    view.isInline = isInline
     view.isRecording = isRecording
     view.toolTip = help
     view.setAccessibilityLabel(accessibilityName)
@@ -172,9 +183,6 @@ final class ShortcutRecorderButton: NSButton {
   var isConflicting = false {
     didSet { if isConflicting != oldValue { refreshTitle() } }
   }
-  var isInline = false {
-    didSet { if isInline != oldValue { refreshTitle() } }
-  }
   var isRecording = false {
     didSet {
       guard isRecording != oldValue else { return }
@@ -188,16 +196,13 @@ final class ShortcutRecorderButton: NSButton {
 
   private var heldModifiers: NSEvent.ModifierFlags = []
 
-  static let unboundTitle = "—"
+  static let unboundTitle = "Record Shortcut"
   static let recordingTitle = "Type Shortcut"
-
-  var titleForTesting: String { attributedTitle.string }
 
   init() {
     super.init(frame: .zero)
-    bezelStyle = .push
-    controlSize = .regular
-    setButtonType(.momentaryPushIn)
+    isBordered = false
+    setButtonType(.momentaryChange)
     target = self
     action = #selector(clicked)
     refreshTitle()
@@ -224,15 +229,13 @@ final class ShortcutRecorderButton: NSButton {
       ink = BolttyBrand.onAccent
     } else if chord.isEmpty || chord == "None" {
       title = Self.unboundTitle
-      ink = .tertiaryLabelColor
+      ink = .secondaryLabelColor
     } else {
       title = chord
       ink = !isEnabled ? .disabledControlTextColor : (isConflicting ? .systemOrange : .labelColor)
     }
-    bezelColor = isRecording ? BolttyBrand.accent : nil
-    isBordered = !isInline || isRecording
     let paragraph = NSMutableParagraphStyle()
-    paragraph.alignment = isBordered ? .center : .right
+    paragraph.alignment = .center
     paragraph.lineBreakMode = .byTruncatingMiddle
     attributedTitle = NSAttributedString(string: title, attributes: [
       .font: roundedAppFont(size: NSFont.systemFontSize),
@@ -249,6 +252,14 @@ final class ShortcutRecorderButton: NSButton {
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  override var focusRingMaskBounds: NSRect { bounds }
+
+  /// The ring follows the capsule SwiftUI draws behind this borderless button.
+  override func drawFocusRingMask() {
+    let corner = ShortcutRecorderMetrics.corner
+    NSBezierPath(roundedRect: bounds, xRadius: corner, yRadius: corner).fill()
+  }
 
   override var acceptsFirstResponder: Bool { isRecording || super.acceptsFirstResponder }
 

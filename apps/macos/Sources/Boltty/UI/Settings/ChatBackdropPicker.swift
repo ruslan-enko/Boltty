@@ -1,33 +1,85 @@
 import AppKit
 import SwiftUI
 
-struct ChatBackdropPicker: View {
+/// The panel's glass and the chats' backdrop, side by side as tiles: each one
+/// the real thing in small, over the person's own desktop.
+struct AppearancePicker: View {
   @ObservedObject var model: BolttyAISettingsModel
   @AppStorage(ChatBackdrop.storageKey) private var stored = ChatBackdrop.standard.rawValue
 
+  static let tile = (size: CGSize(width: 76, height: 52), corner: CGFloat(12))
+  private static var gap: CGFloat { 8 }
+
   private var chosen: ChatBackdrop { ChatBackdrop(rawValue: stored) ?? .standard }
+  private var look: MascotLook { model.mascotLook(for: model.mascotRoster.restingAgent) }
 
   var body: some View {
-    let look = model.mascotLook(for: model.mascotRoster.restingAgent)
-    VStack(alignment: .leading, spacing: 12) {
-      LabeledContent {
-        GlassSegments(
-          title: "Backdrop",
-          options: ChatBackdrop.allCases.map { ($0, $0.title) },
-          selection: Binding(get: { chosen }, set: { stored = $0.rawValue })
-        )
-        .fixedSize()
-        .accessibilityIdentifier("boltty.settings.backdrop")
-      } label: {
-        Text("Backdrop")
-        Text("Behind the chat list and open chats, for every agent, in the colours of the face shown. The list's All tab wears it in greys.")
+    ViewThatFits(in: .horizontal) {
+      HStack(alignment: .top, spacing: 12) {
+        glass
+        Rectangle()
+          .fill(Color.primary.opacity(0.1))
+          .frame(width: 1)
+          .padding(.vertical, 2)
+        backdrop
       }
-      SettingsStage(width: nil, height: 320, corner: SettingsStageMetrics.fillingCorner) {
-        ChatBackdropSample(backdrop: chosen, look: look, clearGlass: model.panelClearGlass)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .padding(ChatBackdropSampleView.margin)
+      .fixedSize(horizontal: false, vertical: true)
+      VStack(alignment: .leading, spacing: 16) {
+        glass
+        backdrop
       }
     }
-    .padding(.vertical, 6)
+    .padding(.vertical, 4)
+  }
+
+  private var glass: some View {
+    cluster("Panel glass") {
+      ForEach([true, false], id: \.self) { clear in
+        RingedChoice(
+          title: clear ? "Clear" : "Frosted", isChosen: model.panelClearGlass == clear, tile: Self.tile
+        ) {
+          withAnimation(SettingsMotion.quick) { model.panelClearGlass = clear }
+        } picture: { _ in
+          SettingsStage(width: Self.tile.size.width, height: Self.tile.size.height, corner: Self.tile.corner) {
+            GlassSwatch(clearGlass: clear, look: look)
+          }
+        }
+        .accessibilityIdentifier("boltty.settings.panelGlass.\(clear ? "clear" : "frosted")")
+      }
+    }
+    .accessibilityIdentifier("boltty.settings.panelGlass")
+  }
+
+  private var backdrop: some View {
+    cluster("Backdrop") {
+      ForEach(ChatBackdrop.allCases, id: \.self) { backdrop in
+        RingedChoice(title: backdrop.title, isChosen: chosen == backdrop, tile: Self.tile) {
+          withAnimation(SettingsMotion.quick) { stored = backdrop.rawValue }
+        } picture: { _ in
+          SettingsStage(width: Self.tile.size.width, height: Self.tile.size.height, corner: Self.tile.corner) {
+            BackdropSwatch(
+              backdrop: backdrop, palette: look.palette, clearGlass: model.panelClearGlass,
+              corner: Self.tile.corner)
+          }
+        }
+        .accessibilityIdentifier("boltty.settings.backdrop.\(backdrop.rawValue)")
+      }
+    }
+    .accessibilityIdentifier("boltty.settings.backdrop")
+  }
+
+  private func cluster<Choices: View>(
+    _ title: String, @ViewBuilder choices: () -> Choices
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(title)
+        .font(BolttyInterfaceTypography.callout)
+        .foregroundStyle(.secondary)
+      HStack(alignment: .top, spacing: Self.gap) {
+        choices()
+      }
+    }
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(title)
   }
 }

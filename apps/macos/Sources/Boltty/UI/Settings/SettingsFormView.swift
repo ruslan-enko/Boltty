@@ -4,9 +4,9 @@ import SwiftUI
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
-  static let defaultContentSize = NSSize(width: 780, height: 560)
-  static let minimumContentSize = NSSize(width: 660, height: 420)
-  static let defaultFrameAutosaveName = "BolttySettingsSidebarWindow"
+  static let defaultContentSize = NSSize(width: 760, height: 560)
+  static let minimumContentSize = NSSize(width: 640, height: 420)
+  static let defaultFrameAutosaveName = "BolttySettings"
 
   private let formModel: BolttyAISettingsModel
   private let navigation: SettingsNavigation
@@ -67,8 +67,6 @@ final class SettingsWindowController: NSWindowController {
     self.navigation = navigation
     self.hostingController = hostingController
     super.init(window: window)
-
-    applyAppearance()
   }
 
   @available(*, unavailable)
@@ -100,11 +98,5 @@ final class SettingsWindowController: NSWindowController {
   var onReviewAccess: (() -> Void)? {
     get { formModel.onReviewAccess }
     set { formModel.onReviewAccess = newValue }
-  }
-
-  private func applyAppearance() {
-    guard let window else { return }
-    window.backgroundColor = SettingsSurfacePalette.background
-    window.isOpaque = true
   }
 }

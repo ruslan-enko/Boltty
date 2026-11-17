@@ -10,6 +10,14 @@ struct GeneralSettingsPage: View {
   var body: some View {
     Form {
       Section {
+        AppearancePicker(model: model)
+      } header: {
+        SettingsSectionHeader("Appearance")
+      } footer: {
+        SettingsNote("Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats, in the colours of the face shown.")
+      }
+
+      Section {
         Toggle("System-wide hotkey", isOn: Binding(
           get: { model.bolttyAIHotkeyEnabled },
           set: { model.bolttyAIHotkeyEnabled = $0 }
@@ -46,6 +54,13 @@ struct GeneralSettingsPage: View {
       }
 
       Section {
+        SettingsPreview(height: FinderSelectionSampleView.size.height + 28) {
+          FinderSelectionSample(
+            attaches: model.attachesFinderSelection,
+            look: model.mascotLook(for: model.mascotRoster.restingAgent),
+            clearGlass: model.panelClearGlass)
+          .frame(width: FinderSelectionSampleView.size.width, height: FinderSelectionSampleView.size.height)
+        }
         Toggle(isOn: Binding(
           get: { model.attachesFinderSelection },
           set: { model.attachesFinderSelection = $0 }
@@ -54,17 +69,6 @@ struct GeneralSettingsPage: View {
           Text("Opening Boltty AI over Finder starts the chat in that folder, with the files selected there in the prompt.")
         }
         .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
-        HStack {
-          Spacer(minLength: 0)
-          SettingsStage(height: 200) {
-            FinderSelectionSample(
-              attaches: model.attachesFinderSelection,
-              look: model.mascotLook(for: model.mascotRoster.restingAgent),
-              clearGlass: model.panelClearGlass)
-            .frame(width: FinderSelectionSampleView.size.width, height: FinderSelectionSampleView.size.height)
-          }
-        }
-        .padding(.vertical, 6)
 
         Toggle(isOn: Binding(
           get: { model.playsSounds },
@@ -76,18 +80,6 @@ struct GeneralSettingsPage: View {
         .accessibilityIdentifier("boltty.settings.playsSounds")
       } header: {
         SettingsSectionHeader("Behaviour")
-      }
-
-      Section {
-        LabeledContent {
-          PanelGlassChoice(model: model)
-        } label: {
-          Text("Panel glass")
-          Text("Clear lets the colour behind the panel through; frosted softens it.")
-        }
-        ChatBackdropPicker(model: model)
-      } header: {
-        SettingsSectionHeader("Appearance")
       }
 
       Section {
@@ -386,6 +378,8 @@ private struct AgentSettingsListRow: View {
   let open: () -> Void
   @State private var isHovered = false
 
+  private static var reach: CGFloat { 8 }
+
   var body: some View {
     HStack(spacing: 12) {
       Button(action: open) {
@@ -421,6 +415,11 @@ private struct AgentSettingsListRow: View {
       .buttonStyle(SettingsRowPressStyle())
       .accessibilityHidden(true)
     }
+    // The row's own padding and the gaps between its parts open it too.
+    .padding(.vertical, Self.reach)
+    .contentShape(Rectangle())
+    .onTapGesture(perform: open)
+    .padding(.vertical, -Self.reach)
     .onHover { isHovered = $0 }
     .animation(SettingsMotion.quick, value: isHovered)
     .contextMenu {
@@ -759,18 +758,12 @@ struct VoiceSettingsPage: View {
 
   private var dictation: some View {
     Section {
-      LabeledContent {
-        SettingsStage {
-          DictationSample(
-            phrase: SampleText.spoken,
-            look: model.mascotLook(for: model.mascotRoster.restingAgent),
-            clearGlass: model.panelClearGlass)
-          .frame(width: DictationSampleView.size.width, height: DictationSampleView.size.height)
-        }
-        .padding(.vertical, 6)
-      } label: {
-        Text("As you speak")
-        Text("Words arrive as they are heard.")
+      SettingsPreview(height: DictationSampleView.size.height + 28) {
+        DictationSample(
+          phrase: SampleText.spoken,
+          look: model.mascotLook(for: model.mascotRoster.restingAgent),
+          clearGlass: model.panelClearGlass)
+        .frame(width: DictationSampleView.size.width, height: DictationSampleView.size.height)
       }
       if model.localModels != nil {
         Picker("Engine", selection: Binding(
@@ -909,10 +902,35 @@ struct AskBolttySettingsPage: View {
 struct ShortcutsSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
   @State private var hoveredID: String?
+  @State private var filter = ""
+
+  private var query: String { filter.trimmingCharacters(in: .whitespaces) }
 
   var body: some View {
-    let sections = model.shortcutSections
-    let builtIn = model.builtInKeySections
+    let sections = model.shortcutSections.compactMap { section -> KeyboardShortcutSection? in
+      let shown = section.shortcuts.filter { matches(section.title, $0.title, model.shortcutBinding(for: $0.id).displayName) }
+      return shown.isEmpty ? nil : KeyboardShortcutSection(title: section.title, shortcuts: shown)
+    }
+    let builtIn = model.builtInKeySections.compactMap { section -> BuiltInKeySection? in
+      let shown = section.keys.filter { matches(section.title, $0.title, $0.keys, $0.detail ?? "") }
+      return shown.isEmpty ? nil : BuiltInKeySection(title: section.title, keys: shown)
+    }
+    VStack(spacing: 0) {
+      SettingsFilterField(prompt: "Filter Shortcuts", text: $filter)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+      if sections.isEmpty, builtIn.isEmpty {
+        Text("No shortcut matches “\(query)”.")
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      } else {
+        form(sections, builtIn)
+      }
+    }
+  }
+
+  private func form(_ sections: [KeyboardShortcutSection], _ builtIn: [BuiltInKeySection]) -> some View {
     Form {
       ForEach(sections) { section in
         Section {
@@ -922,7 +940,7 @@ struct ShortcutsSettingsPage: View {
         } header: {
           SettingsSectionHeader(section.title)
         } footer: {
-          if section.id == sections.last?.id {
+          if query.isEmpty, section.id == sections.last?.id {
             footer
           }
         }
@@ -935,7 +953,7 @@ struct ShortcutsSettingsPage: View {
         } header: {
           SettingsSectionHeader(section.title)
         } footer: {
-          if section.id == builtIn.last?.id {
+          if query.isEmpty, section.id == builtIn.last?.id {
             SettingsNote("The keys above, from Boltty AI down, are built in and cannot be changed.")
           }
         }
@@ -944,9 +962,14 @@ struct ShortcutsSettingsPage: View {
     .settingsGroupedPage()
   }
 
+  private func matches(_ fields: String...) -> Bool {
+    guard !query.isEmpty else { return true }
+    return fields.contains { $0.localizedCaseInsensitiveContains(query) }
+  }
+
   private var footer: some View {
     HStack(alignment: .firstTextBaseline, spacing: 12) {
-      SettingsNote("Click a shortcut, then type the new one — Delete removes it, Esc cancels.")
+      SettingsNote("Click a grey key, then type the new one — Delete removes it, Esc cancels.")
       Spacer(minLength: 0)
       if model.hasCustomizedShortcuts {
         Button("Restore Defaults") { model.restoreAllDefaultShortcuts() }
@@ -1157,8 +1180,16 @@ struct ChoiceStrip<Choices: View>: View {
   /// Scrolled into view as the strip appears.
   var chosen: String? = nil
   @ViewBuilder let choices: () -> Choices
+  @State private var more = Ends()
 
   private static var rowInset: CGFloat { SettingsStageMetrics.rowInset }
+  private static var fade: CGFloat { 28 }
+
+  /// Which ends have more past them.
+  struct Ends: Equatable {
+    var leading = false
+    var trailing = false
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -1172,6 +1203,15 @@ struct ChoiceStrip<Choices: View>: View {
           .padding(.vertical, 6)
         }
         .scrollIndicators(.never)
+        .onScrollGeometryChange(for: Ends.self) { geometry in
+          let offset = geometry.contentOffset.x
+          return Ends(
+            leading: offset > 1,
+            trailing: offset + geometry.containerSize.width < geometry.contentSize.width - 1)
+        } action: { _, ends in
+          withAnimation(SettingsMotion.quick) { more = ends }
+        }
+        .mask { mask }
         .onAppear {
           guard let chosen else { return }
           reader.scrollTo(chosen, anchor: .center)
@@ -1182,6 +1222,17 @@ struct ChoiceStrip<Choices: View>: View {
     }
     .padding(.vertical, title == nil ? 0 : 8)
   }
+
+  /// The ends dissolve only where there is more to scroll to.
+  private var mask: some View {
+    HStack(spacing: 0) {
+      LinearGradient(colors: [.black.opacity(more.leading ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
+        .frame(width: Self.fade)
+      Color.black
+      LinearGradient(colors: [.black, .black.opacity(more.trailing ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
+        .frame(width: Self.fade)
+    }
+  }
 }
 
 struct RingedChoice<Picture: View>: View {
@@ -1189,14 +1240,18 @@ struct RingedChoice<Picture: View>: View {
   let isChosen: Bool
   var help: String?
   var diameter: CGFloat = 52
+  /// A tile's size and corner; `nil` is a circle of `diameter`.
+  var tile: (size: CGSize, corner: CGFloat)?
   var isRinged = true
   let action: () -> Void
   @ViewBuilder let picture: (_ presses: Int) -> Picture
   @State private var isHovered = false
   @State private var presses = 0
 
-  private static var ringGap: CGFloat { 3 }
-  private static var ringWidth: CGFloat { 2.5 }
+  static var ringGap: CGFloat { 3 }
+  static var ringWidth: CGFloat { 2.5 }
+
+  private var size: CGSize { tile?.size ?? CGSize(width: diameter, height: diameter) }
 
   var body: some View {
     Button {
@@ -1205,11 +1260,10 @@ struct RingedChoice<Picture: View>: View {
     } label: {
       VStack(spacing: 7) {
         picture(presses)
-          .frame(width: diameter, height: diameter)
+          .frame(width: size.width, height: size.height)
           .padding(Self.ringGap + Self.ringWidth)
           .overlay(
-            Circle()
-              .strokeBorder(Color.bolttyAccent, lineWidth: Self.ringWidth)
+            ring
               .opacity(isRinged && isChosen ? 1 : 0)
               .scaleEffect(isChosen ? 1 : 0.9)
           )
@@ -1237,9 +1291,20 @@ struct RingedChoice<Picture: View>: View {
     .accessibilityValue(isChosen ? "Selected" : "")
   }
 
+  @ViewBuilder
+  private var ring: some View {
+    if let tile {
+      RoundedRectangle(cornerRadius: tile.corner + Self.ringGap + Self.ringWidth, style: .continuous)
+        .strokeBorder(Color.bolttyAccent, lineWidth: Self.ringWidth)
+    } else {
+      Circle().strokeBorder(Color.bolttyAccent, lineWidth: Self.ringWidth)
+    }
+  }
+
+  /// About three points of growth whatever the size, so a tile does not swell past its neighbours.
   private var scale: CGFloat {
-    guard !MotionPreferences.reduceMotion else { return 1 }
-    return isHovered && !isChosen ? 1.06 : 1
+    guard !MotionPreferences.reduceMotion, isHovered, !isChosen else { return 1 }
+    return 1 + 3 / max(size.width, size.height)
   }
 }
 
@@ -1248,45 +1313,5 @@ private struct RingedChoiceStyle: ButtonStyle {
     configuration.label
       .scaleEffect(configuration.isPressed && !MotionPreferences.reduceMotion ? 0.94 : 1)
       .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
-  }
-}
-
-// MARK: - Panel glass
-
-private struct PanelGlassChoice: View {
-  @ObservedObject var model: BolttyAISettingsModel
-
-  private static var width: CGFloat { SettingsStageMetrics.size.width }
-
-  var body: some View {
-    VStack(spacing: 12) {
-      SettingsStage {
-        PromptSample(
-          clearGlass: model.panelClearGlass,
-          look: model.mascotLook(for: model.mascotRoster.restingAgent)
-        )
-        .frame(width: PromptSampleView.size.width, height: PromptSampleView.size.height)
-      }
-
-      HStack(spacing: 10) {
-        Text("Clear").foregroundStyle(.secondary)
-        Slider(
-          value: Binding(
-            get: { model.panelClearGlass ? 0 : 1 },
-            set: { model.panelClearGlass = $0 < 0.5 }
-          ),
-          in: 0...1, step: 1
-        ) {
-          Text("Panel glass")
-        }
-        .labelsHidden()
-        .tint(Color(nsColor: BolttyBrand.accentOnGlass))
-        .accessibilityValue(model.panelClearGlass ? "Clear" : "Frosted")
-        .accessibilityIdentifier("boltty.settings.panelGlass")
-        Text("Frosted").foregroundStyle(.secondary)
-      }
-      .frame(width: Self.width)
-    }
-    .padding(.vertical, 6)
   }
 }

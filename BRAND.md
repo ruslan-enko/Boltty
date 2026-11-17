@@ -76,12 +76,13 @@ holds, and colours are mixed in Oklab.
 
 | Yes | No |
 |---|---|
-| The selected page in the sidebar: yellow, with black icon and words | Words or icons in yellow, in either theme |
-| The chosen segment | A darkened yellow or brown, anywhere |
+| A chosen tile's ring and its name's capsule | Words or icons in yellow, in either theme |
+| A shortcut's key while it listens for a new one | A darkened yellow or brown, anywhere |
 | A chosen name under a face: a yellow capsule | Button and menu labels (they stay in label colour) |
 | A tag ("Preferred"): a yellow capsule | Large backgrounds and page washes |
 | A switch that is on | A warning or an error (those keep the system's orange and red) |
 | A chosen ring or outline | Agents' faces and chat backdrops |
+| | The selected page in the sidebar (grey) and a chosen segment (glass) |
 | A meter, with its figure beside it | Every button in a row |
 | Chart bars and the activity grid | |
 | The one default button in a window or on a card | |
@@ -97,8 +98,11 @@ set.
 The panel's Send disc is the exception on purpose: white, with Return in black,
 the composer's one pure-white fill.
 
-Permission tiles (microphone, Screen Recording, notifications, Finder) keep their
-own colours so the four can be told apart at a glance. They are icons, not accents.
+Permission tiles (microphone, Screen Recording, notifications, Finder) and
+Settings' sidebar tiles (pictures in `Resources/Icons/Settings`) keep their own
+colours so they can be told apart at a glance. They are
+icons, not accents. The selected page in the sidebar is a quiet grey fill with
+semibold words, not yellow: beside six coloured tiles a yellow row shouted.
 
 ### In code
 
@@ -108,8 +112,8 @@ own colours so the four can be told apart at a glance. They are icons, not accen
   words, yellow on white. Put it on the control: `BolttySwitchStyle` for switches,
   `.bolttyProminentButton()` for the one prominent button.
 - A system `List` selection and a segmented `Picker` take the person's accent and
-  can't be told otherwise, so Settings draws its own: `SettingsSidebarRow`,
-  `SettingsSegments`, both through `SettingsSelection`.
+  can't be told otherwise, so Settings draws its own: `SettingsSidebarRow` (a grey
+  fill) and `GlassSegments` (a glass thumb).
 - An `NSAccentColorName` would not do this job: the system honours it only while the
   person's own accent is Multicolor, so a Mac set to blue stays blue.
 
