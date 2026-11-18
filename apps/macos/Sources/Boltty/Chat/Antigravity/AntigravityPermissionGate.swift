@@ -208,6 +208,10 @@ enum AntigravityToolPolicy {
       }) else { return .allow }
       return .ask(action: "read", resources: [path], always: readKey(path))
     }
+    // agy's own notes (a plan, its task list) go to its `brain` folder.
+    if edits.contains(tool) || tool == "write_file", !paths.isEmpty, paths.allSatisfy({ inside($0, brain) }) {
+      return .allow
+    }
     if edits.contains(tool) {
       let target = arguments.string("TargetFile") ?? paths.first
       if autoApprove, outside.isEmpty { return .allow }
@@ -244,6 +248,8 @@ enum AntigravityToolPolicy {
   private static var agentHome: String {
     NSHomeDirectory() + "/.gemini/antigravity-cli"
   }
+
+  static var brain: String { agentHome + "/brain" }
 
   private static func inside(_ path: String, _ folder: String) -> Bool {
     let folder = (folder as NSString).standardizingPath

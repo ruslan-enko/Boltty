@@ -6,7 +6,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
     .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
-    .usageLimits, .folderMoving, .commands,
+    .usageLimits, .folderMoving, .commands, .planMode,
   ]
 
   static let initDeadline: TimeInterval = 25
@@ -62,6 +62,9 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     var initWaiter: CheckedContinuation<String, Error>?
     var initialized = false
     var granted: Set<String> = []
+    /// `--mode plan`; the plan it writes this turn, read into the card as it ends.
+    var planning = false
+    var planFile: String?
 
     init(id: String?, directory: String, model: ModelSelection?, effort: String?, autoApprove: Bool) {
       self.id = id
@@ -189,6 +192,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       effort: options.effort,
       autoApprove: options.autoApprove
     )
+    session.planning = options.planMode
     let remoteID = try await start(session, executable: executable)
     lock.withLock { sessions[remoteID] = session }
     return RemoteSessionInfo(
@@ -239,6 +243,8 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
         || session.effort != options.effort
         || session.directory != options.directory
         || (gate == nil && session.autoApprove != options.autoApprove)
+        || session.planning != options.planMode
+      session.planning = options.planMode
       session.directory = options.directory
       session.model = options.model
       session.effort = options.effort
@@ -362,9 +368,10 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     var arguments = ["--input-format", "stream-json", "--output-format", "stream-json"]
     if let model = session.model { arguments += ["--model", model.modelID] }
     if let effort = session.effort { arguments += ["--effort", effort] }
-    if gated {
-      arguments.append("--dangerously-skip-permissions")
-    } else if session.autoApprove {
+    if gated { arguments.append("--dangerously-skip-permissions") }
+    if session.planning {
+      arguments += ["--mode", "plan"]
+    } else if !gated, session.autoApprove {
       arguments += ["--mode", "accept-edits"]
     }
     if let id = session.id { arguments += ["--conversation", id] }
@@ -427,6 +434,10 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
           )
           reply?.upsert(.activity(activity))
           emit(.partUpdated(sessionID: sessionID, messageID: replyID, part: .activity(activity)))
+          if state == .completed, let path = step.object("tool_info")?.object("parameters")?.string("Path"),
+             Self.isPlanFile(path) {
+            lock.withLock { session.planFile = path }
+          }
 
         default:
           continue
@@ -450,6 +461,13 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
         if isFailed, let failure {
           emit(.sessionFailed(sessionID: sessionID, failure: failure))
         }
+        let planFile = lock.withLock { () -> String? in
+          defer { session.planFile = nil }
+          return session.planning ? session.planFile : nil
+        }
+        if failure == nil, let planFile, let markdown = try? String(contentsOfFile: planFile, encoding: .utf8) {
+          askAboutPlan(markdown, id: "plan-\(messageID)", in: sessionID)
+        }
         emit(.executionStateChanged(sessionID: sessionID, state: isFailed ? .failed : .idle))
         reply = nil
         lock.withLock { session.pendingMessageID = nil }
@@ -471,6 +489,29 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       name: "AntigravityExited", message: "`agy` stopped: \(process.exitDetail)"
     )))
     emit(.executionStateChanged(sessionID: sessionID, state: .failed))
+  }
+
+  // MARK: - Plans
+
+  /// In `--mode plan` agy writes its plan as markdown to `brain/<conversation>/`
+  /// (named `implementation_plan.md` once, `plan.md` the next time) and ends the
+  /// turn saying so (1.5.11): the last such file is the plan, and the card's
+  /// answer goes as the next message.
+  static func isPlanFile(_ path: String) -> Bool {
+    (path as NSString).pathExtension.lowercased() == "md"
+      && (path as NSString).standardizingPath.hasPrefix(AntigravityToolPolicy.brain + "/")
+  }
+
+  private func askAboutPlan(_ markdown: String, id: String, in sessionID: String) {
+    guard !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+          let conversationID = lock.withLock({ conversationResolver })?(sessionID)
+    else { return }
+    emit(.interactionAsked(PendingInteraction(
+      id: id,
+      conversationID: conversationID,
+      remoteSessionID: sessionID,
+      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: nil, endedTurn: true))
+    )))
   }
 
   private func turn(of session: LiveSession) -> (String, String)? {

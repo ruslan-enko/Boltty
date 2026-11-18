@@ -113,11 +113,10 @@ request (Boltty's own first row of the `/` list, taken out of the words in
 `ChatWorkspaceCoordinator.takePlanRequest`) or Plan First in the model chip's
 menu; never in a read-only chat. The plan is one card (`PendingInteraction.Kind.plan`:
 Approve / Request Changes / Quit). Where the CLI waits on it (Claude Code, Grok)
-the card holds the turn; where the plan ends the turn (Codex's plan item, OpenCode's
-reply, `.planInReply`) it holds nothing up (`PlanPrompt.endedTurn`), Approve sends
+the card holds the turn; where the plan ends the turn (Codex's plan item, Antigravity's plan
+file, OpenCode's reply, `.planInReply`) it holds nothing up (`PlanPrompt.endedTurn`), Approve sends
 "Implement the plan." and Request Changes the words, as the next message, and
-another message lets it go. Approve and Quit turn plan mode off. Antigravity has
-none yet: print mode refused every command before a plan (1.5.11).
+another message lets it go. Approve and Quit turn plan mode off.
 
 **Forks.** Fork from Here (an answer's right click) and Fork Chat (a list row's)
 make a new chat that goes on from the end of that turn, where the agent declares
@@ -479,6 +478,13 @@ Measured on agy 1.3.4 and 1.4.0 (`AntigravityClient`, `AntigravityTranscript`,
   - Ask Boltty's read-only prompt tells it to open the screenshot when the
     picture did not come with the message, and that the read is allowed; told
     only "do not use tools", `agy` answered without looking.
+- Plan mode is `--mode plan`, a launch flag (an idle process is let go to change
+  it). Behind the gate it writes its plan as markdown into
+  `~/.gemini/antigravity-cli/brain/<conversation>/` (`write_file` with
+  `ArtifactMetadata.RequestFeedback`; once `implementation_plan.md`, once
+  `plan.md`) and ends the turn linking it (1.5.11); the file becomes the plan card.
+  The gate lets writes into `brain` through quietly: agy's own notes.
+  Without the gate print mode refused even `ls` before a plan.
 - Skills: `agy -p=/skills --output-format json` in the folder (~7 s, no model
   call, the folder's `.agents/skills` among them, 1.5.11). `/name args` in the
   words runs the skill in print mode; the record keeps `/name args` as the
