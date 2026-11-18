@@ -8,7 +8,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
-    .permissionMessage, .steering, .folderMoving, .commands, .planMode, .forking
+    .permissionMessage, .steering, .folderMoving, .commands, .planMode, .forking, .fileUndo
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
@@ -689,11 +689,14 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return text
   }
 
-  private func throwawayControl(subtype: String?, directory: String = NSHomeDirectory()) async -> JSONObject? {
+  private func throwawayControl(
+    subtype: String?, directory: String = NSHomeDirectory(),
+    arguments extra: [String] = [], parameters: [String: Any] = [:]
+  ) async -> JSONObject? {
     guard let executable = locate() else { return nil }
     let process = JSONLineProcess(
       executable: executable,
-      arguments: Self.throwawayArguments,
+      arguments: Self.throwawayArguments + extra,
       directory: directory,
       category: "claude-code-probe"
     )
@@ -719,19 +722,54 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       guard let follow = JSONObject.encode([
         "type": "control_request",
         "request_id": wanted,
-        "request": ["subtype": subtype]
+        "request": parameters.merging(["subtype": subtype]) { _, new in new }
       ]), (try? process.writeLine(follow)) != nil else { return nil }
     }
 
     for await raw in process.lines {
       guard let frame = JSONObject(line: raw), frame.string("type") == "control_response",
             let envelope = frame.object("response"),
-            envelope.string("request_id") == wanted,
-            let response = envelope.object("response")
+            envelope.string("request_id") == wanted
       else { continue }
+      guard let response = envelope.object("response") else { return nil }
       return response
     }
     return nil
+  }
+
+  // MARK: - Undoing its changes
+
+  /// `rewind_files {user_message_id, dry_run}` puts files back as they were
+  /// before that question, from the CLI's own snapshots (2.1.325); the chat
+  /// stays. A chat with no process running gets one resumed for the call, which
+  /// writes nothing to its record.
+  func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    try await rewind(sessionID: sessionID, question: question, directory: directory, dryRun: true)
+  }
+
+  func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    try await rewind(sessionID: sessionID, question: question, directory: directory, dryRun: false)
+  }
+
+  private func rewind(sessionID: String, question: Int, directory: String, dryRun: Bool) async throws -> FileUndo {
+    guard let record = ClaudeCodeTranscript.questionRecord(sessionID: sessionID, index: question) else {
+      throw AgentClientError.transport("Claude Code has no record of that request.")
+    }
+    let parameters: [String: Any] = ["user_message_id": record, "dry_run": dryRun]
+    let response: JSONObject?
+    if let live = lock.withLock({ sessions[sessionID] }), live.process.isRunning {
+      response = try? await live.sendControl(parameters.merging(["subtype": "rewind_files"]) { _, new in new }, timeout: 30)
+    } else {
+      response = await throwawayControl(
+        subtype: "rewind_files", directory: directory, arguments: ["--resume", sessionID], parameters: parameters)
+    }
+    guard let response, response.bool("canRewind") != false else {
+      throw AgentClientError.transport(response?.string("error") ?? "Claude Code cannot undo that.")
+    }
+    return FileUndo(
+      files: response.raw["filesChanged"] as? [String] ?? [],
+      insertions: response.int("insertions"),
+      deletions: response.int("deletions"))
   }
 
   // MARK: - Reading the stream

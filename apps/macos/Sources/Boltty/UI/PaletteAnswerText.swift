@@ -583,6 +583,21 @@ extension NSAttributedString.Key {
   static let paletteInlineCode = NSAttributedString.Key("boltty.answer.inlineCode")
 }
 
+/// A question's words in its bubble, with items of Boltty's after the label's
+/// own on a right click.
+final class PaletteBubbleField: NSTextField {
+  var extraMenuItems: (() -> [NSMenuItem])?
+
+  override func menu(for event: NSEvent) -> NSMenu? {
+    let menu = super.menu(for: event) ?? NSMenu()
+    let extra = extraMenuItems?() ?? []
+    guard !extra.isEmpty else { return menu }
+    if menu.numberOfItems > 0 { menu.addItem(.separator()) }
+    extra.forEach(menu.addItem)
+    return menu
+  }
+}
+
 final class PaletteAnswerTextView: NSTextView {
   private var heightConstraint: NSLayoutConstraint!
 

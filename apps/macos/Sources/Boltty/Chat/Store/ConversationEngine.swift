@@ -872,6 +872,65 @@ final class ConversationEngine: ObservableObject {
     store.setPlanMode(enabled, for: conversationID)
   }
 
+  // MARK: - Undoing an agent's changes
+
+  func canUndoChanges(_ conversationID: UUID) -> Bool {
+    guard let conversation = store.conversation(id: conversationID),
+          !conversation.isAskBoltty, !store.isReadOnly, conversation.remoteSessionID != nil,
+          !conversation.lastKnownState.blocksSending
+    else { return false }
+    return registry.capabilities(forProviderID: conversation.providerID).contains(.fileUndo)
+  }
+
+  /// Which of the chat's questions this is, counted the same way the CLI's
+  /// record counts them: ids differ between a live chat and a re-read one.
+  private func questionIndex(of questionID: String, in conversationID: UUID) -> Int? {
+    store.transcript(id: conversationID).messages
+      .filter { $0.role == .user }
+      .firstIndex { $0.id == questionID }
+  }
+
+  func previewUndo(_ conversationID: UUID, from questionID: String) async -> Result<FileUndo, Error> {
+    guard canUndoChanges(conversationID),
+          let conversation = store.conversation(id: conversationID),
+          let remote = conversation.remoteSessionID, let client = client(for: conversationID),
+          let index = questionIndex(of: questionID, in: conversationID)
+    else { return .failure(AgentClientError.sessionNotFound) }
+    do {
+      return .success(try await client.previewUndo(
+        sessionID: remote, question: index, directory: conversation.workingDirectory))
+    } catch {
+      return .failure(error)
+    }
+  }
+
+  /// Puts the files back. Where the question leaves the chat too, its words
+  /// are returned, for the composer.
+  func undoChanges(_ conversationID: UUID, from questionID: String) async -> String? {
+    guard canUndoChanges(conversationID),
+          let conversation = store.conversation(id: conversationID),
+          let remote = conversation.remoteSessionID, let client = client(for: conversationID),
+          let index = questionIndex(of: questionID, in: conversationID)
+    else { return nil }
+    let words = store.transcript(id: conversationID).messages
+      .first { $0.id == questionID }?.plainText ?? ""
+    do {
+      let done = try await client.undo(
+        sessionID: remote, question: index, directory: conversation.workingDirectory)
+      if done.cutsHistory {
+        await refresh(conversationID: conversationID)
+        notices[conversationID] = nil
+        return words
+      }
+      notices[conversationID] = EngineNotice(
+        text: "Files are back as they were before “\(Self.title(from: words))”.", isBlocking: false)
+    } catch {
+      notices[conversationID] = EngineNotice(
+        text: "\(agentName(for: conversationID)) could not undo its changes.", isBlocking: false)
+    }
+    return nil
+  }
+
   // MARK: - Forking
 
   func canFork(_ conversationID: UUID) -> Bool {

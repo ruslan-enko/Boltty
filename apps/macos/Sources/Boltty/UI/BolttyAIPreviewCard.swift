@@ -73,6 +73,8 @@ final class BolttyAIPreviewCard: NSView {
   var onSpeak: ((ConversationMessage) -> Void)?
   var onFork: ((ConversationMessage) -> Void)?
   private var canFork = false
+  var onUndo: ((ConversationMessage) -> Void)?
+  private var canUndo = false
   var speakingMessageID: String? {
     didSet {
       guard speakingMessageID != oldValue else { return }
@@ -961,6 +963,7 @@ final class BolttyAIPreviewCard: NSView {
 
   func apply(_ preview: BolttyAISessionPreview) {
     canFork = preview.canFork
+    canUndo = preview.canUndo
     guard displayedPreview != preview else {
       applyWorkingLine(preview)
       return
@@ -1137,6 +1140,8 @@ final class BolttyAIPreviewCard: NSView {
           made.onSpeak = { [weak self] in self?.onSpeak?($0) }
           made.onFork = { [weak self] message in self?.onFork?(message) }
           made.forks = { [weak self] in self?.canFork == true && self?.onFork != nil }
+          made.onUndo = { [weak self] message in self?.onUndo?(message) }
+          made.undoes = { [weak self] in self?.canUndo == true && self?.onUndo != nil }
           if revealsArrivals, message.id != sentID { arrived.append(made) }
           return made
         }()
@@ -1559,6 +1564,18 @@ final class PaletteChatMessageView: NSView {
   }
   var onFork: ((ConversationMessage) -> Void)?
   var forks: (() -> Bool)?
+  var onUndo: ((ConversationMessage) -> Void)?
+  var undoes: (() -> Bool)?
+
+  static let undoTitle = "Undo Changes from Here…"
+
+  private func undoMenuItems() -> [NSMenuItem] {
+    guard message.role == .user, undoes?() == true else { return [] }
+    return [WorkingDirectoryMenuItem(title: Self.undoTitle) { [weak self] in
+      guard let self else { return }
+      self.onUndo?(self.message)
+    }]
+  }
 
   static let forkTitle = "Fork from Here"
 
@@ -1984,7 +2001,8 @@ final class PaletteChatMessageView: NSView {
       for unit in units {
         switch unit {
         case .field:
-          let field = NSTextField(wrappingLabelWithString: "")
+          let field = PaletteBubbleField(wrappingLabelWithString: "")
+          field.extraMenuItems = { [weak self] in self?.undoMenuItems() ?? [] }
           field.translatesAutoresizingMaskIntoConstraints = false
           field.isSelectable = true
           field.allowsEditingTextAttributes = true

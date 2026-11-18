@@ -71,6 +71,11 @@ protocol AgentClient: AnyObject, Sendable {
   /// Skills and commands for `/`, as the CLI lists them for this folder.
   func commands(folder: String) async -> [AgentCommand]
 
+  /// What putting the agent's file changes back to before the chat's
+  /// `question`-th question (from 0) would change, and doing it.
+  func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo
+  func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo
+
   func steer(messageID: String, text: String, to sessionID: String) async throws
 
   func activityHistory() async -> AgentActivityHistory?
@@ -91,6 +96,12 @@ extension AgentClient {
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {}
   func usageLimits() async -> AgentUsage? { nil }
   func commands(folder: String) async -> [AgentCommand] { [] }
+  func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    throw AgentClientError.transport("This agent cannot undo its changes.")
+  }
+  func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    throw AgentClientError.transport("This agent cannot undo its changes.")
+  }
   func contextUsage(sessionID: String) async -> AgentContextUsage? { nil }
   func activityHistory() async -> AgentActivityHistory? { nil }
   func steer(messageID: String, text: String, to sessionID: String) async throws {
@@ -231,6 +242,15 @@ struct AgentEffortOption: Identifiable, Equatable, Sendable {
     default: return value.prefix(1).uppercased() + value.dropFirst()
     }
   }
+}
+
+struct FileUndo: Equatable, Sendable {
+  /// The files that change back; empty where the CLI cannot tell beforehand.
+  var files: [String] = []
+  var insertions: Int?
+  var deletions: Int?
+  /// The question and all after it leave the chat too (OpenCode).
+  var cutsHistory = false
 }
 
 struct RemoteSessionInfo: Equatable, Sendable {

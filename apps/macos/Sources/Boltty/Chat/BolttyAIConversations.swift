@@ -45,6 +45,10 @@ protocol BolttyAIConversations: AnyObject {
   func canFork(_ id: UUID) -> Bool
   func fork(_ id: UUID, after messageID: String?) -> UUID?
 
+  /// The agent's changes to files put back to before a question.
+  func previewUndo(_ id: UUID, from questionID: String) async -> Result<FileUndo, Error>
+  func undoChanges(_ id: UUID, from questionID: String) async -> String?
+
   func recordSentFiles(_ files: [SentFile], in id: UUID)
 
   func sendFollowUp(_ prompt: String, pictures: [ConversationAttachment], to id: UUID) -> Bool
@@ -109,6 +113,10 @@ extension BolttyAIConversations {
   func setPlanMode(_ enabled: Bool, for id: UUID) {}
   func canFork(_ id: UUID) -> Bool { false }
   func fork(_ id: UUID, after messageID: String?) -> UUID? { nil }
+  func previewUndo(_ id: UUID, from questionID: String) async -> Result<FileUndo, Error> {
+    .failure(AgentClientError.sessionNotFound)
+  }
+  func undoChanges(_ id: UUID, from questionID: String) async -> String? { nil }
   func contextUsage(for id: UUID) -> AgentContextUsage? { nil }
   func canCompact(_ id: UUID) -> Bool { false }
   func refreshContext(for id: UUID) {}
@@ -431,8 +439,17 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         ?? (pending == nil && !conversation.draft.isEmpty ? conversation.draft : nil)
         ?? requestToRetryOnAnotherModel(in: id),
       queuedPrompt: queuedPanelPrompts[id],
-      canFork: engine.canFork(id)
+      canFork: engine.canFork(id),
+      canUndo: engine.canUndoChanges(id)
     )
+  }
+
+  func previewUndo(_ id: UUID, from questionID: String) async -> Result<FileUndo, Error> {
+    await engine.previewUndo(id, from: questionID)
+  }
+
+  func undoChanges(_ id: UUID, from questionID: String) async -> String? {
+    await engine.undoChanges(id, from: questionID)
   }
 
   func canFork(_ id: UUID) -> Bool { engine.canFork(id) }

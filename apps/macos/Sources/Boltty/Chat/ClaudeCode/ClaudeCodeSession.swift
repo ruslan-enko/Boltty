@@ -227,6 +227,24 @@ enum ClaudeCodeTranscript {
     return anchor
   }
 
+  /// The record of the chat's `index`-th question (from 0).
+  static func questionRecord(sessionID: String, index: Int) -> String? {
+    guard let url = locate(sessionID: sessionID)?.url else { return nil }
+    var seen = 0
+    var found: String?
+    // Counted from the head: a tail would start counting mid-chat.
+    try? FileHead.forEachLine(of: url, maxLines: .max, maxBytes: 256 << 20) { line in
+      guard let record = JSONObject(line: line), record.string("type") == "user",
+            record.bool("isMeta") != true, record.bool("isSidechain") != true,
+            let uuid = record.string("uuid"), isQuestion(record.object("message"))
+      else { return true }
+      if seen == index { found = uuid }
+      seen += 1
+      return found == nil
+    }
+    return found
+  }
+
   /// A person's words, not a tool's result or text the CLI filed as theirs.
   private static func isQuestion(_ message: JSONObject?) -> Bool {
     guard let message else { return false }

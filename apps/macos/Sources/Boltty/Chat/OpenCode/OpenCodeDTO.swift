@@ -51,6 +51,11 @@ enum OpenCodeDTO {
     var agent: String?
   }
 
+  struct RevertRequest: Encodable {
+    var messageID: String
+    var files: Bool
+  }
+
   struct ForkRequest: Encodable {
     var before: String?
 

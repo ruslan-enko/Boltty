@@ -127,6 +127,16 @@ at once with the messages it goes on from, copied in Boltty
 its first message (`AgentSessionOptions.forkFrom`), so a fork never written to
 leaves nothing in the CLI's history.
 
+**Undo Changes from Here…** (a question's right click, where the agent declares
+`.fileUndo`: Claude Code, OpenCode) puts the agent's changes to files back as they
+were before that question, after an alert that says what changes back
+(`AgentClient.previewUndo` / `undo`, `FileUndo`). Claude Code's chat stays and a
+line says so; OpenCode's question and all after it leave the chat
+(`FileUndo.cutsHistory`) and its words come back to the composer. A question is
+named to the CLI by its place among the chat's questions, since a live chat's
+ids are not the record's. Not while a turn runs. Codex's `thread/revert` changes
+no file, so Codex declares none.
+
 **Who takes a new chat.** Nobody chosen with ⇧Tab, a new chat goes to the ready,
 enabled agent with the most of its plan left (`AgentRouting.ranked`,
 `boltty.agentRouting` = `automatic`, the default; `fixed` is always
@@ -310,6 +320,11 @@ implementation first. Versions say what was measured.
   file holds the history through that record, written only once a message is
   sent. The cut is the last record of the chosen turn
   (`ClaudeCodeTranscript.forkAnchor`).
+- `rewind_files {user_message_id, dry_run}` on the control channel puts files back
+  as they were before that question, from the CLI's own snapshots
+  (`~/.claude/file-history`); `dry_run` answers `canRewind`, `filesChanged`,
+  `insertions`, `deletions` (2.1.325). The chat's record stays. A chat with no
+  process runs it in one resumed for the call, which writes nothing.
 - `set_model` over the control channel takes effect on the next turn and keeps the
   process, so "Always Allow" rules survive it. `--resume` without `--model` goes on
   with the last model used; with it, on that one (2.1.319). Effort and the read-only
@@ -539,6 +554,10 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   reaches what Boltty was allowed. Both share one database; every
   `/api/session/<id>/…` request goes to the session's server, placed by the
   folder on its record, and the second server's events come on a second stream.
+- Undo is `POST …/revert/stage {messageID, files: true}`, which puts the files back
+  at once and answers each file's patch, then `POST …/revert/commit`, which takes
+  that message and all after it out of the session; `DELETE …/revert` drops a
+  staged one (2.3.2). There is no look without the change.
 - A fork is `POST /api/session/{id}/fork {before}`: the history up to, not
   including, `before`, copied with new message ids, the folder and model kept
   (2.3.2); `before: null` copies it all.

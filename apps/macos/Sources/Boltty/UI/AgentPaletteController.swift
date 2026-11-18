@@ -209,6 +209,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       return commands.isEmpty ? nil : (agent, commands)
     }
     panelView.onSpeakMessage = { [weak self] in self?.onSpeakMessage?($0) }
+    panelView.onUndoFromMessage = { [weak self] message in
+      guard let self, let id = self.panelView.addressedSessionID else { return }
+      self.confirmUndo(in: id, from: message)
+    }
     panelView.onForkMessage = { [weak self] message in
       guard let self, let id = self.panelView.addressedSessionID else { return }
       self.fork(id, after: message.id)
@@ -1120,6 +1124,75 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     guard let conversations, let forked = conversations.fork(id, after: messageID) else { return }
     if panelView.addressedSessionID != nil { panelView.leaveAddressing(animated: false) }
     beginAddressing(forked)
+  }
+
+  /// Asked as Delete Chat is: what changes back, then the change. Where the
+  /// question leaves the chat with it, its words come back to the composer.
+  private func confirmUndo(in id: UUID, from question: ConversationMessage) {
+    guard let conversations, let conversation = conversations.conversation(id: id) else { return }
+    Task { @MainActor [weak self] in
+      let preview = await conversations.previewUndo(id, from: question.id)
+      guard let self, self.panelView.addressedSessionID == id else { return }
+      let agent = AgentId(rawValue: conversation.providerID)?.displayName ?? "The agent"
+      let alert = NSAlert()
+      alert.alertStyle = .warning
+      let asked = ConversationEngine.title(from: question.plainText)
+      switch preview {
+      case let .failure(error):
+        alert.messageText = "\(agent) cannot undo its changes here."
+        alert.informativeText = (error as? LocalizedError)?.errorDescription ?? ""
+        alert.addButton(withTitle: "OK")
+        self.runAlert(alert)
+        return
+      case let .success(undo) where undo.files.isEmpty && !undo.cutsHistory:
+        alert.messageText = "No file changed after “\(asked)”."
+        alert.addButton(withTitle: "OK")
+        self.runAlert(alert)
+        return
+      case let .success(undo):
+        alert.messageText = "Undo the changes since “\(asked)”?"
+        alert.informativeText = Self.undoDescription(undo, agent: agent, folder: conversation.workingDirectory)
+      }
+      alert.addButton(withTitle: "Undo Changes")
+      alert.addButton(withTitle: "Cancel")
+      alert.buttons.first?.hasDestructiveAction = true
+      guard self.runAlert(alert) == .alertFirstButtonReturn else { return }
+      if let words = await conversations.undoChanges(id, from: question.id), !words.isEmpty,
+         self.panelView.addressedSessionID == id {
+        self.panelView.setChatDraft(PromptDraft(words))
+        _ = self.panelView.focusField()
+      }
+    }
+  }
+
+  static func undoDescription(_ undo: FileUndo, agent: String, folder: String) -> String {
+    var lines: [String] = []
+    if !undo.files.isEmpty {
+      let shown = undo.files.prefix(8).map { path -> String in
+        let prefix = folder.hasSuffix("/") ? folder : folder + "/"
+        return path.hasPrefix(prefix) ? String(path.dropFirst(prefix.count))
+          : (path as NSString).abbreviatingWithTildeInPath
+      }
+      lines.append(shown.joined(separator: "\n"))
+      if undo.files.count > shown.count { lines.append("and \(undo.files.count - shown.count) more") }
+    }
+    lines.append(undo.cutsHistory
+      ? "\(agent) puts its changes to files back as they were, and this request and all after it leave the chat."
+      : "\(agent) puts the files back as they were; the chat stays as it is.")
+    return lines.joined(separator: "\n\n")
+  }
+
+  @discardableResult
+  private func runAlert(_ alert: NSAlert) -> NSApplication.ModalResponse {
+    suppressResignHideWorkItem?.cancel()
+    suppressResignHide = true
+    NSApp.activate(ignoringOtherApps: true)
+    PickerPanelPresentation.attach(alert.window, above: window)
+    let response = alert.runModal()
+    PickerPanelPresentation.detach(alert.window, from: window)
+    suppressResignHide = false
+    window?.makeKeyAndOrderFront(nil)
+    return response
   }
 
   private func confirmDeleteChat(_ id: UUID) {

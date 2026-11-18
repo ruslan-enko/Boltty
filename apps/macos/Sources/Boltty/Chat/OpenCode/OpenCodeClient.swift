@@ -8,7 +8,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
-    .folderMoving, .commands, .planMode, .planInReply, .forking
+    .folderMoving, .commands, .planMode, .planInReply, .forking, .fileUndo
   ]
 
   private let server: OpenCodeServer
@@ -433,6 +433,29 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     )
     if let skill { body.skills = [.init(id: skill)] }
     try await postIgnoringResponse("/api/session/\(sessionID)/prompt", body: body)
+  }
+
+  // MARK: - Undoing its changes
+
+  /// `revert/stage {messageID, files: true}` puts the files back at once (and
+  /// says how, file by file); `revert/commit` then takes that question and all
+  /// after it out of the session (2.3.2). There is no look without the change,
+  /// so the preview names no files.
+  func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    FileUndo(cutsHistory: true)
+  }
+
+  func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    let questions = try await loadSession(id: sessionID).messages.filter { $0.role == .user }
+    guard questions.indices.contains(question) else {
+      throw AgentClientError.transport("OpenCode has no record of that request.")
+    }
+    let staged: JSONValue = try await post(
+      "/api/session/\(sessionID)/revert/stage",
+      body: OpenCodeDTO.RevertRequest(messageID: questions[question].id, files: true))
+    try await postIgnoringResponse("/api/session/\(sessionID)/revert/commit", body: EmptyBody())
+    let files = (staged["data"]?["files"]?.arrayValue ?? []).compactMap { $0["file"]?.stringValue }
+    return FileUndo(files: files, cutsHistory: true)
   }
 
   // MARK: - Forks

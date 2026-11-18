@@ -49,6 +49,9 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
   /// A session can be made as a branch of another, cut after a turn.
   static let forking = AgentCapabilities(rawValue: 1 << 25)
 
+  /// The agent's own changes to files can be put back to before a question.
+  static let fileUndo = AgentCapabilities(rawValue: 1 << 26)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }
