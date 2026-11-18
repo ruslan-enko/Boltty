@@ -8,7 +8,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
-    .permissionMessage, .steering, .folderMoving, .commands, .planMode
+    .permissionMessage, .steering, .folderMoving, .commands, .planMode, .forking
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
@@ -166,6 +166,19 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   static func permissionMode(autoApprove: Bool) -> String {
     autoApprove ? "auto" : "default"
+  }
+
+  /// A branch is `--resume <source> --fork-session --session-id <new>`, cut after
+  /// the record `--resume-session-at` names (2.1.325; not in `--help`). Nothing
+  /// is written until the first message.
+  static func forkArguments(_ arguments: [String], id: String, from source: String, at anchor: String?) -> [String] {
+    var kept = arguments
+    if let index = kept.firstIndex(of: "--session-id"), index + 1 < kept.count {
+      kept.removeSubrange(index...(index + 1))
+    }
+    var fork = ["--resume", source]
+    if let anchor { fork += ["--resume-session-at", anchor] }
+    return kept + fork + ["--fork-session", "--session-id", id]
   }
 
   static func permissionMode(for options: AgentSessionOptions) -> String {
@@ -552,7 +565,12 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     let directory = options.directory
     lock.withLock { wantedOptions[id] = options }
 
-    let arguments = Self.sessionArguments(id: id, options: options, resuming: resuming)
+    var arguments = Self.sessionArguments(id: id, options: options, resuming: resuming)
+    if !resuming, let fork = options.forkFrom {
+      arguments = Self.forkArguments(
+        arguments, id: id, from: fork.sessionID,
+        at: fork.messageID.flatMap { ClaudeCodeTranscript.forkAnchor(sessionID: fork.sessionID, through: $0) })
+    }
 
     let process = JSONLineProcess(
       executable: executable,

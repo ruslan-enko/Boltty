@@ -90,6 +90,7 @@ struct BolttyAISessionPreview: Equatable, Sendable {
   var handOverNote: String? = nil
   var retryPrompt: String? = nil
   var queuedPrompt: String? = nil
+  var canFork = false
   var statusLabel: String { BolttyAIFollowUp.statusLabel(reported: state) }
   var isBusy: Bool { BolttyAIFollowUp.isBusy(reported: state) }
 

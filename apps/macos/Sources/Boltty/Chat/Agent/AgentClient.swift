@@ -122,6 +122,8 @@ struct AgentSessionOptions: Equatable, Sendable {
   var autoApprove: Bool
   var readOnly: Bool
   var planMode: Bool
+  /// A new session is made as a branch of this one rather than empty.
+  var forkFrom: ForkPoint?
 
   init(
     directory: String,
@@ -129,7 +131,8 @@ struct AgentSessionOptions: Equatable, Sendable {
     effort: String? = nil,
     autoApprove: Bool = false,
     readOnly: Bool = false,
-    planMode: Bool = false
+    planMode: Bool = false,
+    forkFrom: ForkPoint? = nil
   ) {
     self.directory = directory
     self.model = model
@@ -137,6 +140,7 @@ struct AgentSessionOptions: Equatable, Sendable {
     self.autoApprove = autoApprove
     self.readOnly = readOnly
     self.planMode = planMode
+    self.forkFrom = forkFrom
   }
 }
 

@@ -8,7 +8,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
-    .folderMoving, .commands, .planMode, .planInReply
+    .folderMoving, .commands, .planMode, .planInReply, .forking
   ]
 
   private let server: OpenCodeServer
@@ -190,6 +190,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     id: String,
     options: AgentSessionOptions
   ) async throws -> RemoteSessionInfo {
+    if let fork = options.forkFrom { return try await branch(from: fork, options: options) }
     let directory = options.directory
     let model = options.model
     let body = OpenCodeDTO.CreateSessionRequest(
@@ -432,6 +433,37 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     )
     if let skill { body.skills = [.init(id: skill)] }
     try await postIgnoringResponse("/api/session/\(sessionID)/prompt", body: body)
+  }
+
+  // MARK: - Forks
+
+  /// `POST /api/session/{id}/fork {before}` copies the session up to, not
+  /// including, `before` (2.3.2): the question after the chosen turn, or none.
+  private func branch(from fork: ForkPoint, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
+    var before: String?
+    if let message = fork.messageID {
+      let messages = try await loadSession(id: fork.sessionID).messages
+      if let index = messages.firstIndex(where: { $0.id == message }) {
+        before = messages[(index + 1)...].first { $0.role == .user }?.id
+      }
+    }
+    let response: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo>
+    do {
+      response = try await post(
+        "/api/session/\(fork.sessionID)/fork", body: OpenCodeDTO.ForkRequest(before: before))
+    } catch AgentClientError.indeterminate {
+      throw AgentClientError.indeterminate("session fork")
+    }
+    let id = response.data.id
+    let own = lock.withLock { runsOnOwnServer[fork.sessionID] ?? false }
+    lock.withLock {
+      runsOnOwnServer[id] = own
+      sessionFolders[id] = response.data.location?.directory ?? options.directory
+      if options.autoApprove, !options.readOnly { autoApproved.insert(id) }
+    }
+    let agent = options.planMode ? Self.planAgent : Self.buildAgent
+    if (response.data.agent ?? Self.buildAgent) != agent { try? await switchAgent(of: id, to: agent) }
+    return info(from: response.data, fallbackDirectory: options.directory)
   }
 
   // MARK: - Plans

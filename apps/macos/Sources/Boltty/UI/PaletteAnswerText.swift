@@ -644,6 +644,18 @@ final class PaletteAnswerTextView: NSTextView {
 
   var stringValue: String { string }
 
+  /// Items after the text view's own (Copy and the rest) on a right click.
+  var extraMenuItems: (() -> [NSMenuItem])?
+
+  override func menu(for event: NSEvent) -> NSMenu? {
+    let menu = super.menu(for: event) ?? NSMenu()
+    let extra = extraMenuItems?() ?? []
+    guard !extra.isEmpty else { return menu }
+    if menu.numberOfItems > 0 { menu.addItem(.separator()) }
+    extra.forEach(menu.addItem)
+    return menu
+  }
+
   func fit(width: CGFloat) {
     let height = PaletteAnswerText.height(of: shown ?? attributedStringValue, width: width)
     if abs(heightConstraint.constant - height) > 0.5 { heightConstraint.constant = height }

@@ -209,6 +209,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       return commands.isEmpty ? nil : (agent, commands)
     }
     panelView.onSpeakMessage = { [weak self] in self?.onSpeakMessage?($0) }
+    panelView.onForkMessage = { [weak self] message in
+      guard let self, let id = self.panelView.addressedSessionID else { return }
+      self.fork(id, after: message.id)
+    }
     panelView.onStop = { [weak self] in
       guard let self, let id = self.panelView.addressedSessionID else { return }
       Task { await self.conversations?.stopConversation(id: id) }
@@ -1071,6 +1075,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   // MARK: - A history row's menu
 
   static let openChatTitle = "Open Chat"
+  static let forkChatTitle = "Fork Chat"
   static let deleteChatTitle = "Delete Chat…"
 
   private func showSessionMenu(for id: UUID, with event: NSEvent, from row: NSView) {
@@ -1089,6 +1094,11 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     menu.addItem(WorkingDirectoryMenuItem(title: Self.openChatTitle) { [weak self] in
       self?.panelView.openResult(withID: id)
     })
+    if conversations.canFork(id) {
+      menu.addItem(WorkingDirectoryMenuItem(title: Self.forkChatTitle) { [weak self] in
+        self?.fork(id, after: nil)
+      })
+    }
     if let location = conversations.finderLocation(forRow: id) {
       let finder = WorkingDirectoryMenuItem(title: WorkingDirectoryMenu.showInFinderTitle) {
         NSWorkspace.shared.activateFileViewerSelecting([location])
@@ -1103,6 +1113,13 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       })
     }
     return menu
+  }
+
+  /// The fork opens in the panel at once, with the messages it goes on from.
+  private func fork(_ id: UUID, after messageID: String?) {
+    guard let conversations, let forked = conversations.fork(id, after: messageID) else { return }
+    if panelView.addressedSessionID != nil { panelView.leaveAddressing(animated: false) }
+    beginAddressing(forked)
   }
 
   private func confirmDeleteChat(_ id: UUID) {

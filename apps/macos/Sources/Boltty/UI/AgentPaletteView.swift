@@ -13,6 +13,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private var isRestoringChatDraft = false
   var onStop: (() -> Void)?
   var onSpeakMessage: ((ConversationMessage) -> Void)?
+  var onForkMessage: ((ConversationMessage) -> Void)?
 
   func setSpeakingMessage(_ id: String?) { previewCard.speakingMessageID = id }
 
@@ -1474,6 +1475,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       previewCard.onStop = { [weak self] in self?.onStop?() }
       previewCard.onClose = { [weak self] in self?.goBack() }
       previewCard.onSpeak = { [weak self] in self?.onSpeakMessage?($0) }
+      previewCard.onFork = { [weak self] in self?.onForkMessage?($0) }
       previewCard.onOffersLatestChange = { [weak self] offers in
         self?.offersLatest = offers
         self?.syncDirectoryChipVisibility()

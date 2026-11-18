@@ -39,6 +39,9 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var readOnly: Bool = false
   /// The next turn plans and changes nothing until the plan is approved.
   var planMode: Bool = false
+  /// Where this chat branched off another; its session is made from there by
+  /// the first message, then this is cleared.
+  var forkedFrom: ForkPoint?
   var isAskBoltty: Bool = false
   var createdAt: Date
   var updatedAt: Date
@@ -84,7 +87,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey {
     case id, providerID, remoteSessionID, title, workingDirectory, model
     case reasoningEffort, autoApprove, readOnly, createdAt, updatedAt, draft, draftAttachments
-    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode
+    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode, forkedFrom
     /// Written as "isTalk" before Talk was named Ask Boltty; chats on disk carry it.
     case isAskBoltty = "isTalk"
   }
@@ -103,6 +106,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     autoApprove = try container.decodeIfPresent(Bool.self, forKey: .autoApprove) ?? false
     readOnly = try container.decodeIfPresent(Bool.self, forKey: .readOnly) ?? false
     planMode = try container.decodeIfPresent(Bool.self, forKey: .planMode) ?? false
+    forkedFrom = try container.decodeIfPresent(ForkPoint.self, forKey: .forkedFrom)
     isAskBoltty = try container.decodeIfPresent(Bool.self, forKey: .isAskBoltty) ?? false
     createdAt = try container.decode(Date.self, forKey: .createdAt)
     updatedAt = try container.decode(Date.self, forKey: .updatedAt)
@@ -117,6 +121,12 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
       ConversationExecutionState.self, forKey: .lastKnownState
     ) ?? .idle
   }
+}
+
+/// A session and the message whose turn it is cut after; no message, all of it.
+struct ForkPoint: Codable, Equatable, Hashable, Sendable {
+  var sessionID: String
+  var messageID: String?
 }
 
 struct ModelSelection: Codable, Equatable, Hashable, Sendable {

@@ -46,6 +46,9 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
   /// the card under it once the turn ends.
   static let planInReply = AgentCapabilities(rawValue: 1 << 24)
 
+  /// A session can be made as a branch of another, cut after a turn.
+  static let forking = AgentCapabilities(rawValue: 1 << 25)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }

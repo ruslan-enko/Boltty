@@ -41,6 +41,10 @@ protocol BolttyAIConversations: AnyObject {
 
   func setPlanMode(_ enabled: Bool, for id: UUID)
 
+  /// A new chat going on from the end of the turn holding `messageID` (all of it when nil).
+  func canFork(_ id: UUID) -> Bool
+  func fork(_ id: UUID, after messageID: String?) -> UUID?
+
   func recordSentFiles(_ files: [SentFile], in id: UUID)
 
   func sendFollowUp(_ prompt: String, pictures: [ConversationAttachment], to id: UUID) -> Bool
@@ -103,6 +107,8 @@ extension BolttyAIConversations {
   func usage(providerID: String) -> AgentUsage? { nil }
   func commands(providerID: String, folder: String) async -> [AgentCommand] { [] }
   func setPlanMode(_ enabled: Bool, for id: UUID) {}
+  func canFork(_ id: UUID) -> Bool { false }
+  func fork(_ id: UUID, after messageID: String?) -> UUID? { nil }
   func contextUsage(for id: UUID) -> AgentContextUsage? { nil }
   func canCompact(_ id: UUID) -> Bool { false }
   func refreshContext(for id: UUID) {}
@@ -424,8 +430,15 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       retryPrompt: failedPanelPrompts[id]
         ?? (pending == nil && !conversation.draft.isEmpty ? conversation.draft : nil)
         ?? requestToRetryOnAnotherModel(in: id),
-      queuedPrompt: queuedPanelPrompts[id]
+      queuedPrompt: queuedPanelPrompts[id],
+      canFork: engine.canFork(id)
     )
+  }
+
+  func canFork(_ id: UUID) -> Bool { engine.canFork(id) }
+
+  func fork(_ id: UUID, after messageID: String?) -> UUID? {
+    engine.fork(id, after: messageID)
   }
 
   @discardableResult

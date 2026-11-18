@@ -71,6 +71,8 @@ final class BolttyAIPreviewCard: NSView {
   var onRecover: ((String) -> Void)?
   var onUseFile: ((URL) -> Void)?
   var onSpeak: ((ConversationMessage) -> Void)?
+  var onFork: ((ConversationMessage) -> Void)?
+  private var canFork = false
   var speakingMessageID: String? {
     didSet {
       guard speakingMessageID != oldValue else { return }
@@ -958,6 +960,7 @@ final class BolttyAIPreviewCard: NSView {
   }
 
   func apply(_ preview: BolttyAISessionPreview) {
+    canFork = preview.canFork
     guard displayedPreview != preview else {
       applyWorkingLine(preview)
       return
@@ -1132,6 +1135,8 @@ final class BolttyAIPreviewCard: NSView {
           made.onUseFile = { [weak self] in self?.onUseFile?($0) }
           made.onToggleActivity = { [weak self] in self?.toggleActivity($0) }
           made.onSpeak = { [weak self] in self?.onSpeak?($0) }
+          made.onFork = { [weak self] message in self?.onFork?(message) }
+          made.forks = { [weak self] in self?.canFork == true && self?.onFork != nil }
           if revealsArrivals, message.id != sentID { arrived.append(made) }
           return made
         }()
@@ -1551,6 +1556,18 @@ final class PaletteChatMessageView: NSView {
   private let speakButton = PaletteIconButton()
   var onSpeak: ((ConversationMessage) -> Void)? {
     didSet { syncAnswerActions() }
+  }
+  var onFork: ((ConversationMessage) -> Void)?
+  var forks: (() -> Bool)?
+
+  static let forkTitle = "Fork from Here"
+
+  private func forkMenuItems() -> [NSMenuItem] {
+    guard message.role == .agent, forks?() == true else { return [] }
+    return [WorkingDirectoryMenuItem(title: Self.forkTitle) { [weak self] in
+      guard let self else { return }
+      self.onFork?(self.message)
+    }]
   }
   private var isHovered = false
   var isSpeaking = false {
@@ -1977,6 +1994,7 @@ final class PaletteChatMessageView: NSView {
           textViews.append(field)
         case .answer:
           let view = PaletteAnswerTextView()
+          view.extraMenuItems = { [weak self] in self?.forkMenuItems() ?? [] }
           bodyStack.addArrangedSubview(view)
           view.widthAnchor.constraint(equalTo: bodyStack.widthAnchor).isActive = true
           answerViews.append(view)

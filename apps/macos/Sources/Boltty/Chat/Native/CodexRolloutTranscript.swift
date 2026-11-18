@@ -30,7 +30,7 @@ enum CodexRolloutTranscript {
     var messages: [ConversationMessage] = []
     var openCalls: [String: (messageIndex: Int, activityID: String)] = [:]
 
-    _ = try? FileTail.forEachLine(of: url, maxBytes: readLimit) { line in
+    let consume: (Data) -> Bool = { line in
       guard let record = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
             record["type"] as? String == "response_item",
             let payload = record["payload"] as? [String: Any]
@@ -115,7 +115,62 @@ enum CodexRolloutTranscript {
       }
       return true
     }
+    for prefix in forkPrefixes(of: url) {
+      try? FileHead.forEachLine(of: prefix.url, maxLines: prefix.lines, maxBytes: readLimit, consume)
+    }
+    _ = try? FileTail.forEachLine(of: url, maxBytes: readLimit, consume)
     return AgentPlan.fold(messages)
+  }
+
+  /// The turn that holds `messageID`: a turn's own id (what a live chat names
+  /// its answers by) or a message's id in the rollout (what a re-read one does).
+  static func turnID(threadID: String, codexHome: URL, holding messageID: String) -> String? {
+    guard let url = locate(threadID: threadID, in: codexHome.appendingPathComponent("sessions")) else {
+      return nil
+    }
+    var turn: String?
+    var found: String?
+    let consume: (Data) -> Bool = { line in
+      guard let record = JSONObject(line: line), let payload = record.object("payload") else { return true }
+      if let id = payload.string("turn_id") {
+        turn = id
+        if messageID == id || messageID.hasPrefix(id + "-") { found = id }
+      } else if record.string("type") == "response_item", payload.string("id") == messageID {
+        found = turn
+      }
+      return found == nil
+    }
+    for prefix in forkPrefixes(of: url) {
+      try? FileHead.forEachLine(of: prefix.url, maxLines: prefix.lines, maxBytes: readLimit, consume)
+      if found != nil { return found }
+    }
+    _ = try? FileTail.forEachLine(of: url, maxBytes: readLimit, consume)
+    return found
+  }
+
+  /// A forked thread's rollout holds only what came after the fork; its
+  /// `session_meta` names the thread it came from and how many of that
+  /// rollout's lines it carries (`forked_from_id`, `forked_from_ordinal_exclusive`,
+  /// 0.169). Oldest first, a fork of a fork included.
+  static func forkPrefixes(of url: URL) -> [(url: URL, lines: Int)] {
+    let sessions = url.deletingLastPathComponent().deletingLastPathComponent()
+      .deletingLastPathComponent().deletingLastPathComponent()
+    var chain: [(url: URL, lines: Int)] = []
+    var current = url
+    for _ in 0..<8 {
+      var origin: (id: String, lines: Int)?
+      try? FileHead.forEachLine(of: current, maxLines: 1) { line in
+        let meta = JSONObject(line: line)?.object("payload")
+        if let id = meta?.string("forked_from_id"), let lines = meta?.int("forked_from_ordinal_exclusive") {
+          origin = (id, lines)
+        }
+        return false
+      }
+      guard let origin, let parent = locate(threadID: origin.id, in: sessions) else { break }
+      chain.insert((parent, origin.lines), at: 0)
+      current = parent
+    }
+    return chain
   }
 
   static func contextUsage(threadID: String, codexHome: URL) -> AgentContextUsage? {

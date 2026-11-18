@@ -119,6 +119,14 @@ reply, `.planInReply`) it holds nothing up (`PlanPrompt.endedTurn`), Approve sen
 another message lets it go. Approve and Quit turn plan mode off. Antigravity has
 none yet: print mode refused every command before a plan (1.5.11).
 
+**Forks.** Fork from Here (an answer's right click) and Fork Chat (a list row's)
+make a new chat that goes on from the end of that turn, where the agent declares
+`.forking` (Claude Code, Codex, OpenCode; Grok and Antigravity cannot). It opens
+at once with the messages it goes on from, copied in Boltty
+(`ConversationEngine.fork`); its session is made from `Conversation.forkedFrom` by
+its first message (`AgentSessionOptions.forkFrom`), so a fork never written to
+leaves nothing in the CLI's history.
+
 **Who takes a new chat.** Nobody chosen with ⇧Tab, a new chat goes to the ready,
 enabled agent with the most of its plan left (`AgentRouting.ranked`,
 `boltty.agentRouting` = `automatic`, the default; `fixed` is always
@@ -297,6 +305,11 @@ implementation first. Versions say what was measured.
   (2.1.325). Allowed with `updatedPermissions: [{type: setMode, mode, destination:
   session}]`, the same turn goes on in that mode (a `system status` frame says
   so); denied with words, it plans again. Re-read, the tool's plan is the turn's text.
+- A fork is `--resume <source> --resume-session-at <record uuid> --fork-session
+  --session-id <new>` (2.1.325; `--resume-session-at` is not in `--help`): the new
+  file holds the history through that record, written only once a message is
+  sent. The cut is the last record of the chosen turn
+  (`ClaudeCodeTranscript.forkAnchor`).
 - `set_model` over the control channel takes effect on the next turn and keeps the
   process, so "Always Allow" rules survive it. `--resume` without `--model` goes on
   with the last model used; with it, on that one (2.1.319). Effort and the read-only
@@ -336,6 +349,11 @@ implementation first. Versions say what was measured.
   says `default`. Plan mode is read-only; asked to act, it said so and planned
   nothing until asked for a plan. The plan is an item of type `plan` and the turn
   ends; the rollout files it as an assistant message in `<proposed_plan>`.
+- A fork is `thread/fork {threadId, lastTurnId}` (0.169). Its rollout holds only
+  what comes after: `session_meta` names `forked_from_id` and
+  `forked_from_ordinal_exclusive`, the source's lines it carries, and the reader
+  reads those first (`CodexRolloutTranscript.forkPrefixes`). `thread/revert` only
+  cuts the history; it changes no file.
 - Skills are `skills/list {cwds}` (name, path, `shortDescription`; one name can
   come twice, from two places: the first stands). A request opening with
   `/name` goes as a `skill {name, path}` input before the words, as Codex's own
@@ -521,6 +539,9 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   reaches what Boltty was allowed. Both share one database; every
   `/api/session/<id>/…` request goes to the session's server, placed by the
   folder on its record, and the second server's events come on a second stream.
+- A fork is `POST /api/session/{id}/fork {before}`: the history up to, not
+  including, `before`, copied with new message ids, the folder and model kept
+  (2.3.2); `before: null` copies it all.
 - Plan mode is the `plan` agent (read-only), `build` the default:
   `POST /api/session/{id}/agent {agent}` (2.3.2). Its plan is its reply; the
   record gains `agent-switched` and `synthetic` entries.

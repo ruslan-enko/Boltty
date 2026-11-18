@@ -233,6 +233,10 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.autoApprove = enabled }
   }
 
+  func setForkedFrom(_ point: ForkPoint?, for id: UUID) {
+    update(id) { $0.forkedFrom = point }
+  }
+
   func setPlanMode(_ enabled: Bool, for id: UUID) {
     update(id) { $0.planMode = enabled }
   }

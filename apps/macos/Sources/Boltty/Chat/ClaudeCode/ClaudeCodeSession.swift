@@ -203,6 +203,47 @@ enum ClaudeCodeTranscript {
     var title: String?
   }
 
+  /// The last record of the turn that holds `messageID` (an answer's
+  /// `message.id`, or a question's record `uuid`): the place a fork is cut.
+  static func forkAnchor(sessionID: String, through messageID: String) -> String? {
+    guard let url = locate(sessionID: sessionID)?.url else { return nil }
+    var anchor: String?
+    _ = try? FileTail.forEachLine(of: url, maxBytes: readLimit) { line in
+      guard let record = JSONObject(line: line), let uuid = record.string("uuid") else { return true }
+      switch record.string("type") {
+      case "assistant":
+        if anchor != nil || record.object("message")?.string("id") == messageID { anchor = uuid }
+      case "user":
+        if uuid == messageID {
+          anchor = uuid
+        } else if anchor != nil, record.bool("isMeta") != true, isQuestion(record.object("message")) {
+          return false
+        }
+      default:
+        break
+      }
+      return true
+    }
+    return anchor
+  }
+
+  /// A person's words, not a tool's result or text the CLI filed as theirs.
+  private static func isQuestion(_ message: JSONObject?) -> Bool {
+    guard let message else { return false }
+    let text: String
+    if let words = message.string("content") {
+      text = words
+    } else {
+      let blocks = message.array("content")
+      guard !blocks.contains(where: { $0.string("type") == "tool_result" }) else { return false }
+      text = blocks.compactMap { $0.string("text") }.joined()
+    }
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    if InjectedText.claudeCommand(in: trimmed) != nil { return true }
+    return !trimmed.isEmpty
+      && !InjectedText.isScaffolding(trimmed, tags: InjectedText.claudeTags, prefixes: InjectedText.claudePrefixes)
+  }
+
   static let readLimit = 24 << 20
 
   static func read(at url: URL) -> Parsed {

@@ -840,7 +840,8 @@ final class ConversationEngine: ObservableObject {
     let client = try requireClient(for: conversationID)
 
     let sessionID = client.makeSessionID()
-    let options = Self.sessionOptions(for: conversation)
+    var options = Self.sessionOptions(for: conversation)
+    options.forkFrom = conversation.forkedFrom
     let info = try await client.createSession(id: sessionID, options: options)
     // A chat forgotten while its session started (Ask Boltty let go before the
     // warm-up finished) must not keep the process it just got.
@@ -849,6 +850,8 @@ final class ConversationEngine: ObservableObject {
       throw AgentClientError.sessionNotFound
     }
     store.attachRemoteSession(info.id, to: conversationID, model: info.model)
+    store.setForkedFrom(nil, for: conversationID)
+    options.forkFrom = nil
     attached.insert(info.id)
     settingsInForce[info.id] = options
     return info.id
@@ -867,6 +870,52 @@ final class ConversationEngine: ObservableObject {
 
   func setPlanMode(_ enabled: Bool, for conversationID: UUID) {
     store.setPlanMode(enabled, for: conversationID)
+  }
+
+  // MARK: - Forking
+
+  func canFork(_ conversationID: UUID) -> Bool {
+    guard let conversation = store.conversation(id: conversationID),
+          !conversation.isAskBoltty, !store.isReadOnly,
+          conversation.remoteSessionID != nil || conversation.forkedFrom != nil
+    else { return false }
+    return registry.capabilities(forProviderID: conversation.providerID).contains(.forking)
+  }
+
+  /// A new chat that goes on from the end of the turn holding `messageID` (all of
+  /// the chat when nil). It shows those messages at once; its session is made
+  /// as a branch of this one by its first message, so a fork never sent leaves
+  /// nothing in the CLI's history.
+  func fork(_ conversationID: UUID, after messageID: String?) -> UUID? {
+    guard canFork(conversationID), let source = store.conversation(id: conversationID) else { return nil }
+    let point = source.remoteSessionID.map { ForkPoint(sessionID: $0, messageID: messageID) }
+      ?? source.forkedFrom.map { ForkPoint(sessionID: $0.sessionID, messageID: messageID ?? $0.messageID) }
+    guard let point else { return nil }
+    let messages = Self.messages(store.transcript(id: conversationID).messages, throughTurnOf: messageID)
+    let copy = store.createConversation(
+      title: source.title,
+      workingDirectory: source.workingDirectory,
+      providerID: source.providerID,
+      model: source.model,
+      reasoningEffort: source.reasoningEffort,
+      autoApprove: source.autoApprove
+    )
+    store.setForkedFrom(point, for: copy.id)
+    store.recordSentFiles(source.sentFiles, for: copy.id)
+    store.replaceMessages(messages, in: copy.id, openInteractions: [])
+    return copy.id
+  }
+
+  /// The messages up to the end of the turn that holds `messageID`: everything
+  /// before the next question.
+  static func messages(
+    _ messages: [ConversationMessage], throughTurnOf messageID: String?
+  ) -> [ConversationMessage] {
+    guard let messageID, let index = messages.firstIndex(where: { $0.id == messageID }) else {
+      return messages
+    }
+    let next = messages[(index + 1)...].firstIndex { $0.role == .user } ?? messages.endIndex
+    return Array(messages[..<next])
   }
 
   /// A planning turn that ended with a reply, on an agent whose plan is its

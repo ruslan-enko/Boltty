@@ -8,7 +8,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
-    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands, .planMode
+    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands, .planMode,
+    .forking,
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "codex-client")
@@ -146,7 +147,20 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     if let model { params["model"] = model.modelID }
 
     let server = try await server()
-    let response = try await request("thread/start", params: params, on: server)
+    let response: JSONObject
+    if let fork = options.forkFrom {
+      // A branch is `thread/fork`, through the turn that holds the message
+      // (`lastTurnId`, 0.169); its rollout names the source for the rest.
+      params["threadId"] = fork.sessionID
+      params["excludeTurns"] = true
+      if let message = fork.messageID,
+         let turn = CodexRolloutTranscript.turnID(threadID: fork.sessionID, codexHome: codexHome, holding: message) {
+        params["lastTurnId"] = turn
+      }
+      response = try await request("thread/fork", params: params, on: server)
+    } else {
+      response = try await request("thread/start", params: params, on: server)
+    }
     guard let threadID = response.object("thread")?.string("id") ?? response.string("threadId")
     else { throw AgentClientError.transport("Codex did not return a thread id.") }
 
