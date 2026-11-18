@@ -993,8 +993,11 @@ final class NativeSessionStoreTests: XCTestCase {
     for session in sessions {
       let history = try XCTUnwrap(session.sourceURL)
         .appendingPathComponent("chat_history.jsonl")
+      // Grok's system prompt names the tag too: only a user record that holds it was typed.
       guard let file = try? String(contentsOf: history, encoding: .utf8),
-            file.contains("<user_query>")
+            file.split(whereSeparator: \.isNewline).contains(where: {
+              $0.contains(#""type":"user""#) && $0.contains("<user_query>")
+            })
       else { continue }
       let spoken = try store.transcript(for: session)?.filter { $0.role == .user } ?? []
       XCTAssertFalse(spoken.isEmpty, "\(session.id) has a typed message and shows none")
