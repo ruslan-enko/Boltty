@@ -451,6 +451,13 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
   private var addressedPreview: BolttyAISessionPreview?
 
+  private lazy var fileMention: FileMentionPicker = {
+    let picker = FileMentionPicker(host: self, field: field)
+    picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
+    picker.onPick = { [weak self] url, range in self?.attachMentioned(url, replacing: range) }
+    return picker
+  }()
+
   enum Mode: Equatable {
     case prompt
     case picking
@@ -656,6 +663,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   func reset(error: String? = nil) {
     PaletteHelpPresenter.shared.dismiss()
+    fileMention.reset()
     endScreenSelection()
     leaveAddressing(animated: false)
     field.clearPrompt()
@@ -1208,6 +1216,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   func prepareForPresentation(resumingChat: Bool = false) {
+    fileMention.reset()
     if !resumingChat { returnToSessionID = nil }
     surfaceReady = false
     pendingConversationID = UUID()
@@ -2070,6 +2079,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   func openSwitcher() {
     guard mode == .prompt else { return }
+    fileMention.reset()
     setComposerKeyTarget(.text)
     leaveAddressing(animated: false)
     mode = .picking
@@ -4481,6 +4491,12 @@ extension AgentPaletteView: NSTextViewDelegate {
   }
 
   func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+    if fileMention.isOpen {
+      let modifiers = (commandModifierFlagsForTesting ?? NSApp.currentEvent?.modifierFlags ?? [])
+        .intersection(.deviceIndependentFlagsMask)
+      let isPlainKey = modifiers.isDisjoint(with: [.shift, .option, .command, .control])
+      if isPlainKey, fileMention.handle(commandSelector) { return true }
+    }
     let isTab = commandSelector == #selector(insertTab(_:))
     let isBacktab = commandSelector == #selector(insertBacktab(_:))
     if !isTab, !isBacktab, composerKeyTarget != .text {
@@ -4629,6 +4645,28 @@ extension AgentPaletteView: NSTextViewDelegate {
     if isResultsExpanded {
       refreshResults(keepingSelection: mode != .search)
     }
+    syncFileMention()
+  }
+
+  func textViewDidChangeSelection(_ notification: Notification) {
+    syncFileMention()
+  }
+
+  /// `@` opens files wherever words are typed to an agent: never in the list's
+  /// search, while listening, or over a region (the question is spoken there).
+  private func syncFileMention() {
+    let allowed = mode == .prompt && !isResultsExpanded && !asksByVoice && !isVoiceListening
+      && screenSelectionPhase == .idle && !isRestoringChatDraft && !isApplyingVoiceTranscript
+      && window?.isVisible == true
+    fileMention.update(folder: workingDirectory?.path, allowed: allowed)
+  }
+
+  private func attachMentioned(_ url: URL, replacing range: NSRange) {
+    let length = (field.string as NSString).length
+    if NSMaxRange(range) <= length {
+      field.insertText("", replacementRange: range)
+    }
+    applyIngest(PasteboardIngest.attachments(for: [url], into: field.draft))
   }
 
   private func handlePaste(forcePlainText: Bool) {

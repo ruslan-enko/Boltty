@@ -48,6 +48,10 @@ enum BuiltInKeyCatalog {
           id: "finishDictation", title: "Finish dictating", keys: "↩",
           detail: "While the microphone is listening"
         ),
+        BuiltInKey(
+          id: "mention", title: "Add a file", keys: "@",
+          detail: "At the start of a word: type its name, ↑ ↓ to choose, ↩ or ⇥ to add it, Esc to let go"
+        ),
         BuiltInKey(id: "pastePlain", title: "Paste as plain text", keys: "⇧⌘V", detail: nil),
         BuiltInKey(id: "hide", title: "Hide", keys: "Esc", detail: nil),
       ]),

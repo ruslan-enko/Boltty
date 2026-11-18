@@ -718,6 +718,17 @@ enum AgentPaletteMetrics {
   }
   static let helpDensity = NSColor.black.withAlphaComponent(0.55)
   static let helpCornerRadius: CGFloat = 10
+
+  static let mentionWidth: CGFloat = 400
+  static let mentionInset: CGFloat = 6
+  static let mentionRowHeight: CGFloat = 30
+  static let mentionRowCornerRadius: CGFloat = 8
+  static let mentionCornerRadius: CGFloat = mentionRowCornerRadius + mentionInset
+  static let mentionRowPadding: CGFloat = 8
+  static let mentionIconSide: CGFloat = 16
+  static let mentionIconGap: CGFloat = 8
+  static let mentionPlaceGap: CGFloat = 12
+  static let mentionGap: CGFloat = 8
   static let helpHorizontalPadding: CGFloat = 10
   static let helpVerticalPadding: CGFloat = 6
   static let helpLineSpacing: CGFloat = 2

@@ -629,6 +629,17 @@ The loop that must keep working:
   stays words, drawn as a link. Dropped anywhere on the panel it goes through
   `PasteboardIngest`: the field takes no drags of its own, or a file dropped on
   the words became its path in words.
+- **`@` brings a file** (`FileMentionPicker`, `FileMention`, `FileMentionSearch`),
+  the same for every agent, since no CLI offers a search all five share: an `@`
+  at the start of a word (never inside one, `me@site.com`) opens a list of up to
+  eight at the `@`, above the line where there is room, else under the shell,
+  on the help tags' glass. What follows the `@` filters it; ↑ ↓ choose, Return
+  or Tab adds the file as a card and the `@word` goes, Escape lets that `@` be.
+  The chat's folder is walked (hidden files, `skippedNames` and the plain lines
+  of its `.gitignore` left out; 40 000 entries or 2 s); home, the default, and
+  any folder holding it are Spotlight's, Library and dot-folders left out. A
+  bare `@` lists the newest: modified there, or used in the last 14 days. Not in
+  the list's search, while listening, or over a region.
 - **The agent reads the words, then the files** (`PromptDraft.separated`,
   `PromptExpansion`): a blank line, then the paths in the cards' order, with
   a space between. A draft stored while files stood in the sentence is read into
@@ -825,7 +836,7 @@ The loop that must keep working:
   them.
 - Right click: Open Chat, Show in Finder, Delete Chat… (Boltty's own; to the
   Trash, after asking, no Return on the destructive button). No pin.
-- Typing after ↓ searches. `/` is plain text; there is no command menu.
+- Typing after ↓ searches. `/` and `@` are plain text there; there is no command menu.
 
 ### Selecting the screen
 
