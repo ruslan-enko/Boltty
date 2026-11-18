@@ -268,6 +268,15 @@ implementation first. Versions say what was measured.
   Fixture: `Fixtures/claude-background-wake.jsonl`.
 - History is `~/.claude/projects/<mangled-cwd>/<session-id>.jsonl`. The folder
   name is lossy; take `cwd` from the records.
+- `initialize`'s `commands` are skills, plugin commands (`figma:…`) and the
+  person's own beside the CLI's (`builtin: true`, which steer its session and
+  screen and are left out); a folder's own `.claude/skills` show only to a
+  `initialize` made in that folder (cached 5 minutes). A request that starts
+  `/name args` runs the skill in print mode (2.1.325); the record files it as
+  `<command-message>name</command-message><command-name>/name</command-name>
+  <command-args>…</command-args>`, then the skill's body as an `isMeta` record
+  opening "Base directory for this skill:". The CLI's own commands open with
+  `<command-name>` and stay hidden (`InjectedText.claudeCommand`).
 - Read-only chats run with `--tools Read,Glob,Grep` (variadic flag: another
   flag must follow it).
 - `set_model` over the control channel takes effect on the next turn and keeps the
@@ -302,6 +311,12 @@ implementation first. Versions say what was measured.
   `## My request for Codex:`; `CodexRolloutTranscript.request(in:)` unwraps it
   *after* dropping scaffolding (the reviewer's wrapper carries the heading too).
 - Read-only chats use `sandbox: read-only`.
+- Skills are `skills/list {cwds}` (name, path, `shortDescription`; one name can
+  come twice, from two places: the first stands). A request opening with
+  `/name` goes as a `skill {name, path}` input before the words, as Codex's own
+  composer sends it (0.169). The rollout files the words, then the skill's body
+  as a user `<skill><name>…` record; the reader puts `/name` back in front of the
+  words (`CodexRolloutTranscript.prependSkill`).
 - `thread/resume` and `turn/start` take `cwd`; on a turn it holds for the turns
   after (0.167 schema). Boltty sends the chat's folder with both.
 - `turn/start` takes `model` and `effort`, per turn; the rollout's `turn_context`
@@ -351,6 +366,13 @@ implementation first. Versions say what was measured.
   `PendingInteraction.Kind.plan`, drawn as the turn's text with Approve /
   Request Changes / Quit.
 - `_x.ai/billing` gives the plan's `creditUsagePercent`.
+- Skills reach only a session: `available_commands_update` after `session/new`
+  or a load lists them with `_meta.path` and `scope`, beside the CLI's own
+  commands (no `_meta`; `/always-approve` among them). `initialize` names only
+  its own (1.0.88), and an empty `session/new` stays in Grok's history, so the
+  list is the one a chat's session sent (by folder, else the person's own
+  skills): none until a Grok chat has run. `/name args` as text runs the skill;
+  `chat_history.jsonl` keeps it inside `<user_query>`.
 
 ### Antigravity
 
@@ -395,6 +417,10 @@ Measured on agy 1.3.4 and 1.4.0 (`AntigravityClient`, `AntigravityTranscript`,
   - Ask Boltty's read-only prompt tells it to open the screenshot when the
     picture did not come with the message, and that the read is allowed; told
     only "do not use tools", `agy` answered without looking.
+- Skills: `agy -p=/skills --output-format json` in the folder (~7 s, no model
+  call, the folder's `.agents/skills` among them, 1.5.11). `/name args` in the
+  words runs the skill in print mode; the record keeps `/name args` as the
+  person's text.
 - Plan limits: `agy -p=/usage --output-format json` (~4 s, no model call);
   groups of weekly buckets, each labelled (`AgentUsageWindow.title`).
 - `--conversation <id> --model <other> --effort <level>` goes on in that conversation
@@ -466,6 +492,12 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   reaches what Boltty was allowed. Both share one database; every
   `/api/session/<id>/…` request goes to the session's server, placed by the
   folder on its record, and the second server's events come on a second stream.
+- Skills are `GET /api/skill?location[directory]=…` (2.3.2); a session made with
+  no `location` is in home and cannot use a folder's skill ("Skill not found").
+  A request opening with `/id` goes as `skills: [{id}]` beside the rest of the
+  words, and the record keeps them apart (`text`, `skills`); the mapper puts
+  `/id` back in front. `/api/command` (init, review, goal) is not offered: the
+  record keeps only the template a command expands to, not its name.
 - The model catalogue is `/api/model` on 2.0 (`/provider` on 1.18); free models
   have `settings.apiKey == "public"`.
   `GET /api/model/default` names what a session made without a model starts with
@@ -629,7 +661,7 @@ The loop that must keep working:
   stays words, drawn as a link. Dropped anywhere on the panel it goes through
   `PasteboardIngest`: the field takes no drags of its own, or a file dropped on
   the words became its path in words.
-- **`@` brings a file** (`FileMentionPicker`, `FileMention`, `FileMentionSearch`),
+- **`@` brings a file** (`ComposerSuggestionPicker`, `ComposerToken`, `FileMention`, `FileMentionSearch`),
   the same for every agent, since no CLI offers a search all five share: an `@`
   at the start of a word (never inside one, `me@site.com`) opens a list of up to
   eight at the `@`, above the line where there is room, else under the shell,
@@ -640,6 +672,16 @@ The loop that must keep working:
   any folder holding it are Spotlight's, Library and dot-folders left out. A
   bare `@` lists the newest: modified there, or used in the last 14 days. Not in
   the list's search, while listening, or over a region.
+- **`/` at the very start lists the agent's skills and commands**, read from its
+  CLI (`.commands`, `AgentClient.commands(folder:)`, `AgentCommand`), never
+  written down: the open chat's agent, else the one the first screen wears, in
+  the chat's folder. The same list as `@`, the description after the name. The
+  chosen one goes into the words as `/name `; each adapter carries it the way
+  its CLI takes it (*Adapter facts*), and every transcript reads `/name …` back
+  as the person's words. A new chat is held to that agent (`holdAgent`), so
+  automatic routing never hands a skill to another. The CLIs' own commands are
+  never offered: they steer the CLI's session (Grok's `/always-approve` would
+  undo Boltty's asking). A slash later in the words is a path, not a command.
 - **The agent reads the words, then the files** (`PromptDraft.separated`,
   `PromptExpansion`): a blank line, then the paths in the cards' order, with
   a space between. A draft stored while files stood in the sentence is read into
@@ -836,7 +878,7 @@ The loop that must keep working:
   them.
 - Right click: Open Chat, Show in Finder, Delete Chat… (Boltty's own; to the
   Trash, after asking, no Return on the destructive button). No pin.
-- Typing after ↓ searches. `/` and `@` are plain text there; there is no command menu.
+- Typing after ↓ searches. `/` and `@` are plain text there, with no list of their own.
 
 ### Selecting the screen
 

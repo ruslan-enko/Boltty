@@ -235,7 +235,8 @@ enum ClaudeCodeTranscript {
           }
           return true
         }
-        let text = plainText(of: message)
+        let filed = plainText(of: message)
+        let text = InjectedText.claudeCommand(in: filed) ?? filed
         if Self.isImageBookkeeping(text) { return true }
         if InjectedText.isScaffolding(
           text, tags: InjectedText.claudeTags, prefixes: InjectedText.claudePrefixes

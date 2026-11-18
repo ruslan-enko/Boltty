@@ -68,6 +68,9 @@ protocol AgentClient: AnyObject, Sendable {
 
   func compact(sessionID: String) async throws
 
+  /// Skills and commands for `/`, as the CLI lists them for this folder.
+  func commands(folder: String) async -> [AgentCommand]
+
   func steer(messageID: String, text: String, to sessionID: String) async throws
 
   func activityHistory() async -> AgentActivityHistory?
@@ -87,6 +90,7 @@ extension AgentClient {
   var modelListLifetime: TimeInterval { ConversationEngine.modelListLifetime }
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {}
   func usageLimits() async -> AgentUsage? { nil }
+  func commands(folder: String) async -> [AgentCommand] { [] }
   func contextUsage(sessionID: String) async -> AgentContextUsage? { nil }
   func activityHistory() async -> AgentActivityHistory? { nil }
   func steer(messageID: String, text: String, to sessionID: String) async throws {

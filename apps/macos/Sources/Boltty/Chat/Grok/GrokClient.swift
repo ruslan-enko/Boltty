@@ -22,7 +22,7 @@ struct ACPAgent: Sendable {
     capabilities: [
       .modelSelection, .modelSwitching, .permissions, .attachments, .images, .interrupt, .resumeSession,
       .workingDirectory, .reasoningEffort, .autoApproval, .usageReporting,
-      .rereadableTranscript, .usageLimits, .questions,
+      .rereadableTranscript, .usageLimits, .questions, .commands,
     ],
     history: { try GrokChatHistoryTranscript.transcript(sessionID: $0) },
     recordedName: { GrokChatHistoryTranscript.recordedName(sessionID: $0) },
@@ -52,6 +52,9 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   private var pending: [Int: CheckedContinuation<JSONObject, Error>] = [:]
   private var rpcCounter = 0
   private var sessions: [String: LiveSession] = [:]
+  private var commandsByFolder: [String: [AgentCommand]] = [:]
+  private var commandsBySession: [String: [AgentCommand]] = [:]
+  private var personalCommands: [AgentCommand] = []
   private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var permissions: [String: PendingPermission] = [:]
   private var plans: [String: PendingPlan] = [:]
@@ -794,10 +797,59 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     return isPlan
   }
 
+  // MARK: - Commands
+
+  /// Grok lists a session's skills only to that session (1.0.88; `initialize`
+  /// names its own commands alone), and an empty `session/new` stays in its
+  /// history. So the list is the one a chat's session last sent for its folder,
+  /// else the person's own skills from any folder; none before a Grok chat runs.
+  func commands(folder: String) async -> [AgentCommand] {
+    lock.withLock {
+      if let known = commandsByFolder[folder] { return known }
+      for (id, session) in sessions where session.directory == folder {
+        if let listed = commandsBySession[id] { return listed }
+      }
+      return personalCommands
+    }
+  }
+
+  /// Skills carry `_meta.path`; the CLI's own commands carry none and are left
+  /// out (one is `/always-approve`, which would undo Boltty's asking).
+  static func commands(in listed: [JSONObject]) -> (all: [AgentCommand], personal: [AgentCommand]) {
+    var all: [AgentCommand] = []
+    var personal: [AgentCommand] = []
+    var seen = Set<String>()
+    for entry in listed {
+      guard let meta = entry.object("_meta"), meta.string("path") != nil,
+            let name = entry.string("name"), seen.insert(name).inserted
+      else { continue }
+      let hint = entry.object("input")?.string("hint")
+      let command = AgentCommand(name: name, summary: entry.string("description") ?? "", argumentHint: hint)
+      all.append(command)
+      if meta.string("scope") != "project" { personal.append(command) }
+    }
+    return (all, personal)
+  }
+
+  private func rememberCommands(_ listed: [JSONObject], of sessionID: String) {
+    let found = Self.commands(in: listed)
+    // It can come before `session/new` answers and the session is known here.
+    lock.withLock {
+      commandsBySession[sessionID] = found.all
+      personalCommands = found.personal
+      if let folder = sessions[sessionID]?.directory { commandsByFolder[folder] = found.all }
+    }
+  }
+
   private func handleNotification(_ method: String, params: JSONObject) {
     guard method == "session/update" else { return }
     guard let sessionID = params.string("sessionId"),
           let update = params.object("update") else { return }
+
+    if update.string("sessionUpdate") == "available_commands_update" {
+      rememberCommands(update.array("availableCommands"), of: sessionID)
+      return
+    }
 
     let messageID = lock.withLock { sessions[sessionID]?.pendingMessageID }
     guard let messageID else { return }

@@ -1,48 +1,14 @@
 import Foundation
 
-/// `@` in the composer, followed by what is typed after it: a file to bring
-/// with the words, chosen from a list and then made a card.
+/// Files for `@` in the composer: a file to bring with the words, chosen from
+/// a list and then made a card.
 enum FileMention {
-  struct Token: Equatable {
-    /// The `@` and the query after it, in the field's UTF-16 units.
-    let range: NSRange
-    let query: String
-  }
-
   struct Candidate: Equatable, Sendable {
     let url: URL
     let isDirectory: Bool
     /// The path under the searched folder, or the whole path when it is not under it.
     let relativePath: String
     let modified: Date?
-  }
-
-  static let queryLimit = 80
-
-  /// The `@` word the caret stands in. An `@` inside a word (`me@site.com`)
-  /// starts nothing.
-  static func token(in text: String, caret: Int) -> Token? {
-    let string = text as NSString
-    guard caret >= 1, caret <= string.length else { return nil }
-    var index = caret - 1
-    while index >= 0 {
-      let unit = string.character(at: index)
-      if unit == 0x40 {
-        if index > 0, let before = UnicodeScalar(string.character(at: index - 1)),
-           !CharacterSet.whitespacesAndNewlines.contains(before) {
-          return nil
-        }
-        let range = NSRange(location: index, length: caret - index)
-        let query = string.substring(with: NSRange(location: index + 1, length: caret - index - 1))
-        guard query.count <= queryLimit else { return nil }
-        return Token(range: range, query: query)
-      }
-      if let scalar = UnicodeScalar(unit), CharacterSet.whitespacesAndNewlines.contains(scalar) {
-        return nil
-      }
-      index -= 1
-    }
-    return nil
   }
 
   /// Best first: the name starting with the query, then holding it, then the

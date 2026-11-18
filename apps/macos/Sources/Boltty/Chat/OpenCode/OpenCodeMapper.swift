@@ -12,7 +12,10 @@ enum OpenCodeMapper {
         createdAt: date(dto.time?.created),
         completedAt: date(dto.time?.created)
       )
-      if let text = dto.text, !text.isEmpty {
+      // A skill goes beside the words (2.3.2): `/id` goes back in front of them.
+      let skills = (dto.skills ?? []).map { "/" + $0.id }.joined(separator: " ")
+      let text = [skills, dto.text ?? ""].filter { !$0.isEmpty }.joined(separator: " ")
+      if !text.isEmpty {
         message.parts.append(.text(TextPart(id: "\(dto.id)-text", kind: .text, text: text)))
       }
       for (index, file) in (dto.files ?? []).enumerated() {

@@ -6,13 +6,14 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
     .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
-    .usageLimits, .folderMoving,
+    .usageLimits, .folderMoving, .commands,
   ]
 
   static let initDeadline: TimeInterval = 25
 
   private let lock = NSLock()
   private var sessions: [String: LiveSession] = [:]
+  private var skillsByFolder: [String: (read: Date, skills: [AgentCommand])] = [:]
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private let executableOverride: String?
   private let transcriptRoot: URL
@@ -140,6 +141,42 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   }
 
   static let usageDeadline: TimeInterval = 20
+
+  // MARK: - Skills
+
+  static let skillListLifetime: TimeInterval = 300
+
+  /// `-p=/skills` lists the skills for the folder it runs in, the folder's own
+  /// `.agents/skills` among them, with no model call (~7 s, 1.5.11). A request
+  /// opening with `/name` runs the skill in print mode; the record keeps `/name …`
+  /// as the person's words.
+  func commands(folder: String) async -> [AgentCommand] {
+    if let cached = lock.withLock({ skillsByFolder[folder] }),
+       Date().timeIntervalSince(cached.read) < Self.skillListLifetime {
+      return cached.skills
+    }
+    guard let executable = locate(),
+          let answer = await OneShotCommand.run(
+            executable, ["-p=/skills", "--output-format", "json"], deadline: Self.usageDeadline,
+            directory: URL(fileURLWithPath: folder, isDirectory: true)
+          ), answer.exitCode == 0
+    else { return [] }
+    let found = answer.output.split(whereSeparator: \.isNewline).lazy
+      .compactMap { JSONObject(line: String($0)) }.first.map(Self.skills(in:)) ?? []
+    lock.withLock { skillsByFolder[folder] = (Date(), found) }
+    return found
+  }
+
+  static func skills(in result: JSONObject) -> [AgentCommand] {
+    guard result.object("command")?.string("name") == "skills" else { return [] }
+    var seen = Set<String>()
+    return (result.object("command")?.object("data")?.array("skills") ?? []).compactMap { skill in
+      guard let name = skill.string("name"), !name.isEmpty, !name.contains(where: \.isWhitespace),
+            seen.insert(name).inserted
+      else { return nil }
+      return AgentCommand(name: name, summary: skill.string("description") ?? "", argumentHint: nil)
+    }
+  }
 
   // MARK: - Sessions
 

@@ -145,14 +145,36 @@ enum InjectedText {
   static let codexTags = [
     "environment_context", "recommended_plugins",
     "turn_aborted", "system_instruction", "user_instructions",
-    "subagent_notification"
+    "subagent_notification", "skill"
   ]
+
+  /// The skill a Codex request carried, filed after its words as
+  /// `<skill><name>ping</name><path>…</path>…` (0.169).
+  static func codexSkill(in text: String) -> String? {
+    guard text.hasPrefix("<skill>"), let name = inside(text, tag: "name"), !name.isEmpty else { return nil }
+    return name
+  }
 
   static let claudeTags = [
     "task-notification", "command-name", "command-message", "command-args",
     "local-command-caveat", "local-command-stdout", "local-command-stderr",
     "system-reminder"
   ]
+
+  /// Commands Boltty sends of its own accord, not the person's words.
+  static let claudeOwnCommands: Set<String> = ["/compact"]
+
+  /// A `/skill` the person sent, filed as `<command-message>ping</command-message>
+  /// <command-name>/ping</command-name><command-args>hello</command-args>`
+  /// (2.1.325), read back as `/ping hello`. The CLI's own commands (`/clear`)
+  /// open with `<command-name>` and stay hidden.
+  static func claudeCommand(in text: String) -> String? {
+    guard text.hasPrefix("<command-message>"), let name = inside(text, tag: "command-name"),
+          name.hasPrefix("/"), !claudeOwnCommands.contains(name)
+    else { return nil }
+    let arguments = inside(text, tag: "command-args") ?? ""
+    return arguments.isEmpty ? name : name + " " + arguments
+  }
 
   static let claudePrefixes = [
     "[Request interrupted by user",

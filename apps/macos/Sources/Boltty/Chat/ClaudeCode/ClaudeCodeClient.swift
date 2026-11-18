@@ -8,7 +8,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
-    .permissionMessage, .steering, .folderMoving
+    .permissionMessage, .steering, .folderMoving, .commands
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
@@ -18,6 +18,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var conversationResolver: (@Sendable (String) -> UUID?)?
   private var cachedHandshake: JSONObject?
+  private var cachedCommands: [String: (read: Date, commands: [AgentCommand])] = [:]
 
   private let executableOverride: String?
   private let throwawayDeadline: TimeInterval
@@ -37,7 +38,10 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard locate() != nil else { return .notInstalled }
     // A probe is a re-read: a sign-in made in the terminal since the last one
     // must show up without restarting Boltty.
-    lock.withLock { cachedHandshake = nil }
+    lock.withLock {
+      cachedHandshake = nil
+      cachedCommands = [:]
+    }
     guard let handshake = await handshake() else {
       return .unavailable("Claude Code did not answer. Try running `claude` once in a terminal.")
     }
@@ -560,12 +564,62 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return response
   }
 
-  private func throwawayControl(subtype: String?) async -> JSONObject? {
+  // MARK: - Commands
+
+  static let commandListLifetime: TimeInterval = 300
+
+  /// A folder's own `.claude/skills` and commands join the person's, so a
+  /// folder other than home is asked in that folder.
+  func commands(folder: String) async -> [AgentCommand] {
+    if folder == NSHomeDirectory() { return Self.commands(in: await handshake()) }
+    if let cached = lock.withLock({ cachedCommands[folder] }),
+       Date().timeIntervalSince(cached.read) < Self.commandListLifetime {
+      return cached.commands
+    }
+    guard let response = await throwawayControl(subtype: nil, directory: folder) else {
+      return Self.commands(in: await handshake())
+    }
+    let found = Self.commands(in: response)
+    lock.withLock { cachedCommands[folder] = (Date(), found) }
+    return found
+  }
+
+  /// `initialize` lists skills, plugin and the person's commands beside the
+  /// CLI's own (`builtin`): those steer the CLI's session and its screen, and
+  /// would argue with Boltty's model chip, so they are left out.
+  static func commands(in handshake: JSONObject?) -> [AgentCommand] {
+    guard let handshake else { return [] }
+    var seen = Set<String>()
+    return handshake.array("commands").compactMap { command in
+      guard command.bool("builtin") != true, let name = command.string("name"),
+            !name.isEmpty, !name.hasPrefix("_"), seen.insert(name).inserted
+      else { return nil }
+      let hint = command.string("argumentHint")?.trimmingCharacters(in: .whitespaces)
+      return AgentCommand(
+        name: name,
+        summary: summary(command.string("description") ?? ""),
+        argumentHint: hint?.isEmpty == false ? hint : nil)
+    }
+  }
+
+  /// The CLI marks where a command comes from in its words: "(figma) …", "… (user)".
+  static func summary(_ description: String) -> String {
+    var text = description.trimmingCharacters(in: .whitespacesAndNewlines)
+    if text.hasPrefix("("), let close = text.firstIndex(of: ")") {
+      text = String(text[text.index(after: close)...]).trimmingCharacters(in: .whitespaces)
+    }
+    for source in [" (user)", " (project)", " (plugin)", " (bundled)"] where text.hasSuffix(source) {
+      text = String(text.dropLast(source.count))
+    }
+    return text
+  }
+
+  private func throwawayControl(subtype: String?, directory: String = NSHomeDirectory()) async -> JSONObject? {
     guard let executable = locate() else { return nil }
     let process = JSONLineProcess(
       executable: executable,
       arguments: Self.throwawayArguments,
-      directory: NSHomeDirectory(),
+      directory: directory,
       category: "claude-code-probe"
     )
     guard (try? process.start()) != nil else { return nil }

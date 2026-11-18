@@ -3,6 +3,29 @@ import Foundation
 enum CodexRolloutTranscript {
   static let readLimit = 24 << 20
 
+  /// The skill's record follows the words it was sent with: `/name` goes back
+  /// in front of them, or stands alone when the request was the skill alone.
+  static func prependSkill(
+    _ name: String, to messages: inout [ConversationMessage], at stamp: Date, id: String?
+  ) {
+    let command = "/" + name
+    if let index = messages.indices.last, messages[index].role == .user,
+       let part = messages[index].parts.firstIndex(where: {
+         if case .text = $0 { return true }
+         return false
+       }),
+       case var .text(words) = messages[index].parts[part] {
+      guard !words.text.hasPrefix(command) else { return }
+      words.text = command + " " + words.text
+      messages[index].parts[part] = .text(words)
+      return
+    }
+    let messageID = id ?? UUID().uuidString
+    messages.append(ConversationMessage(
+      id: messageID, role: .user, createdAt: stamp, completedAt: stamp,
+      parts: [.text(TextPart(id: "\(messageID)-text", kind: .text, text: command))]))
+  }
+
   static func read(at url: URL) -> [ConversationMessage] {
     var messages: [ConversationMessage] = []
     var openCalls: [String: (messageIndex: Int, activityID: String)] = [:]
@@ -24,6 +47,10 @@ enum CodexRolloutTranscript {
           text = InjectedText.without(text, tag: "image")
         }
         guard !text.isEmpty else { return true }
+        if role == "user", let skill = InjectedText.codexSkill(in: text) {
+          Self.prependSkill(skill, to: &messages, at: stamp, id: payload["id"] as? String)
+          return true
+        }
         if role == "user",
            InjectedText.isScaffolding(
              text, tags: InjectedText.codexTags, prefixes: InjectedText.codexPrefixes

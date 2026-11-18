@@ -52,6 +52,10 @@ enum BuiltInKeyCatalog {
           id: "mention", title: "Add a file", keys: "@",
           detail: "At the start of a word: type its name, ↑ ↓ to choose, ↩ or ⇥ to add it, Esc to let go"
         ),
+        BuiltInKey(
+          id: "command", title: "Use a skill or command", keys: "/",
+          detail: "As the first character, where the agent lists them: type its name, ↩ or ⇥ to use it"
+        ),
         BuiltInKey(id: "pastePlain", title: "Paste as plain text", keys: "⇧⌘V", detail: nil),
         BuiltInKey(id: "hide", title: "Hide", keys: "Esc", detail: nil),
       ]),

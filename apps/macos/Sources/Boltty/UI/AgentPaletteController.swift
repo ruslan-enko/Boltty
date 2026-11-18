@@ -197,6 +197,17 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       self?.panelView.setVoiceGlowPhase(.cancelled)
     }
     panelView.onDraftChange = { [weak self] in self?.saveCurrentDraft() }
+    panelView.commandSource = { [weak self] folder in
+      guard let self, let conversations = self.conversations,
+            let providerID = self.panelView.addressedSessionID
+              .flatMap({ conversations.conversation(id: $0)?.providerID })
+              ?? self.panelView.agentForNewPrompt?.rawValue
+              ?? conversations.plannedProviderID(),
+            let agent = AgentId(rawValue: providerID)
+      else { return nil }
+      let commands = await conversations.commands(providerID: providerID, folder: folder)
+      return commands.isEmpty ? nil : (agent, commands)
+    }
     panelView.onSpeakMessage = { [weak self] in self?.onSpeakMessage?($0) }
     panelView.onStop = { [weak self] in
       guard let self, let id = self.panelView.addressedSessionID else { return }

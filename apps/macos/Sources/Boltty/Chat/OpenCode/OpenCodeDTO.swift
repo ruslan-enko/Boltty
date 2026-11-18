@@ -62,6 +62,11 @@ enum OpenCodeDTO {
     var text: String
     var files: [FileAttachment]?
     var delivery: String?
+    var skills: [SkillRef]?
+
+    struct SkillRef: Codable {
+      var id: String
+    }
 
     struct FileAttachment: Encodable {
       var uri: String
@@ -77,6 +82,7 @@ enum OpenCodeDTO {
     var time: Time?
     var text: String?
     var files: [FileRef]?
+    var skills: [PromptRequest.SkillRef]?
     var content: [ContentPart]?
     var error: ErrorInfo?
 

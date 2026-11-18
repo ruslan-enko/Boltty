@@ -451,12 +451,39 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
   private var addressedPreview: BolttyAISessionPreview?
 
-  private lazy var fileMention: FileMentionPicker = {
-    let picker = FileMentionPicker(host: self, field: field)
+  private lazy var fileMention: ComposerSuggestionPicker<FileMention.Candidate> = {
+    let picker = ComposerSuggestionPicker<FileMention.Candidate>(
+      host: self, field: field, label: "Files", token: ComposerToken.mention(in:caret:)
+    ) { candidate in
+      let parent = (candidate.relativePath as NSString).deletingLastPathComponent
+      return ComposerSuggestion(
+        icon: candidate.isDirectory ? .folder : .doc,
+        title: candidate.url.lastPathComponent,
+        detail: parent.hasPrefix("/") ? (parent as NSString).abbreviatingWithTildeInPath : parent)
+    }
     picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
-    picker.onPick = { [weak self] url, range in self?.attachMentioned(url, replacing: range) }
+    picker.onPick = { [weak self] candidate, range in self?.attachMentioned(candidate.url, replacing: range) }
     return picker
   }()
+  private let fileSearch = FileMentionSearch()
+
+  private lazy var commandPicker: ComposerSuggestionPicker<AgentCommand> = {
+    let picker = ComposerSuggestionPicker<AgentCommand>(
+      host: self, field: field, label: "Skills and commands", token: ComposerToken.command(in:caret:)
+    ) { command in
+      ComposerSuggestion(icon: .sparkles, title: command.invocation, detail: command.summary,
+                         detailLeads: true)
+    }
+    picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
+    picker.onPick = { [weak self] command, range in self?.useCommand(command, replacing: range) }
+    return picker
+  }()
+
+  /// The skills and commands of the agent the words would go to, in this folder:
+  /// nil while that agent offers none.
+  var commandSource: ((_ folder: String) async -> (agent: AgentId, commands: [AgentCommand])?)?
+  private var commandList: (key: String, agent: AgentId, commands: [AgentCommand])?
+  private var commandRead: (key: String, task: Task<(agent: AgentId, commands: [AgentCommand])?, Never>)?
 
   enum Mode: Equatable {
     case prompt
@@ -664,6 +691,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   func reset(error: String? = nil) {
     PaletteHelpPresenter.shared.dismiss()
     fileMention.reset()
+    commandPicker.reset()
     endScreenSelection()
     leaveAddressing(animated: false)
     field.clearPrompt()
@@ -1217,6 +1245,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   func prepareForPresentation(resumingChat: Bool = false) {
     fileMention.reset()
+    commandPicker.reset()
+    commandList = nil
     if !resumingChat { returnToSessionID = nil }
     surfaceReady = false
     pendingConversationID = UUID()
@@ -2080,6 +2110,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   func openSwitcher() {
     guard mode == .prompt else { return }
     fileMention.reset()
+    commandPicker.reset()
     setComposerKeyTarget(.text)
     leaveAddressing(animated: false)
     mode = .picking
@@ -2138,6 +2169,17 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let chosen = agent == plannedAgent ? nil : agent
     guard chosen != chosenAgent else { return }
     chosenAgent = chosen
+    if mode == .prompt, addressedPreview == nil {
+      renderPromptMark(animated: true)
+    }
+    onAgentChoiceChange?()
+    syncTrailingHint()
+  }
+
+  /// Fixes the agent even when it is the one automatic routing would pick now.
+  func holdAgent(_ agent: AgentId) {
+    guard agentChoices.contains(agent), chosenAgent != agent else { return }
+    chosenAgent = agent
     if mode == .prompt, addressedPreview == nil {
       renderPromptMark(animated: true)
     }
@@ -4491,11 +4533,13 @@ extension AgentPaletteView: NSTextViewDelegate {
   }
 
   func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-    if fileMention.isOpen {
+    if fileMention.isOpen || commandPicker.isOpen {
       let modifiers = (commandModifierFlagsForTesting ?? NSApp.currentEvent?.modifierFlags ?? [])
         .intersection(.deviceIndependentFlagsMask)
       let isPlainKey = modifiers.isDisjoint(with: [.shift, .option, .command, .control])
-      if isPlainKey, fileMention.handle(commandSelector) { return true }
+      if isPlainKey, fileMention.handle(commandSelector) || commandPicker.handle(commandSelector) {
+        return true
+      }
     }
     let isTab = commandSelector == #selector(insertTab(_:))
     let isBacktab = commandSelector == #selector(insertBacktab(_:))
@@ -4645,20 +4689,69 @@ extension AgentPaletteView: NSTextViewDelegate {
     if isResultsExpanded {
       refreshResults(keepingSelection: mode != .search)
     }
-    syncFileMention()
+    syncComposerLists()
   }
 
   func textViewDidChangeSelection(_ notification: Notification) {
-    syncFileMention()
+    syncComposerLists()
   }
 
-  /// `@` opens files wherever words are typed to an agent: never in the list's
-  /// search, while listening, or over a region (the question is spoken there).
-  private func syncFileMention() {
+  /// `@` and `/` open their lists wherever words are typed to an agent: never in
+  /// the list's search, while listening, or over a region (spoken there).
+  private func syncComposerLists() {
     let allowed = mode == .prompt && !isResultsExpanded && !asksByVoice && !isVoiceListening
       && screenSelectionPhase == .idle && !isRestoringChatDraft && !isApplyingVoiceTranscript
       && window?.isVisible == true
-    fileMention.update(folder: workingDirectory?.path, allowed: allowed)
+    let folder = workingDirectory?.path ?? NSHomeDirectory()
+    fileMention.update(allowed: allowed, context: folder) { [weak self] query, deliver in
+      self?.fileSearch.search(query, in: folder, deliver: deliver)
+    }
+    let key = commandKey(folder: folder)
+    commandPicker.update(allowed: allowed && commandSource != nil, context: key) { [weak self] query, deliver in
+      self?.readCommands(key: key, folder: folder) { list in
+        deliver(AgentCommand.rank(list, query: query, limit: FileMentionSearch.resultLimit))
+      }
+    }
+  }
+
+  /// Whose list it is: the open chat's agent, else the one the first screen wears.
+  private func commandKey(folder: String) -> String {
+    let who = addressedPreview.map { "chat:\($0.id)" } ?? "new:\(agentForNewPrompt?.rawValue ?? "")"
+    return who + "|" + folder
+  }
+
+  private func readCommands(key: String, folder: String, deliver: @escaping @MainActor ([AgentCommand]) -> Void) {
+    if let commandList, commandList.key == key {
+      deliver(commandList.commands)
+      return
+    }
+    guard let commandSource else { return }
+    let task: Task<(agent: AgentId, commands: [AgentCommand])?, Never>
+    if let running = commandRead, running.key == key {
+      task = running.task
+    } else {
+      task = Task { await commandSource(folder) }
+      commandRead = (key, task)
+    }
+    Task { [weak self] in
+      let read = await task.value
+      guard let self else { return }
+      if self.commandRead?.key == key { self.commandRead = nil }
+      guard let read else { return }
+      self.commandList = (key, read.agent, read.commands)
+      deliver(read.commands)
+    }
+  }
+
+  /// The words begin with the command; a new chat is held to the agent whose
+  /// command it is, as ⇧Tab would, so automatic routing does not send it elsewhere.
+  private func useCommand(_ command: AgentCommand, replacing range: NSRange) {
+    let length = (field.string as NSString).length
+    guard NSMaxRange(range) <= length else { return }
+    let rest = (field.string as NSString).substring(from: NSMaxRange(range))
+    let spaced = rest.first?.isWhitespace == true ? command.invocation : command.invocation + " "
+    field.insertText(spaced, replacementRange: range)
+    if addressedPreview == nil, let agent = commandList?.agent { holdAgent(agent) }
   }
 
   private func attachMentioned(_ url: URL, replacing range: NSRange) {

@@ -8,7 +8,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
-    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving
+    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "codex-client")
@@ -29,6 +29,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   private var partHome: [String: String] = [:]
   private var approvals: [String: PendingApproval] = [:]
   private var unloadTokens: [String: UUID] = [:]
+  private var skillsByFolder: [String: (read: Date, skills: [Skill])] = [:]
   var idleUnloadDelay: TimeInterval = 600
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var conversationResolver: (@Sendable (String) -> UUID?)?
@@ -352,11 +353,11 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     attachments: [OutgoingAttachment],
     to sessionID: String
   ) async throws {
-    let input = Self.turnInput(text: text, attachments: attachments)
-    guard !input.isEmpty else { return }
+    guard !Self.turnInput(text: text, attachments: attachments).isEmpty else { return }
 
     let server = try await server()
     try await ensureThread(id: sessionID, on: server)
+    let input = await turnInput(text: text, attachments: attachments, in: sessionID)
 
     var params: [String: Any] = [
       "threadId": sessionID,
@@ -390,6 +391,56 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
     guard !isOver else { return }
     emit(.executionStateChanged(sessionID: sessionID, state: .working))
+  }
+
+  /// A request opening with a skill's `/name` sends the skill as its own input,
+  /// as Codex's own composer does; the words follow.
+  private func turnInput(
+    text: String, attachments: [OutgoingAttachment], in sessionID: String
+  ) async -> [[String: Any]] {
+    guard let directory = lock.withLock({ threads[sessionID]?.directory }),
+          let (name, rest) = AgentCommand.leading(in: text),
+          let skill = await skills(in: directory).first(where: { $0.name == name })
+    else { return Self.turnInput(text: text, attachments: attachments) }
+    return [["type": "skill", "name": skill.name, "path": skill.path]]
+      + Self.turnInput(text: rest, attachments: attachments)
+  }
+
+  // MARK: - Skills
+
+  struct Skill: Equatable, Sendable {
+    let name: String
+    let path: String
+    let summary: String
+  }
+
+  static let skillListLifetime: TimeInterval = 300
+
+  func commands(folder: String) async -> [AgentCommand] {
+    await skills(in: folder).map { AgentCommand(name: $0.name, summary: $0.summary, argumentHint: nil) }
+  }
+
+  private func skills(in folder: String) async -> [Skill] {
+    if let cached = lock.withLock({ skillsByFolder[folder] }),
+       Date().timeIntervalSince(cached.read) < Self.skillListLifetime {
+      return cached.skills
+    }
+    guard let response = try? await request("skills/list", params: ["cwds": [folder]]) else { return [] }
+    let found = Self.skills(in: response)
+    lock.withLock { skillsByFolder[folder] = (Date(), found) }
+    return found
+  }
+
+  /// `skills/list` names a skill once per place it is found (0.169): the first stands.
+  static func skills(in response: JSONObject) -> [Skill] {
+    var seen = Set<String>()
+    return response.array("data").flatMap { $0.array("skills") }.compactMap { skill in
+      guard skill.bool("enabled") != false, let name = skill.string("name"),
+            let path = skill.string("path"), seen.insert(name).inserted
+      else { return nil }
+      let summary = skill.string("shortDescription") ?? skill.string("description") ?? ""
+      return Skill(name: name, path: path, summary: summary)
+    }
   }
 
   func messageExists(id: String, in sessionID: String) async throws -> Bool { false }

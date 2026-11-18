@@ -8,7 +8,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
-    .folderMoving
+    .folderMoving, .commands
   ]
 
   private let server: OpenCodeServer
@@ -32,6 +32,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   private var allowances = OpenCodeAllowances()
   private var autoApproved: Set<String> = []
   private var sessionFolders: [String: String] = [:]
+  private var skillsByFolder: [String: (read: Date, skills: [AgentCommand])] = [:]
   private var historyIsAbsent = false
   private var freeModels: Set<String> = []
 
@@ -411,9 +412,10 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     attachments: [OutgoingAttachment],
     to sessionID: String
   ) async throws {
-    let body = OpenCodeDTO.PromptRequest(
+    let (words, skill) = await skillLeading(text, in: sessionID)
+    var body = OpenCodeDTO.PromptRequest(
       id: messageID,
-      text: text,
+      text: words,
       files: attachments.isEmpty
         ? nil
         : attachments.map {
@@ -423,7 +425,52 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
           )
         }
     )
+    if let skill { body.skills = [.init(id: skill)] }
     try await postIgnoringResponse("/api/session/\(sessionID)/prompt", body: body)
+  }
+
+  // MARK: - Skills
+
+  static let skillListLifetime: TimeInterval = 300
+
+  /// A request opening with a skill's `/id` sends the skill beside the words
+  /// (`skills: [{id}]`, 2.3.2), as OpenCode's own composer does. Its commands
+  /// (`/api/command`: init, review, goal) are not offered: the record keeps only
+  /// the template they expand to, so the chat would show that as the person's words.
+  private func skillLeading(_ text: String, in sessionID: String) async -> (words: String, skill: String?) {
+    guard let (name, rest) = AgentCommand.leading(in: text),
+          let folder = lock.withLock({ sessionFolders[sessionID] }),
+          await commands(folder: folder).contains(where: { $0.name == name })
+    else { return (text, nil) }
+    return (rest, name)
+  }
+
+  func commands(folder: String) async -> [AgentCommand] {
+    if let cached = lock.withLock({ skillsByFolder[folder] }),
+       Date().timeIntervalSince(cached.read) < Self.skillListLifetime {
+      return cached.skills
+    }
+    var allowed = CharacterSet.urlQueryAllowed
+    allowed.remove(charactersIn: "&+=?")
+    guard let encoded = folder.addingPercentEncoding(withAllowedCharacters: allowed) else { return [] }
+    let own = await needsOwnServer(directory: folder)
+    guard let payload: JSONValue = try? await perform(
+      path: "/api/skill?location%5Bdirectory%5D=\(encoded)", method: "GET",
+      body: Optional<EmptyBody>.none, on: own ? ownServer : server)
+    else { return [] }
+    let found = Self.skills(in: payload)
+    lock.withLock { skillsByFolder[folder] = (Date(), found) }
+    return found
+  }
+
+  static func skills(in payload: JSONValue) -> [AgentCommand] {
+    var seen = Set<String>()
+    return (payload["data"]?.arrayValue ?? []).compactMap { skill in
+      guard let id = skill["id"]?.stringValue, !id.isEmpty, !id.contains(where: \.isWhitespace),
+            seen.insert(id).inserted
+      else { return nil }
+      return AgentCommand(name: id, summary: skill["description"]?.stringValue ?? "", argumentHint: nil)
+    }
   }
 
   private func move(_ id: String, to directory: String) async throws {
@@ -935,10 +982,13 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         createdAt: date(),
         completedAt: date()
       )
-      let echoed = data["item"]?["payload"]?["text"]?.stringValue
-        ?? data["prompt"]?["text"]?.stringValue
-      if let text = echoed, !text.isEmpty {
-        message.parts = [.text(TextPart(id: "\(id)-text", kind: .text, text: text))]
+      let text = data["item"]?["payload"]?["text"]?.stringValue ?? data["prompt"]?["text"]?.stringValue
+      let skills = (data["item"]?["payload"]?["skills"]?.arrayValue ?? data["prompt"]?["skills"]?.arrayValue ?? [])
+        .compactMap { $0["id"]?.stringValue }.map { "/" + $0 }.joined(separator: " ")
+      let echoed = [skills, text ?? ""]
+        .filter { !$0.isEmpty }.joined(separator: " ")
+      if !echoed.isEmpty {
+        message.parts = [.text(TextPart(id: "\(id)-text", kind: .text, text: echoed))]
       }
       return [
         .messageUpdated(sessionID: sessionID, message: message),

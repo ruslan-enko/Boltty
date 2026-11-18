@@ -1,36 +1,61 @@
 import AppKit
 
-/// What `@` opens in the composer: files to bring with the words. It reads the
-/// token at the caret, keeps the keys the composer would give a list, and hands
-/// the chosen file back to become a card; the `@word` goes with it.
+/// A row of the list that opens over the composer.
+struct ComposerSuggestion: Equatable {
+  let icon: BolttyIcon
+  let title: String
+  let detail: String
+  /// The detail follows the title (a command's description) rather than
+  /// standing at the row's end (a file's folder).
+  var detailLeads = false
+}
+
+/// What `@` and `/` open in the composer. It reads its sign's word at the caret,
+/// keeps the keys the composer would give a list, and hands the chosen item back
+/// with the range of that word, which goes with it.
 @MainActor
-final class FileMentionPicker {
-  var onPick: ((URL, NSRange) -> Void)?
+final class ComposerSuggestionPicker<Item> {
+  typealias Search = (_ query: String, _ deliver: @escaping @MainActor ([Item]) -> Void) -> Void
+
+  var onPick: ((Item, NSRange) -> Void)?
   /// The shell in the host's coordinates, for the list to stand clear of it.
   var shellFrame: (() -> NSRect)?
 
+  private let findToken: (String, Int) -> ComposerToken?
+  private let suggestion: (Item) -> ComposerSuggestion
+  private let accessibilityLabel: String
   private weak var host: NSView?
   private weak var field: PromptTextView?
-  private let search = FileMentionSearch()
-  private var list: FileMentionListView?
-  private var token: FileMention.Token?
-  private var folder: String?
-  /// The `@` Escape let go of: it stays shut until another `@` is typed.
+  private var list: ComposerSuggestionList?
+  private var items: [Item] = []
+  private var token: ComposerToken?
+  private var context: String?
+  private var search: Search?
+  /// The sign Escape let go of: it stays shut until another is typed.
   private var dismissedAt: Int?
   private var debounce: Timer?
+  private var generation = 0
 
-  init(host: NSView, field: PromptTextView) {
+  init(
+    host: NSView, field: PromptTextView, label: String,
+    token: @escaping (String, Int) -> ComposerToken?,
+    suggestion: @escaping (Item) -> ComposerSuggestion
+  ) {
     self.host = host
     self.field = field
+    self.accessibilityLabel = label
+    self.findToken = token
+    self.suggestion = suggestion
   }
 
   var isOpen: Bool { list != nil }
 
-  /// Read the field again: called on every change of its words or caret.
-  func update(folder: String?, allowed: Bool) {
-    guard allowed, let field,
-          let found = FileMention.token(in: field.string, caret: field.selectedRange().location),
-          field.selectedRange().length == 0
+  /// Read the field again, on every change of its words or caret. `context`
+  /// names what the results depend on besides the query (the folder, the agent):
+  /// a new one searches again.
+  func update(allowed: Bool, context: String, search: @escaping Search) {
+    guard allowed, let field, field.selectedRange().length == 0,
+          let found = findToken(field.string, field.selectedRange().location)
     else {
       if allowed { dismissedAt = nil }
       close()
@@ -40,9 +65,10 @@ final class FileMentionPicker {
       if dismissedAt == found.range.location { return }
       self.dismissedAt = nil
     }
-    let changed = found != token || folder != self.folder
+    let changed = found != token || context != self.context
     token = found
-    self.folder = folder
+    self.context = context
+    self.search = search
     guard changed else { return }
     debounce?.invalidate()
     let delay = list == nil ? 0 : 0.08
@@ -52,9 +78,12 @@ final class FileMentionPicker {
   }
 
   private func runSearch() {
-    guard let token else { return }
-    search.search(token.query, in: folder) { [weak self] found in
-      self?.show(found)
+    guard let token, let search else { return }
+    generation += 1
+    let current = generation
+    search(token.query) { [weak self] found in
+      guard let self, self.generation == current, self.token != nil else { return }
+      self.show(found)
     }
   }
 
@@ -67,8 +96,7 @@ final class FileMentionPicker {
     case #selector(NSResponder.moveUp(_:)):
       list.move(by: -1)
     case #selector(NSResponder.insertNewline(_:)), #selector(NSResponder.insertTab(_:)):
-      guard let chosen = list.chosen else { return false }
-      pick(chosen)
+      pick(list.chosenIndex)
     case #selector(NSResponder.cancelOperation(_:)):
       dismissedAt = token?.range.location
       close()
@@ -81,10 +109,12 @@ final class FileMentionPicker {
   func close() {
     debounce?.invalidate()
     debounce = nil
-    search.cancel()
+    generation += 1
     token = nil
+    context = nil
     list?.removeFromSuperview()
     list = nil
+    items = []
   }
 
   /// Escape's mark goes with the words it was on.
@@ -93,23 +123,26 @@ final class FileMentionPicker {
     close()
   }
 
-  private func pick(_ candidate: FileMention.Candidate) {
-    guard let token else { return }
-    let range = token.range
+  private func pick(_ index: Int) {
+    guard let token, items.indices.contains(index) else { return }
+    let item = items[index]
     close()
-    onPick?(candidate.url, range)
+    onPick?(item, token.range)
   }
 
-  private func show(_ found: [FileMention.Candidate]) {
+  private func show(_ found: [Item]) {
     guard let host, let field, let token else { return }
     if found.isEmpty {
       list?.removeFromSuperview()
       list = nil
+      items = []
       return
     }
-    let view = list ?? FileMentionListView()
+    let view = list ?? ComposerSuggestionList(label: accessibilityLabel)
     view.onPick = { [weak self] in self?.pick($0) }
-    view.show(found, query: token.query)
+    let keep = list.map { _ in view.chosenTitle } ?? nil
+    items = found
+    view.show(found.map(suggestion), keeping: token.query.isEmpty ? nil : keep)
     if view.superview !== host {
       host.addSubview(view, positioned: .above, relativeTo: nil)
     }
@@ -117,7 +150,7 @@ final class FileMentionPicker {
     view.frame = frame(for: view.fittingSize, in: host, field: field, at: token.range.location)
   }
 
-  /// Left-aligned at the `@`: above the line when the room is there (a chat's
+  /// Left-aligned at the sign: above the line when the room is there (a chat's
   /// composer at the foot), else under the shell (the first screen under the notch).
   private func frame(for size: NSSize, in host: NSView, field: PromptTextView, at location: Int) -> NSRect {
     let room = PaletteHelpPresenter.room(in: host)
@@ -147,18 +180,16 @@ final class FileMentionPicker {
   }
 }
 
-final class FileMentionListView: NSView {
-  var onPick: ((FileMention.Candidate) -> Void)?
-  private var rows: [FileMentionRowView] = []
+final class ComposerSuggestionList: NSView {
+  var onPick: ((Int) -> Void)?
+  private var rows: [ComposerSuggestionRowView] = []
+  private var titles: [String] = []
   private let content = FlippedRowsView()
-  private var candidates: [FileMention.Candidate] = []
-  private var chosenIndex = 0
+  private(set) var chosenIndex = 0
 
-  var chosen: FileMention.Candidate? {
-    candidates.indices.contains(chosenIndex) ? candidates[chosenIndex] : nil
-  }
+  var chosenTitle: String? { titles.indices.contains(chosenIndex) ? titles[chosenIndex] : nil }
 
-  init() {
+  init(label: String) {
     super.init(frame: .zero)
     // Frosted, as Limits is: it opens over any window, and clear glass let that
     // window's words read through.
@@ -174,7 +205,7 @@ final class FileMentionListView: NSView {
     ])
     content.onLayout = { [weak self] in self?.placeRows() }
     setAccessibilityRole(.list)
-    setAccessibilityLabel("Files")
+    setAccessibilityLabel(label)
   }
 
   @available(*, unavailable)
@@ -189,19 +220,17 @@ final class FileMentionListView: NSView {
       height: CGFloat(rows.count) * AgentPaletteMetrics.mentionRowHeight + inset * 2)
   }
 
-  func show(_ found: [FileMention.Candidate], query: String) {
-    let keep = chosen.flatMap { old in found.firstIndex { $0.url == old.url } }
-    candidates = found
+  func show(_ suggestions: [ComposerSuggestion], keeping title: String?) {
+    titles = suggestions.map(\.title)
     rows.forEach { $0.removeFromSuperview() }
-    rows = found.enumerated().map { index, candidate in
-      let row = FileMentionRowView(candidate)
+    rows = suggestions.enumerated().map { index, suggestion in
+      let row = ComposerSuggestionRowView(suggestion)
       row.onHover = { [weak self] in self?.choose(index) }
-      row.onClick = { [weak self] in self?.onPick?(candidate) }
+      row.onClick = { [weak self] in self?.onPick?(index) }
       content.addSubview(row)
       return row
     }
-    chosenIndex = query.isEmpty ? 0 : (keep ?? 0)
-    choose(chosenIndex)
+    choose(title.flatMap(titles.firstIndex(of:)) ?? 0)
     content.needsLayout = true
   }
 
@@ -234,7 +263,7 @@ private final class FlippedRowsView: NSView {
   }
 }
 
-private final class FileMentionRowView: NSView {
+private final class ComposerSuggestionRowView: NSView {
   var onHover: (() -> Void)?
   var onClick: (() -> Void)?
   var isChosen = false {
@@ -250,29 +279,30 @@ private final class FileMentionRowView: NSView {
   private let place = NSTextField(labelWithString: "")
   private var hoverArea: NSTrackingArea?
 
-  init(_ candidate: FileMention.Candidate) {
+  private let detailLeads: Bool
+
+  init(_ suggestion: ComposerSuggestion) {
+    detailLeads = suggestion.detailLeads
     super.init(frame: .zero)
     wantsLayer = true
     let font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
-    icon.image = (candidate.isDirectory ? BolttyIcon.folder : BolttyIcon.doc)
-      .image(size: AgentPaletteMetrics.mentionIconSide)
+    icon.image = suggestion.icon.image(size: AgentPaletteMetrics.mentionIconSide)
     icon.contentTintColor = PaletteInk.secondary
-    name.stringValue = candidate.url.lastPathComponent
+    name.stringValue = suggestion.title
     name.font = font
     name.textColor = PaletteInk.primary
     name.lineBreakMode = .byTruncatingMiddle
     name.isSelectable = false
-    let parent = (candidate.relativePath as NSString).deletingLastPathComponent
-    place.stringValue = parent.hasPrefix("/") ? (parent as NSString).abbreviatingWithTildeInPath : parent
+    place.stringValue = suggestion.detail
     place.font = font
     place.textColor = PaletteInk.secondary
-    place.lineBreakMode = .byTruncatingHead
+    place.lineBreakMode = suggestion.detailLeads ? .byTruncatingTail : .byTruncatingHead
     place.isSelectable = false
-    place.alignment = .right
+    place.alignment = suggestion.detailLeads ? .left : .right
     for view in [icon, name, place] as [NSView] { addSubview(view) }
     setAccessibilityElement(true)
     setAccessibilityRole(.row)
-    setAccessibilityLabel(candidate.relativePath)
+    setAccessibilityLabel([suggestion.title, suggestion.detail].filter { !$0.isEmpty }.joined(separator: ", "))
   }
 
   @available(*, unavailable)
@@ -295,10 +325,16 @@ private final class FileMentionRowView: NSView {
     let textY = ((bounds.height - textHeight) / 2).rounded()
     let nameX = icon.frame.maxX + AgentPaletteMetrics.mentionIconGap
     let available = bounds.width - nameX - padding
-    // The name has the row; the folder only what is left, giving way first.
+    // The title has the row; the detail only what is left, giving way first.
     let gap = AgentPaletteMetrics.mentionPlaceGap
-    let placeWidth = place.stringValue.isEmpty ? 0
-      : min(Self.width(of: place), max(0, available - Self.width(of: name) - gap))
+    let room = max(0, available - Self.width(of: name) - gap)
+    if detailLeads {
+      let nameWidth = min(Self.width(of: name), available)
+      name.frame = NSRect(x: nameX, y: textY, width: nameWidth, height: textHeight)
+      place.frame = NSRect(x: name.frame.maxX + gap, y: textY, width: room, height: textHeight)
+      return
+    }
+    let placeWidth = place.stringValue.isEmpty ? 0 : min(Self.width(of: place), room)
     let nameWidth = placeWidth > 0 ? available - placeWidth - gap : available
     name.frame = NSRect(x: nameX, y: textY, width: nameWidth, height: textHeight)
     place.frame = NSRect(x: bounds.width - padding - placeWidth, y: textY, width: placeWidth,

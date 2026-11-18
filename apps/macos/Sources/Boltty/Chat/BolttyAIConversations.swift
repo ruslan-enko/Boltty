@@ -36,6 +36,9 @@ protocol BolttyAIConversations: AnyObject {
 
   func plannedProviderID() -> String?
 
+  /// The agent's skills and commands for `/` in this folder; none where it lists none.
+  func commands(providerID: String, folder: String) async -> [AgentCommand]
+
   func recordSentFiles(_ files: [SentFile], in id: UUID)
 
   func sendFollowUp(_ prompt: String, pictures: [ConversationAttachment], to id: UUID) -> Bool
@@ -96,6 +99,7 @@ extension BolttyAIConversations {
   func canDeleteChat(_ id: UUID) -> Bool { false }
   func deleteChat(id: UUID) async {}
   func usage(providerID: String) -> AgentUsage? { nil }
+  func commands(providerID: String, folder: String) async -> [AgentCommand] { [] }
   func contextUsage(for id: UUID) -> AgentContextUsage? { nil }
   func canCompact(_ id: UUID) -> Bool { false }
   func refreshContext(for id: UUID) {}
@@ -241,6 +245,13 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
   }
 
   func plannedProviderID() -> String? { automaticProviderID() }
+
+  func commands(providerID: String, folder: String) async -> [AgentCommand] {
+    guard engine.registry.capabilities(forProviderID: providerID).contains(.commands),
+          let client = engine.registry.client(forProviderID: providerID)
+    else { return [] }
+    return await client.commands(folder: folder)
+  }
 
   func usage(providerID: String) -> AgentUsage? { engine.usageByProvider[providerID] }
 
