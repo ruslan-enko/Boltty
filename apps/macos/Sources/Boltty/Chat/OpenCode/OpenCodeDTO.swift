@@ -51,6 +51,10 @@ enum OpenCodeDTO {
     var agent: String?
   }
 
+  struct SwitchAgentRequest: Encodable {
+    var agent: String
+  }
+
   struct CreateSessionRequest: Encodable {
     var id: String?
     var location: LocationRef

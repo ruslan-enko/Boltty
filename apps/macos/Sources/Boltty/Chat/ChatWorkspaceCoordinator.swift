@@ -309,9 +309,10 @@ final class ChatWorkspaceCoordinator {
   ) -> Conversation {
     let provider = providerID ?? defaultProviderID()
     let start = newChatSettings(for: provider)
+    let named = AgentCommand.leading(in: prompt).map { $0.name == AgentCommand.plan.name ? $0.rest : prompt } ?? prompt
     let conversation = store.createConversation(
       id: id,
-      title: ConversationEngine.title(from: prompt),
+      title: ConversationEngine.title(from: named),
       workingDirectory: workingDirectory ?? store.defaultWorkingDirectory(),
       providerID: provider,
       model: start.model,
@@ -426,8 +427,10 @@ final class ChatWorkspaceCoordinator {
   // MARK: - Sending
 
   private func sendPanelPrompt(
-    _ prompt: String, pictures: [ConversationAttachment] = [], to id: UUID
+    _ request: String, pictures: [ConversationAttachment] = [], to id: UUID
   ) {
+    let prompt = takePlanRequest(request, in: id)
+    guard !prompt.isEmpty || !pictures.isEmpty else { return }
     pendingPanelPrompts[id] = (prompt, store.transcript(id: id).messages.count, Date())
     failedPanelPrompts[id] = nil
     store.setDraft(prompt, for: id)
@@ -451,6 +454,21 @@ final class ChatWorkspaceCoordinator {
         Task { @MainActor [weak self] in self?.handOverIfDue(id) }
       }
     }
+  }
+
+  /// `/plan` opening a request is Boltty's, not the agent's: the chat plans
+  /// first, and the words go without it.
+  private func takePlanRequest(_ prompt: String, in id: UUID) -> String {
+    guard let (name, rest) = AgentCommand.leading(in: prompt), name == AgentCommand.plan.name,
+          let conversation = store.conversation(id: id),
+          engine.registry.capabilities(forProviderID: conversation.providerID).contains(.planMode)
+    else { return prompt }
+    store.setPlanMode(true, for: id)
+    return rest
+  }
+
+  func setPlanMode(_ enabled: Bool, for id: UUID) {
+    engine.setPlanMode(enabled, for: id)
   }
 
   @discardableResult
@@ -528,6 +546,7 @@ final class ChatWorkspaceCoordinator {
         status = "Done"
         kind = .finished
         automaticSends[conversation.id] = nil
+        engine.askAboutReplyPlan(in: conversation.id)
         if !conversation.isAskBoltty { onTurnFinished?(conversation) }
       case .waiting:
         automaticSends[conversation.id] = nil

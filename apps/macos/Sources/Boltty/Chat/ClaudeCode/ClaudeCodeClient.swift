@@ -8,7 +8,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
-    .permissionMessage, .steering, .folderMoving, .commands
+    .permissionMessage, .steering, .folderMoving, .commands, .planMode
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
@@ -117,7 +117,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       return
     }
     _ = try await live.sendControl(
-      ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: options.autoApprove)],
+      ["subtype": "set_permission_mode", "mode": Self.permissionMode(for: options)],
       timeout: 5
     )
     if let model = options.model, model.modelID != live.model?.modelID {
@@ -127,10 +127,12 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    guard let session = lock.withLock({ () -> LiveSession? in
+    guard let (session, options) = lock.withLock({ () -> (LiveSession, AgentSessionOptions?)? in
       wantedOptions[sessionID]?.autoApprove = enabled
-      return sessions[sessionID]
+      return sessions[sessionID].map { ($0, wantedOptions[sessionID]) }
     }) else { return }
+    // A chat still planning stays in plan mode; Auto takes over once it is approved.
+    guard options?.planMode != true else { return }
     _ = try await session.sendControl(
       ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: enabled)],
       timeout: 5
@@ -149,7 +151,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "--include-partial-messages",
       // Without this the CLI never asks for permission.
       "--permission-prompt-tool", "stdio",
-      "--permission-mode", permissionMode(autoApprove: options.autoApprove)
+      "--permission-mode", permissionMode(for: options)
     ]
     // `--tools` and `--allowedTools` take several values: a flag must follow
     // them, never the prompt.
@@ -164,6 +166,10 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   static func permissionMode(autoApprove: Bool) -> String {
     autoApprove ? "auto" : "default"
+  }
+
+  static func permissionMode(for options: AgentSessionOptions) -> String {
+    options.planMode ? "plan" : permissionMode(autoApprove: options.autoApprove)
   }
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
@@ -336,6 +342,57 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       throw AgentClientError.transport("That reply could not be encoded.")
     }
     try session.process.writeLine(line)
+  }
+
+  /// In plan mode the CLI asks to leave it through this tool, its plan in
+  /// `input.plan` (2.1.325).
+  static let planTool = "ExitPlanMode"
+
+  /// Approved, the turn goes on in the chat's own mode: allowing the tool with a
+  /// `setMode` switches the session out of plan mode before it acts. Asked for
+  /// changes, the CLI plans again. Quit, the turn stops.
+  func answerPlan(
+    requestID: String,
+    sessionID: String,
+    decision: PlanDecision,
+    feedback: String?
+  ) async throws {
+    guard let session = lock.withLock({ sessions[sessionID] }),
+          let pending = session.takePermission(requestID)
+    else { throw AgentClientError.requestGone }
+    let autoApprove = lock.withLock { wantedOptions[sessionID]?.autoApprove ?? false }
+    lock.withLock { wantedOptions[sessionID]?.planMode = false }
+    let response: [String: Any]
+    switch decision {
+    case .approved:
+      response = [
+        "behavior": "allow",
+        "updatedInput": pending.input,
+        "updatedPermissions": [[
+          "type": "setMode", "mode": Self.permissionMode(autoApprove: autoApprove), "destination": "session",
+        ]],
+      ]
+    case .cancelled:
+      let words = feedback?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      response = [
+        "behavior": "deny",
+        "message": words.isEmpty
+          ? "The user wants changes to this plan. Ask what to change."
+          : "The user wants changes to this plan. In their words:\n\(words)",
+      ]
+      lock.withLock { wantedOptions[sessionID]?.planMode = true }
+    case .abandoned:
+      response = ["behavior": "deny", "message": "The user does not want this plan. Stop."]
+    }
+    let frame: [String: Any] = [
+      "type": "control_response",
+      "response": ["subtype": "success", "request_id": pending.controlRequestID, "response": response],
+    ]
+    guard let line = JSONObject.encode(frame) else {
+      throw AgentClientError.transport("That reply could not be encoded.")
+    }
+    try session.process.writeLine(line)
+    if decision == .abandoned { try await stop(sessionID: sessionID) }
   }
 
   /// What "Always Allow" adds: the CLI's own suggestions, kept to this session
@@ -737,6 +794,17 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     )
     session.rememberPermission(pending)
     let conversationID = lock.withLock { conversationResolver }?(session.id) ?? UUID()
+    if toolName == Self.planTool {
+      session.executionState = .waiting
+      let markdown = pending.input["plan"] as? String ?? ""
+      emit(.interactionAsked(PendingInteraction(
+        id: requestID,
+        conversationID: conversationID,
+        remoteSessionID: session.id,
+        kind: .plan(PlanPrompt(markdown: markdown, toolCallID: request.string("tool_use_id")))
+      )))
+      return
+    }
     let prompt = Self.prompt(for: pending, toolCallID: request.string("tool_use_id"))
     session.executionState = .waiting
     emit(.interactionAsked(PendingInteraction(

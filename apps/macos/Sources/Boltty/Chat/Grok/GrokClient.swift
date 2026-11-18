@@ -22,7 +22,7 @@ struct ACPAgent: Sendable {
     capabilities: [
       .modelSelection, .modelSwitching, .permissions, .attachments, .images, .interrupt, .resumeSession,
       .workingDirectory, .reasoningEffort, .autoApproval, .usageReporting,
-      .rereadableTranscript, .usageLimits, .questions, .commands,
+      .rereadableTranscript, .usageLimits, .questions, .commands, .planMode,
     ],
     history: { try GrokChatHistoryTranscript.transcript(sessionID: $0) },
     recordedName: { GrokChatHistoryTranscript.recordedName(sessionID: $0) },
@@ -81,6 +81,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     var textSegment = 0
     var planToolCalls: Set<String> = []
     var autoApprove = false
+    var planning = false
 
     init(id: String, directory: String, model: ModelSelection?) {
       self.id = id
@@ -193,6 +194,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       wantedOptions[sessionID] = options
     }
     await applyLeniently(model: options.model, effort: options.effort, to: sessionID)
+    if options.planMode { try? await set(planning: true, on: sessionID) }
 
     return RemoteSessionInfo(
       id: sessionID,
@@ -213,6 +215,15 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     ])
   }
 
+  /// Plan mode is per session (`session/set_mode`, 1.0.88), unlike the
+  /// permission mode, which is the process's.
+  private func set(planning: Bool, on sessionID: String) async throws {
+    _ = try await request("session/set_mode", params: [
+      "sessionId": sessionID, "modeId": planning ? "plan" : "default"
+    ])
+    lock.withLock { sessions[sessionID]?.planning = planning }
+  }
+
   private func set(effort: String, on sessionID: String) async throws {
     _ = try await request("session/set_config_option", params: [
       "sessionId": sessionID, "configId": "reasoning_effort", "value": effort
@@ -223,13 +234,16 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     lock.withLock { wantedOptions[id] = options }
     _ = try await connect()
     try await ensureLoaded(id)
-    let current = lock.withLock { () -> (model: ModelSelection?, effort: String?) in
+    let current = lock.withLock { () -> (model: ModelSelection?, effort: String?, planning: Bool) in
       let session = sessions[id]
       defer {
         session?.directory = options.directory
         session?.autoApprove = options.autoApprove
       }
-      return (session?.model, session?.effort)
+      return (session?.model, session?.effort, session?.planning ?? false)
+    }
+    if options.planMode != current.planning {
+      try await set(planning: options.planMode, on: id)
     }
     if let model = options.model, model.modelID != current.model?.modelID {
       try await set(model: model, on: id)
@@ -464,6 +478,10 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
     try deliver(to: waiting.rpcID, result: Self.planResult(decision, feedback: feedback))
     lock.withLock { _ = plans.removeValue(forKey: requestID) }
+    // Approved, what follows in this turn is the work: out of plan mode at once.
+    if decision == .approved, lock.withLock({ sessions[sessionID]?.planning ?? false }) {
+      try? await set(planning: false, on: sessionID)
+    }
     emit(.interactionResolved(
       sessionID: sessionID,
       requestID: requestID,
@@ -610,7 +628,8 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   private func handleRequest(_ method: String, id: Int, params: JSONObject) {
-    if let planMethod = agent.planMethod, method == planMethod {
+    // Grok 1.0.88 sends its extension methods with a leading `_` (`_x.ai/exit_plan_mode`).
+    if let planMethod = agent.planMethod, method == planMethod || method == "_" + planMethod {
       return handlePlan(id: id, params: params)
     }
     if agent.askMethods.contains(method) {
@@ -846,6 +865,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     guard let sessionID = params.string("sessionId"),
           let update = params.object("update") else { return }
 
+    if update.string("sessionUpdate") == "current_mode_update" {
+      let planning = update.string("currentModeId") == "plan"
+      lock.withLock { sessions[sessionID]?.planning = planning }
+      return
+    }
     if update.string("sessionUpdate") == "available_commands_update" {
       rememberCommands(update.array("availableCommands"), of: sessionID)
       return

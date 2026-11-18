@@ -106,6 +106,19 @@ that differ (always, the first time after a relaunch) and
 `AgentClient.prepareSession` closes the gap, never during a turn. A refusal keeps the
 words in the composer and says why. Declared as `.modelSwitching`.
 
+**Plan first.** `Conversation.planMode` asks that the chat's next turn plan and
+change nothing until the plan is approved; the engine applies it with the rest
+(`AgentSessionOptions.planMode`, `.planMode`). Turned on by `/plan` opening a
+request (Boltty's own first row of the `/` list, taken out of the words in
+`ChatWorkspaceCoordinator.takePlanRequest`) or Plan First in the model chip's
+menu; never in a read-only chat. The plan is one card (`PendingInteraction.Kind.plan`:
+Approve / Request Changes / Quit). Where the CLI waits on it (Claude Code, Grok)
+the card holds the turn; where the plan ends the turn (Codex's plan item, OpenCode's
+reply, `.planInReply`) it holds nothing up (`PlanPrompt.endedTurn`), Approve sends
+"Implement the plan." and Request Changes the words, as the next message, and
+another message lets it go. Approve and Quit turn plan mode off. Antigravity has
+none yet: print mode refused every command before a plan (1.5.11).
+
 **Who takes a new chat.** Nobody chosen with ⇧Tab, a new chat goes to the ready,
 enabled agent with the most of its plan left (`AgentRouting.ranked`,
 `boltty.agentRouting` = `automatic`, the default; `fixed` is always
@@ -279,6 +292,11 @@ implementation first. Versions say what was measured.
   `<command-name>` and stay hidden (`InjectedText.claudeCommand`).
 - Read-only chats run with `--tools Read,Glob,Grep` (variadic flag: another
   flag must follow it).
+- Plan mode is `--permission-mode plan` / `set_permission_mode plan`. The plan
+  comes as `can_use_tool` for `ExitPlanMode`, the markdown in `input.plan`
+  (2.1.325). Allowed with `updatedPermissions: [{type: setMode, mode, destination:
+  session}]`, the same turn goes on in that mode (a `system status` frame says
+  so); denied with words, it plans again. Re-read, the tool's plan is the turn's text.
 - `set_model` over the control channel takes effect on the next turn and keeps the
   process, so "Always Allow" rules survive it. `--resume` without `--model` goes on
   with the last model used; with it, on that one (2.1.319). Effort and the read-only
@@ -311,6 +329,13 @@ implementation first. Versions say what was measured.
   `## My request for Codex:`; `CodexRolloutTranscript.request(in:)` unwraps it
   *after* dropping scaffolding (the reviewer's wrapper carries the heading too).
 - Read-only chats use `sandbox: read-only`.
+- Plan mode is experimental (0.169): `initialize` opts in with
+  `capabilities.experimentalApi`, and `turn/start` takes `collaborationMode {mode:
+  plan|default, settings: {model, reasoning_effort, developer_instructions: null}}`,
+  which needs a model and holds for later turns, so the turn after a planning one
+  says `default`. Plan mode is read-only; asked to act, it said so and planned
+  nothing until asked for a plan. The plan is an item of type `plan` and the turn
+  ends; the rollout files it as an assistant message in `<proposed_plan>`.
 - Skills are `skills/list {cwds}` (name, path, `shortDescription`; one name can
   come twice, from two places: the first stands). A request opening with
   `/name` goes as a `skill {name, path}` input before the words, as Codex's own
@@ -360,6 +385,10 @@ implementation first. Versions say what was measured.
   `session/cancel`, and the words as the next message.
 - Permission mode is process-wide; Auto Mode is Boltty answering `edit` asks, and
   `execute` asks `AutoModeCommands` passes, "allow once".
+- Extension methods arrive with a leading `_` (`_x.ai/exit_plan_mode`, 1.0.88);
+  both spellings are taken.
+- Plan mode is per session: `session/set_mode {modeId: plan|default}`, answered by
+  `current_mode_update` (the permission mode stays the process's).
 - Questions are `x.ai/ask_user_question` (from t3code's adapter, not yet seen
   live); plans are `x.ai/exit_plan_mode` with `planContent`, answered
   `approved` / `cancelled` (+ `feedback`) / `abandoned`. A plan is
@@ -492,6 +521,9 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   reaches what Boltty was allowed. Both share one database; every
   `/api/session/<id>/…` request goes to the session's server, placed by the
   folder on its record, and the second server's events come on a second stream.
+- Plan mode is the `plan` agent (read-only), `build` the default:
+  `POST /api/session/{id}/agent {agent}` (2.3.2). Its plan is its reply; the
+  record gains `agent-switched` and `synthetic` entries.
 - Skills are `GET /api/skill?location[directory]=…` (2.3.2); a session made with
   no `location` is in home and cannot use a folder's skill ("Skill not found").
   A request opening with `/id` goes as `skills: [{id}]` beside the rest of the

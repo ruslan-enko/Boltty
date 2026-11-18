@@ -40,6 +40,12 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let commands = AgentCapabilities(rawValue: 1 << 22)
 
+  static let planMode = AgentCapabilities(rawValue: 1 << 23)
+
+  /// The plan is the turn's reply (OpenCode's `plan` agent): the engine puts
+  /// the card under it once the turn ends.
+  static let planInReply = AgentCapabilities(rawValue: 1 << 24)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }

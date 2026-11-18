@@ -37,6 +37,8 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var reasoningEffort: String?
   var autoApprove: Bool
   var readOnly: Bool = false
+  /// The next turn plans and changes nothing until the plan is approved.
+  var planMode: Bool = false
   var isAskBoltty: Bool = false
   var createdAt: Date
   var updatedAt: Date
@@ -82,7 +84,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey {
     case id, providerID, remoteSessionID, title, workingDirectory, model
     case reasoningEffort, autoApprove, readOnly, createdAt, updatedAt, draft, draftAttachments
-    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName
+    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode
     /// Written as "isTalk" before Talk was named Ask Boltty; chats on disk carry it.
     case isAskBoltty = "isTalk"
   }
@@ -100,6 +102,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     reasoningEffort = try container.decodeIfPresent(String.self, forKey: .reasoningEffort)
     autoApprove = try container.decodeIfPresent(Bool.self, forKey: .autoApprove) ?? false
     readOnly = try container.decodeIfPresent(Bool.self, forKey: .readOnly) ?? false
+    planMode = try container.decodeIfPresent(Bool.self, forKey: .planMode) ?? false
     isAskBoltty = try container.decodeIfPresent(Bool.self, forKey: .isAskBoltty) ?? false
     createdAt = try container.decode(Date.self, forKey: .createdAt)
     updatedAt = try container.decode(Date.self, forKey: .updatedAt)

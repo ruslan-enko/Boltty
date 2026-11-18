@@ -7,7 +7,7 @@ enum CodexMapper {
     case "contextCompaction":
       return .activity(AgentCompaction.activity(id: id))
 
-    case "agentMessage":
+    case "agentMessage", "plan":
       return .text(TextPart(id: id, kind: .text, text: item.string("text") ?? ""))
 
     case "reasoning":

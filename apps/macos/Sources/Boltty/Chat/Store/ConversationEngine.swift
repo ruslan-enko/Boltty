@@ -860,8 +860,34 @@ final class ConversationEngine: ObservableObject {
       model: conversation.model,
       effort: conversation.reasoningEffort,
       autoApprove: conversation.autoApprove,
-      readOnly: conversation.readOnly
+      readOnly: conversation.readOnly,
+      planMode: conversation.planMode && !conversation.readOnly
     )
+  }
+
+  func setPlanMode(_ enabled: Bool, for conversationID: UUID) {
+    store.setPlanMode(enabled, for: conversationID)
+  }
+
+  /// A planning turn that ended with a reply, on an agent whose plan is its
+  /// reply: the card goes under it, and its answer goes as the next message.
+  func askAboutReplyPlan(in conversationID: UUID) {
+    guard let conversation = store.conversation(id: conversationID), conversation.planMode,
+          let remote = conversation.remoteSessionID,
+          registry.capabilities(forProviderID: conversation.providerID).contains(.planInReply)
+    else { return }
+    let transcript = store.transcript(id: conversationID)
+    guard let reply = transcript.messages.last, reply.role == .agent,
+          !reply.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else { return }
+    let id = "plan-\(reply.id)"
+    guard !transcript.interactions.contains(where: { $0.id == id }) else { return }
+    store.recordInteraction(PendingInteraction(
+      id: id,
+      conversationID: conversationID,
+      remoteSessionID: remote,
+      kind: .plan(PlanPrompt(markdown: reply.plainText, toolCallID: nil, endedTurn: true))
+    ))
   }
 
   // MARK: - Stopping
@@ -1018,15 +1044,31 @@ final class ConversationEngine: ObservableObject {
           store.beginSubmitting(interactionID: planID, in: conversationID)
     else { return false }
     let words = feedback?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let plan = store.transcript(id: conversationID).interactions
+      .first { $0.id == planID }
+      .flatMap { interaction -> PlanPrompt? in
+        if case let .plan(plan) = interaction.kind { return plan }
+        return nil
+      }
     do {
-      try await client.answerPlan(
-        requestID: planID,
-        sessionID: remote,
-        decision: decision,
-        feedback: decision == .cancelled && !words.isEmpty ? words : nil
-      )
+      if plan?.isAnsweredByMessage != true {
+        try await client.answerPlan(
+          requestID: planID,
+          sessionID: remote,
+          decision: decision,
+          feedback: decision == .cancelled && !words.isEmpty ? words : nil
+        )
+      }
       store.resolveInteraction(id: planID, in: conversationID, with: .plan(decision))
       notices[conversationID] = nil
+      if decision != .cancelled { store.setPlanMode(false, for: conversationID) }
+      if plan?.isAnsweredByMessage == true {
+        switch decision {
+        case .approved: await send(text: PlanPrompt.approval, in: conversationID)
+        case .cancelled where !words.isEmpty: await send(text: words, in: conversationID)
+        default: break
+        }
+      }
       return true
     } catch AgentClientError.requestGone {
       await putAway(interactionID: planID, in: conversationID)

@@ -8,7 +8,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
-    .folderMoving, .commands
+    .folderMoving, .commands, .planMode, .planInReply
   ]
 
   private let server: OpenCodeServer
@@ -210,6 +210,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         if options.autoApprove, !options.readOnly { autoApproved.insert(response.data.id) }
       }
       if own { startOwnStreamIfNeeded() }
+      if options.planMode { try? await switchAgent(of: response.data.id, to: Self.planAgent) }
       return info(from: response.data, fallbackDirectory: directory)
     } catch AgentClientError.indeterminate {
       throw AgentClientError.indeterminate("session creation")
@@ -228,6 +229,10 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await get("/api/session/\(id)")
     if let recorded = session.data.location?.directory, recorded != options.directory {
       try await move(id, to: options.directory)
+    }
+    let agent = options.planMode ? Self.planAgent : Self.buildAgent
+    if (session.data.agent ?? Self.buildAgent) != agent {
+      try await switchAgent(of: id, to: agent)
     }
     guard let model = options.model else { return }
     let current = session.data.model
@@ -427,6 +432,23 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     )
     if let skill { body.skills = [.init(id: skill)] }
     try await postIgnoringResponse("/api/session/\(sessionID)/prompt", body: body)
+  }
+
+  // MARK: - Plans
+
+  /// Plan mode is OpenCode's read-only `plan` agent (2.3.2); `build` is the
+  /// default. Its plan is its reply, with no ask to approve it.
+  static let planAgent = "plan"
+  static let buildAgent = "build"
+
+  private func switchAgent(of id: String, to agent: String) async throws {
+    do {
+      try await postIgnoringResponse("/api/session/\(id)/agent", body: OpenCodeDTO.SwitchAgentRequest(agent: agent))
+    } catch AgentClientError.sessionNotFound {
+      log.notice("this OpenCode cannot switch a session's agent")
+    } catch let AgentClientError.indeterminate(detail) {
+      throw AgentClientError.transport(detail)
+    }
   }
 
   // MARK: - Skills

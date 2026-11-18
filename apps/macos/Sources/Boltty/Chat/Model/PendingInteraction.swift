@@ -131,6 +131,14 @@ enum PermissionDecision: String, Codable, Equatable, Sendable {
 struct PlanPrompt: Codable, Equatable, Sendable {
   var markdown: String
   var toolCallID: String?
+  /// The turn ended with the plan (Codex, OpenCode): nothing waits on it, and
+  /// its answer goes as the chat's next message. Optional so plans stored
+  /// before it still read.
+  var endedTurn: Bool?
+
+  var isAnsweredByMessage: Bool { endedTurn == true }
+
+  static let approval = "Implement the plan."
 
   var title: String {
     for line in markdown.split(separator: "\n", omittingEmptySubsequences: true) {

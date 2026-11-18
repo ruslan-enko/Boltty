@@ -121,19 +121,22 @@ struct AgentSessionOptions: Equatable, Sendable {
   var effort: String?
   var autoApprove: Bool
   var readOnly: Bool
+  var planMode: Bool
 
   init(
     directory: String,
     model: ModelSelection? = nil,
     effort: String? = nil,
     autoApprove: Bool = false,
-    readOnly: Bool = false
+    readOnly: Bool = false,
+    planMode: Bool = false
   ) {
     self.directory = directory
     self.model = model
     self.effort = effort
     self.autoApprove = autoApprove
     self.readOnly = readOnly
+    self.planMode = planMode
   }
 }
 

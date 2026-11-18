@@ -8,7 +8,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
-    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands
+    .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands, .planMode
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "codex-client")
@@ -55,6 +55,11 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     var model: ModelSelection?
     var effort: String?
     var autoApprove = false
+    /// What the chat asks for, and the collaboration mode the thread last ran in.
+    var planning = false
+    var lastMode: String?
+    /// The model the server chose when the chat named none: a plan turn must name one.
+    var serverModel: String?
     var currentTurnID: String?
     /// The last turn the server said is over, which can come before the answer to
     /// its `turn/start` is read.
@@ -154,6 +159,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         autoApprove: options.autoApprove
       )
       threads[threadID]?.loadedOn = server
+      threads[threadID]?.planning = options.planMode
+      threads[threadID]?.serverModel = response.string("model")
     }
     return RemoteSessionInfo(
       id: threadID,
@@ -179,6 +186,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         threads[id]?.effort = nil
       }
       threads[id]?.autoApprove = options.autoApprove
+      threads[id]?.planning = options.planMode
     }
   }
 
@@ -329,6 +337,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         )
       }
       threads[id]?.loadedOn = server
+      threads[id]?.serverModel = resumed.string("model")
+      threads[id]?.lastMode = resumed.object("collaborationMode")?.string("mode")
     }
     return resumed
   }
@@ -370,6 +380,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       if let model = thread?.model { params["model"] = model.modelID }
       if let effort = thread?.effort, !effort.isEmpty { params["effort"] = effort }
       params["approvalPolicy"] = Self.approvalPolicy(autoApprove: thread?.autoApprove ?? false)
+      if let thread, let mode = Self.collaborationMode(for: thread) {
+        params["collaborationMode"] = mode
+        thread.lastMode = mode["mode"] as? String
+      }
     }
     let response: JSONObject
     do {
@@ -404,6 +418,20 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     else { return Self.turnInput(text: text, attachments: attachments) }
     return [["type": "skill", "name": skill.name, "path": skill.path]]
       + Self.turnInput(text: rest, attachments: attachments)
+  }
+
+  // MARK: - Plans
+
+  /// A plan ends its turn; nothing waits on it. The card's answer goes as the
+  /// chat's next message (`ConversationEngine.reply(planID:…)`).
+  private func askAboutPlan(_ markdown: String, id: String, in threadID: String) {
+    guard let conversationID = lock.withLock({ conversationResolver })?(threadID) else { return }
+    emit(.interactionAsked(PendingInteraction(
+      id: id,
+      conversationID: conversationID,
+      remoteSessionID: threadID,
+      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: id, endedTurn: true))
+    )))
   }
 
   // MARK: - Skills
@@ -441,6 +469,21 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       let summary = skill.string("shortDescription") ?? skill.string("description") ?? ""
       return Skill(name: name, path: path, summary: summary)
     }
+  }
+
+  /// Plan mode is a turn's (`collaborationMode`, 0.169, experimental), and it
+  /// holds for the turns after: so a turn after a planning one says `default`.
+  /// It must name a model.
+  private static func collaborationMode(for thread: ThreadState) -> [String: Any]? {
+    let wanted = thread.planning ? "plan" : "default"
+    guard thread.planning || thread.lastMode == "plan",
+          let model = thread.model?.modelID ?? thread.serverModel
+    else { return nil }
+    let effort: Any = thread.effort.flatMap { $0.isEmpty ? nil : $0 } ?? NSNull()
+    return [
+      "mode": wanted,
+      "settings": ["model": model, "reasoning_effort": effort, "developer_instructions": NSNull()],
+    ]
   }
 
   func messageExists(id: String, in sessionID: String) async throws -> Bool { false }
@@ -568,7 +611,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           "initialize",
           params: [
             "clientInfo": ["name": "Boltty", "title": "Boltty", "version": Self.bolttyVersion],
-            "capabilities": ["optOutNotificationMethods": Self.unreadNotifications],
+            // Plan mode (`collaborationMode`) is experimental in 0.169.
+            "capabilities": [
+              "optOutNotificationMethods": Self.unreadNotifications, "experimentalApi": true,
+            ],
           ],
           on: started
         )
@@ -953,6 +999,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       emit(.partUpdated(
         sessionID: threadID, messageID: home(forPart: part.id, threadID: threadID, turnID: turnID),
         part: part))
+      if method == "item/completed", item.string("type") == "plan", let id = item.string("id") {
+        askAboutPlan(item.string("text") ?? "", id: id, in: threadID)
+      }
 
     case "thread/status/changed":
       guard let threadID = params.string("threadId"),

@@ -8,6 +8,11 @@ struct AgentCommand: Sendable, Equatable, Hashable {
   let argumentHint: String?
 
   var invocation: String { "/" + name }
+
+  /// Boltty's own: the chat plans first and changes nothing until the plan is
+  /// approved. Offered first where the agent declares `.planMode`.
+  static let plan = AgentCommand(
+    name: "plan", summary: "Plan first, change nothing until you approve", argumentHint: nil)
 }
 
 extension AgentCommand {

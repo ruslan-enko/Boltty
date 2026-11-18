@@ -1158,7 +1158,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       content,
       chooseModel: { [weak self] option in self?.conversations?.chooseModel(option, for: id) },
       chooseEffort: { [weak self] effort in self?.conversations?.chooseEffort(effort, for: id) },
-      setAutoMode: { [weak self] enabled in self?.conversations?.setAutoApprove(enabled, for: id) }
+      setAutoMode: { [weak self] enabled in self?.conversations?.setAutoApprove(enabled, for: id) },
+      setPlanMode: { [weak self] enabled in self?.conversations?.setPlanMode(enabled, for: id) }
     )
   }
 

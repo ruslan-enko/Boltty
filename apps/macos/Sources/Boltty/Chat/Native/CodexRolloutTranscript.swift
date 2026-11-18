@@ -58,6 +58,9 @@ enum CodexRolloutTranscript {
           return true
         }
         if role == "user" { text = Self.request(in: text) }
+        if role == "assistant", let plan = InjectedText.inside(text, tag: "proposed_plan") {
+          text = plan
+        }
         let id = payload["id"] as? String ?? UUID().uuidString
         messages.append(
           ConversationMessage(

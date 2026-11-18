@@ -7,7 +7,8 @@ enum ModelMenu {
     _ content: BolttyAIModelMenu,
     chooseModel: @escaping (AgentModelOption) -> Void,
     chooseEffort: @escaping (String?) -> Void,
-    setAutoMode: @escaping (Bool) -> Void
+    setAutoMode: @escaping (Bool) -> Void,
+    setPlanMode: @escaping (Bool) -> Void = { _ in }
   ) -> NSMenu {
     let menu = NSMenu(title: "Model")
     menu.autoenablesItems = false
@@ -33,8 +34,16 @@ enum ModelMenu {
       }
     }
 
-    if let on = content.autoMode {
+    if let on = content.planMode {
       if menu.numberOfItems > 0 { menu.addItem(.separator()) }
+      let plan = item(title: "Plan First", isOn: on) { setPlanMode(!on) }
+      plan.subtitle = "Changes nothing until you approve its plan"
+      plan.setAccessibilityIdentifier("boltty.ask.planMode")
+      menu.addItem(plan)
+    }
+
+    if let on = content.autoMode {
+      if menu.numberOfItems > 0, content.planMode == nil { menu.addItem(.separator()) }
       let auto = item(title: "Auto Mode", isOn: on) { setAutoMode(!on) }
       let reach = AgentsSettingsPage.autoModeReach(for: content.agent)
       auto.subtitle = reach.prefix(1).uppercased() + reach.dropFirst()

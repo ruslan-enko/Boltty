@@ -296,6 +296,11 @@ enum ClaudeCodeTranscript {
             else { continue }
             let input = block.object("input") ?? JSONObject([:])
             toolHome[toolID] = id
+            // The plan is what the turn says, not a tool's detail.
+            if name == ClaudeCodeClient.planTool, let plan = input.string("plan"), !plan.isEmpty {
+              built.upsert(.text(TextPart(id: "\(toolID)-plan", kind: .text, text: plan)))
+              continue
+            }
             built.upsert(.activity(AgentActivity(
               id: toolID,
               name: name,

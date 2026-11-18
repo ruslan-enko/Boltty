@@ -39,6 +39,8 @@ protocol BolttyAIConversations: AnyObject {
   /// The agent's skills and commands for `/` in this folder; none where it lists none.
   func commands(providerID: String, folder: String) async -> [AgentCommand]
 
+  func setPlanMode(_ enabled: Bool, for id: UUID)
+
   func recordSentFiles(_ files: [SentFile], in id: UUID)
 
   func sendFollowUp(_ prompt: String, pictures: [ConversationAttachment], to id: UUID) -> Bool
@@ -100,6 +102,7 @@ extension BolttyAIConversations {
   func deleteChat(id: UUID) async {}
   func usage(providerID: String) -> AgentUsage? { nil }
   func commands(providerID: String, folder: String) async -> [AgentCommand] { [] }
+  func setPlanMode(_ enabled: Bool, for id: UUID) {}
   func contextUsage(for id: UUID) -> AgentContextUsage? { nil }
   func canCompact(_ id: UUID) -> Bool { false }
   func refreshContext(for id: UUID) {}
@@ -247,10 +250,13 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
   func plannedProviderID() -> String? { automaticProviderID() }
 
   func commands(providerID: String, folder: String) async -> [AgentCommand] {
-    guard engine.registry.capabilities(forProviderID: providerID).contains(.commands),
+    let capabilities = engine.registry.capabilities(forProviderID: providerID)
+    let own = capabilities.contains(.planMode) ? [AgentCommand.plan] : []
+    guard capabilities.contains(.commands),
           let client = engine.registry.client(forProviderID: providerID)
-    else { return [] }
-    return await client.commands(folder: folder)
+    else { return own }
+    let listed = await client.commands(folder: folder).filter { $0.name != AgentCommand.plan.name }
+    return own + listed
   }
 
   func usage(providerID: String) -> AgentUsage? { engine.usageByProvider[providerID] }
@@ -301,7 +307,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       efforts: capabilities.contains(.modelSwitching) ? engine.effortOptions(for: id) : [],
       effort: conversation.reasoningEffort,
       canResetEffort: capabilities.contains(.effortReset),
-      autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil
+      autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil,
+      planMode: capabilities.contains(.planMode) && !conversation.readOnly ? conversation.planMode : nil
     )
   }
 

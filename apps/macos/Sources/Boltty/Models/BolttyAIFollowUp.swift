@@ -67,6 +67,7 @@ struct BolttyAIModelMenu: Equatable, Sendable {
   let effort: String?
   var canResetEffort = true
   let autoMode: Bool?
+  var planMode: Bool? = nil
 }
 
 struct BolttyAISessionPreview: Equatable, Sendable {

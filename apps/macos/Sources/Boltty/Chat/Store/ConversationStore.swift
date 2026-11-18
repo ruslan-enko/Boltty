@@ -233,6 +233,10 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.autoApprove = enabled }
   }
 
+  func setPlanMode(_ enabled: Bool, for id: UUID) {
+    update(id) { $0.planMode = enabled }
+  }
+
   func setReadOnly(_ readOnly: Bool, for id: UUID) {
     update(id) { $0.readOnly = readOnly }
   }
@@ -456,6 +460,12 @@ final class ConversationStore: ObservableObject {
       transcript.interactions.append(interaction)
     }
     transcripts[interaction.conversationID] = transcript
+    // A plan that ended its turn holds nothing up: the chat sends as usual.
+    if case let .plan(plan) = interaction.kind, plan.isAnsweredByMessage {
+      flagUnread(interaction.conversationID)
+      saveTranscriptNow(interaction.conversationID)
+      return
+    }
     setExecutionState(.waiting, for: interaction.conversationID)
     flagUnread(interaction.conversationID)
     saveTranscriptNow(interaction.conversationID)
@@ -540,6 +550,13 @@ final class ConversationStore: ObservableObject {
     var changed = false
     for index in transcript.interactions.indices {
       let asked = transcript.interactions[index]
+      // A plan that ended its turn is let go of as a late question is: the
+      // person went on with something else.
+      if case let .plan(plan) = asked.kind, plan.isAnsweredByMessage, asked.isOpen, !asked.isSubmitting {
+        transcript.interactions[index].resolution = .expired
+        changed = true
+        continue
+      }
       guard case .question = asked.kind, asked.isLate || (includingOpen && asked.isOpen) else { continue }
       transcript.interactions[index].resolution = .expired
       transcript.interactions[index].isSubmitting = false
