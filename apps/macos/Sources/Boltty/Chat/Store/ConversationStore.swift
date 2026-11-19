@@ -199,6 +199,36 @@ final class ConversationStore: ObservableObject {
     return cleared.count
   }
 
+  /// Chats untouched since `cutoff` go to the Trash together; one at work,
+  /// waiting on the person, or open in the panel stays.
+  @discardableResult
+  func trashChats(untouchedSince cutoff: Date) -> Int {
+    guard persistence.isPrimary else { return 0 }
+    let old = conversations.filter {
+      $0.updatedAt < cutoff && !$0.lastKnownState.blocksSending && $0.id != selectedConversationID
+    }
+    guard !old.isEmpty else { return 0 }
+    flushPendingSaves()
+    let ids = Set(old.map(\.id))
+    conversations.removeAll { ids.contains($0.id) }
+    for id in ids {
+      transcripts[id] = nil
+      damagedConversationIDs.remove(id)
+    }
+    if let selected = selectedConversationID, ids.contains(selected) { selectedConversationID = nil }
+    persistence.trashConversations(old, named: "Boltty History, older chats")
+    saveIndexNow()
+    return old.count
+  }
+
+  /// Every file a stored chat still shows: what was sent with it and what waits
+  /// in its draft.
+  var filesInUse: Set<String> {
+    Set(conversations.flatMap { conversation in
+      conversation.sentFiles.map(\.path) + conversation.draftAttachments.compactMap(\.url?.path)
+    })
+  }
+
   func rename(id: UUID, to title: String) {
     update(id) { $0.title = title }
   }

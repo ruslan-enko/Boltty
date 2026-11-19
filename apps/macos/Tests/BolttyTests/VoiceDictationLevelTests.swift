@@ -21,6 +21,12 @@ final class VoiceDictationLevelTests: XCTestCase {
   func testRoomToneIsBelowTheFloor() throws {
     let level = VoiceDictationService.loudness(of: try buffer(amplitude: 0.0005))
     XCTAssertEqual(level, 0, accuracy: 0.001)
+    XCTAssertGreaterThan(level, AgentPaletteMetrics.regionSoundFloor, "a quiet room is still sound")
+  }
+
+  func testNoSoundAtAllIsUnderTheFloor() throws {
+    XCTAssertLessThan(
+      VoiceDictationService.loudness(of: try buffer(amplitude: 0)), AgentPaletteMetrics.regionSoundFloor)
   }
 
   func testOrdinarySpeechUsesTheMiddleOfTheRange() throws {

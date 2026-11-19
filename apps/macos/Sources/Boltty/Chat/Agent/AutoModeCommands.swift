@@ -21,9 +21,10 @@ enum AutoModeCommands {
   ) -> Bool {
     guard let segments = segments(of: line), !segments.isEmpty else { return false }
     var context = Context(
-      directory: standard(directory, home: home) ?? directory,
-      home: home,
-      cwd: cwd.flatMap { standard($0, home: home) } ?? standard(directory, home: home) ?? directory
+      directory: followed(standard(directory, home: home) ?? directory) ?? directory,
+      home: followed(home) ?? home,
+      cwd: (cwd.flatMap { standard($0, home: home) } ?? standard(directory, home: home))
+        .flatMap(followed) ?? directory
     )
     for segment in segments {
       let words = stripped(segment.words)
@@ -31,7 +32,7 @@ enum AutoModeCommands {
       if words[0] == "cd" {
         guard segment.writes.isEmpty, segment.reads.isEmpty, words.count <= 2 else { return false }
         let target = words.count == 2 ? words[1] : "~"
-        guard target != "-", let path = context.resolve(target) else { return false }
+        guard target != "-", let path = context.resolve(target).flatMap(followed) else { return false }
         context.cwd = path
         continue
       }
@@ -59,7 +60,34 @@ enum AutoModeCommands {
   /// A path an agent may read without asking in Auto Mode: anything but where
   /// credentials are kept.
   static func isReadable(_ path: String, home: String = NSHomeDirectory()) -> Bool {
-    Context(directory: home, home: home, cwd: home).readable(path)
+    let home = followed(home) ?? home
+    return Context(directory: home, home: home, cwd: home).readable(path)
+  }
+
+  /// A file an edit tool may change without asking in Auto Mode: inside the
+  /// folder as the file system follows it, never in `.git` (its hooks run).
+  static func isEditable(_ path: String, in directory: String, home: String = NSHomeDirectory()) -> Bool {
+    let folder = followed(standard(directory, home: home) ?? directory) ?? directory
+    let home = followed(home) ?? home
+    return Context(directory: folder, home: home, cwd: folder).writable(path)
+  }
+
+  /// The path as the file system will take it: links in the part that exists
+  /// followed. Nil when a link there leads nowhere, since writing through it
+  /// would make a file wherever it points.
+  static func followed(_ path: String) -> String? {
+    guard path.hasPrefix("/") else { return nil }
+    let manager = FileManager.default
+    var head = (path as NSString).standardizingPath
+    var tail: [String] = []
+    while head != "/", (try? manager.attributesOfItem(atPath: head)) == nil {
+      tail.insert((head as NSString).lastPathComponent, at: 0)
+      head = (head as NSString).deletingLastPathComponent
+    }
+    guard let real = realpath(head, nil) else { return nil }
+    defer { free(real) }
+    let base = String(cString: real)
+    return tail.isEmpty ? base : (base as NSString).appendingPathComponent(tail.joined(separator: "/"))
   }
 
   // MARK: - Reading the line
@@ -242,6 +270,12 @@ enum AutoModeCommands {
     let home: String
     var cwd: String
 
+    /// Home as a written path comes out: `standardizingPath` drops a leading
+    /// `/private`, which the followed home keeps.
+    var writtenHome: String { (home as NSString).standardizingPath }
+
+    func homes(for path: String, written: Bool) -> String { written ? writtenHome : home }
+
     func resolve(_ word: String) -> String? {
       if word == "~" { return home }
       if word.hasPrefix("~/") { return standard(home + word.dropFirst(), home: home) }
@@ -254,22 +288,31 @@ enum AutoModeCommands {
       path == folder || path.hasPrefix(folder.hasSuffix("/") ? folder : folder + "/")
     }
 
+    /// Judged both as written and as followed: `~/.ssh` may be a link into a
+    /// dotfiles folder, and a link in the folder may lead out of it.
     func readable(_ word: String) -> Bool {
-      guard let path = resolve(word) else { return false }
-      return !Self.secrets.contains { inside(path, home + "/" + $0) }
+      guard let written = resolve(word), let path = AutoModeCommands.followed(written) else { return false }
+      return ![(written, true), (path, false)].contains { path, isWritten in
+        let home = homes(for: path, written: isWritten)
+        return Self.secrets.contains { inside(path, home + "/" + $0) }
+      }
     }
 
     func writable(_ word: String) -> Bool {
       guard !word.contains(where: { "*?[".contains($0) }),
-            let path = resolve(word), inside(path, directory), path != directory
+            let written = resolve(word), let path = AutoModeCommands.followed(written),
+            inside(path, directory), path != directory
       else { return false }
-      let parts = path.dropFirst(directory.count).split(separator: "/")
-      if parts.contains(".git") { return false }
-      if inside(home, directory), let first = path.dropFirst(home.count).split(separator: "/").first,
-         first.hasPrefix(".") || first == "Library" {
-        return false
+      return [(written, true), (path, false)].allSatisfy { path, isWritten in
+        let home = homes(for: path, written: isWritten)
+        if (path as NSString).pathComponents.contains(".git") { return false }
+        if inside(self.home, directory), inside(path, home),
+           let first = path.dropFirst(home.count).split(separator: "/").first,
+           first.hasPrefix(".") || first == "Library" {
+          return false
+        }
+        return true
       }
-      return true
     }
 
     var buildsHere: Bool { cwd == directory || inside(cwd, directory) && writable(cwd) }
@@ -278,6 +321,9 @@ enum AutoModeCommands {
       ".ssh", ".aws", ".gnupg", ".netrc", ".config/gh", ".kube", ".docker",
       "Library/Keychains", ".password-store", ".local/share/opencode", ".codex/auth.json",
       ".gemini/oauth_creds.json", ".grok/auth.json", ".npmrc", ".pypirc",
+      ".git-credentials", ".config/gcloud", ".azure", ".cargo/credentials",
+      ".cargo/credentials.toml", ".gem/credentials", ".vault-token", ".boto",
+      ".terraform.d/credentials.tfrc.json", ".config/op", ".claude/.credentials.json",
     ]
   }
 
@@ -318,7 +364,7 @@ enum AutoModeCommands {
     "comm", "basename", "dirname", "realpath", "readlink", "jq", "nl", "column",
     "hexdump", "od", "strings", "md5", "md5sum", "shasum", "sha1sum", "sha256sum", "cksum",
     "true", "false", "test", "[", "seq", "sleep", "otool", "nm", "lipo", "mdls", "mdfind",
-    "ps", "lsof", "pgrep", "printenv", "fold", "expand", "rev", "look", "tac",
+    "ps", "lsof", "pgrep", "fold", "expand", "rev", "look", "tac",
   ]
 
   private static let systemBins = ["/bin/", "/usr/bin/", "/usr/local/bin/", "/opt/homebrew/bin/", "/usr/sbin/"]
@@ -341,7 +387,7 @@ enum AutoModeCommands {
     let args = words.dropFirst()
     let ops = operands(args)
 
-    if program.contains("/") { return script(program, context) }
+    if program.contains("/") { return false }
     if readers.contains(program) { return readsOnly(args, context) }
 
     switch program {
@@ -355,8 +401,6 @@ enum AutoModeCommands {
       return !args.contains { ["-x", "-X", "--exec", "--exec-batch"].contains($0) } && readsOnly(args, context)
     case "tree":
       return !args.contains("-o") && readsOnly(args, context)
-    case "env":
-      return args.isEmpty
     case "find":
       let acts: Set<String> = ["-delete", "-exec", "-execdir", "-ok", "-okdir", "-fprint", "-fprint0", "-fprintf", "-fls"]
       return !args.contains(where: acts.contains) && readsOnly(args, context)
@@ -373,7 +417,9 @@ enum AutoModeCommands {
         arg == "--recursive" || (arg.hasPrefix("-") && !arg.hasPrefix("--") && (arg.contains("r") || arg.contains("R")))
       }
       return !recursive && !ops.isEmpty && ops.allSatisfy(context.writable)
-    case "cp", "mv", "ln":
+    case "ln":
+      return false
+    case "cp", "mv":
       guard ops.count >= 2, !args.contains(where: { $0 == "-t" || $0.hasPrefix("--target") }) else { return false }
       let sources = ops.dropLast()
       let sourcesOK = program == "mv" ? sources.allSatisfy(context.writable) : sources.allSatisfy(context.readable)
@@ -405,9 +451,6 @@ enum AutoModeCommands {
       return packageScript(program, ops, args, context)
     case "python", "python3", "node", "ruby", "deno", "tsx", "ts-node":
       return interpreter(program, args, context)
-    case "sh", "bash", "zsh":
-      guard let first = args.first, !first.hasPrefix("-") else { return false }
-      return script(first, context)
     case "pytest", "jest", "vitest", "tsc", "eslint", "prettier", "black", "ruff", "mypy",
          "swiftformat", "swiftlint", "rubocop", "phpunit", "mocha":
       let fixes = args.contains { $0.hasPrefix("--write") || $0 == "--fix" || $0 == "-w" || $0 == "--in-place" }
@@ -416,13 +459,6 @@ enum AutoModeCommands {
     default:
       return false
     }
-  }
-
-  private static func script(_ path: String, _ context: Context) -> Bool {
-    guard let resolved = context.resolve(path), context.inside(resolved, context.directory),
-          context.buildsHere
-    else { return false }
-    return !risky((resolved as NSString).lastPathComponent)
   }
 
   private static func interpreter(_ program: String, _ args: ArraySlice<String>, _ context: Context) -> Bool {
@@ -441,16 +477,7 @@ enum AutoModeCommands {
       }
       return false
     }
-    if program == "deno" {
-      guard rest.first == "run" || rest.first == "test" else { return false }
-      rest = rest.dropFirst()
-      while let arg = rest.first, arg.hasPrefix("-") {
-        if arg.hasPrefix("--allow-read") { rest = rest.dropFirst(); continue }
-        return false
-      }
-    }
-    guard let file = rest.first else { return false }
-    return script(file, context)
+    return false
   }
 
   private static func packageScript(
@@ -459,16 +486,22 @@ enum AutoModeCommands {
     guard context.buildsHere, let sub = ops.first else { return false }
     if ["run", "run-script"].contains(sub) {
       guard let name = ops.dropFirst().first else { return false }
-      return !risky(name)
+      return buildScript(name)
     }
     if ["test", "t", "tst", "build", "lint", "start", "dev", "typecheck", "check", "ls", "list", "outdated", "why"]
       .contains(sub) {
       return true
     }
-    if program == "bun", looksLikePath(sub) || sub.hasSuffix(".ts") || sub.hasSuffix(".js") {
-      return script(sub, context)
-    }
     return false
+  }
+
+  /// A package script that builds, tests or checks, by its name: `test:unit`,
+  /// `build-docs`, `lint`. Anything else could be a script the agent just wrote.
+  private static func buildScript(_ name: String) -> Bool {
+    let words = name.lowercased().split(whereSeparator: { ":-_.".contains($0) }).map(String.init)
+    guard let first = words.first, !risky(name) else { return false }
+    return ["test", "tests", "build", "lint", "check", "typecheck", "format", "fmt", "compile", "dev", "start"]
+      .contains(first)
   }
 
   private static func git(_ args: ArraySlice<String>, _ context: inout Context) -> Bool {
@@ -478,7 +511,9 @@ enum AutoModeCommands {
       case "--no-pager", "-P", "--no-optional-locks":
         rest = rest.dropFirst()
       case "-C":
-        guard let folder = rest.dropFirst().first, let path = context.resolve(folder) else { return false }
+        guard let folder = rest.dropFirst().first,
+              let path = context.resolve(folder).flatMap(AutoModeCommands.followed)
+        else { return false }
         context.cwd = path
         rest = rest.dropFirst(2)
       default:
@@ -492,7 +527,9 @@ enum AutoModeCommands {
     case "status", "diff", "log", "show", "rev-parse", "ls-files", "ls-tree", "blame", "describe",
          "fetch", "grep", "shortlog", "reflog", "cat-file", "merge-base", "rev-list", "check-ignore",
          "show-ref", "whatchanged", "count-objects", "version", "help":
-      return !flags.contains { $0.hasPrefix("--output") }
+      // Each of these names a program for git to run.
+      let runs = ["--output", "--open-files-in-pager", "-O", "--upload-pack", "--ext-diff", "--textconv"]
+      return !flags.contains { flag in runs.contains { flag.hasPrefix($0) } }
     case "add", "commit", "init":
       return true
     case "branch":

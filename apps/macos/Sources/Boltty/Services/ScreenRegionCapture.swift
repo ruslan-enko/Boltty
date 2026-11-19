@@ -30,7 +30,8 @@ enum ScreenRegionCapture {
   static func selection(
     _ frame: CGRect,
     in frozen: FrozenScreen,
-    primaryScreenHeight: CGFloat
+    primaryScreenHeight: CGFloat,
+    readsLabels: Bool = false
   ) throws -> ScreenSelection {
     let region = flipped(frame, primaryScreenHeight: primaryScreenHeight)
     let image = frozen.image
@@ -58,9 +59,46 @@ enum ScreenRegionCapture {
       frame: frame,
       context: frozen.context(at: CGPoint(x: region.midX, y: region.midY)),
       recognizedText: recognizedText(in: crop),
-      finderSpot: frozen.finderSpot(at: CGPoint(x: region.midX, y: region.midY))
+      finderSpot: frozen.finderSpot(at: CGPoint(x: region.midX, y: region.midY)),
+      labels: readsLabels ? labels(in: screenImage) : nil
     )
   }
+
+  /// What is written on the screen, read off the picture as the agent sees it
+  /// (hidden windows painted out), so a tag can name words instead of guessing pixels.
+  static func labels(in image: CGImage) -> [ScreenText] {
+    let request = VNRecognizeTextRequest()
+    request.recognitionLevel = .accurate
+    request.automaticallyDetectsLanguage = true
+    request.usesLanguageCorrection = false
+    guard (try? VNImageRequestHandler(cgImage: image).perform([request])) != nil else { return [] }
+    func thousandths(_ box: CGRect) -> CGRect {
+      CGRect(x: box.minX * 1000, y: (1 - box.maxY) * 1000, width: box.width * 1000, height: box.height * 1000)
+    }
+    let lines = (request.results ?? []).prefix(labelLimit).compactMap { observation -> ScreenText? in
+      guard let candidate = observation.topCandidates(1).first else { return nil }
+      let string = candidate.string
+      let words = string.split(whereSeparator: \.isWhitespace).compactMap { word -> ScreenText.Word? in
+        guard let box = try? candidate.boundingBox(for: word.startIndex..<word.endIndex)?.boundingBox
+        else { return nil }
+        return ScreenText.Word(text: String(word), box: thousandths(box))
+      }
+      let text = string.trimmingCharacters(in: .whitespaces)
+      guard !text.isEmpty else { return nil }
+      return ScreenText(text: text, box: thousandths(observation.boundingBox), words: words)
+    }
+    return lines.sorted { ($0.box.minY, $0.box.minX) < ($1.box.minY, $1.box.minX) }
+  }
+
+  /// A fresh look at a whole display, read at the agent's picture size.
+  static func labels(onDisplay displayID: CGDirectDisplayID) async -> [ScreenText]? {
+    guard let frozen = try? await freeze(displayID: displayID) else { return nil }
+    return await Task.detached(priority: .userInitiated) {
+      scaled(frozen.image, longEdge: screenLongEdge, outlining: nil).map(labels(in:))
+    }.value
+  }
+
+  static let labelLimit = 300
 
   // MARK: - Geometry
 

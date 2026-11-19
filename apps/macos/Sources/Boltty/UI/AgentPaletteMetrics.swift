@@ -259,6 +259,14 @@ enum AgentPaletteMetrics {
   static let voiceControlsSpacing: CGFloat = fromMock(10)
   static let voiceControlsCornerRadius: CGFloat = fromMock(50)
   static var voiceControlsHeight: CGFloat { voiceOrbDiameter + voiceControlsPadding * 2 }
+  static let chatDictationWaveHeight: CGFloat = 20
+  static let chatDictationBarWidth: CGFloat = 2
+  static let chatDictationBarGap: CGFloat = 2
+  static let chatDictationBarMinimum: CGFloat = 2
+  static let chatDictationWaveStep: TimeInterval = 1.0 / 30
+  static let chatDictationWaveGain: CGFloat = 1.4
+  static let chatDictationWaveAttack: CGFloat = 0.03
+  static let chatDictationWaveRelease: CGFloat = 0.12
 
   static let voiceControlsIconSize: CGFloat = fromMock(16)
   static let voiceControlsTimerFontSize: CGFloat = fromMock(12)
@@ -737,10 +745,18 @@ enum AgentPaletteMetrics {
   static let helpKeycapSize: CGFloat = 18
   static let helpKeycapCornerRadius: CGFloat = 4
   static let helpKeycapSpacing: CGFloat = 3
+  static let helpKeyWordsGap: CGFloat = 6
+  static let regionKeyHintsGap: CGFloat = 10
+  static let keyHintsProgressFill = NSColor.white.withAlphaComponent(0.16)
+  /// With nothing heard this long from a microphone that is listening, the orb says so.
+  static let regionSilentMicrophone: TimeInterval = 5
+  /// Below this a level is no sound at all (`VoiceDictationService.quietRoom` is a quiet room).
+  static let regionSoundFloor: CGFloat = 0.00005
   static let helpKeycapInset: CGFloat = 5
   static let helpActionSpacing: CGFloat = 8
   static let helpActionHeight: CGFloat = 26
   static let planRingTrack = ComposerControlGroup.disabledInk
+  static let planRingWarningPercent = 80
   static let planRingInk = ComposerControlGroup.restingInk
   static let planRingDiameter: CGFloat = 20
   static let planRingStroke: CGFloat = 2.5

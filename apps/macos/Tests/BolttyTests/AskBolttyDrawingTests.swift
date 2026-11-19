@@ -53,3 +53,59 @@ final class AskBolttyDrawingTests: XCTestCase {
     XCTAssertEqual(AskBolttyMark.withoutUnfinished("a < b"), "a < b")
   }
 }
+
+final class ScreenTextTests: XCTestCase {
+  private func line(_ text: String, x: CGFloat, y: CGFloat) -> ScreenText {
+    var words: [ScreenText.Word] = []
+    var left = x
+    for word in text.split(separator: " ") {
+      let width = CGFloat(word.count) * 6
+      words.append(ScreenText.Word(text: String(word), box: CGRect(x: left, y: y, width: width, height: 10)))
+      left += width + 4
+    }
+    return ScreenText(text: text, box: CGRect(x: x, y: y, width: left - x, height: 10), words: words)
+  }
+
+  func testWordsAreFoundWholeAndNeverInsideAnother() throws {
+    let lines = [line("Saved", x: 100, y: 100), line("File Edit Save As…", x: 10, y: 5)]
+    let box = try XCTUnwrap(ScreenText.find("Save As", near: nil, in: lines))
+    XCTAssertEqual(box.minY, 5)
+    XCTAssertNil(ScreenText.find("Sav", near: nil, in: lines))
+  }
+
+  func testOfTwoAlikeTheNearestIsChosenAndNoneTooFar() throws {
+    let lines = [line("Export", x: 10, y: 10), line("Export", x: 900, y: 900)]
+    let box = try XCTUnwrap(ScreenText.find("export…", near: CGPoint(x: 880, y: 880), in: lines))
+    XCTAssertEqual(box.minX, 900)
+    XCTAssertNil(ScreenText.find("Export", near: CGPoint(x: 500, y: 500), in: lines, reach: 100))
+  }
+
+  func testAPointNamingWordsLandsOnThem() throws {
+    let point = try XCTUnwrap(AskBolttyPoint.parse(#"<point x="100" y="100" text="Export"/>"#))
+    let placed = try XCTUnwrap(point.placed(among: [line("Export", x: 120, y: 120)]))
+    XCTAssertEqual(placed.y * 1000, 125, accuracy: 0.5)
+    let wordsOnly = try XCTUnwrap(AskBolttyPoint.parse(#"<point text="Missing"/>"#))
+    XCTAssertFalse(wordsOnly.hasPosition)
+    XCTAssertNil(wordsOnly.placed(among: []))
+  }
+
+  func testAStepIsAMarkOfItsOwn() {
+    let marks = AskBolttyMark.all(in: #"<step text="File"/>Open File. <step text="Export…"/>Choose Export."#)
+    XCTAssertEqual(marks.count, 2)
+    guard case let .step(first) = marks[0] else { return XCTFail("\(marks)") }
+    XCTAssertEqual(first.text, "File")
+    XCTAssertEqual(AskBolttyMark.stripped(#"<step text="File"/>Open File."#), "Open File.")
+  }
+
+  func testTheListingKeepsTheMenuBarAndWhatIsNearTheArea() throws {
+    let lines = [line("File Edit", x: 0, y: 5)]
+      + (0..<50).map { line("Far away line number \($0)", x: 10, y: 100 + CGFloat($0)) }
+      + [line("Right here", x: 600, y: 600)]
+    let listing = try XCTUnwrap(
+      ScreenText.listing(lines, byteLimit: 120, near: CGRect(x: 580, y: 580, width: 60, height: 60)))
+    XCTAssertTrue(listing.contains("File Edit"))
+    XCTAssertTrue(listing.contains("Right here"))
+    XCTAssertLessThanOrEqual(listing.utf8.count, 120)
+    XCTAssertTrue(listing.hasPrefix("0 5"), "reading order")
+  }
+}

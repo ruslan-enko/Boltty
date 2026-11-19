@@ -319,6 +319,8 @@ enum ChatTitle {
       compile(#"<pasted-text>[\s\S]*$"#),
       compile(#"<screen-text>[\s\S]*?</screen-text>"#),
       compile(#"<screen-text>[\s\S]*$"#),
+      compile(#"<screen-labels>[\s\S]*?</screen-labels>"#),
+      compile(#"<screen-labels>[\s\S]*$"#),
       compile(#""(?:~|/)[^"\n]*$"#),
     ]
     static let quotedPath = compile(#""((?:~|/)[^"\n]+)""#)

@@ -173,16 +173,16 @@ no adapter; never offer a toggle for them.
 | Platform | macOS 26.0+, hardened runtime in Release. Universal DMG on GitHub releases, GPL-3.0-or-later. Not the App Store (private API, no sandbox) |
 | Return in the panel | Starts a conversation **in the background**: no window raised, no `NSApp.activate`. An empty Return starts nothing and plays the system alert |
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing: the agent with the most of its plan left (*Who takes a new chat*), or always one agent when Settings › Agents says so. Fixed once the conversation has a session. An agent the person chose that stops being ready is refused out loud, never swapped |
-| Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon |
+| Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon, which stands on a flat fill (`keyboardTargetFill`): a brighter ink alone was not seen |
 | Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip; once the session exists, changed only where the agent declares `.folderMoving` (all but Grok), applied before the next send |
-| Persistence | Conversations persist and are never replayed or re-executed. A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
+| Persistence | Conversations persist and are never replayed or re-executed. Kept forever unless Settings › General › Keep chats says otherwise (`boltty.history.keepDays`: 7, 14, 30, 182, 365; absent is Forever): a chat untouched for longer goes to the Trash, at launch, every 6 h and on a change (which asks first when it moves any); one working, waiting or open in the panel stays. Pasted files (`Boltty/Pasteboard`) go a week after no stored chat shows them (`ConversationStore.filesInUse`). A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
 | One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so. It starts no session or turn (`ConversationEngine.secondCopyRefusal`) and never stores a fallback chord |
 | Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline, waiting for each turn's stop (3 s timer), not the first to answer |
 | Dock click | Brings Settings forward, never the panel |
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Elsewhere Boltty decides: edits in the folder, and commands `AutoModeCommands` reads as only reading, building, testing or changing files there (each part of a `&&`/`|` line, with `cd` followed); anything it cannot read asks. Except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Elsewhere Boltty decides: edits in the folder, and commands `AutoModeCommands` reads as only reading, building, testing or changing files there (each part of a `&&`/`|` line, with `cd` followed); anything it cannot read asks. A path is judged both as written and as the file system follows it (`AutoModeCommands.followed`: links resolved, a link to nowhere refused), so a link in the folder does not reach out of it and `~/.ssh` linked into a dotfiles folder is still a secret; edits into `.git` ask (its hooks run). A script run by itself (`./x`, `sh x`, `python x.py`, `node x`, `bun x`), `ln`, `printenv` and `env`, and git that names a program (`grep -O`, `fetch --upload-pack`, `--ext-diff`, `--textconv`) ask; package scripts go through only by a build or test name (`npm run test:unit`). Builds and tests still run the folder's own code, which Settings says. Except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -670,7 +670,8 @@ The loop that must keep working:
     answered beside the face; the panel hides)
   → type or dictate, Return → conversation starts in the background
   → the shell morphs into the open chat
-  → follow up in the same composer; ↓ lists saved chats
+  → follow up in the same composer; ↓ lists saved chats (from a draft's last line:
+    above it ↓ walks the lines)
   → Escape: chat → (list if it came from there) → first screen → hidden
   → a click outside or the hotkey hides it without stopping work
   → reopened within a minute it returns to the chat it left
@@ -709,7 +710,8 @@ The loop that must keep working:
   is a white disc with Return in black (the composer's one pure-white fill;
   the glass's fill while there is nothing to send, a stop square while
   it stops). The ring is thin, from twelve o'clock
-  clockwise, in the group's inks. The first screen keeps ring, folder and microphone together on the
+  clockwise, in the group's inks; from 80% used its arc is the accent on glass
+  (`planRingWarningPercent`): in the ink, nearly full read as empty. The first screen keeps ring, folder and microphone together on the
   right; the folder's slot moves between the two stacks
   (`placeDirectorySlot`).
 - **The model chip says what the chat runs on, in words** ("Opus · High"), in the
@@ -724,7 +726,8 @@ The loop that must keep working:
   dash, then the first hint in secondary ink at the typed size, with no capsule
   and no key ("— Ask Claude", "— Queue"). Only ever that one: a second hint
   read as a second answer, so neither ⇧Tab's next agent nor ⌘Return or ⌘. is
-  suggested (the Send slot turning into Stop says the last). They appear after a 1 s rest, drop from the end when short of room, and
+  suggested (the Send slot turning into Stop says the last). None while an `@` or
+  `/` list is open: Return chooses from it. They appear after a 1 s rest, drop from the end when short of room, and
   stand on the typesetter's baseline.
 - **What comes with the words stands over them as cards, never in the
   sentence** (`PromptAttachmentStrip`, `PromptAttachmentCard`): 100 × 100, side
@@ -742,11 +745,14 @@ The loop that must keep working:
 - **`@` brings a file** (`ComposerSuggestionPicker`, `ComposerToken`, `FileMention`, `FileMentionSearch`),
   the same for every agent, since no CLI offers a search all five share: an `@`
   at the start of a word (never inside one, `me@site.com`) opens a list of up to
-  eight at the `@`, above the line where there is room, else under the shell,
+  eight at the `@`, above the line where there is room inside the shell (a
+  chat's composer), else under the shell (the first screen, whose line is at its
+  top: a one-row list fitted above stood over its edge),
   on the help tags' glass. What follows the `@` filters it; ↑ ↓ choose, Return
   or Tab adds the file as a card and the `@word` goes, Escape lets that `@` be.
   The chat's folder is walked (hidden files, `skippedNames` and the plain lines
-  of its `.gitignore` left out; 40 000 entries or 2 s); home, the default, and
+  of its `.gitignore` left out; 40 000 entries or 2 s); where a file is gives way
+  at whole folders from the front ("…/Screenshots", `SuggestionPlace`), or not at all; home, the default, and
   any folder holding it are Spotlight's, Library and dot-folders left out. A
   bare `@` lists the newest: modified there, or used in the last 14 days. Not in
   the list's search, while listening, or over a region.
@@ -953,7 +959,8 @@ The loop that must keep working:
   agent cannot take a prompt keeps it disabled — and **Settings** (hex nut) lower
   left, 18 from the foot and side (`historyFootDiscInset`). They stand inside
   the corner resize grips, which give way on a disc; the rows dissolve under
-  them.
+  them, gone by the discs' middle (faded only to the foot, a day's heading read
+  beside a disc, cut by it).
 - Right click: Open Chat, Show in Finder, Delete Chat… (Boltty's own; to the
   Trash, after asking, no Return on the destructive button). No pin.
 - Typing after ↓ searches. `/` and `@` are plain text there, with no list of their own.
@@ -1057,13 +1064,26 @@ arrives slowly out of a soft blur in the face's colours**
 rings of offsets, closing into the sharp white word, no filter), rising a
 little into place; words heard together a beat apart. Only words past the
 end arrive: a word the engine revises changes in place (arriving again, the
-last few words blinked on every result). In an open chat a
-non-empty draft keeps the composer. Enter is ✓, which waits for the engine's
+last few words blinked on every result). **An open chat never becomes the
+orb** (`dictatesInChat`): the transcript and composer stay, the words go
+straight into the field, and the composer's foot becomes the take
+(`ChatDictationBar`): × lets it go and puts the draft back, a neutral wave
+of the voice runs leftward (`DictationWaveView`, a bar a frame, gated as the
+glow is but quicker), the time it has run, and a lit microphone that ends the
+take and leaves its words to edit; Send stays Send and sends what was said.
+The empty field says "Listening…". Escape is ×, ⌘D is the microphone, the
+foot's other chords do nothing, and an empty Return is the alert. A pause
+never sends here: the take ends only by a press. Enter is ✓, which waits for the engine's
 final text **as the orb**, then goes from the orb straight to the chat (or the
 prompt) in one move while the orb fades on the shell's spring
 (`voiceGlowOrbReleaseDuration`). The orb casts no shadow: the shell's shadows
 read as a dark rim round it. A long silence sends, but only after speech was
-heard.
+heard. The face in the orb hears: it swells a little and widens its eyes with
+the voice's level (`MascotMotion.hear`), so it is seen to listen before a word
+is recognised. A region's microphone that has given no sound at all (only zeros: a quiet room
+reads as `VoiceDictationService.quietRoom`, not 0) 5 s after its first take says
+so in the orb ("No sound is reaching the microphone…",
+`watchForSilentMicrophone`): a muted or wrong input otherwise waited in silence.
 
 ## Ask Boltty
 
@@ -1105,6 +1125,33 @@ heard.
   (`AskBolttyPointerMark`, the face's colours under a white edge; a ring was
   tried and refused): its tip lands on the spot, its tail lies toward the face
   (`pointerTurn`), and it travels with the face.
+- **Words, not pixels.** Vision reads the picture the agent is sent (hidden
+  windows painted out) into lines and words with their boxes (`ScreenText`,
+  `ScreenRegionCapture.labels`), listed in the prompt as `<screen-labels>`
+  (`x1 y1 x2 y2 words`, 0–1000), at most 5 KB: the menu bar's and those nearest
+  the region kept first, listed in reading order (12 KB was 3–4 thousand tokens
+  a question). A `<point>` with `text="…"` lands on those words, matched whole
+  (`AskBolttyPoint.placed`, `ScreenText.find`: "Save" never in "Saved"), the
+  nearest within 250 of where the agent put it; else where it put it.
+- **Steps.** Three steps or more come as one sentence each after its own
+  `<step text x y/>`, shown one at a time, numbered (`AskBolttySession.isGuiding`);
+  a click anywhere (`leftMouseUp`, a global monitor that takes nothing from the
+  app) moves on after 0.45 s. Each step after the first is found by its words on
+  the screen as it is then (`look`: a fresh capture read locally, nothing sent),
+  so a menu's item the agent never saw is still pointed at; looked for twice,
+  else the face goes where the agent put the step, or back to the pointer; a
+  step whose words are still streaming waits for them. Escape ends the walk, and so does a
+  minute with no click (`guideIdleLimit`): the face holds Escape while it is up.
+- **What the keys do is said where they act** (`PaletteKeyHints`, a help tag of
+  glass keycaps and words): under the region's orb "esc Cancel" while the
+  microphone starts, "Speak your question · esc Cancel" while it listens, "⏎ Ask
+  · esc Cancel" once something was said, filling from the left as a pause runs
+  toward sending by itself (`setRegionSilence`, the silence watcher's progress;
+  speech empties it), and "Asking…" from Return or that pause until the face
+  takes over (`regionHints`, `layoutRegionKeyHints`, riding the shell's spring,
+  above it near the foot of the screen); under the face "esc Stop" while it thinks, and "Click to go on ·
+  esc Stop" through steps (`AskBolttyController.keyHints`). None at rest: the
+  rest hint says it.
 - At most two sentences of an answer are said, one at a time: a new sentence
   takes the last one's place (`captionSentences`, `answerSentences`). The answer
   ends when the voice falls silent; `$speakingID` tells before the value changes,

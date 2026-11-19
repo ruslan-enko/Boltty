@@ -214,8 +214,9 @@ enum AntigravityToolPolicy {
     }
     if edits.contains(tool) {
       let target = arguments.string("TargetFile") ?? paths.first
-      if autoApprove, outside.isEmpty { return .allow }
-      return granted.contains("edit") && outside.isEmpty
+      let editable = !paths.isEmpty && paths.allSatisfy { AutoModeCommands.isEditable($0, in: directory) }
+      if autoApprove, editable { return .allow }
+      return granted.contains("edit") && editable
         ? .allow
         : .ask(action: "edit", resources: target.map { [$0] } ?? [], always: "edit")
     }

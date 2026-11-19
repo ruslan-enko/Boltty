@@ -54,6 +54,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var onScreenSelectionCancelled: (() -> Void)?
   private let screenOutlines = ScreenSelectionOverlay()
   private let selectionPointerHint = ScreenSelectionPointerHint()
+  private let regionKeyHints = PaletteKeyHints()
+  private var regionIsAsking = false
+  private let hearingEnvelope = VoiceLevelEnvelope()
   private var selectionPointerHintTimer: Timer?
   var onSelectSession: ((UUID) -> Void)?
   var onWillShowSessions: (() -> Void)?
@@ -181,6 +184,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var sendButtonForTesting: PaletteIconButton { sendButton.button }
   var sendSlotStopsForTesting: Bool { sendSlotStops }
   @objc private func sendButtonPressed() {
+    if dictatesInChat { onVoiceConfirm?(); return }
     if sendSlotStops { onStop?() } else { confirmSelectionOrSubmit() }
   }
   private var sendSlotStops = false
@@ -210,13 +214,23 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
   private func syncSendButton() {
     defer { syncTrailingHint() }
-    let visible = composerIsUp && !isVoiceListening && composerGlyphsAreChat
+    let visible = composerIsUp && (!isVoiceListening || dictatesInChat) && composerGlyphsAreChat
     sendButton.isHidden = !visible
     sendSlotWidth.constant = visible ? ComposerControlGroup.sendDisc : 0
     trailingControls.setCustomSpacing(visible ? ComposerControlGroup.sendGap : 0, after: micButton)
     let answering = previewCard.pendingQuestion != nil
     let refusing = previewCard.pendingQuestion?.takesWordsAsRefusal == true && draftHasWords
     previewCard.setComposerHasWords(draftHasWords)
+    if dictatesInChat {
+      sendSlotStops = false
+      sendButton.button.image = returnGlyph
+      setSendDiscEnabled(!isVoiceProcessing && !field.draft.isEffectivelyEmpty)
+      sendButton.button.toolTip = addressedPreview?.isBusy == true
+        ? "Queue message — sends when this turn finishes" : "Send message"
+      sendButton.button.helpShortcut = "↵"
+      sendButton.button.setAccessibilityLabel("Send message")
+      return
+    }
     sendSlotStops = stopIsAvailable && !answering && field.draft.isEffectivelyEmpty
     if sendSlotStops {
       sendButton.button.image = stopGlyph
@@ -259,6 +273,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private var composerControlDiameter: CGFloat { ComposerControlGroup.target(chat: composerGlyphsAreChat) }
   private let promptEdgeFadeMask = CAGradientLayer()
   private let recordingControls = VoiceRecordingControls(frame: .zero)
+  private let chatDictation = ChatDictationBar(frame: .zero)
   private let voiceGlow = VoiceEdgeGlowView(frame: .zero)
   private let backdrop = AgentBackdropView(frame: .zero)
   private let listeningWordsHost = PassThroughView()
@@ -315,14 +330,67 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     (isVoiceListening || (isVoiceProcessing && voiceGlow.fillsShell) || isHandingOver
       || holdsQuestionWords || asksByVoice)
       && !isResultsExpanded
-      && (addressedPreview == nil || voicePrefixDraft?.isEffectivelyEmpty != false)
+      && addressedPreview == nil
+  }
+
+  /// An open chat keeps its transcript and composer while it listens; the foot
+  /// becomes the take.
+  private var dictatesInChat: Bool {
+    (isVoiceListening || isVoiceProcessing) && addressedPreview != nil && !asksByVoice
+      && !isResultsExpanded
+  }
+
+  private func syncChatDictation() {
+    let on = dictatesInChat
+    guard on != isShowingChatDictation else { return }
+    isShowingChatDictation = on
+    if let preview = addressedPreview { hintLabel.stringValue = chatPlaceholder(for: preview) }
+    if on { chatDictation.isHidden = false }
+    let rest: CGFloat = on ? 0 : 1
+    let changes = { (animated: Bool) in
+      let fade: (NSView) -> NSView = { animated ? $0.animator() : $0 }
+      fade(self.chatDictation).alphaValue = on ? 1 : 0
+      fade(self.leadingControls).alphaValue = rest
+      fade(self.planRing).alphaValue = rest
+      fade(self.directorySlot).alphaValue = rest
+      if on || !self.isRecordingControlsRevealed { fade(self.micButton).alphaValue = rest }
+    }
+    let finish: @Sendable () -> Void = { [weak self] in
+      MainActor.assumeIsolated {
+        guard let self, !self.isShowingChatDictation else { return }
+        self.chatDictation.isHidden = true
+      }
+    }
+    guard window?.isVisible == true, !MotionPreferences.reduceMotion else {
+      changes(false)
+      finish()
+      return
+    }
+    NSAnimationContext.runAnimationGroup(
+      { context in
+        context.duration = Motion.quick
+        context.timingFunction = Motion.standardCurve
+        changes(true)
+      },
+      completionHandler: finish
+    )
+  }
+
+  private var isShowingChatDictation = false
+  private static let listeningPlaceholder = "Listening…"
+
+  private func chatPlaceholder(for preview: BolttyAISessionPreview) -> String {
+    dictatesInChat ? Self.listeningPlaceholder : Self.composerPlaceholder(for: preview)
   }
   private var holdsQuestionWords = false {
     didSet { if holdsQuestionWords != oldValue { needsLayout = true } }
   }
 
   func holdWordsForQuestion() { holdsQuestionWords = showsCompactListening }
-  func releaseQuestionWords() { holdsQuestionWords = false }
+  func releaseQuestionWords() {
+    holdsQuestionWords = false
+    setRegionAsking(false)
+  }
   var isCompactListeningForTesting: Bool { showsCompactListening }
   var listeningWordsForTesting: String { listeningWords.text }
   var listeningWordsShownForTesting: Bool { listeningWordsHost.alphaValue > 0 }
@@ -465,6 +533,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
     picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
     picker.onPick = { [weak self] candidate, range in self?.attachMentioned(candidate.url, replacing: range) }
+    picker.onOpenChange = { [weak self] in self?.syncTrailingHint() }
     return picker
   }()
   private let fileSearch = FileMentionSearch()
@@ -478,6 +547,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
     picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
     picker.onPick = { [weak self] command, range in self?.useCommand(command, replacing: range) }
+    picker.onOpenChange = { [weak self] in self?.syncTrailingHint() }
     return picker
   }()
 
@@ -595,6 +665,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var surfaceMotionForTesting: PaletteSurfaceMotion { surfaceMotion }
   var isVoiceListeningForTesting: Bool { isVoiceListening }
   var isVoiceListeningNow: Bool { isVoiceListening }
+  /// An open chat's take ends only by a press: a pause never sends it.
+  var isDictatingInChat: Bool { dictatesInChat }
   var micButtonForTesting: GlassCircleVoiceButton { micButton }
   var isShowingRecordingControlsForTesting: Bool { !recordingControls.isHidden }
   var voiceGlowForTesting: VoiceEdgeGlowView { voiceGlow }
@@ -710,8 +782,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   func setVoiceListening(_ listening: Bool, ending: VoiceGlowPhase = .completed) {
     let collapses = listening && !isVoiceListening && !isResultsExpanded
-      && (addressedPreview == nil || field.draft.isEffectivelyEmpty)
+      && addressedPreview == nil
     if collapses, screenSelectionPhase == .idle { beginFaceFlight() } else if !listening { endFaceFlight() }
+    if !listening { listeningFace.hear(0) }
     if listening, !isVoiceListening {
       voicePrefixDraft = field.draft
       appliedVoiceTranscript = nil
@@ -732,11 +805,14 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     voiceGlow.setPhase(listening ? .listening : ending)
     if listening {
       recordingControls.startRecording()
+      chatDictation.start()
     } else {
+      if isVoiceProcessing { chatDictation.freeze() } else { chatDictation.stop() }
       recordingControls.stopRecording()
       setRecordingControlsRevealed(false, animated: false)
     }
     applyMicAppearance()
+    syncChatDictation()
     needsLayout = true
     layoutSubtreeIfNeeded()
     if listening {
@@ -763,6 +839,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let processing = phase == .processing
     if processing != isVoiceProcessing {
       isVoiceProcessing = processing
+      if !processing, !isVoiceListening { chatDictation.stop() }
+      syncChatDictation()
       needsLayout = true
     }
     applyMicAppearance()
@@ -784,8 +862,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   func applyVoiceLevel(_ level: CGFloat) {
+    if showsCompactListening { listeningFace.hear(hearingEnvelope.gated(level)) }
     micButton.setAudioLevel(level)
     recordingControls.setAudioLevel(level)
+    chatDictation.setAudioLevel(level)
     voiceGlow.setAudioLevel(level)
   }
 
@@ -818,6 +898,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       setListeningWords(transcript)
       needsLayout = true
     }
+    if dictatesInChat { syncSendButton() }
   }
 
   private func setListeningWords(_ transcript: String) {
@@ -827,10 +908,54 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if listeningWords.wordCount > before { listeningFace.nod() }
   }
 
+  /// Under the orb while a region's question is asked: what Return and Escape
+  /// do, Return only once something was said (with nothing, it is the alert).
+  private func layoutRegionKeyHints(under shell: CGRect) {
+    guard asksByVoice, !isHandingOver, window?.isVisible == true else {
+      regionKeyHints.hide()
+      return
+    }
+    regionKeyHints.setHints(regionHints)
+    if !regionHints.contains(where: { $0.key == "⏎" }) { regionKeyHints.progress = 0 }
+    let size = regionKeyHints.size
+    let gap = AgentPaletteMetrics.regionKeyHintsGap
+    var origin = CGPoint(x: shell.midX - size.width / 2, y: shell.minY - gap - size.height)
+    if origin.y < bounds.minY + gap { origin.y = shell.maxY + gap }
+    origin.x = min(max(origin.x, bounds.minX + gap), bounds.maxX - gap - size.width)
+    let scale = window?.backingScaleFactor ?? 2
+    regionKeyHints.frame = CGRect(
+      x: (origin.x * scale).rounded() / scale, y: (origin.y * scale).rounded() / scale,
+      width: size.width, height: size.height)
+    if subviews.last !== regionKeyHints { addSubview(regionKeyHints, positioned: .above, relativeTo: nil) }
+    regionKeyHints.show()
+  }
+
+  private var regionHints: [PaletteKeyHints.Hint] {
+    typealias Hint = PaletteKeyHints.Hint
+    let cancel = Hint(key: "esc", words: "Cancel")
+    if regionIsAsking || holdsQuestionWords { return [Hint(key: nil, words: "Asking…")] }
+    guard isVoiceListening else { return [cancel] }
+    return field.draft.isEffectivelyEmpty
+      ? [Hint(key: nil, words: "Speak your question"), cancel]
+      : [Hint(key: "⏎", words: "Ask"), cancel]
+  }
+
+  /// How far a pause after speech has gone toward sending it by itself.
+  func setRegionSilence(_ progress: CGFloat) {
+    guard asksByVoice else { return }
+    regionKeyHints.progress = regionHints.contains(where: { $0.key == "⏎" }) ? progress : 0
+  }
+
+  func setRegionAsking(_ asking: Bool) {
+    guard regionIsAsking != asking else { return }
+    regionIsAsking = asking
+    needsLayout = true
+  }
+
   /// What the microphone is doing, said in the orb in secondary ink while a
   /// region's question has no words yet.
-  func showRegionVoiceStatus(_ status: String?) {
-    guard asksByVoice, !isVoiceListening, field.draft.isEffectivelyEmpty else { return }
+  func showRegionVoiceStatus(_ status: String?, whileListening: Bool = false) {
+    guard asksByVoice, whileListening || !isVoiceListening, field.draft.isEffectivelyEmpty else { return }
     listeningWords.setText(
       status ?? "", animated: window?.isVisible == true, ink: PaletteInk.secondary)
     needsLayout = true
@@ -1373,7 +1498,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       emotion: MascotEmotion(reportedState: preview.state),
       animated: true
     )
-    hintLabel.stringValue = Self.composerPlaceholder(for: preview)
+    hintLabel.stringValue = chatPlaceholder(for: preview)
     hintLabel.isHidden = !field.isEmptyPrompt
     needsLayout = true
     layoutSubtreeIfNeeded()
@@ -1384,7 +1509,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   func updateAddressing(_ preview: BolttyAISessionPreview) {
     guard addressedPreview?.id == preview.id else { return }
     let changed = preview != addressedPreview
-    hintLabel.stringValue = Self.composerPlaceholder(for: preview)
+    hintLabel.stringValue = chatPlaceholder(for: preview)
     if let line = BolttyAIAnnouncement.forTransition(from: addressedPreview, to: preview) {
       announce(line)
     }
@@ -1896,7 +2021,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         height - AgentPaletteMetrics.historyFootDiscInset - AgentPaletteMetrics.previewCloseDiameter
           - AgentPaletteMetrics.previewScrollEdgeSoftness
       )
-      stops += ScrollEdgeBlur.smoothstep.map { (whole + (height - whole) * $0.t, 1 - $0.s) }
+      // Gone by the discs' middle: faded to the very foot, a day's heading still
+      // read beside them, cut by the disc.
+      let gone = min(height, max(whole, height - AgentPaletteMetrics.historyFootDiscInset
+        - AgentPaletteMetrics.previewCloseDiameter / 2))
+      stops += ScrollEdgeBlur.smoothstep.map { (whole + (gone - whole) * $0.t, 1 - $0.s) }
+      if gone < height { stops.append((height, 0)) }
     } else {
       stops.append((height, 1))
     }
@@ -2279,7 +2409,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private func pressComposerChord(_ chord: ComposerChord) -> Bool {
     guard mode == .prompt else { return false }
-    if asksByVoice, chord != .dictate { return true }
+    if asksByVoice || dictatesInChat, chord != .dictate { return true }
     let button: NSButton = switch chord {
     case .dictate: micButton
     case .folder: directoryChip
@@ -2303,6 +2433,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private var trailingHintKeys: [PromptKeyHint] {
     guard mode == .prompt, !isVoiceListening, !field.isEmptyPrompt else { return [] }
+    // Return chooses from an open `@` or `/` list, so nothing may say it asks.
+    guard !fileMention.isOpen, !commandPicker.isOpen else { return [] }
     if let preview = addressedPreview {
       if let question = previewCard.pendingQuestion, question.takesWordsAsRefusal, draftHasWords {
         return [PromptKeyHint(words: question.refusalWords, key: "↵")]
@@ -2545,6 +2677,18 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     ])
     promptForeground.addSubview(recordingHoverSensor)
     promptForeground.addSubview(recordingControls)
+    chatDictation.translatesAutoresizingMaskIntoConstraints = false
+    chatDictation.isHidden = true
+    chatDictation.alphaValue = 0
+    chatDictation.onCancel = { [weak self] in self?.onVoiceCancel?() }
+    chatDictation.onStop = { [weak self] in self?.micButtonPressed() }
+    promptForeground.addSubview(chatDictation)
+    NSLayoutConstraint.activate([
+      chatDictation.leadingAnchor.constraint(equalTo: leadingControls.leadingAnchor),
+      chatDictation.trailingAnchor.constraint(
+        equalTo: sendSlot.leadingAnchor, constant: -ComposerControlGroup.gap),
+      chatDictation.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
+    ])
 
     hintLabel.stringValue = "Describe a task or ask"
     hintLabel.font = PromptTextView.promptFont
@@ -2887,6 +3031,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     scrollIndicator.frame = bounds
     addSubview(scrollIndicator)
     addSubview(selectionPointerHint)
+    addSubview(regionKeyHints)
   }
 
   override func setFrameSize(_ newSize: NSSize) {
@@ -2901,6 +3046,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   override func layout() {
     isPerformingLayout = true
     defer { isPerformingLayout = false }
+    if dictatesInChat != isShowingChatDictation {
+      DispatchQueue.main.async { [weak self] in
+        self?.syncChatDictation()
+        self?.syncSendButton()
+      }
+    }
     if !selectsOnDrag { hideSelectionPointerHint() }
     applyPlacement()
     super.layout()
@@ -3185,6 +3336,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       backdrop.layOut(in: rect, corner: corner, curve: curve)
     }
     layoutListeningWords(in: rect, corner: corner, curve: curve)
+    layoutRegionKeyHints(under: rect)
     layoutResizeGrabber(in: rect, corner: corner)
     scrollIndicatorShell = (rect, corner)
     syncScrollIndicator()
@@ -3871,6 +4023,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   func endScreenSelection() {
     isHandingOver = false
     holdsQuestionWords = false
+    regionIsAsking = false
+    regionKeyHints.progress = 0
     screenOutlines.alphaValue = 1
     regionAnnounced = false
     screenSelectionPhase = .idle
@@ -4466,6 +4620,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   @objc private func micButtonPressed() {
+    if dictatesInChat {
+      if isVoiceListening { onVoiceToggle?() }
+      return
+    }
     if isVoiceListening {
       setRecordingControlsRevealed(true, animated: true)
       return
@@ -4474,7 +4632,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   private func setRecordingControlsRevealed(_ revealed: Bool, animated: Bool) {
-    let show = revealed && isVoiceListening
+    let show = revealed && isVoiceListening && !dictatesInChat
     guard show != isRecordingControlsRevealed else { return }
     isRecordingControlsRevealed = show
     applyRecordingControlsVisibility(show, animated: animated)
@@ -4586,6 +4744,8 @@ extension AgentPaletteView: NSTextViewDelegate {
       if addressedPreview != nil, previewCard.isAnswering,
          previewCard.moveOptionFocus(by: 1) { return true }
       if addressedPreview != nil { return false }
+      // A draft of several lines is walked down first; the list waits below its last.
+      if !isResultsExpanded, !field.isCaretOnLastLine { return false }
       if !isResultsExpanded {
         openSwitcher()
       } else {
@@ -4653,6 +4813,10 @@ extension AgentPaletteView: NSTextViewDelegate {
       return true
     }
     if commandSelector == #selector(cancelOperation(_:)) {
+      if dictatesInChat {
+        onVoiceCancel?()
+        return true
+      }
       if screenSelectionPhase != .idle {
         letGoOfRegion()
         return true

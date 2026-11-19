@@ -16,6 +16,7 @@ final class AskBolttyController {
   private var holdsEscape = false
   private var lastRegion: CGRect?
   private var panelIsUp = false
+  private var stepClicks: Any?
 
   var onNeedsYou: ((UUID) -> Void)?
   var launchKeyName: (() -> String?)?
@@ -35,6 +36,23 @@ final class AskBolttyController {
     session.onSpent = { [weak self] providerID, resetsAt in
       self?.coordinator.markSpent(providerID, until: resetsAt)
     }
+    session.look = { frame in
+      let middle = CGPoint(x: frame.midX, y: frame.midY)
+      guard let display = NSScreen.screens.first(where: { $0.frame.contains(middle) })?.displayID
+      else { return nil }
+      return await ScreenRegionCapture.labels(onDisplay: display)
+    }
+    session.$isGuiding
+      .removeDuplicates()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] guiding in self?.listenForStepClicks(guiding) }
+      .store(in: &cancellables)
+    Publishers.CombineLatest(session.$phase, session.$isGuiding)
+      .receive(on: RunLoop.main)
+      .sink { [weak self] phase, guiding in
+        self?.overlay.setKeyHints(Self.keyHints(phase: phase, guiding: guiding))
+      }
+      .store(in: &cancellables)
     session.findPlace = { [weak self] spot in
       guard let self, settings().attachesFinderSelection else { return nil }
       return await self.finderSelection.place(of: spot)
@@ -89,6 +107,12 @@ final class AskBolttyController {
   }
 
   // MARK: - A question about a region
+
+  static func keyHints(phase: AskBolttySession.Phase, guiding: Bool) -> [PaletteKeyHints.Hint] {
+    let stop = PaletteKeyHints.Hint(key: "esc", words: "Stop")
+    if guiding { return [PaletteKeyHints.Hint(key: nil, words: "Click to go on"), stop] }
+    return phase == .thinking ? [stop] : []
+  }
 
   static func restHint(launchKey: String?) -> String {
     guard let launchKey else { return "Esc to close" }
@@ -205,12 +229,24 @@ final class AskBolttyController {
     }
   }
 
+  /// A click anywhere moves a walk through steps on; it reaches the app
+  /// clicked as it would have.
+  private func listenForStepClicks(_ listens: Bool) {
+    if let stepClicks { NSEvent.removeMonitor(stepClicks) }
+    stepClicks = nil
+    guard listens else { return }
+    stepClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
+      MainActor.assumeIsolated { self?.session.nextStep() }
+    }
+  }
+
   private func escapePressed() {
     session.stop()
     overlay.hide()
   }
 
   func shutDown() {
+    listenForStepClicks(false)
     escapeKey.stop()
     holdsEscape = false
     session.cancel()

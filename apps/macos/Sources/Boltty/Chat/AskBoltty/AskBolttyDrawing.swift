@@ -172,11 +172,12 @@ struct AskBolttyShape: Equatable, Sendable {
 
 enum AskBolttyMark: Equatable, Sendable {
   case point(AskBolttyPoint)
+  case step(AskBolttyPoint)
   case shape(AskBolttyShape)
   case board([AskBolttyShape])
 
   static let pattern =
-    #"(?s)<board\b[^>]*>.*?</board\s*>|<(?:point|circle|box|arrow|line|path|label)\b[^>]*>"#
+    #"(?s)<board\b[^>]*>.*?</board\s*>|<(?:point|step|circle|box|arrow|line|path|label)\b[^>]*>"#
 
   static let limit = 40
 
@@ -189,7 +190,11 @@ enum AskBolttyMark: Equatable, Sendable {
       let shapes = shapeTags(in: inside).compactMap(AskBolttyShape.parse)
       return shapes.isEmpty ? nil : .board(Array(shapes.prefix(limit)))
     }
-    if AskBolttyShape.tagName(tag) == "point" { return AskBolttyPoint.parse(tag).map(Self.point) }
+    switch AskBolttyShape.tagName(tag) {
+    case "point": return AskBolttyPoint.parse(tag).map(Self.point)
+    case "step": return AskBolttyPoint.parse(tag).map(Self.step)
+    default: break
+    }
     return AskBolttyShape.parse(tag).map(Self.shape)
   }
 
@@ -223,7 +228,7 @@ enum AskBolttyMark: Equatable, Sendable {
     guard let open = text.lastIndex(of: "<"), !text[open...].contains(">") else { return text }
     let rest = text[text.index(after: open)...].lowercased()
       .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-    let started = rest.isEmpty || (["point", "board"] + AskBolttyShape.names).contains { name in
+    let started = rest.isEmpty || (["point", "step", "board"] + AskBolttyShape.names).contains { name in
       rest.hasPrefix(name) || name.hasPrefix(rest)
     }
     return started ? String(text[..<open]) : text

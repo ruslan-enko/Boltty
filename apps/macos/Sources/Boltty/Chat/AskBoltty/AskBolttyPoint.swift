@@ -5,6 +5,13 @@ struct AskBolttyPoint: Equatable, Sendable {
   var x: CGFloat
   var y: CGFloat
   var label: String?
+  /// The words on what is meant, as read off the screen; placed on them when found.
+  var text: String? = nil
+  var hasPosition = true
+
+  /// How far, in thousandths, the words found may be from where the agent
+  /// pointed: farther, they are other words of the same spelling.
+  static let reach: CGFloat = 250
 
   static let pattern = #"<point\b[^>]*>"#
 
@@ -30,14 +37,39 @@ struct AskBolttyPoint: Equatable, Sendable {
       }
       return nil
     }
+    func words(_ name: String) -> String? {
+      let words = value(name)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      return words?.isEmpty == false ? words : nil
+    }
+    let label = words("label")
+    let text = words("text")
     guard let x = value("x").flatMap(Double.init), let y = value("y").flatMap(Double.init),
           x.isFinite, y.isFinite
-    else { return nil }
+    else {
+      guard let text else { return nil }
+      return AskBolttyPoint(x: 0.5, y: 0.5, label: label, text: text, hasPosition: false)
+    }
     let scale = (x <= 1 && y <= 1) ? 1.0 : 1000.0
-    let label = value("label")?.trimmingCharacters(in: .whitespacesAndNewlines)
     return AskBolttyPoint(
       x: CGFloat(min(max(x / scale, 0), 1)), y: CGFloat(min(max(y / scale, 0), 1)),
-      label: label?.isEmpty == false ? label : nil)
+      label: label, text: text)
+  }
+
+  /// On the words it names where they are found; else where the agent put it,
+  /// if it put it anywhere. `anywhere` lets the words stand far from that: the
+  /// screen has changed since the agent saw it.
+  func placed(among lines: [ScreenText], anywhere: Bool = false) -> AskBolttyPoint? {
+    if let text {
+      let near = hasPosition ? CGPoint(x: x * 1000, y: y * 1000) : nil
+      if let box = ScreenText.find(text, near: near, in: lines, reach: anywhere ? nil : Self.reach) {
+        var placed = self
+        placed.x = box.midX / 1000
+        placed.y = box.midY / 1000
+        placed.hasPosition = true
+        return placed
+      }
+    }
+    return hasPosition ? self : nil
   }
 
   func location(in displayFrame: CGRect) -> CGPoint {

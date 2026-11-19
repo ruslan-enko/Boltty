@@ -50,6 +50,9 @@ final class AskBolttyOverlayController {
   private var bubble: PaletteGlassHost?
   private let label = NSTextField(wrappingLabelWithString: "")
   private let answerWords = ListeningWordsView(frame: .zero)
+  private let keyHints = PaletteKeyHints()
+  private var wantedKeyHints: [PaletteKeyHints.Hint] = []
+  static let keyHintsGap: CGFloat = 8
 
   private var phase: AskBolttySession.Phase = .idle
   private var agent: AgentId?
@@ -558,6 +561,7 @@ final class AskBolttyOverlayController {
     let face = MascotNSView(conversationID: UUID(), look: look)
     face.ownsDisplayLink = true
     root.addSubview(face)
+    root.addSubview(keyHints)
 
     let panel = PassivePanel(
       contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
@@ -976,6 +980,7 @@ final class AskBolttyOverlayController {
     if face.frame != faceFrame { face.frame = faceFrame }
     placeMarker(from: position)
     bubble.isHidden = text.isEmpty || isArriving
+    defer { layoutKeyHints() }
     guard !text.isEmpty else { return }
     let space = CGRect(origin: .zero, size: screenFrame.size)
     bubbleSide = Self.bubbleSide(current: bubbleSide, beside: resting, in: space)
@@ -995,6 +1000,33 @@ final class AskBolttyOverlayController {
       bubble.cornerRadius = corner
       shade?.layer?.cornerRadius = corner
     }
+  }
+
+  /// What Escape and a click do now, under the face and its words.
+  func setKeyHints(_ hints: [PaletteKeyHints.Hint]) {
+    wantedKeyHints = hints
+    if !hints.isEmpty { keyHints.setHints(hints) }
+    layoutKeyHints()
+  }
+
+  private func layoutKeyHints() {
+    guard !wantedKeyHints.isEmpty, !isArriving, !resting, !settled, let face, let bubble,
+          panel?.isVisible == true
+    else {
+      keyHints.hide()
+      return
+    }
+    let above = bubble.isHidden ? face.frame : face.frame.union(bubble.frame)
+    let size = keyHints.size
+    let space = CGRect(origin: .zero, size: screenFrame.size)
+    var origin = CGPoint(
+      x: bubble.isHidden ? face.frame.midX - size.width / 2 : bubble.frame.minX,
+      y: above.minY - Self.keyHintsGap - size.height)
+    if origin.y < space.minY + Self.edgeMargin { origin.y = above.maxY + Self.keyHintsGap }
+    origin.x = min(max(origin.x, Self.edgeMargin), space.maxX - Self.edgeMargin - size.width)
+    let frame = CGRect(x: snap(origin.x), y: snap(origin.y), width: size.width, height: size.height)
+    if keyHints.frame != frame { keyHints.frame = frame }
+    keyHints.show()
   }
 
   private func layoutAnswerWords(in size: CGSize) {

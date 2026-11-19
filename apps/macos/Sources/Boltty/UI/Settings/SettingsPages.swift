@@ -98,6 +98,19 @@ struct GeneralSettingsPage: View {
           Text("Transcripts stay on this Mac. Nothing is re-run when Boltty restarts.")
         }
 
+        Picker(selection: Binding(
+          get: { model.keepsChatsDays },
+          set: { chooseKeeping($0) }
+        )) {
+          ForEach(HistoryRetention.choices, id: \.self) { days in
+            Text(HistoryRetention.title(days)).tag(days)
+          }
+        } label: {
+          Text("Keep chats")
+          Text("A chat untouched for longer goes to the Trash; what was pasted into it is deleted.")
+        }
+        .accessibilityIdentifier("boltty.settings.keepChats")
+
         LabeledContent {
           Button("Review…") { model.onReviewAccess?() }
             .accessibilityIdentifier("boltty.settings.reviewAccess")
@@ -199,6 +212,29 @@ struct GeneralSettingsPage: View {
     }
   }
 
+  private func chooseKeeping(_ days: Int) {
+    let count = model.chatsPast(days: days)
+    guard count > 0 else {
+      model.keepsChatsDays = days
+      return
+    }
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = count == 1
+      ? "Move one chat older than \(HistoryRetention.title(days).lowercased()) to the Trash?"
+      : "Move \(count) chats older than \(HistoryRetention.title(days).lowercased()) to the Trash?"
+    alert.informativeText = "From now on Boltty keeps chats for \(HistoryRetention.title(days).lowercased()). Until you empty the Trash, the moved ones are kept there."
+    alert.addButton(withTitle: "Move to Trash")
+    alert.addButton(withTitle: "Cancel")
+    alert.buttons.first?.hasDestructiveAction = true
+    guard alert.runModal() == .alertFirstButtonReturn else {
+      // The menu already shows the refused choice; nothing else would redraw it.
+      model.objectWillChange.send()
+      return
+    }
+    model.keepsChatsDays = days
+  }
+
   private func confirmClearHistory() {
     let count = model.conversationCount
     let alert = NSAlert()
@@ -282,7 +318,7 @@ struct AgentsSettingsPage: View {
     case .claude:
       "Claude Code decides what is safe to run and asks only about the rest."
     default:
-      "edits in the chat's folder, and commands that only read, build, test or change files there, go through without asking; the rest asks."
+      "edits in the chat's folder, and commands that only read, build, test or change files there, go through without asking. Running a script by itself, and anything else, asks. A build or a test runs the folder's own code."
     }
   }
 }

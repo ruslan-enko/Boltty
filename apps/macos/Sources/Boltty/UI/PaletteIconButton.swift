@@ -23,7 +23,7 @@ class PaletteIconButton: NSButton {
   }
 
   var hoverBackground: NSColor = PaletteInk.fill {
-    didSet { if isHovered { layer?.backgroundColor = hoverBackground.cgColor } }
+    didSet { if isHovered, !isKeyboardTarget { layer?.backgroundColor = hoverBackground.cgColor } }
   }
 
   var hoverBackdropBlurRadius: CGFloat = 0 {
@@ -57,11 +57,20 @@ class PaletteIconButton: NSButton {
     }
   }
 
+  /// Tab's stop: a flat fill of its own, since the composer's controls show
+  /// hover by their ink alone and a brighter icon was all Tab left to see.
   var isKeyboardTarget = false {
     didSet {
       guard isKeyboardTarget != oldValue else { return }
       applyTint()
+      animateHoverBackground()
     }
+  }
+
+  var keyboardTargetFill: NSColor = PaletteInk.fill
+
+  private var shownBackground: NSColor {
+    isKeyboardTarget ? keyboardTargetFill : isHovered ? hoverBackground : restingBackground
   }
   private var isPressed = false
   private var trackingArea: NSTrackingArea?
@@ -75,7 +84,7 @@ class PaletteIconButton: NSButton {
   }
 
   func applyRestingBackground() {
-    guard !isHovered else { return }
+    guard !isHovered, !isKeyboardTarget else { return }
     layer?.backgroundColor = restingBackground.cgColor
   }
 
@@ -195,7 +204,7 @@ class PaletteIconButton: NSButton {
 
   private func animateHoverBackground() {
     guard let layer else { return }
-    let target = isHovered ? hoverBackground.cgColor : restingBackground.cgColor
+    let target = shownBackground.cgColor
     let previous = layer.backgroundColor
     layer.backgroundColor = target
     guard !MotionPreferences.reduceMotion else { return }
@@ -649,4 +658,98 @@ private final class PaletteKeyLettersView: NSView {
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+/// What the keys do right now, as one help tag: each key's caps, then its words.
+final class PaletteKeyHints: NSView {
+  struct Hint: Equatable {
+    var key: String?
+    var words: String
+  }
+
+  private let row = NSStackView()
+  private let fill = NSView()
+  private(set) var hints: [Hint] = []
+  /// A fill growing across the tag: what it says is about to happen by itself.
+  var progress: CGFloat = 0 {
+    didSet { if progress != oldValue { needsLayout = true } }
+  }
+
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    wantsLayer = true
+    PaletteHelpBackdrop.install(in: self)
+    fill.wantsLayer = true
+    fill.layer?.backgroundColor = AgentPaletteMetrics.keyHintsProgressFill.cgColor
+    addSubview(fill)
+    row.orientation = .horizontal
+    row.alignment = .centerY
+    row.spacing = AgentPaletteMetrics.helpKeysGap
+    row.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(row)
+    NSLayoutConstraint.activate([
+      row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AgentPaletteMetrics.helpHorizontalPadding),
+      row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AgentPaletteMetrics.helpHorizontalPadding),
+      row.topAnchor.constraint(equalTo: topAnchor, constant: AgentPaletteMetrics.helpVerticalPadding),
+      row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AgentPaletteMetrics.helpVerticalPadding),
+    ])
+    setAccessibilityElement(false)
+    alphaValue = 0
+    isHidden = true
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+  override func layout() {
+    super.layout()
+    let shown = min(1, max(0, progress))
+    fill.isHidden = shown <= 0
+    let height = bounds.height
+    fill.frame = CGRect(x: 0, y: 0, width: max(height, bounds.width * shown), height: height)
+    fill.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpCornerRadius)
+  }
+
+  func setHints(_ next: [Hint]) {
+    guard next != hints else { return }
+    hints = next
+    row.setViews(next.map(Self.item), in: .leading)
+    layoutSubtreeIfNeeded()
+  }
+
+  var size: NSSize {
+    let fitting = fittingSize
+    return NSSize(width: ceil(fitting.width), height: ceil(fitting.height))
+  }
+
+  func show() {
+    guard isHidden else { return }
+    isHidden = false
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = MotionPreferences.reduceMotion ? 0 : Motion.quick
+      animator().alphaValue = 1
+    }
+  }
+
+  func hide() {
+    guard !isHidden else { return }
+    alphaValue = 0
+    isHidden = true
+  }
+
+  private static func item(_ hint: Hint) -> NSView {
+    let words = NSTextField(labelWithString: hint.words)
+    words.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
+    words.textColor = PaletteInk.primary
+    words.isSelectable = false
+    let caps = hint.key.map(PaletteHelpPresenter.keys(of:))?.map(PaletteKeycapView.init(key:)) ?? []
+    let item = NSStackView(views: caps + [words])
+    item.orientation = .horizontal
+    item.alignment = .centerY
+    item.spacing = AgentPaletteMetrics.helpKeycapSpacing
+    if let last = caps.last { item.setCustomSpacing(AgentPaletteMetrics.helpKeyWordsGap, after: last) }
+    return item
+  }
 }

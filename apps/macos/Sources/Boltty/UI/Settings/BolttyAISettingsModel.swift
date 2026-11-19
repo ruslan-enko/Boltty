@@ -179,6 +179,20 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.bolttyAIHotkeyEnabled = newValue } }
   }
 
+  var keepsChatsDays: Int {
+    get { appModel.settings.keepsChatsDays }
+    set { appModel.updateSettings { $0.keepsChatsDays = newValue } }
+  }
+
+  /// How many chats keeping them for `days` would move to the Trash now.
+  func chatsPast(days: Int) -> Int {
+    guard let cutoff = HistoryRetention.cutoff(days: days) else { return 0 }
+    return engine.store.conversations.filter {
+      $0.updatedAt < cutoff && !$0.lastKnownState.blocksSending
+        && $0.id != engine.store.selectedConversationID
+    }.count
+  }
+
   var playsSounds: Bool {
     get { appModel.settings.playsSounds }
     set { appModel.updateSettings { $0.playsSounds = newValue } }

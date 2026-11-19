@@ -24,6 +24,8 @@ struct AppSettings: Equatable, Sendable {
   var askBolttyReadOnly: Bool
   var askBolttySpeaksAloud: Bool
   var playsSounds: Bool
+  /// Days a chat is kept after it last changed; 0 keeps every chat.
+  var keepsChatsDays: Int
   var attachesFinderSelection: Bool
   var checksForUpdates: Bool
   var panelClearGlass: Bool
@@ -52,6 +54,7 @@ struct AppSettings: Equatable, Sendable {
   private static let askBolttyReadOnlyKey = "boltty.talk.readOnly"
   private static let askBolttySpeaksAloudKey = "boltty.talk.speaksAloud"
   private static let playsSoundsKey = "boltty.sounds.enabled"
+  private static let keepsChatsDaysKey = "boltty.history.keepDays"
   private static let checksForUpdatesKey = "boltty.updates.automaticChecks"
   private static let attachesFinderSelectionKey = "boltty.finderSelection.enabled"
   private static let panelClearGlassKey = "boltty.panel.clearGlass"
@@ -82,6 +85,7 @@ struct AppSettings: Equatable, Sendable {
     askBolttyReadOnly: Bool = true,
     askBolttySpeaksAloud: Bool = false,
     playsSounds: Bool = true,
+    keepsChatsDays: Int = 0,
     attachesFinderSelection: Bool = true,
     checksForUpdates: Bool = true,
     panelClearGlass: Bool = true
@@ -107,6 +111,7 @@ struct AppSettings: Equatable, Sendable {
     self.askBolttyReadOnly = askBolttyReadOnly
     self.askBolttySpeaksAloud = askBolttySpeaksAloud
     self.playsSounds = playsSounds
+    self.keepsChatsDays = HistoryRetention.choices.contains(keepsChatsDays) ? keepsChatsDays : 0
     self.attachesFinderSelection = attachesFinderSelection
     self.checksForUpdates = checksForUpdates
     self.panelClearGlass = panelClearGlass
@@ -183,6 +188,7 @@ struct AppSettings: Equatable, Sendable {
       askBolttyReadOnly: askBolttyReadOnly,
       askBolttySpeaksAloud: defaults.bool(forKey: Self.askBolttySpeaksAloudKey),
       playsSounds: playsSounds,
+      keepsChatsDays: defaults.integer(forKey: Self.keepsChatsDaysKey),
       attachesFinderSelection: attachesFinderSelection,
       checksForUpdates: checksForUpdates,
       panelClearGlass: panelClearGlass
@@ -239,6 +245,11 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(askBolttyReadOnly, forKey: Self.askBolttyReadOnlyKey)
     defaults.set(askBolttySpeaksAloud, forKey: Self.askBolttySpeaksAloudKey)
     defaults.set(playsSounds, forKey: Self.playsSoundsKey)
+    if keepsChatsDays == 0 {
+      defaults.removeObject(forKey: Self.keepsChatsDaysKey)
+    } else {
+      defaults.set(keepsChatsDays, forKey: Self.keepsChatsDaysKey)
+    }
     defaults.set(attachesFinderSelection, forKey: Self.attachesFinderSelectionKey)
     defaults.set(checksForUpdates, forKey: Self.checksForUpdatesKey)
     defaults.set(panelClearGlass, forKey: Self.panelClearGlassKey)
@@ -257,5 +268,26 @@ struct AppSettings: Equatable, Sendable {
         agentPreset = AgentId.adapterCases.first { enabledProviderIDs.contains($0.rawValue) }
       }
     }
+  }
+}
+
+/// How long chats are kept: a chat untouched for longer goes to the Trash.
+enum HistoryRetention {
+  static let choices = [0, 7, 14, 30, 182, 365]
+
+  static func title(_ days: Int) -> String {
+    switch days {
+    case 0: "Forever"
+    case 7: "1 Week"
+    case 14: "2 Weeks"
+    case 30: "1 Month"
+    case 182: "6 Months"
+    case 365: "1 Year"
+    default: "\(days) Days"
+    }
+  }
+
+  static func cutoff(days: Int, now: Date = Date()) -> Date? {
+    days > 0 ? now.addingTimeInterval(-Double(days) * 86_400) : nil
   }
 }

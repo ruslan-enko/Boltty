@@ -292,7 +292,11 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     voiceDictation.onAudioLevel = { [weak self] level in
       guard let self else { return }
       self.panelView.applyVoiceLevel(level)
-      guard self.silenceWatcher.accept(level: level, now: CACurrentMediaTime()) else { return }
+      self.regionLoudest = max(self.regionLoudest, level)
+      let now = CACurrentMediaTime()
+      let sends = self.silenceWatcher.accept(level: level, now: now)
+      self.panelView.setRegionSilence(self.silenceWatcher.progress(now: now))
+      guard sends, !self.panelView.isDictatingInChat else { return }
       guard !self.panelView.currentDraft.isEffectivelyEmpty else { return }
       self.silenceWatcher.reset()
       self.confirmDictation()
@@ -310,6 +314,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         self.regionMicrophoneWait?.cancel()
         self.regionMicrophoneWait = nil
         self.silenceWatcher.reset()
+        self.watchForSilentMicrophone()
         self.onListeningStarted?()
         self.panelView.setVoiceListening(true)
         return
@@ -368,10 +373,12 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
   private func confirmDictation() {
     guard isShowing, pendingVoiceSubmit == nil, !isSubmitting else { return }
-    if panelView.asksAboutRegionByVoice, panelView.currentDraft.isEffectivelyEmpty {
+    if panelView.asksAboutRegionByVoice || panelView.isDictatingInChat,
+       panelView.currentDraft.isEffectivelyEmpty {
       onPromptRefused?()
       return
     }
+    if panelView.asksAboutRegionByVoice { panelView.setRegionAsking(true) }
     let generation = visibilityGeneration
     let work = DispatchWorkItem { [weak self] in
       guard self?.visibilityGeneration == generation else { return }
@@ -402,6 +409,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   private func cancelPendingVoiceSubmit() {
+    if pendingVoiceSubmit != nil { panelView.setRegionAsking(false) }
     pendingVoiceSubmit?.cancel()
     pendingVoiceSubmit = nil
     silenceWatcher.reset()
@@ -472,6 +480,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private var silenceWatcher = VoiceSilenceWatcher()
   private var voiceScreenshotTimer: Timer?
   private var pendingVoiceSubmit: DispatchWorkItem?
+  private var silentMicrophoneCheck: DispatchWorkItem?
+  private var regionLoudest: CGFloat = 0
   private var voiceScreenshotPhase: CGFloat = 0
 
   private func startVoiceScreenshotPreviewIfRequested() {
@@ -978,11 +988,12 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     }
   }
 
-  private func cutScreenSelection(_ region: CGRect) async -> ScreenSelection? {
+  private func cutScreenSelection(_ region: CGRect, readsLabels: Bool = false) async -> ScreenSelection? {
     guard let frozenScreen else { return nil }
     let primaryHeight = NSScreen.screens.first?.frame.height ?? region.maxY
     return await Task.detached(priority: .userInitiated) {
-      try? ScreenRegionCapture.selection(region, in: frozenScreen, primaryScreenHeight: primaryHeight)
+      try? ScreenRegionCapture.selection(
+        region, in: frozenScreen, primaryScreenHeight: primaryHeight, readsLabels: readsLabels)
     }.value
   }
 
@@ -1359,6 +1370,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   private func regionReady() {
+    silentMicrophoneCheck?.cancel()
+    silentMicrophoneCheck = nil
+    regionLoudest = 0
     onRegionReady?(panelView.agentForNewPrompt)
     regionMicrophoneRetried = false
     listenForRegion()
@@ -1379,6 +1393,28 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     regionMicrophoneWait = wait
     DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionMicrophoneWait, execute: wait)
   }
+
+  /// A microphone that listens and hears nothing at all is the wrong input or a
+  /// muted one: the orb says where to look, rather than waiting on in silence.
+  /// Counted from the region's first take: an engine started again after an empty
+  /// take does not start the count again.
+  private func watchForSilentMicrophone() {
+    guard panelView.asksAboutRegionByVoice, silentMicrophoneCheck == nil else { return }
+    let check = DispatchWorkItem { [weak self] in
+      guard let self else { return }
+      self.silentMicrophoneCheck = nil
+      guard self.panelView.asksAboutRegionByVoice, self.panelView.isVoiceListeningNow,
+            self.panelView.currentDraft.isEffectivelyEmpty,
+            self.regionLoudest < AgentPaletteMetrics.regionSoundFloor
+      else { return }
+      self.panelView.showRegionVoiceStatus(Self.silentMicrophone, whileListening: true)
+    }
+    silentMicrophoneCheck = check
+    DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionSilentMicrophone, execute: check)
+  }
+
+  static let silentMicrophone =
+    "No sound is reaching the microphone. Check the input in System Settings › Sound."
 
   /// One more try, then the question is let go of and the panel says why: a
   /// region has no text field to fall back on.
@@ -1405,9 +1441,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       return
     }
     isSubmitting = true
+    panelView.setRegionAsking(true)
     Task { [weak self] in
       _ = await self?.freezeTask?.value
-      let selection = await self?.cutScreenSelection(region)
+      let selection = await self?.cutScreenSelection(region, readsLabels: true)
       guard let self, !self.isHandingRegionOver else { return }
       self.isSubmitting = false
       guard self.isShowing, self.panelView.screenSelectionFrame == region else {

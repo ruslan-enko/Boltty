@@ -308,6 +308,11 @@ final class MascotNSView: NSView {
     motion.nod()
   }
 
+  func hear(_ level: CGFloat) {
+    guard !reduceMotion else { return }
+    motion.hear(Double(level))
+  }
+
   override func viewDidChangeBackingProperties() {
     super.viewDidChangeBackingProperties()
     render()

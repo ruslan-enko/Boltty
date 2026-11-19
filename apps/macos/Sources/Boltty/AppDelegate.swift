@@ -63,10 +63,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     model?.agentCatalog.scan()
     LaunchTrace.mark("agentCatalog.scan (async)")
-    Task.detached(priority: .utility) {
-      PromptAttachmentStore.shared.purgeExpired()
-    }
-
     setupStatusBar()
     presence.enterTrayOnly()
     setupSettingsPipeline()
@@ -98,6 +94,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   static var isHostingUnitTests: Bool {
     ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+  }
+
+  private var historyTidying: Timer?
+  private static let historyTidyingEvery: TimeInterval = 6 * 60 * 60
+
+  /// Chats past Settings' keeping go to the Trash; pasted files no chat shows
+  /// any more go after a week.
+  private func tidyHistory() {
+    guard let store = chat?.store, !store.isReadOnly else { return }
+    if let cutoff = HistoryRetention.cutoff(days: model?.settings.keepsChatsDays ?? 0) {
+      store.trashChats(untouchedSince: cutoff)
+    }
+    let inUse = store.filesInUse
+    Task.detached(priority: .utility) {
+      PromptAttachmentStore.shared.purgeExpired(keeping: inUse)
+    }
   }
 
   private func setupChat() {
@@ -142,6 +154,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     coordinator.onTurnFinished = { [weak self] conversation in self?.readFinishedTurn(conversation) }
     attentionNotifications = notifications
     chat = coordinator
+    model?.$settings
+      .map(\.keepsChatsDays)
+      .removeDuplicates()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in self?.tidyHistory() }
+      .store(in: &cancellables)
+    historyTidying = Timer.scheduledTimer(withTimeInterval: Self.historyTidyingEvery, repeats: true) {
+      [weak self] _ in MainActor.assumeIsolated { self?.tidyHistory() }
+    }
 
     let askBoltty = AskBolttyController(coordinator: coordinator, speech: speech) { [weak appModel = model] in
       appModel?.settings ?? AppSettings()

@@ -664,7 +664,10 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
     let call = params.object("toolCall")
     let passes = switch call?.string("kind") {
-    case "edit": true
+    case "edit": auto.map { auto in
+        let paths = (call?.array("locations") ?? []).compactMap { $0.string("path") }
+        return !paths.isEmpty && paths.allSatisfy { AutoModeCommands.isEditable($0, in: auto.directory) }
+      } ?? false
     case "execute": call?.object("rawInput")?.string("command").map { command in
         AutoModeCommands.allows(
           command, in: auto?.directory ?? NSHomeDirectory(),

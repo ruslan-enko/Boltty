@@ -561,6 +561,20 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(view.previewBodyForTesting.contains("Looking at the login flow."))
   }
 
+  func testDownArrowWalksADraftOfSeveralLinesBeforeOpeningTheList() {
+    let view = makeScreenSizedView()
+    view.setSessions([.row("claude", .claude)], activeSessionID: nil)
+    view.setChatDraft(PromptDraft("first line\nsecond line\nthird line"))
+    view.field.setSelectedRange(NSRange(location: 2, length: 0))
+
+    XCTAssertFalse(view.textView(view.field, doCommandBy: #selector(NSResponder.moveDown(_:))))
+    XCTAssertFalse(view.isResultsExpandedForTesting)
+
+    view.field.setSelectedRange(NSRange(location: (view.field.string as NSString).length, length: 0))
+    XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.moveDown(_:))))
+    XCTAssertTrue(view.isResultsExpandedForTesting)
+  }
+
   // MARK: - Keys on the reply card
 
   func testDownArrowDoesNotOpenTheSwitcherUnderTheCard() {

@@ -370,6 +370,20 @@ final class PromptTextView: NSTextView {
     return abs(caretLine.minY - firstLine.minY) < 0.5
   }
 
+  var isCaretOnLastLine: Bool {
+    guard let layoutManager, let storage = textStorage, storage.length > 0 else { return true }
+    if let textContainer { layoutManager.ensureLayout(for: textContainer) }
+    let caret = selectedRange().location
+    guard caret < storage.length else { return true }
+    let caretGlyph = layoutManager.glyphIndexForCharacter(at: caret)
+    let caretLine = layoutManager.lineFragmentRect(forGlyphAt: caretGlyph, effectiveRange: nil)
+    let lastLine = layoutManager.extraLineFragmentTextContainer != nil
+      ? layoutManager.extraLineFragmentRect
+      : layoutManager.lineFragmentRect(
+        forGlyphAt: max(0, layoutManager.numberOfGlyphs - 1), effectiveRange: nil)
+    return abs(caretLine.minY - lastLine.minY) < 0.5
+  }
+
   func notifyContentHeightIfNeeded() {
     let height = clampedContentHeight
     guard abs(height - lastReportedContentHeight) > 0.5 else { return }

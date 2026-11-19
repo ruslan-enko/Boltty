@@ -308,6 +308,10 @@ final class VoiceDictationService {
     }
   }
 
+  /// Sound below the floor, told apart from none at all (all zeros), which is
+  /// what a muted or wrong input gives.
+  nonisolated static let quietRoom: CGFloat = 0.0001
+
   nonisolated static func loudness(of buffer: AVAudioPCMBuffer) -> CGFloat {
     guard let channel = buffer.floatChannelData?[0] else { return 0 }
     let count = Int(buffer.frameLength)
@@ -323,7 +327,7 @@ final class VoiceDictationService {
 
     let floorDecibels: Float = -50
     let decibels = 20 * log10(rms)
-    guard decibels > floorDecibels else { return 0 }
+    guard decibels > floorDecibels else { return quietRoom }
     return CGFloat(min(1, (decibels - floorDecibels) / -floorDecibels))
   }
 

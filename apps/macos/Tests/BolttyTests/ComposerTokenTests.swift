@@ -86,3 +86,24 @@ final class FileMentionTests: XCTestCase {
     XCTAssertFalse(FolderWalk.isOutOfSight(home + "/Documents/report.pdf", under: home))
   }
 }
+
+final class SuggestionPlaceTests: XCTestCase {
+  private func width(_ words: String) -> CGFloat { CGFloat(words.count) * 10 }
+
+  func testAPlaceThatFitsStaysWhole() {
+    XCTAssertEqual(SuggestionPlace.folders(of: "Pictures/Screenshots", fitting: 400, width: width), "Pictures/Screenshots")
+  }
+
+  func testAPlaceIsCutAtWholeFoldersFromTheFront() {
+    XCTAssertEqual(
+      SuggestionPlace.folders(of: "Projects/boltty/apps/macos", fitting: 140, width: width), "…/apps/macos")
+  }
+
+  func testWhenNoFolderFitsWithItsMarkTheNearestStandsAlone() {
+    XCTAssertEqual(SuggestionPlace.folders(of: "Pictures/Screenshots", fitting: 120, width: width), "Screenshots")
+  }
+
+  func testNeverAPieceOfAName() {
+    XCTAssertEqual(SuggestionPlace.folders(of: "Pictures/Screenshots", fitting: 60, width: width), "")
+  }
+}

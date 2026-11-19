@@ -185,3 +185,96 @@ final class AntigravityPermissionGateTests: XCTestCase {
     return (process.terminationStatus, String(decoding: data, as: UTF8.self))
   }
 }
+
+final class AutoModeCommandsTests: XCTestCase {
+  private var folder: String!
+  private var home: String!
+
+  override func setUpWithError() throws {
+    let root = FileManager.default.temporaryDirectory
+      .appendingPathComponent("automode-\(UUID().uuidString)", isDirectory: true)
+    home = root.path
+    folder = root.appendingPathComponent("project").path
+    try FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+  }
+
+  override func tearDownWithError() throws {
+    try? FileManager.default.removeItem(atPath: home)
+  }
+
+  private func allows(_ line: String) -> Bool {
+    AutoModeCommands.allows(line, in: folder, autoMode: true, home: home)
+  }
+
+  func testBuildingAndTestingStillGoThrough() {
+    XCTAssertTrue(allows("ls -la"))
+    XCTAssertTrue(allows("npm test"))
+    XCTAssertTrue(allows("npm run test:unit"))
+    XCTAssertTrue(allows("python3 -m pytest"))
+    XCTAssertTrue(allows("echo hi > notes.txt"))
+    XCTAssertTrue(allows("git status && git diff"))
+  }
+
+  func testAScriptRunByItselfAsks() {
+    XCTAssertFalse(allows("./run.sh"))
+    XCTAssertFalse(allows("sh run.sh"))
+    XCTAssertFalse(allows("python3 tool.py"))
+    XCTAssertFalse(allows("node tool.js"))
+    XCTAssertFalse(allows("bun tool.ts"))
+    XCTAssertFalse(allows("npm run fetch-data"))
+  }
+
+  func testGitThatRunsAProgramAsks() {
+    XCTAssertFalse(allows("git grep -O'touch x' needle"))
+    XCTAssertFalse(allows("git grep --open-files-in-pager=sh needle"))
+    XCTAssertFalse(allows("git fetch --upload-pack='touch x' ../repo"))
+    XCTAssertFalse(allows("git diff --ext-diff"))
+  }
+
+  func testALinkOutOfTheFolderIsNotTheFolder() throws {
+    let outside = (home as NSString).appendingPathComponent(".zshrc")
+    FileManager.default.createFile(atPath: outside, contents: Data())
+    try FileManager.default.createSymbolicLink(
+      atPath: (folder as NSString).appendingPathComponent("rc"), withDestinationPath: outside)
+    XCTAssertFalse(allows("echo x >> rc"))
+    XCTAssertFalse(allows("ln -s ~/.zshrc other"))
+    XCTAssertFalse(AutoModeCommands.isEditable("rc", in: folder, home: home))
+    XCTAssertTrue(AutoModeCommands.isEditable("main.swift", in: folder, home: home))
+  }
+
+  func testALinkToNowhereIsRefused() throws {
+    try FileManager.default.createSymbolicLink(
+      atPath: (folder as NSString).appendingPathComponent("dangling"),
+      withDestinationPath: (home as NSString).appendingPathComponent("not-yet"))
+    XCTAssertFalse(allows("echo x > dangling"))
+  }
+
+  func testASecretLinkedIntoDotfilesIsStillASecret() throws {
+    let dotfiles = (home as NSString).appendingPathComponent("dotfiles/ssh")
+    try FileManager.default.createDirectory(atPath: dotfiles, withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: (dotfiles as NSString).appendingPathComponent("id_ed25519"), contents: Data())
+    try FileManager.default.createSymbolicLink(
+      atPath: (home as NSString).appendingPathComponent(".ssh"), withDestinationPath: dotfiles)
+    XCTAssertFalse(allows("cat ~/.ssh/id_ed25519"))
+  }
+
+  func testInHomeALinkedDotfileIsStillADotfile() throws {
+    let target = (home as NSString).appendingPathComponent("dotfiles/zshrc")
+    try FileManager.default.createDirectory(
+      atPath: (target as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+    FileManager.default.createFile(atPath: target, contents: Data())
+    try FileManager.default.createSymbolicLink(
+      atPath: (home as NSString).appendingPathComponent(".zshrc"), withDestinationPath: target)
+    XCTAssertFalse(AutoModeCommands.allows("echo x >> ~/.zshrc", in: home, autoMode: true, home: home))
+  }
+
+  func testGitsOwnFolderIsNotEdited() {
+    XCTAssertFalse(AutoModeCommands.isEditable(".git/hooks/pre-commit", in: folder, home: home))
+  }
+
+  func testCredentialsAreNotRead() {
+    XCTAssertFalse(allows("cat ~/.git-credentials"))
+    XCTAssertFalse(allows("printenv"))
+    XCTAssertFalse(allows("env"))
+  }
+}

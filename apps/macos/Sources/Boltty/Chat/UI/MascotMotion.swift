@@ -18,6 +18,7 @@ struct MascotMotion {
   private var droop = Spring(frequency: 2.5, damping: 1)
   private var eyeScale = Spring(frequency: 4, damping: 1)
   private var happiness = Spring(frequency: 8, damping: 1)
+  private var hearing = Spring(frequency: 12, damping: 0.85)
 
   private var focus = SIMD2<Double>(0, 0)
   private var nextGlance = 0.0
@@ -87,6 +88,11 @@ struct MascotMotion {
   mutating func setPointer(x: Double, y: Double, strength: Double) {
     let weight = mood.followsPointer ? max(0, min(1, strength)) : 0
     pointerTarget = SIMD3(max(-1, min(1, x)), max(-1, min(1, y)), weight)
+  }
+
+  /// How loud the voice it listens to is, 0–1: it swells and widens its eyes.
+  mutating func hear(_ level: Double) {
+    hearing.target = max(0, min(1, level))
   }
 
   mutating func nod() {
@@ -174,6 +180,10 @@ struct MascotMotion {
     }
     happiness.target = happy
     happiness.advance(dt)
+    hearing.advance(dt)
+    let heard = max(0, hearing.value)
+    stretch += SIMD2(0.07, 0.05) * heard
+    rise -= 1.5 * heard
 
     compose(stretch: stretch, rise: rise, spin: spin, lean: lean, happy: happiness.value, blink: blink)
   }
@@ -203,11 +213,11 @@ struct MascotMotion {
     pose.eyes = [
       MascotEyeShape(
         open: open * (1 - asymmetry) * (1 - wink.left), happy: max(happy, wink.right),
-        sleepy: sleepiness.value, droop: droop.value, scale: eyeScale.value
+        sleepy: sleepiness.value, droop: droop.value, scale: eyeScale.value * (1 + 0.12 * max(0, hearing.value))
       ),
       MascotEyeShape(
         open: open * (1 - wink.right), happy: max(happy, wink.left),
-        sleepy: sleepiness.value, droop: droop.value, scale: eyeScale.value
+        sleepy: sleepiness.value, droop: droop.value, scale: eyeScale.value * (1 + 0.12 * max(0, hearing.value))
       ),
     ]
   }

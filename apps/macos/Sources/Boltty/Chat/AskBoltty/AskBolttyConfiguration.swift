@@ -59,6 +59,8 @@ enum AskBolttyConfiguration {
 }
 
 enum AskBolttyPrompt {
+  static let labelByteLimit = 5_000
+
   static func text(question: String, region: AskBolttyRegion, readOnly: Bool) -> String {
     bracket(region: region, readOnly: readOnly) + question
   }
@@ -72,9 +74,13 @@ enum AskBolttyPrompt {
     let pictures = region.isWholeScreen
       ? "Screenshot: \(region.screenPath)."
       : "Screenshots: \(region.screenPath) (the screen), \(region.areaPath) (the area)."
-    let text = region.recognizedText.map {
+    let areaText = region.isWholeScreen && !region.labels.isEmpty ? nil : region.recognizedText
+    let text = areaText.map {
       " The text read off the area:\n<screen-text>\n\($0)\n</screen-text>\n"
     } ?? " "
+    let labels = ScreenText.listing(region.labels, byteLimit: labelByteLimit, near: region.area).map {
+      "The words read off the first picture, one line each as x1 y1 x2 y2 (0 to 1000, as below) then the words:\n<screen-labels>\n\($0)</screen-labels>\n"
+    } ?? ""
     let tools = readOnly
       ? "Answer from what you see: do not run commands or change anything. If they ask you to change something, say in one sentence that for now you can only look, and that “Can make changes” in Settings › Ask Boltty lets you. You may search the web when the question needs it, and give the link. If the pictures did not come with this message, open the screenshot files to look at them; those reads are allowed."
       : "Answer from what you see — if the pictures did not come with this message, open the screenshot files first; search the web when the question needs it. When they clearly ask you to do something, do it without saying what you are about to do: run the commands or change the files, then say in one sentence what you did. Otherwise change nothing."
@@ -87,14 +93,23 @@ enum AskBolttyPrompt {
       : "")
     return """
       [Talk: the person asked this about their screen. The first picture is \(screen); \
-      \(area) \(pictures)\(text)\(place)\
+      \(area) \(pictures)\(text)\(labels)\(place)\
       Your answer is shown beside them, and may be read aloud: one or two short sentences, \
       never more, in the language they asked in, no markdown, no lists, no code, one step at \
       a time; a link goes in as it is. \
-      To show them where something is, put <point x="…" y="…" label="…"/> right before the \
-      sentence that names it: x and y from 0 to 1000 across the first picture (0 0 is its top \
-      left), at the centre of that thing; the tag is not read aloud. At most one per sentence, \
-      none when nothing on the screen is meant. \
+      To show them where something is, put <point x="…" y="…" text="…" label="…"/> right before \
+      the sentence that names it: x and y from 0 to 1000 across the first picture (0 0 is its top \
+      left), at the centre of that thing; the tag is not read aloud. When the thing has words on it \
+      or beside it in <screen-labels>, give them as text, exactly as listed (a word or a few from \
+      one line): Boltty puts the point on those words. At most one per sentence, none when nothing \
+      on the screen is meant. \
+      When doing what they ask takes three steps or more, do not squeeze it into two sentences: \
+      give each step as one short sentence right after its own <step text="…" x="…" y="…"/>, in \
+      order, up to eight. text is the words on what to click, as they will read on the screen, \
+      even for something that shows only after an earlier step (a menu's item, a dialog's \
+      button); x and y only when it is on the first picture. Boltty shows one step at a time, \
+      finds its words on the screen as it is then, and moves on when they click. One sentence \
+      before the first step may say what the steps do. \
       To show more, draw, in the same 0 to 1000, right before the sentence it illustrates: \
       <circle x="…" y="…" r="…" label="…"/> round something (r in the across scale), \
       <box x1="…" y1="…" x2="…" y2="…" label="…"/>, <arrow x1="…" y1="…" x2="…" y2="…" label="…"/> \
@@ -118,4 +133,7 @@ struct AskBolttyRegion: Equatable, Sendable {
   var isWholeScreen: Bool
   var finderPlace: FinderPlace? = nil
   var isOverUnreadFinder = false
+  var labels: [ScreenText] = []
+  /// The selected area in the first picture's thousandths, top left at 0 0.
+  var area: CGRect? = nil
 }

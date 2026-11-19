@@ -62,7 +62,9 @@ final class PromptAttachmentStore: PromptAttachmentStoring, @unchecked Sendable 
   }
 
   @discardableResult
-  func purgeExpired(now: Date = Date(), maxAge: TimeInterval = PromptAttachmentStore.maxAge) -> Int {
+  func purgeExpired(
+    now: Date = Date(), maxAge: TimeInterval = PromptAttachmentStore.maxAge, keeping inUse: Set<String> = []
+  ) -> Int {
     guard
       let entries = try? fileManager.contentsOfDirectory(
         at: directory,
@@ -76,7 +78,8 @@ final class PromptAttachmentStore: PromptAttachmentStoring, @unchecked Sendable 
       guard
         let modified = try? entry.resourceValues(forKeys: [.contentModificationDateKey])
           .contentModificationDate,
-        now.timeIntervalSince(modified) > maxAge
+        now.timeIntervalSince(modified) > maxAge,
+        !inUse.contains(entry.path), !inUse.contains(entry.resolvingSymlinksInPath().path)
       else { continue }
       if (try? fileManager.removeItem(at: entry)) != nil { removed += 1 }
     }

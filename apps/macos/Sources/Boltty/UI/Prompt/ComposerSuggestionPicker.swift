@@ -18,6 +18,8 @@ final class ComposerSuggestionPicker<Item> {
   typealias Search = (_ query: String, _ deliver: @escaping @MainActor ([Item]) -> Void) -> Void
 
   var onPick: ((Item, NSRange) -> Void)?
+  /// The list came up or went away.
+  var onOpenChange: (() -> Void)?
   /// The shell in the host's coordinates, for the list to stand clear of it.
   var shellFrame: (() -> NSRect)?
 
@@ -26,7 +28,9 @@ final class ComposerSuggestionPicker<Item> {
   private let accessibilityLabel: String
   private weak var host: NSView?
   private weak var field: PromptTextView?
-  private var list: ComposerSuggestionList?
+  private var list: ComposerSuggestionList? {
+    didSet { if (oldValue == nil) != (list == nil) { onOpenChange?() } }
+  }
   private var items: [Item] = []
   private var token: ComposerToken?
   private var context: String?
@@ -167,8 +171,13 @@ final class ComposerSuggestionPicker<Item> {
     let gap = AgentPaletteMetrics.mentionGap
     let flipped = host.isFlipped
     let roomAbove = flipped ? line.minY - room.minY : room.maxY - line.maxY
+    // Above the line only within the shell: on the first screen the line is
+    // near its top, and a short list fitted there stood over the shell's edge.
+    let staysInShell = flipped
+      ? line.minY - gap - size.height >= shell.minY
+      : line.maxY + gap + size.height <= shell.maxY
     let y: CGFloat
-    if roomAbove >= size.height + gap * 2 {
+    if roomAbove >= size.height + gap * 2, staysInShell {
       y = flipped ? line.minY - gap - size.height : line.maxY + gap
     } else {
       y = flipped ? shell.maxY + gap : shell.minY - gap - size.height
@@ -280,9 +289,11 @@ private final class ComposerSuggestionRowView: NSView {
   private var hoverArea: NSTrackingArea?
 
   private let detailLeads: Bool
+  private let detail: String
 
   init(_ suggestion: ComposerSuggestion) {
     detailLeads = suggestion.detailLeads
+    detail = suggestion.detail
     super.init(frame: .zero)
     wantsLayer = true
     let font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
@@ -334,6 +345,9 @@ private final class ComposerSuggestionRowView: NSView {
       place.frame = NSRect(x: name.frame.maxX + gap, y: textY, width: room, height: textHeight)
       return
     }
+    place.stringValue = SuggestionPlace.folders(of: detail, fitting: room) { [place] words in
+      Self.width(of: words, font: place.font)
+    }
     let placeWidth = place.stringValue.isEmpty ? 0 : min(Self.width(of: place), room)
     let nameWidth = placeWidth > 0 ? available - placeWidth - gap : available
     name.frame = NSRect(x: nameX, y: textY, width: nameWidth, height: textHeight)
@@ -344,8 +358,11 @@ private final class ComposerSuggestionRowView: NSView {
   /// The words at their font, and the cell's own padding either side:
   /// `intrinsicContentSize` came short and cut every name in its middle.
   private static func width(of label: NSTextField) -> CGFloat {
-    let words = (label.stringValue as NSString).size(withAttributes: [.font: label.font as Any]).width
-    return ceil(words) + 6
+    width(of: label.stringValue, font: label.font)
+  }
+
+  private static func width(of words: String, font: NSFont?) -> CGFloat {
+    ceil((words as NSString).size(withAttributes: [.font: font as Any]).width) + 6
   }
 
   override func updateTrackingAreas() {
@@ -363,5 +380,22 @@ private final class ComposerSuggestionRowView: NSView {
   override func mouseUp(with event: NSEvent) {
     guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
     onClick?()
+  }
+}
+
+enum SuggestionPlace {
+  /// Where a file is, cut at whole folders from the front ("…/Screenshots"):
+  /// cut inside a name ("…shots") it said nothing. Empty when not even the
+  /// nearest folder fits, since the name has the row.
+  static func folders(of path: String, fitting room: CGFloat, width: (String) -> CGFloat) -> String {
+    guard !path.isEmpty, width(path) > room else { return path }
+    var parts = path.split(separator: "/").map(String.init)
+    while parts.count > 1 {
+      parts.removeFirst()
+      let shorter = "…/" + parts.joined(separator: "/")
+      if width(shorter) <= room { return shorter }
+    }
+    if let last = parts.last, width(last) <= room { return last }
+    return ""
   }
 }

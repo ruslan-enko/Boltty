@@ -366,7 +366,9 @@ final class PlanUsageRingView: PaletteIconButton {
     arc.lineCapStyle = .round
     arc.appendArc(withCenter: center, radius: diameter / 2, startAngle: top,
                   endAngle: isFlipped ? top + sweep : top - sweep, clockwise: !isFlipped)
-    (contentTintColor ?? tintForTesting).setStroke()
+    // A plan nearly spent reads at a glance; in the ink, full looked like empty.
+    let nearlySpent = percent >= AgentPaletteMetrics.planRingWarningPercent
+    (nearlySpent ? BolttyBrand.accentOnGlass : contentTintColor ?? tintForTesting).setStroke()
     arc.stroke()
   }
 }
