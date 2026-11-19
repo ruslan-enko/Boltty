@@ -2,6 +2,41 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.10.0
+
+**Chats**
+- `@` brings a file into the composer as a card, with every agent: the chat's
+  folder is searched as you type, and a bare `@` lists the newest files.
+- `/` at the start lists the agent's own skills and commands, read from its CLI.
+- Plan first: `/plan` or Plan First in the model chip's menu asks the agent to
+  plan and change nothing until you approve. The plan is one card: Approve,
+  Request Changes or Quit.
+- Fork from Here (an answer's right click) and Fork Chat (a row's) go on from
+  that turn in a new chat, with Claude Code, Codex and OpenCode.
+- Undo Changes from Here… (a question's right click) puts the agent's changes to
+  files back as they were before it, with Claude Code and OpenCode.
+- Dictating in an open chat keeps the chat: the composer's foot shows the take,
+  with a wave of your voice, the time, × and the microphone.
+- Settings › General › Keep chats: older chats go to the Trash on their own.
+
+**Ask Boltty**
+- The agent gets the words on the screen, and points at them rather than at a
+  guessed spot.
+- Something that takes three steps or more is walked through one step at a time:
+  each click moves on, and each step is found on the screen as it is then.
+- What Return, Escape and a click do is shown under the orb and beside the face.
+- A microphone that hears nothing says so; the face swells as you speak.
+
+**Auto Mode**
+- Links are followed before a path is judged, edits into `.git` ask, and running
+  a script by itself, `ln`, `env` and `printenv` ask. Package scripts go through
+  only by a build or test name. More credential files are kept out of reach.
+
+**Panel**
+- The plan ring turns the accent from 80% used.
+- Tab's stop on the first screen has a fill of its own.
+- ↓ in a draft of several lines walks its lines before opening the list.
+
 ## 0.9.3
 
 - Settings is redrawn. Each page in the sidebar has a tile of its own, and the
