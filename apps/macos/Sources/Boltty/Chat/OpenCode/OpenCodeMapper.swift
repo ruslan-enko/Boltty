@@ -350,12 +350,7 @@ enum OpenCodeMapper {
 extension OpenCodeMapper {
   /// `/api/experimental/usage/limits` (2.2.6): OpenCode Go's meters and the
   /// Console's budgets, `data: null` until OpenCode is signed in to the Console.
-  /// The free models' line comes from the database (`OpenCodeFreeUsage`).
-  static func usage(
-    limits: JSONValue?,
-    free: OpenCodeFreeUsage?,
-    now: Date = Date()
-  ) -> AgentUsage {
+  static func usage(limits: JSONValue?) -> AgentUsage {
     var windows: [AgentUsageWindow] = []
     var notes: [String] = []
     let data = limits?["data"]
@@ -388,14 +383,6 @@ extension OpenCodeMapper {
       ))
     }
 
-    if let free {
-      if let backAt = free.backAt, backAt > now {
-        windows.append(AgentUsageWindow(
-          kind: .named("Daily", order: 1), usedPercent: 100, resetsAt: backAt, label: "Free models"))
-      } else if free.steps > 0 {
-        notes.append("Free models: \(free.steps) \(free.steps == 1 ? "step" : "steps") since \(clock(free.since)). OpenCode does not say how many a day allows.")
-      }
-    }
     if windows.isEmpty, data == nil || data == .null {
       notes.append("Go and Console limits show once OpenCode is signed in to its Console.")
     }
@@ -404,11 +391,5 @@ extension OpenCodeMapper {
 
   private static func dollars(_ amount: Double) -> String {
     amount == amount.rounded() ? "$\(Int(amount))" : String(format: "$%.2f", amount)
-  }
-
-  private static func clock(_ date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.setLocalizedDateFormatFromTemplate("jmm")
-    return formatter.string(from: date)
   }
 }

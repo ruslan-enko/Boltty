@@ -101,14 +101,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   func usageLimits() async -> AgentUsage? {
     let limits: JSONValue? = try? await get("/api/experimental/usage/limits")
-    if lock.withLock({ freeModels.isEmpty }) { _ = try? await modelsFromModelRoute() }
-    let free = lock.withLock { freeModels }
-    let usage = await Task.detached(priority: .utility) {
-      OpenCodeFreeUsage.read(isFree: { provider, model in
-        free.contains("\(provider)/\(model)") || (provider == "opencode" && model.hasSuffix("-free"))
-      })
-    }.value
-    return OpenCodeMapper.usage(limits: limits, free: usage)
+    return OpenCodeMapper.usage(limits: limits)
   }
 
   func activityHistory() async -> AgentActivityHistory? {

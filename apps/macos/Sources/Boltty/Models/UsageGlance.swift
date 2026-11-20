@@ -27,9 +27,9 @@ enum UsageGlanceText {
   static func reset(_ window: AgentUsageWindow, now: Date = Date()) -> String? {
     guard let date = window.resetsAt, date > now else { return nil }
     if window.severity == .exhausted {
-      return "Back \(AgentUsageWindow.resetPhrase(date, now: now))"
+      return "back \(AgentUsageWindow.resetPhrase(date, now: now))"
     }
-    return "Resets in \(AgentUsageWindow.countdown(to: date, now: now))"
+    return "resets in \(AgentUsageWindow.countdown(to: date, now: now))"
   }
 
   static func waiting(isReading: Bool) -> String {

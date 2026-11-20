@@ -365,26 +365,29 @@ final class UsageGlanceController: NSObject {
     title.cell?.truncatesLastVisibleLine = true
     title.lineBreakMode = .byTruncatingTail
     if let date = window.resetsAt { title.toolTip = "Resets \(AgentUsageWindow.resetPhrase(date))" }
+    title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    var heading: [NSView] = [title]
+    // Cut before the title is, so a long title never hides when it comes back.
+    if let reset = UsageGlanceText.reset(window) {
+      let when = Self.label("· \(reset)", size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.tertiary)
+      when.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+      when.setContentHuggingPriority(.required, for: .horizontal)
+      heading.append(when)
+    }
     let left = Self.label(UsageGlanceText.used(window), size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
     left.font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote).withMonospacedDigits
     left.setContentCompressionResistancePriority(.required, for: .horizontal)
-    let top = NSStackView(views: [title, NSView(), left])
+    let top = NSStackView(views: heading + [NSView(), left])
     top.orientation = .horizontal
     top.alignment = .firstBaseline
-    title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    top.setCustomSpacing(4, after: title)
 
     let meter = UsageGlanceMeter()
     meter.used = Double(min(100, max(0, window.usedPercent))) / 100
     meter.translatesAutoresizingMaskIntoConstraints = false
     meter.heightAnchor.constraint(equalToConstant: Self.meterHeight).isActive = true
 
-    // On its own line, so a long title never cuts it.
-    var lines: [NSView] = [top, meter]
-    if let reset = UsageGlanceText.reset(window) {
-      let when = Self.label(reset, size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.tertiary)
-      when.lineBreakMode = .byTruncatingTail
-      lines.append(when)
-    }
+    let lines: [NSView] = [top, meter]
     let block = NSStackView(views: lines)
     block.orientation = .vertical
     block.alignment = .leading

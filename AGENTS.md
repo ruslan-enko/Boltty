@@ -610,10 +610,8 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   in ms) and the Console's budgets (`spent` of `limit` in dollars), `data: null`
   until OpenCode is signed in to its Console. The free models' daily allowance
   is the server's alone: hit after 55, 198 and 141 steps on three days, so no
-  percentage is ever shown. Their `provider.free-limit` error carries
-  `retryAfterMs` (back at 00:00–00:33 UTC), so `OpenCodeFreeUsage` reads the
-  database for the steps taken since the day began and, once spent, when it
-  comes back (`OpenCodeMapper.usage`, shown as notes and a 100% window).
+  percentage is ever shown. Limits show only Go and the Console, or the line
+  asking to sign in; nothing is said of the free models.
 - `model.updated` / `provider.updated` arrive on `/api/event` when a config edit
   changes the catalogue (seconds, with no restart) and when a folder's instance
   opens; reading `/api/model` raises none.

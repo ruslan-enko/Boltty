@@ -46,7 +46,6 @@
 		1F1D8E206DBDD616F21625DB /* ConversationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9B92CDFD3B88C5DFBB85C3 /* ConversationEngine.swift */; };
 		1F5EE263EDD6872814E2FE78 /* MascotSnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5329A54E7D125C2DCCC9416E /* MascotSnapshotCache.swift */; };
 		1FD1B38458014718F02A4062 /* replay-cli.py in Resources */ = {isa = PBXBuildFile; fileRef = 8684AE496DE5161D82AF11C8 /* replay-cli.py */; };
-		2039FC3AB2913F2B12B02CC7 /* OpenCodeFreeUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58732AD1B1298C3EC87C24E1 /* OpenCodeFreeUsage.swift */; };
 		2059C5CC8864001E069F049E /* OneShotCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADFA7855DFFD4B28A7D6ED1D /* OneShotCommand.swift */; };
 		21EF8C0834EEABCEBA517972 /* InterfaceSounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9219862A1FC6E069C76BC3C2 /* InterfaceSounds.swift */; };
 		2286F4DDD0940FF9B3C3D757 /* VoiceGlowContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 722B566E5FB40FC069AE2AFF /* VoiceGlowContactSheet.swift */; };
@@ -501,7 +500,6 @@
 		548FFEAEEA2DED98A9BF86C2 /* PaletteIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteIconButton.swift; sourceTree = "<group>"; };
 		56DB3FBF99C5BBD0C57488D3 /* ScreenSelectionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSelectionOverlay.swift; sourceTree = "<group>"; };
 		5738DE8A849C0A21AE992D98 /* WorkingDirectoryChipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryChipView.swift; sourceTree = "<group>"; };
-		58732AD1B1298C3EC87C24E1 /* OpenCodeFreeUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeFreeUsage.swift; sourceTree = "<group>"; };
 		593B09EF6680F6344FBE5E25 /* GrokChatHistoryTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokChatHistoryTranscript.swift; sourceTree = "<group>"; };
 		5A94638B89B61B01E7833DBE /* AgentPaletteInstallHints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPaletteInstallHints.swift; sourceTree = "<group>"; };
 		5AA12ED1E33F83D8CD3FD6D5 /* FirstRunShowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunShowController.swift; sourceTree = "<group>"; };
@@ -1235,7 +1233,6 @@
 				593B09EF6680F6344FBE5E25 /* GrokChatHistoryTranscript.swift */,
 				EE5380B89E5B8ACBF100B178 /* GrokSessionStore.swift */,
 				46D1157C937F52D72DA6DA1D /* NativeSession.swift */,
-				58732AD1B1298C3EC87C24E1 /* OpenCodeFreeUsage.swift */,
 				9A8486C95603280076D40033 /* OpenCodeSessionStore.swift */,
 			);
 			path = Native;
@@ -1657,7 +1654,6 @@
 				2059C5CC8864001E069F049E /* OneShotCommand.swift in Sources */,
 				8DA5D6B6B81183CCCE08F62B /* OpenCodeClient.swift in Sources */,
 				D1EE766B46C2232E50B4D953 /* OpenCodeDTO.swift in Sources */,
-				2039FC3AB2913F2B12B02CC7 /* OpenCodeFreeUsage.swift in Sources */,
 				FE4F1D4538166FCB6F174ABE /* OpenCodeMapper.swift in Sources */,
 				90D0092F49DA8835BFAB514F /* OpenCodeServer.swift in Sources */,
 				51914BE74EE11700FBB721A0 /* OpenCodeSessionStore.swift in Sources */,
