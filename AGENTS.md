@@ -1291,7 +1291,8 @@ so in the orb ("No sound is reaching the microphone…",
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
   Shortcuts), standard parts but for what is selected: the sidebar's rows and
   the segments are drawn here, since a `List`'s selection and a segmented
-  `Picker` take the person's accent. A row (`SettingsSidebarRow`) leads with its page's
+  `Picker` take the person's accent. The sidebar wears the page's grey: the
+  system's sidebar glass took the wallpaper's tint beside it. A row (`SettingsSidebarRow`) leads with its page's
   tile (`SettingsPageTile`): a square picture, the maintainer's own, in
   `Resources/Icons/Settings/<page raw value>.png`, given its continuous corner
   (26 % of its side) in code so all six agree; the chosen row a

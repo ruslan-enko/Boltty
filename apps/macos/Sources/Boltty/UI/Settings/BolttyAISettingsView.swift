@@ -39,6 +39,9 @@ struct BolttyAISettingsView: View {
       .padding(.horizontal, 10)
     }
     .scrollIndicators(.never)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    // The system's sidebar glass takes the wallpaper's tint; the page beside it is grey.
+    .background(Color(nsColor: SettingsSurfacePalette.background).ignoresSafeArea())
     .focusable()
     .focused($sidebarHasFocus)
     .focusEffectDisabled()
