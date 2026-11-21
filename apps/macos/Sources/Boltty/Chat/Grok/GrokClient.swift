@@ -970,7 +970,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     guard let line = JSONObject.encode([
       "jsonrpc": "2.0", "id": id, "method": method, "params": params
     ]) else {
-      throw AgentClientError.transport("That call could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That call could not be encoded."))
     }
     return try await withCheckedThrowingContinuation { continuation in
       lock.withLock { pending[id] = continuation }
@@ -1007,7 +1007,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
 
   private func deliver(to id: Int, result: [String: Any]) throws {
     guard let line = JSONObject.encode(["jsonrpc": "2.0", "id": id, "result": result]) else {
-      throw AgentClientError.transport("That answer could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That answer could not be encoded."))
     }
     guard let process = lock.withLock({ process }) else {
       throw AgentClientError.transport("\(agent.displayName) stopped responding.")

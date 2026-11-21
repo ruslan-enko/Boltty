@@ -79,14 +79,14 @@ enum BolttyAISessionList {
     previewLimit: Int = .max
   ) -> String {
     if damaged {
-      return "History could not be read"
+      return String(localized: "History could not be read")
     }
     switch conversation.lastKnownState {
-    case .working: return liveStep(in: transcript) ?? "Working…"
-    case .waiting: return "Waiting for you"
-    case .failed: return "Stopped with an error"
-    case .interrupted: return "Interrupted when Boltty quit"
-    case .rateLimited: return "Rate limited"
+    case .working: return liveStep(in: transcript) ?? String(localized: "Working…")
+    case .waiting: return String(localized: "Waiting for you")
+    case .failed: return String(localized: "Stopped with an error")
+    case .interrupted: return String(localized: "Interrupted when Boltty quit")
+    case .rateLimited: return String(localized: "Rate limited")
     case .idle: break
     }
     if conversation.isAskBoltty {
@@ -94,7 +94,7 @@ enum BolttyAISessionList {
       return plainPreview(AskBolttyMark.stripped(answer?.plainText ?? ""), limit: previewLimit)
     }
     guard let message = transcript.messages.last(where: { !$0.plainText.isEmpty }) else {
-      return conversation.draft.isEmpty ? "No messages yet" : conversation.draft
+      return conversation.draft.isEmpty ? String(localized: "No messages yet") : conversation.draft
     }
     return plainPreview(message.plainText, limit: previewLimit)
   }
@@ -105,7 +105,7 @@ enum BolttyAISessionList {
     else { return nil }
     switch part {
     case .reasoning:
-      return "Thinking…"
+      return String(localized: "Thinking…")
     case let .activity(activity) where activity.state == .running || activity.state == .pending:
       return AgentActivityGroup.progress(for: activity)
     default:

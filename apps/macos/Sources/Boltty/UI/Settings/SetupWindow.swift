@@ -6,21 +6,21 @@ enum SetupStep: Int, CaseIterable {
 
   var title: String {
     switch self {
-    case .agents: "Meet your agents"
-    case .mascots: "Give them faces"
-    case .keys: "Your keys"
-    case .voice: "Your voice"
-    case .access: "Almost there"
+    case .agents: String(localized: "Meet your agents")
+    case .mascots: String(localized: "Give them faces")
+    case .keys: String(localized: "Your keys")
+    case .voice: String(localized: "Your voice")
+    case .access: String(localized: "Almost there")
     }
   }
 
   var subtitle: [(String, Bool)] {
     switch self {
-    case .agents: [("The agents already on your Mac.", true), ("\nPick the ones Boltty AI may use.", false)]
-    case .mascots: [("Every agent wears its own.", true), ("\nClick one to restyle it.", false)]
-    case .keys: [("One chord opens Boltty AI.", true), ("\nThen drag across the screen to ask about it.", false)]
-    case .voice: [("Boltty listens with Apple’s dictation.", true), ("\nAdd natural voices that run on this Mac.", false)]
-    case .access: [("macOS asks for each once.", true), ("\nYou can change them any time.", false)]
+    case .agents: [(String(localized: "The agents already on your Mac."), true), (String(localized: "\nPick the ones Boltty AI may use."), false)]
+    case .mascots: [(String(localized: "Every agent wears its own."), true), (String(localized: "\nClick one to restyle it."), false)]
+    case .keys: [(String(localized: "One chord opens Boltty AI."), true), (String(localized: "\nThen drag across the screen to ask about it."), false)]
+    case .voice: [(String(localized: "Boltty listens with Apple’s dictation."), true), (String(localized: "\nAdd natural voices that run on this Mac."), false)]
+    case .access: [(String(localized: "macOS asks for each once."), true), (String(localized: "\nYou can change them any time."), false)]
     }
   }
 
@@ -80,7 +80,7 @@ struct SetupView: View {
           .padding(.bottom, -6)
         Text(step.title)
           .font(.system(size: 32, weight: .semibold, design: .rounded))
-        step.subtitle.reduce(Text("")) { text, part in
+        step.subtitle.reduce(Text(verbatim: "")) { text, part in
           text + Text(part.0).foregroundStyle(part.1 ? .primary : .secondary)
         }
         .font(.system(size: 15, design: .rounded))
@@ -100,13 +100,13 @@ struct SetupView: View {
   private var buttons: some View {
     HStack(spacing: 10) {
       if let next = step.next {
-        Button { go(to: next) } label: { SetupButtonLabel(title: "Continue") }
+        Button { go(to: next) } label: { SetupButtonLabel(title: String(localized: "Continue")) }
           .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
           .accessibilityIdentifier("boltty.setup.continue")
       } else if access.hasSomethingToAsk {
-        Button { access.allowAll() } label: { SetupButtonLabel(title: "Allow All") }
+        Button { access.allowAll() } label: { SetupButtonLabel(title: String(localized: "Allow All")) }
           .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
@@ -115,7 +115,7 @@ struct SetupView: View {
           .buttonStyle(.glass)
           .controlSize(.extraLarge)
       } else {
-        Button(action: finish) { SetupButtonLabel(title: "Let’s Go") }
+        Button(action: finish) { SetupButtonLabel(title: String(localized: "Let’s Go")) }
           .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
@@ -160,7 +160,7 @@ private struct SetupButtonLabel: View {
   var body: some View {
     HStack(spacing: 8) {
       Text(title)
-      Text("↵").opacity(0.7)
+      Text(verbatim: "↵").opacity(0.7)
     }
     .padding(.horizontal, 6)
   }
@@ -429,7 +429,7 @@ private struct SetupAccessVisual: View {
         }
       }
       if model.statuses[.screen] == .refused {
-        SettingsNote("Screen Recording takes effect once Boltty is opened again.")
+        SettingsNote(String(localized: "Screen Recording takes effect once Boltty is opened again."))
       }
     }
   }
@@ -507,7 +507,7 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
       backing: .buffered,
       defer: false
     )
-    window.title = "Set Up Boltty AI"
+    window.title = String(localized: "Set Up Boltty AI")
     window.identifier = NSUserInterfaceItemIdentifier("boltty.setup.window")
     window.isMovableByWindowBackground = true
     window.tabbingMode = .disallowed
@@ -574,11 +574,11 @@ private struct SetupVoiceVisual: View {
   var body: some View {
     VStack(spacing: 12) {
       SetupVoiceTile(
-        model: model, id: .parakeetUltra, icon: .mic, title: "Natural dictation",
-        detail: "Parakeet hears Ukrainian, English and 23 more, even mixed in one sentence.")
+        model: model, id: .parakeetUltra, icon: .mic, title: String(localized: "Natural dictation"),
+        detail: String(localized: "Parakeet hears Ukrainian, English and 23 more, even mixed in one sentence."))
       SetupVoiceTile(
-        model: model, id: .supertonic3, icon: .speaker, title: "Natural voice",
-        detail: "Supertonic reads answers aloud in 31 languages.")
+        model: model, id: .supertonic3, icon: .speaker, title: String(localized: "Natural voice"),
+        detail: String(localized: "Supertonic reads answers aloud in 31 languages."))
       Text(summary)
         .font(.system(size: 12, design: .rounded))
         .foregroundStyle(.secondary)
@@ -589,10 +589,10 @@ private struct SetupVoiceVisual: View {
 
   private var summary: String {
     let chosen = LocalVoiceCatalog.all.filter { model.setupVoices.contains($0.id) }
-    guard !chosen.isEmpty else { return "Nothing is downloaded. Both can be added later in Settings › Voice." }
+    guard !chosen.isEmpty else { return String(localized: "Nothing is downloaded. Both can be added later in Settings › Voice.") }
     let bytes = chosen.reduce(Int64(0)) { $0 + $1.size }
     let size = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    return "\(size) downloads from Hugging Face after setup."
+    return String(localized: "\(size) downloads from Hugging Face after setup.")
   }
 }
 
@@ -618,7 +618,7 @@ private struct SetupVoiceTile: View {
             .font(.system(size: 12, design: .rounded))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-          Text(isHere ? "On this Mac" : model.modelSize(id))
+          Text(isHere ? String(localized: "On this Mac") : model.modelSize(id))
             .font(.system(size: 12, weight: .medium, design: .rounded))
             .foregroundStyle(.tertiary)
         }

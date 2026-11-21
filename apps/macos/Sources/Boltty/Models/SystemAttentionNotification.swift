@@ -15,8 +15,8 @@ struct SystemAttentionNotification: Equatable, Sendable {
 extension SystemAttentionNotification {
   static func needsWords(for ask: PendingInteraction.Kind?) -> String {
     switch ask {
-    case .permission?, .plan?: "Needs your approval"
-    case .question?, nil: "Needs your answer"
+    case .permission?, .plan?: String(localized: "Needs your approval")
+    case .question?, nil: String(localized: "Needs your answer")
     }
   }
 

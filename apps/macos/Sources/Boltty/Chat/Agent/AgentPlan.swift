@@ -9,7 +9,7 @@ enum AgentPlan {
     return AgentActivity(
       id: id,
       name: activityName,
-      summary: "Plan · \(done) of \(steps.count) done",
+      summary: String(localized: "Plan · \(done) of \(steps.count) done"),
       state: done == steps.count ? .completed : .running,
       startedAt: date,
       plan: steps

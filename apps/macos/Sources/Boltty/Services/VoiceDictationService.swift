@@ -91,7 +91,7 @@ final class VoiceDictationService {
     let generation = generation
     if Self.localEngine?() != nil {
       guard usageDescription("NSMicrophoneUsageDescription")?.isEmpty == false else {
-        fail("Voice input is unavailable in this Boltty build. Please update or reinstall Boltty.")
+        fail(String(localized: "Voice input is unavailable in this Boltty build. Please update or reinstall Boltty."))
         return
       }
       state = .requestingPermission
@@ -99,7 +99,7 @@ final class VoiceDictationService {
       return
     }
     guard hasRequiredUsageDescriptions else {
-      fail("Voice input is unavailable in this Boltty build. Please update or reinstall Boltty.")
+      fail(String(localized: "Voice input is unavailable in this Boltty build. Please update or reinstall Boltty."))
       return
     }
 
@@ -130,14 +130,14 @@ final class VoiceDictationService {
           if granted {
             await self.startListening(generation: generation, local: local)
           } else {
-            self.fail("Microphone access is required for voice input.")
+            self.fail(String(localized: "Microphone access is required for voice input."))
           }
         }
       }
     case .denied, .restricted:
-      fail("Microphone access is required for voice input. Enable it in System Settings.")
+      fail(String(localized: "Microphone access is required for voice input. Enable it in System Settings."))
     @unknown default:
-      fail("Microphone access is unavailable.")
+      fail(String(localized: "Microphone access is unavailable."))
     }
   }
 
@@ -151,7 +151,7 @@ final class VoiceDictationService {
       let inputNode = audioEngine.inputNode
       let format = inputNode.outputFormat(forBus: 0)
       guard format.sampleRate > 0, format.channelCount > 0 else {
-        fail("No microphone input is available.")
+        fail(String(localized: "No microphone input is available."))
         return
       }
       guard let started = await makeSession(
@@ -169,7 +169,7 @@ final class VoiceDictationService {
     let inputNode = audioEngine.inputNode
     let format = inputNode.outputFormat(forBus: 0)
     guard format.sampleRate > 0, format.channelCount > 0 else {
-      fail("No microphone input is available.")
+      fail(String(localized: "No microphone input is available."))
       return
     }
 
@@ -268,7 +268,7 @@ final class VoiceDictationService {
       try audioEngine.start()
       state = .listening
     } catch {
-      fail("Boltty could not start the microphone.")
+      fail(String(localized: "Boltty could not start the microphone."))
     }
   }
 
@@ -361,15 +361,15 @@ final class VoiceDictationService {
   ) -> String {
     switch status {
     case .denied:
-      "Speech recognition access is required. Enable it in System Settings."
+      String(localized: "Speech recognition access is required. Enable it in System Settings.")
     case .restricted:
-      "Speech recognition is restricted on this Mac."
+      String(localized: "Speech recognition is restricted on this Mac.")
     case .notDetermined:
-      "Speech recognition permission was not granted."
+      String(localized: "Speech recognition permission was not granted.")
     case .authorized:
       ""
     @unknown default:
-      "Speech recognition is unavailable."
+      String(localized: "Speech recognition is unavailable.")
     }
   }
 }

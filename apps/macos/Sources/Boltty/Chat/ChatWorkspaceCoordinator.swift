@@ -49,7 +49,7 @@ final class ChatWorkspaceCoordinator {
       },
       latestUnreadSessionID: unread?.id,
       latestUnreadTitle: unread?.title,
-      accessibilityLabel: unread == nil ? "Boltty" : "Boltty — unread conversations"
+      accessibilityLabel: unread == nil ? "Boltty" : String(localized: "Boltty — unread conversations")
     )
   }
 
@@ -543,7 +543,7 @@ final class ChatWorkspaceCoordinator {
       case .working: continue
       case .idle:
         guard old.blocksSending else { continue }
-        status = "Done"
+        status = String(localized: "Done")
         kind = .finished
         automaticSends[conversation.id] = nil
         engine.askAboutReplyPlan(in: conversation.id)
@@ -555,13 +555,13 @@ final class ChatWorkspaceCoordinator {
           for: (transcript.openInteraction ?? transcript.interactions.last)?.kind)
       case .failed:
         if handOverIfDue(conversation.id) { continue }
-        status = "Didn't finish"
+        status = String(localized: "Didn't finish")
       case .interrupted:
         automaticSends[conversation.id] = nil
         continue
       case .rateLimited:
         if handOverIfDue(conversation.id) { continue }
-        status = "Rate limited"
+        status = String(localized: "Rate limited")
       }
       guard store.selectedConversationID != conversation.id, !conversation.isAskBoltty else { continue }
       let agent = AgentId(rawValue: conversation.providerID)?.shortDisplayName

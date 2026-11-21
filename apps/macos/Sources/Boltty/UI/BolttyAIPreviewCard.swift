@@ -88,7 +88,7 @@ final class BolttyAIPreviewCard: NSView {
     let button = PaletteIconButton()
     button.translatesAutoresizingMaskIntoConstraints = false
     button.isBordered = false
-    button.title = "Restore Unsent Message"
+    button.title = String(localized: "Restore Unsent Message")
     button.font = roundedAppFont(size: AgentPaletteMetrics.previewActivityNameFontSize)
     button.image = BolttyIcon.undoCircle.image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityNameFontSize + 2))
@@ -102,9 +102,9 @@ final class BolttyAIPreviewCard: NSView {
   private let failureCard = BolttyAIFailureCard()
   var onCancelQueued: ((String) -> Void)?
   private let queuedRow = PaletteServiceStack(frame: .zero)
-  private let queuedTitle = PaletteServiceStack.makeEyebrow("Queued message")
+  private let queuedTitle = PaletteServiceStack.makeEyebrow(String(localized: "Queued message"))
   private let queuedLabel = NSTextField(wrappingLabelWithString: "")
-  private let cancelQueuedButton = GlassPillButton.titled("Edit message")
+  private let cancelQueuedButton = GlassPillButton.titled(String(localized: "Edit message"))
   private var queuedPrompt: String?
 
   var queuedTextForTesting: String? { queuedRow.isHidden ? nil : queuedLabel.stringValue }
@@ -129,7 +129,7 @@ final class BolttyAIPreviewCard: NSView {
   private let messages = NSStackView()
   private let closeButton = GlassCircleButton(
     icon: .chevronLeft,
-    accessibilityDescription: "Back",
+    accessibilityDescription: String(localized: "Back"),
     diameter: AgentPaletteMetrics.previewCloseDiameter,
     size: AgentPaletteMetrics.discArrowGlyphPointSize
   )
@@ -260,7 +260,7 @@ final class BolttyAIPreviewCard: NSView {
     cancelQueuedButton.button.controlSize = .regular
     cancelQueuedButton.button.titleFontSize = AgentPaletteMetrics.typeMeta
     cancelQueuedButton.button.height = AgentPaletteMetrics.helpActionHeight
-    let queuedNote = NSTextField(labelWithString: "Sends after this turn finishes.")
+    let queuedNote = NSTextField(labelWithString: String(localized: "Sends after this turn finishes."))
     queuedNote.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
     queuedNote.textColor = PaletteInk.secondary
     let queuedActions = NSStackView(views: [queuedNote, cancelQueuedButton])
@@ -313,9 +313,9 @@ final class BolttyAIPreviewCard: NSView {
     closeButton.button.image = BolttyIcon.chevronLeft.image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.discArrowGlyphPointSize),
       nudgedLeft: AgentPaletteMetrics.previewCloseGlyphNudge,
-      description: "Back"
+      description: String(localized: "Back")
     )
-    closeButton.button.toolTip = "Back"
+    closeButton.button.toolTip = String(localized: "Back")
     closeButton.button.helpShortcut = "Esc"
     closeButton.button.target = self
     closeButton.button.action = #selector(closeChat)
@@ -1022,9 +1022,9 @@ final class BolttyAIPreviewCard: NSView {
     var status = ""
     if report == nil, !preview.isBusy, preview.question == nil, isTranscript,
        Self.bodyMessage(for: preview) == nil,
-       preview.messages.last?.role != .agent || preview.messages.last?.plainText.isEmpty == true { status = "Finished without a text response." }
+       preview.messages.last?.role != .agent || preview.messages.last?.plainText.isEmpty == true { status = String(localized: "Finished without a text response.") }
     if report == nil, !preview.isBusy, preview.question == nil, !isTranscript {
-      status = "No output yet."
+      status = String(localized: "No output yet.")
     }
     recoverButton.isHidden = preview.retryPrompt == nil || report != nil
     if previous?.retryPrompt != preview.retryPrompt { recoverButton.isEnabled = true }
@@ -1397,10 +1397,10 @@ final class BolttyAIPreviewCard: NSView {
   }
 
   static func title(of question: AgentQuestion) -> String {
-    if question.kind == .permission { return "Needs your approval" }
-    if question.kind == .plan { return question.header ?? "Plan" }
+    if question.kind == .permission { return String(localized: "Needs your approval") }
+    if question.kind == .plan { return question.header ?? String(localized: "Plan") }
     let header = question.header?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    return header.isEmpty ? "Question" : header
+    return header.isEmpty ? String(localized: "Question") : header
   }
 
   func setComposerHasWords(_ hasWords: Bool) {
@@ -1567,7 +1567,7 @@ final class PaletteChatMessageView: NSView {
   var onUndo: ((ConversationMessage) -> Void)?
   var undoes: (() -> Bool)?
 
-  static let undoTitle = "Undo Changes from Here…"
+  static let undoTitle = String(localized: "Undo Changes from Here…")
 
   private func undoMenuItems() -> [NSMenuItem] {
     guard message.role == .user, undoes?() == true else { return [] }
@@ -1577,7 +1577,7 @@ final class PaletteChatMessageView: NSView {
     }]
   }
 
-  static let forkTitle = "Fork from Here"
+  static let forkTitle = String(localized: "Fork from Here")
 
   private func forkMenuItems() -> [NSMenuItem] {
     guard message.role == .agent, forks?() == true else { return [] }
@@ -1697,9 +1697,9 @@ final class PaletteChatMessageView: NSView {
     copyButton.hoverBackground = .clear
     copyButton.target = self
     copyButton.action = #selector(copyText(_:))
-    copyButton.toolTip = "Copy this answer"
+    copyButton.toolTip = String(localized: "Copy this answer")
     copyButton.setAccessibilityIdentifier("boltty.ask.chat.message.copy")
-    copyButton.setAccessibilityLabel("Copy this answer")
+    copyButton.setAccessibilityLabel(String(localized: "Copy this answer"))
     applyCopyGlyph(.copy)
     if user { return setUpQuestionMeta() }
     bubble.addSubview(copyButton)
@@ -1732,8 +1732,8 @@ final class PaletteChatMessageView: NSView {
   }
 
   private func setUpQuestionMeta() {
-    copyButton.toolTip = "Copy this message"
-    copyButton.setAccessibilityLabel("Copy this message")
+    copyButton.toolTip = String(localized: "Copy this message")
+    copyButton.setAccessibilityLabel(String(localized: "Copy this message"))
     copyButton.setAccessibilityIdentifier("boltty.ask.chat.message.copyQuestion")
     questionStatus.contentTintColor = ComposerControlGroup.restingInk
     questionStatus.imageScaling = .scaleNone
@@ -1778,7 +1778,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   private func applyQuestionStatus() {
-    let label = isAnswered ? "Taken up by the agent" : "Sent"
+    let label = isAnswered ? String(localized: "Taken up by the agent") : String(localized: "Sent")
     questionStatus.image = Self.statusImage(answered: isAnswered)
     questionStatus.setAccessibilityLabel(label)
   }
@@ -1805,7 +1805,7 @@ final class PaletteChatMessageView: NSView {
 
   static func sentTime(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
     if calendar.isDate(date, inSameDayAs: now) { return clockFormatter.string(from: date) }
-    if calendar.isDateInYesterday(date) { return "Yesterday, " + clockFormatter.string(from: date) }
+    if calendar.isDateInYesterday(date) { return String(localized: "Yesterday, \(clockFormatter.string(from: date))") }
     let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
     return (sameYear ? dayFormatter : yearFormatter).string(from: date)
   }
@@ -1845,7 +1845,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   private static func copyImage(_ icon: BolttyIcon) -> NSImage? {
-    icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: "Copy this answer")
+    icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: String(localized: "Copy this answer"))
   }
 
   override func mouseEntered(with event: NSEvent) { setCopyRevealed(true) }
@@ -1876,7 +1876,7 @@ final class PaletteChatMessageView: NSView {
   private var spokenAnswer: (words: String, speaks: Bool)?
 
   private func applySpeakGlyph() {
-    let label = isSpeaking ? "Stop reading aloud" : "Read this answer aloud"
+    let label = isSpeaking ? String(localized: "Stop reading aloud") : String(localized: "Read this answer aloud")
     speakButton.restingTint = isSpeaking ? .white : ComposerControlGroup.restingInk
     speakButton.image = BolttyIcon.speaker.image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: label)
@@ -1974,7 +1974,7 @@ final class PaletteChatMessageView: NSView {
       case let .group(activities): [.group(activities)]
       }
     }
-    if message.role == .agent, message.failure?.isAbort == true { units.append(.note("Stopped")) }
+    if message.role == .agent, message.failure?.isAbort == true { units.append(.note(String(localized: "Stopped"))) }
     return units
   }
 
@@ -2536,10 +2536,10 @@ final class PaletteTurnHeaderView: NSView {
     button.isEnabled = !value.isRunning
     chevron.image = (value.isCollapsed ? BolttyIcon.chevronRight : .chevronDown).image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize),
-      description: value.isCollapsed ? "Show the work" : "Hide the work"
+      description: value.isCollapsed ? String(localized: "Show the work") : String(localized: "Hide the work")
     )
     setAccessibilityLabel(label.stringValue)
-    setAccessibilityValue(value.isRunning ? nil : (value.isCollapsed ? "collapsed" : "expanded"))
+    setAccessibilityValue(value.isRunning ? nil : (value.isCollapsed ? String(localized: "collapsed") : String(localized: "expanded")))
   }
 
   func tick() {
@@ -2557,7 +2557,7 @@ final class PaletteWorkingLineView: NSView {
   private let faceBox = NSView()
   private var face: MascotNSView?
   private var identity: UUID?
-  private let label = NSTextField(labelWithString: "Thinking")
+  private let label = NSTextField(labelWithString: String(localized: "Thinking"))
   private let glow = CALayer()
   private let textMask = CALayer()
   private let band = CAGradientLayer()

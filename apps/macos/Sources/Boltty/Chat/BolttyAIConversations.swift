@@ -347,14 +347,14 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
           !menu.models.isEmpty || conversation.model != nil || menu.autoMode != nil
     else { return nil }
     let name = menu.goneName ?? menu.current?.selection.displayName
-      ?? conversation.model?.displayName ?? "Default"
+      ?? conversation.model?.displayName ?? String(localized: "Default")
     let effort = conversation.reasoningEffort.map { level in
       menu.efforts.first { $0.value == level }?.label ?? AgentEffortOption.title(for: level)
     }
     var help = menu.goneName == nil
-      ? "Model and permissions for this chat"
-      : "\(menu.agent.shortDisplayName) no longer offers this model. Choose another."
-    if menu.autoMode == true { help += "\nAuto Mode is on" }
+      ? String(localized: "Model and permissions for this chat")
+      : String(localized: "\(menu.agent.shortDisplayName) no longer offers this model. Choose another.")
+    if menu.autoMode == true { help += "\n" + String(localized: "Auto Mode is on") }
     return BolttyAIModelChip(
       title: [name, effort].compactMap { $0 }.joined(separator: " · "),
       isGone: menu.goneName != nil,
@@ -567,7 +567,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       return AgentQuestion(
         kind: .permission,
         requestID: interaction.id,
-        header: "Permission",
+        header: String(localized: "Permission"),
         prompt: PermissionSentence.sentence(
           action: prompt.action,
           resources: prompt.resources
@@ -578,17 +578,17 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         ),
         options: [
           AgentQuestion.Option(
-            label: "Allow Once",
+            label: String(localized: "Allow Once"),
             detail: nil,
             value: PermissionDecision.once.rawValue
           ),
           AgentQuestion.Option(
-            label: "Always Allow",
+            label: String(localized: "Always Allow"),
             detail: AgentQuestion.alwaysAllowScope(savePatterns: prompt.savePatterns),
             value: PermissionDecision.always.rawValue
           ),
           AgentQuestion.Option(
-            label: "Deny",
+            label: String(localized: "Deny"),
             detail: nil,
             value: PermissionDecision.reject.rawValue
           )
@@ -605,10 +605,10 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         header: plan.title,
         prompt: empty ? PlanPrompt.emptyText : "",
         options: [
-          AgentQuestion.Option(label: "Approve", detail: nil, value: PlanDecision.approved.rawValue),
+          AgentQuestion.Option(label: String(localized: "Approve"), detail: nil, value: PlanDecision.approved.rawValue),
           AgentQuestion.Option(
-            label: "Request Changes", detail: nil, value: PlanDecision.cancelled.rawValue),
-          AgentQuestion.Option(label: "Quit", detail: nil, value: PlanDecision.abandoned.rawValue),
+            label: String(localized: "Request Changes"), detail: nil, value: PlanDecision.cancelled.rawValue),
+          AgentQuestion.Option(label: String(localized: "Quit"), detail: nil, value: PlanDecision.abandoned.rawValue),
         ],
         allowsMultiple: false,
         allowsCustom: false,

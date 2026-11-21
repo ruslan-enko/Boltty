@@ -97,7 +97,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     guard let executable = locate() else { return .notInstalled }
     let status = await Self.run(executable, ["login", "status"], timeout: 8)
     guard status.exitCode == 0 else {
-      return .needsLogin("Signed out — run `codex login` in a terminal.")
+      return .needsLogin(String(localized: "Signed out — run `codex login` in a terminal."))
     }
     let version = await Self.run(executable, ["--version"], timeout: 8).output
       .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -162,7 +162,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       response = try await request("thread/start", params: params, on: server)
     }
     guard let threadID = response.object("thread")?.string("id") ?? response.string("threadId")
-    else { throw AgentClientError.transport("Codex did not return a thread id.") }
+    else { throw AgentClientError.transport(String(localized: "Codex did not return a thread id.")) }
 
     lock.withLock {
       threads[threadID] = ThreadState(
@@ -264,7 +264,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
 
   func steer(messageID: String, text: String, to sessionID: String) async throws {
     guard let turnID = lock.withLock({ threads[sessionID]?.currentTurnID }) else {
-      throw AgentClientError.transport("No turn is running to add to.")
+      throw AgentClientError.transport(String(localized: "No turn is running to add to."))
     }
     let server = try await server()
     _ = try await request("turn/steer", params: [
@@ -584,7 +584,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       startTask = nil
       return value
     }
-    if let running { serverExited(running, status: 0, stderr: "Codex was shut down.") }
+    if let running { serverExited(running, status: 0, stderr: String(localized: "Codex was shut down.")) }
     running?.closeInput()
     running?.terminate()
   }
@@ -688,7 +688,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       }
       return (values, cutOff, asked.map { ($0.value.threadID, $0.key) })
     }
-    let detail = stderr.isEmpty ? "Codex exited (status \(status))." : stderr
+    let detail = stderr.isEmpty ? String(localized: "Codex exited (status \(status)).") : stderr
     let error = AgentClientError.serverStartFailed(detail)
     for continuation in waiting { continuation.resume(throwing: error) }
     for (threadID, requestID) in unanswered {
@@ -734,7 +734,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
     guard let line = JSONObject.encode([
       "jsonrpc": "2.0", "id": id, "method": method, "params": params
-    ]) else { throw AgentClientError.transport("That request could not be encoded.") }
+    ]) else { throw AgentClientError.transport(String(localized: "That request could not be encoded.")) }
 
     return try await withCheckedThrowingContinuation { continuation in
       lock.withLock { pending[id] = PendingRequest(server: server, continuation: continuation) }
@@ -753,7 +753,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         let stored: CheckedContinuation<JSONObject, Error>? = self?.lock.withLock {
           self?.pending.removeValue(forKey: id)?.continuation
         }
-        stored?.resume(throwing: AgentClientError.transport("Codex did not answer \(method) in time."))
+        stored?.resume(throwing: AgentClientError.transport(String(localized: "Codex did not answer \(method) in time.")))
       }
     }
   }
@@ -781,7 +781,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       }
       if let error = frame.object("error") {
         continuation?.resume(throwing: RPCFailure(
-          code: error.int("code"), message: error.string("message") ?? "Codex refused that request."
+          code: error.int("code"), message: error.string("message") ?? String(localized: "Codex refused that request.")
         ))
       } else {
         continuation?.resume(returning: frame.object("result") ?? JSONObject([:]))
@@ -871,7 +871,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         remoteSessionID: threadID,
         kind: .permission(PermissionPrompt(
           action: "edit",
-          resources: [params.string("reason") ?? "Write files"],
+          resources: [params.string("reason") ?? String(localized: "Write files")],
           savePatterns: [],
           toolCallID: params.string("itemId")
         ))
@@ -888,7 +888,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         remoteSessionID: threadID,
         kind: .permission(PermissionPrompt(
           action: "permissions",
-          resources: [params.string("reason") ?? "Extra access"],
+          resources: [params.string("reason") ?? String(localized: "Extra access")],
           savePatterns: [],
           toolCallID: params.string("itemId")
         ))
@@ -931,7 +931,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           sessionID: threadID,
           failure: MessageFailure(
             name: turn.string("status") ?? "failed",
-            message: error.string("message") ?? "That turn ended with an error.",
+            message: error.string("message") ?? String(localized: "That turn ended with an error."),
             rateLimit: hit
           )
         ))
@@ -940,7 +940,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           sessionID: threadID,
           failure: MessageFailure(
             name: "usageLimitExceeded",
-            message: "The plan's limit refused this turn.",
+            message: String(localized: "The plan's limit refused this turn."),
             rateLimit: hit
           )
         ))

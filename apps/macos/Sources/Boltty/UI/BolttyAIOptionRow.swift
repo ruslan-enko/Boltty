@@ -389,7 +389,7 @@ final class BolttyAICommandWell: NSView {
     text.attributedStringValue = Self.styled(command)
     text.maximumNumberOfLines = truncates && !isExpanded ? Self.maximumLines : 0
     more.isHidden = !truncates
-    more.stringValue = isExpanded ? "Show Less" : "Show \(lines - Self.maximumLines) More Lines"
+    more.stringValue = isExpanded ? String(localized: "Show Less") : String(localized: "Show \(lines - Self.maximumLines) More Lines")
     more.setAccessibilityLabel(more.stringValue)
     column.edgeInsets = Self.insets(labelled: tool != nil, linked: truncates)
     needsLayout = true
@@ -580,8 +580,8 @@ final class BolttyAIApprovalBar: NSView {
       copyButton.title = Self.copyTitle
       copyButton.target = self
       copyButton.action = #selector(copyPressed)
-      copyButton.toolTip = "Copy the plan as markdown"
-      copyButton.setAccessibilityLabel("Copy the plan")
+      copyButton.toolTip = String(localized: "Copy the plan as markdown")
+      copyButton.setAccessibilityLabel(String(localized: "Copy the plan"))
       copyButton.translatesAutoresizingMaskIntoConstraints = false
       copyButton.setContentCompressionResistancePriority(.required, for: .horizontal)
       copyButton.heightAnchor.constraint(equalToConstant: Self.buttonHeight).isActive = true
@@ -669,8 +669,8 @@ final class BolttyAIApprovalBar: NSView {
 
   @objc private func pressed(_ sender: NSButton) { onClick?(sender.tag) }
 
-  static let copyTitle = "Copy"
-  static let copiedTitle = "Copied"
+  static let copyTitle = String(localized: "Copy")
+  static let copiedTitle = String(localized: "Copied")
 
   @objc private func copyPressed() {
     guard let copyText else { return }

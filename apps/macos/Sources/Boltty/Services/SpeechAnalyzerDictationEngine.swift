@@ -5,7 +5,7 @@ import Speech
 
 @MainActor
 final class SpeechAnalyzerDictationEngine: DictationEngine {
-  static let displayName = "Apple (on-device)"
+  static let displayName = String(localized: "Apple (on-device)")
 
   private let tier: DictationTier
   private let reportsConfidence: Bool

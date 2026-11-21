@@ -983,7 +983,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         self.panelView.showError(
           error as? ScreenRegionCapture.Failure == .notAllowed
             ? Self.screenRecordingNeeded
-            : "Could not capture the screen.")
+            : String(localized: "Could not capture the screen."))
       }
     }
   }
@@ -1005,7 +1005,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         guard self.isShowing else { return }
         self.panelView.insertScreenSelection(selection)
       } else {
-        self.panelView.showError("Could not capture that part of the screen.")
+        self.panelView.showError(String(localized: "Could not capture that part of the screen."))
       }
       self.panelView.endScreenSelection()
       self.finishScreenSelection()
@@ -1021,7 +1021,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   static let screenRecordingNeeded =
-    "Boltty needs Screen Recording to see the screen. Allow it in System Settings › Privacy & Security, then quit Boltty and open it again."
+    String(localized: "Boltty needs Screen Recording to see the screen. Allow it in System Settings › Privacy & Security, then quit Boltty and open it again.")
 
   var attachmentStore: PromptAttachmentStoring = PromptAttachmentStore.shared
   private var freezeTask: Task<Void, Never>?
@@ -1047,8 +1047,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panel.canChooseDirectories = false
     panel.canCreateDirectories = false
     panel.allowsMultipleSelection = true
-    panel.prompt = "Attach"
-    panel.message = "Choose files to send with this prompt"
+    panel.prompt = String(localized: "Attach")
+    panel.message = String(localized: "Choose files to send with this prompt")
     panel.directoryURL = URL(fileURLWithPath: current)
 
     suppressResignHideWorkItem?.cancel()
@@ -1089,9 +1089,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
   // MARK: - A history row's menu
 
-  static let openChatTitle = "Open Chat"
-  static let forkChatTitle = "Fork Chat"
-  static let deleteChatTitle = "Delete Chat…"
+  static let openChatTitle = String(localized: "Open Chat")
+  static let forkChatTitle = String(localized: "Fork Chat")
+  static let deleteChatTitle = String(localized: "Delete Chat…")
 
   private func showSessionMenu(for id: UUID, with event: NSEvent, from row: NSView) {
     guard let menu = sessionMenu(for: id) else { return }
@@ -1144,28 +1144,28 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     Task { @MainActor [weak self] in
       let preview = await conversations.previewUndo(id, from: question.id)
       guard let self, self.panelView.addressedSessionID == id else { return }
-      let agent = AgentId(rawValue: conversation.providerID)?.displayName ?? "The agent"
+      let agent = AgentId(rawValue: conversation.providerID)?.displayName ?? String(localized: "The agent")
       let alert = NSAlert()
       alert.alertStyle = .warning
       let asked = ConversationEngine.title(from: question.plainText)
       switch preview {
       case let .failure(error):
-        alert.messageText = "\(agent) cannot undo its changes here."
+        alert.messageText = String(localized: "\(agent) cannot undo its changes here.")
         alert.informativeText = (error as? LocalizedError)?.errorDescription ?? ""
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK"))
         self.runAlert(alert)
         return
       case let .success(undo) where undo.files.isEmpty && !undo.cutsHistory:
-        alert.messageText = "No file changed after “\(asked)”."
-        alert.addButton(withTitle: "OK")
+        alert.messageText = String(localized: "No file changed after “\(asked)”.")
+        alert.addButton(withTitle: String(localized: "OK"))
         self.runAlert(alert)
         return
       case let .success(undo):
-        alert.messageText = "Undo the changes since “\(asked)”?"
+        alert.messageText = String(localized: "Undo the changes since “\(asked)”?")
         alert.informativeText = Self.undoDescription(undo, agent: agent, folder: conversation.workingDirectory)
       }
-      alert.addButton(withTitle: "Undo Changes")
-      alert.addButton(withTitle: "Cancel")
+      alert.addButton(withTitle: String(localized: "Undo Changes"))
+      alert.addButton(withTitle: String(localized: "Cancel"))
       alert.buttons.first?.hasDestructiveAction = true
       guard self.runAlert(alert) == .alertFirstButtonReturn else { return }
       if let words = await conversations.undoChanges(id, from: question.id), !words.isEmpty,
@@ -1185,11 +1185,11 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
           : (path as NSString).abbreviatingWithTildeInPath
       }
       lines.append(shown.joined(separator: "\n"))
-      if undo.files.count > shown.count { lines.append("and \(undo.files.count - shown.count) more") }
+      if undo.files.count > shown.count { lines.append(String(localized: "and \(undo.files.count - shown.count) more")) }
     }
     lines.append(undo.cutsHistory
-      ? "\(agent) puts its changes to files back as they were, and this request and all after it leave the chat."
-      : "\(agent) puts the files back as they were; the chat stays as it is.")
+      ? String(localized: "\(agent) puts its changes to files back as they were, and this request and all after it leave the chat.")
+      : String(localized: "\(agent) puts the files back as they were; the chat stays as it is."))
     return lines.joined(separator: "\n\n")
   }
 
@@ -1212,12 +1212,12 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     let agent = AgentId(rawValue: conversation.providerID)?.displayName
     let alert = NSAlert()
     alert.alertStyle = .warning
-    alert.messageText = title.isEmpty ? "Move this chat to the Trash?" : "Move “\(title)” to the Trash?"
+    alert.messageText = title.isEmpty ? String(localized: "Move this chat to the Trash?") : String(localized: "Move “\(title)” to the Trash?")
     alert.informativeText = conversation.remoteSessionID != nil && agent != nil
-      ? "Boltty forgets it, and keeps its transcript in the Trash until you empty it. The session in \(agent!) is not deleted."
-      : "Boltty forgets it, and keeps its transcript in the Trash until you empty it."
-    alert.addButton(withTitle: "Move to Trash")
-    alert.addButton(withTitle: "Cancel")
+      ? String(localized: "Boltty forgets it, and keeps its transcript in the Trash until you empty it. The session in \(agent!) is not deleted.")
+      : String(localized: "Boltty forgets it, and keeps its transcript in the Trash until you empty it.")
+    alert.addButton(withTitle: String(localized: "Move to Trash"))
+    alert.addButton(withTitle: String(localized: "Cancel"))
     alert.buttons.first?.hasDestructiveAction = true
 
     suppressResignHideWorkItem?.cancel()
@@ -1318,8 +1318,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panel.canChooseFiles = false
     panel.canCreateDirectories = false
     panel.allowsMultipleSelection = false
-    panel.prompt = "Choose"
-    panel.message = "Choose the folder this chat works in"
+    panel.prompt = String(localized: "Choose")
+    panel.message = String(localized: "Choose the folder this chat works in")
     panel.directoryURL = URL(fileURLWithPath: current)
 
     suppressResignHideWorkItem?.cancel()
@@ -1388,7 +1388,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     regionMicrophoneWait?.cancel()
     let wait = DispatchWorkItem { [weak self] in
       guard let self, self.voiceDictation.state == .requestingPermission else { return }
-      self.panelView.showRegionVoiceStatus("Getting the microphone ready…")
+      self.panelView.showRegionVoiceStatus(String(localized: "Getting the microphone ready…"))
     }
     regionMicrophoneWait = wait
     DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionMicrophoneWait, execute: wait)
@@ -1414,7 +1414,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   }
 
   static let silentMicrophone =
-    "No sound is reaching the microphone. Check the input in System Settings › Sound."
+    String(localized: "No sound is reaching the microphone. Check the input in System Settings › Sound.")
 
   /// One more try, then the question is let go of and the panel says why: a
   /// region has no text field to fall back on.
@@ -1424,7 +1424,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     guard panelView.currentDraft.isEffectivelyEmpty else { return }
     guard regionMicrophoneRetried else {
       regionMicrophoneRetried = true
-      panelView.showRegionVoiceStatus("Trying the microphone again…")
+      panelView.showRegionVoiceStatus(String(localized: "Trying the microphone again…"))
       DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionMicrophoneRetry) {
         [weak self] in self?.listenForRegion()
       }
@@ -1456,14 +1456,14 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
             let displayFrame = self.frozenScreen?.displayFrameInAppKit(primaryScreenHeight: primaryHeight)
       else {
         self.panelView.releaseQuestionWords()
-        self.panelView.showError("Could not capture that part of the screen.")
+        self.panelView.showError(String(localized: "Could not capture that part of the screen."))
         return
       }
       guard self.onAskAboutRegion?(words, selection, displayFrame, self.panelView.agentForNewPrompt) == true
       else {
         self.panelView.releaseQuestionWords()
         self.panelView.showError(
-          "No agent that can see the screen is ready. Turn one on in Settings › Agents.")
+          String(localized: "No agent that can see the screen is ready. Turn one on in Settings › Agents."))
         return
       }
       self.draftIsDictated = false
@@ -1534,7 +1534,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       if let addressedID = panelView.addressedSessionID {
         guard let conversation = conversations?.conversation(id: addressedID) else {
           isSubmitting = false
-          panelView.showError("This chat is gone. Choose another one.")
+          panelView.showError(String(localized: "This chat is gone. Choose another one."))
           return
         }
         addressed = conversation
@@ -1572,9 +1572,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         isSubmitting = false
         let others = !conversations.launchableProviderIDs().isEmpty
         panelView.showError(chosen.map {
-          "\($0.displayName) is not ready. "
-            + (others ? "Press Shift-Tab for another agent." : "Check Agents in Settings.")
-        } ?? "No enabled agent is available. Check Agents in Settings.")
+          others
+            ? String(localized: "\($0.displayName) is not ready. Press Shift-Tab for another agent.")
+            : String(localized: "\($0.displayName) is not ready. Check Agents in Settings.")
+        } ?? String(localized: "No enabled agent is available. Check Agents in Settings."))
         _ = panelView.focusField()
         return
       }
@@ -1659,7 +1660,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         guard let self, self.isShowing, self.observingPreviewID == sessionID else { return }
         guard let updated = self.conversations?.preview(for: sessionID) else {
           self.panelView.leaveAddressing(animated: false)
-          self.panelView.showError("This chat is gone. Choose another one.")
+          self.panelView.showError(String(localized: "This chat is gone. Choose another one."))
           return
         }
         self.panelView.updateAddressing(updated)
@@ -1702,7 +1703,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     guard conversations?.sendFollowUp(
       prompt, pictures: files.compactMap(\.file.picture), to: sessionID) == true else {
       isSubmitting = false
-      panelView.showError("Could not send to this chat. Your message is still here.")
+      panelView.showError(String(localized: "Could not send to this chat. Your message is still here."))
       return
     }
     promptSent(to: sessionID)
@@ -1744,7 +1745,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private func answer(_ question: AgentQuestion, with answers: [String], in sessionID: UUID) {
     guard isShowing, !isSubmitting, panelView.addressedSessionID == sessionID else { return }
     guard let current = conversations?.preview(for: sessionID), current.question == question, !current.isBusy else {
-      panelView.showError("This question is no longer waiting for an answer.")
+      panelView.showError(String(localized: "This question is no longer waiting for an answer."))
       return
     }
     isSubmitting = true
@@ -1769,8 +1770,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
           } else if !delivered {
             self.panelView.showError(
               preview.question == question
-                ? "That reply was not delivered. Try again."
-                : "This question is no longer waiting for an answer."
+                ? String(localized: "That reply was not delivered. Try again.")
+                : String(localized: "This question is no longer waiting for an answer.")
             )
           } else if self.panelView.currentDraft == submittedDraft,
                     AgentQuestion.answer(answers, carries: submittedDraft.typedText) {
@@ -1786,7 +1787,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         self.answerTask = nil
         guard self.panelView.addressedSessionID == sessionID,
               self.panelView.addressedQuestion == question else { return }
-        self.panelView.showError("Could not reach the agent")
+        self.panelView.showError(String(localized: "Could not reach the agent"))
       }
     }
   }

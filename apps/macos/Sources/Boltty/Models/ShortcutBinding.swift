@@ -30,7 +30,7 @@ struct ShortcutBinding: Equatable, Hashable, Sendable {
 
 extension ShortcutBinding {
   var displayName: String {
-    guard !isUnbound else { return "None" }
+    guard !isUnbound else { return String(localized: "None") }
     return Self.modifierSymbols(modifiers) + Self.keyLabel(keyEquivalent)
   }
 
@@ -78,9 +78,9 @@ enum ShortcutBindingRejection: Equatable, Sendable {
     case .noModifier:
       KeyChordSymbols.noModifierMessage
     case .reservedBySystem:
-      "macOS reserves that shortcut."
+      String(localized: "macOS reserves that shortcut.")
     case let .taken(owner):
-      "\(owner) already uses that shortcut."
+      String(localized: "\(owner) already uses that shortcut.")
     }
   }
 }
@@ -117,5 +117,5 @@ enum KeyChordSymbols {
     return out
   }
 
-  static let noModifierMessage = "Use ⌘, ⌥, or ⌃ with another key."
+  static let noModifierMessage = String(localized: "Use ⌘, ⌥, or ⌃ with another key.")
 }

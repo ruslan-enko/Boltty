@@ -147,12 +147,12 @@ final class AppUpdater: ObservableObject {
         if let release = Self.release(from: data) {
           result = Self.isNewer(release.version, than: currentVersion) ? .available(release) : .upToDate
         } else {
-          result = .failed("GitHub answered with something that is not a release.")
+          result = .failed(String(localized: "GitHub answered with something that is not a release."))
         }
       case 404:
-        result = .failed("No release of Boltty has been published yet.")
+        result = .failed(String(localized: "No release of Boltty has been published yet."))
       default:
-        result = .failed("GitHub answered \(status).")
+        result = .failed(String(localized: "GitHub answered \(status)."))
       }
     } catch {
       result = .failed(error.localizedDescription)
@@ -223,23 +223,23 @@ final class AppUpdater: ObservableObject {
     let alert = NSAlert()
     switch result {
     case let .available(release) where release.isInstallable:
-      alert.messageText = "Boltty \(release.version) is available"
-      alert.informativeText = "You have \(current). Boltty downloads it, puts it in place of this copy and opens it again. Chats still working are stopped."
-      alert.addButton(withTitle: "Install and Relaunch")
-      alert.addButton(withTitle: "Later")
+      alert.messageText = String(localized: "Boltty \(release.version) is available")
+      alert.informativeText = String(localized: "You have \(current). Boltty downloads it, puts it in place of this copy and opens it again. Chats still working are stopped.")
+      alert.addButton(withTitle: String(localized: "Install and Relaunch"))
+      alert.addButton(withTitle: String(localized: "Later"))
       return alert.runModal() == .alertFirstButtonReturn
     case let .available(release):
-      alert.messageText = "Boltty \(release.version) is available"
-      alert.informativeText = "You have \(current). Download it from its release page, quit Boltty from the menu bar, and drag the new one into Applications."
-      alert.addButton(withTitle: "Download")
-      alert.addButton(withTitle: "Later")
+      alert.messageText = String(localized: "Boltty \(release.version) is available")
+      alert.informativeText = String(localized: "You have \(current). Download it from its release page, quit Boltty from the menu bar, and drag the new one into Applications.")
+      alert.addButton(withTitle: String(localized: "Download"))
+      alert.addButton(withTitle: String(localized: "Later"))
       return alert.runModal() == .alertFirstButtonReturn
     case .upToDate:
-      alert.messageText = "Boltty is up to date"
-      alert.informativeText = "\(current) is the newest release."
+      alert.messageText = String(localized: "Boltty is up to date")
+      alert.informativeText = String(localized: "\(current) is the newest release.")
     case let .failed(reason):
       alert.alertStyle = .warning
-      alert.messageText = "Couldn't check for updates"
+      alert.messageText = String(localized: "Couldn't check for updates")
       alert.informativeText = reason
     }
     alert.runModal()
@@ -249,10 +249,10 @@ final class AppUpdater: ObservableObject {
   private static func failureAlert(_ error: Error) -> Bool {
     let alert = NSAlert()
     alert.alertStyle = .warning
-    alert.messageText = "Couldn't install the update"
-    alert.informativeText = "\(error.localizedDescription) This copy of Boltty is unchanged; you can download the new one from its release page."
-    alert.addButton(withTitle: "Open Release Page")
-    alert.addButton(withTitle: "Cancel")
+    alert.messageText = String(localized: "Couldn't install the update")
+    alert.informativeText = String(localized: "\(error.localizedDescription) This copy of Boltty is unchanged; you can download the new one from its release page.")
+    alert.addButton(withTitle: String(localized: "Open Release Page"))
+    alert.addButton(withTitle: String(localized: "Cancel"))
     return alert.runModal() == .alertFirstButtonReturn
   }
 }

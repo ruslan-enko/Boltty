@@ -38,15 +38,15 @@ enum DictationEngineError: LocalizedError, Equatable {
   var errorDescription: String? {
     switch self {
     case let .languageUnsupported(name):
-      "\(name) is not available for on-device dictation on this Mac."
+      String(localized: "\(name) is not available for on-device dictation on this Mac.")
     case let .modelNotInstalled(name):
-      "\(name) is not downloaded yet. Open Settings ▸ Boltty AI to install it."
+      String(localized: "\(name) is not downloaded yet. Open Settings ▸ Boltty AI to install it.")
     case let .modelDownloadFailed(name):
-      "Downloading the \(name) dictation model failed."
+      String(localized: "Downloading the \(name) dictation model failed.")
     case .engineUnavailable:
-      "Speech recognition is currently unavailable."
+      String(localized: "Speech recognition is currently unavailable.")
     case .startFailed:
-      "Voice input stopped. Please try again."
+      String(localized: "Voice input stopped. Please try again.")
     case let .localModelFailed(reason):
       reason
     }
@@ -57,7 +57,7 @@ enum DictationEngineError: LocalizedError, Equatable {
 
 @MainActor
 final class LegacyDictationEngine: DictationEngine {
-  static let displayName = "Apple (on-device)"
+  static let displayName = String(localized: "Apple (on-device)")
 
   func start(
     locale: Locale,

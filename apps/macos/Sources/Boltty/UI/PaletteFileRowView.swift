@@ -60,32 +60,32 @@ final class PaletteFileRowView: NSView {
     sizeLabel.translatesAutoresizingMaskIntoConstraints = false
     sizeLabel.font = roundedAppFont(size: AgentPaletteMetrics.previewFileSizeFontSize)
     sizeLabel.textColor = PaletteInk.secondary
-    sizeLabel.stringValue = exists ? Self.detail(ofPath: path) : "No longer on disk"
+    sizeLabel.stringValue = exists ? Self.detail(ofPath: path) : String(localized: "No longer on disk")
     sizeLabel.setContentHuggingPriority(.required, for: .horizontal)
     sizeLabel.isSelectable = false
 
     makeButton(
       previewButton,
       icon: .eye,
-      description: "Preview file",
+      description: String(localized: "Preview file"),
       identifier: "boltty.ask.chat.file.preview",
-      tooltip: "Quick Look",
+      tooltip: String(localized: "Quick Look"),
       action: #selector(didPressPreview)
     )
     makeButton(
       revealButton,
       icon: .folder,
-      description: "Reveal file in Finder",
+      description: String(localized: "Reveal file in Finder"),
       identifier: "boltty.ask.chat.file.reveal",
-      tooltip: "Reveal in Finder",
+      tooltip: String(localized: "Reveal in Finder"),
       action: #selector(didPressReveal)
     )
     makeButton(
       useButton,
       icon: .plus,
-      description: "Use file in a follow-up",
+      description: String(localized: "Use file in a follow-up"),
       identifier: "boltty.ask.chat.file.use",
-      tooltip: "Use in follow-up",
+      tooltip: String(localized: "Use in follow-up"),
       action: #selector(didPressUse)
     )
 
@@ -242,7 +242,7 @@ final class PaletteFileRowView: NSView {
   static func detail(ofPath path: String) -> String {
     let url = URL(fileURLWithPath: path)
     let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
-    if values?.isDirectory == true { return "Folder" }
+    if values?.isDirectory == true { return String(localized: "Folder") }
     let size = values?.fileSize.map {
       ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file)
     }

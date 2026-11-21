@@ -150,7 +150,7 @@ struct PlanPrompt: Codable, Equatable, Sendable {
     return "Plan"
   }
 
-  static let emptyText = "No plan written yet"
+  static let emptyText = String(localized: "No plan written yet")
 }
 
 enum PlanDecision: String, Codable, Equatable, Sendable {

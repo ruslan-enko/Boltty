@@ -97,18 +97,18 @@ extension AgentClient {
   func usageLimits() async -> AgentUsage? { nil }
   func commands(folder: String) async -> [AgentCommand] { [] }
   func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
-    throw AgentClientError.transport("This agent cannot undo its changes.")
+    throw AgentClientError.transport(String(localized: "This agent cannot undo its changes."))
   }
   func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
-    throw AgentClientError.transport("This agent cannot undo its changes.")
+    throw AgentClientError.transport(String(localized: "This agent cannot undo its changes."))
   }
   func contextUsage(sessionID: String) async -> AgentContextUsage? { nil }
   func activityHistory() async -> AgentActivityHistory? { nil }
   func steer(messageID: String, text: String, to sessionID: String) async throws {
-    throw AgentClientError.transport("This agent cannot take words mid-turn.")
+    throw AgentClientError.transport(String(localized: "This agent cannot take words mid-turn."))
   }
   func compact(sessionID: String) async throws {
-    throw AgentClientError.transport("This agent cannot compact a conversation.")
+    throw AgentClientError.transport(String(localized: "This agent cannot compact a conversation."))
   }
   func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?) {}
   func answerPlan(
@@ -233,12 +233,12 @@ struct AgentEffortOption: Identifiable, Equatable, Sendable {
 
   static func title(for value: String) -> String {
     switch value {
-    case "low": return "Low"
-    case "medium": return "Medium"
-    case "high": return "High"
-    case "xhigh": return "Extra high"
-    case "max": return "Max"
-    case "minimal", "none": return "Minimal"
+    case "low": return String(localized: "Low")
+    case "medium": return String(localized: "Medium")
+    case "high": return String(localized: "High")
+    case "xhigh": return String(localized: "Extra high")
+    case "max": return String(localized: "Max")
+    case "minimal", "none": return String(localized: "Minimal")
     default: return value.prefix(1).uppercased() + value.dropFirst()
     }
   }
@@ -355,21 +355,21 @@ enum AgentClientError: LocalizedError, Equatable {
   var errorDescription: String? {
     switch self {
     case .notInstalled:
-      return "That agent is not installed."
+      return String(localized: "That agent is not installed.")
     case let .serverStartFailed(detail):
-      return "The agent could not start: \(detail)"
+      return String(localized: "The agent could not start: \(detail)")
     case .startupTimedOut:
-      return "The agent did not become ready in time."
+      return String(localized: "The agent did not become ready in time.")
     case let .processExited(code):
-      return "The agent process exited (status \(code))."
+      return String(localized: "The agent process exited (status \(code)).")
     case .unauthorized:
-      return "The agent rejected Boltty's credentials."
+      return String(localized: "The agent rejected Boltty's credentials.")
     case .sessionNotFound:
-      return "This conversation is no longer on the agent's server."
+      return String(localized: "This conversation is no longer on the agent's server.")
     case .requestGone:
-      return "That request is no longer open."
+      return String(localized: "That request is no longer open.")
     case let .indeterminate(detail):
-      return "Boltty could not confirm whether that was sent: \(detail)"
+      return String(localized: "Boltty could not confirm whether that was sent: \(detail)")
     case let .transport(detail):
       return detail
     }

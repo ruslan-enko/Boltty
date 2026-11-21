@@ -214,7 +214,7 @@ final class ConversationPersistence {
     let stamp = DateFormatter()
     stamp.locale = Locale(identifier: "en_US_POSIX")
     stamp.dateFormat = "yyyy-MM-dd HH.mm.ss"
-    let label = (name ?? "Boltty History")
+    let label = (name ?? String(localized: "Boltty History"))
       .replacingOccurrences(of: "/", with: "-")
       .replacingOccurrences(of: ":", with: "-")
     let folder = root.appendingPathComponent(

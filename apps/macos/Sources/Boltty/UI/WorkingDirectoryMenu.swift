@@ -2,12 +2,12 @@ import AppKit
 
 @MainActor
 enum WorkingDirectoryMenu {
-  static let noFolderTitle = "No Folder"
-  static let recentTitle = "Recent"
-  static let openFolderTitle = "Open Folder…"
-  static let showInFinderTitle = "Show in Finder"
-  static let copyPathTitle = "Copy Path"
-  static let openOnGitHubTitle = "Open on GitHub"
+  static let noFolderTitle = String(localized: "No Folder")
+  static let recentTitle = String(localized: "Recent")
+  static let openFolderTitle = String(localized: "Open Folder…")
+  static let showInFinderTitle = String(localized: "Show in Finder")
+  static let copyPathTitle = String(localized: "Copy Path")
+  static let openOnGitHubTitle = String(localized: "Open on GitHub")
 
   struct FolderActions {
     var gitHubURL: URL?

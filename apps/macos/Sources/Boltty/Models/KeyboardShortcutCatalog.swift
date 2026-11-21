@@ -17,20 +17,20 @@ struct KeyboardShortcutSection: Identifiable {
 
 enum KeyboardShortcutCatalog {
   static let sections: [KeyboardShortcutSection] = [
-    KeyboardShortcutSection(title: "Boltty", shortcuts: [
-      shortcut("settings", "Settings", "⌘,", ",", .command),
-      shortcut("closeBoltty", "Close Boltty", "⌘Q", "q", .command)
+    KeyboardShortcutSection(title: String(localized: "Boltty"), shortcuts: [
+      shortcut("settings", String(localized: "Settings"), "⌘,", ",", .command),
+      shortcut("closeBoltty", String(localized: "Close Boltty"), "⌘Q", "q", .command)
     ]),
-    KeyboardShortcutSection(title: "Edit", shortcuts: [
-      shortcut("undo", "Undo", "⌘Z", "z", .command),
-      shortcut("redo", "Redo", "⇧⌘Z", "z", [.command, .shift]),
-      shortcut("cut", "Cut", "⌘X", "x", .command),
-      shortcut("copy", "Copy", "⌘C", "c", .command),
-      shortcut("paste", "Paste", "⌘V", "v", .command),
-      shortcut("selectAll", "Select All", "⌘A", "a", .command)
+    KeyboardShortcutSection(title: String(localized: "Edit"), shortcuts: [
+      shortcut("undo", String(localized: "Undo"), "⌘Z", "z", .command),
+      shortcut("redo", String(localized: "Redo"), "⇧⌘Z", "z", [.command, .shift]),
+      shortcut("cut", String(localized: "Cut"), "⌘X", "x", .command),
+      shortcut("copy", String(localized: "Copy"), "⌘C", "c", .command),
+      shortcut("paste", String(localized: "Paste"), "⌘V", "v", .command),
+      shortcut("selectAll", String(localized: "Select All"), "⌘A", "a", .command)
     ]),
-    KeyboardShortcutSection(title: "Window", shortcuts: [
-      shortcut("minimize", "Minimize", "⌘M", "m", .command)
+    KeyboardShortcutSection(title: String(localized: "Window"), shortcuts: [
+      shortcut("minimize", String(localized: "Minimize"), "⌘M", "m", .command)
     ])
   ]
 

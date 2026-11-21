@@ -762,102 +762,102 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     mainMenu.addItem(appMenuItem)
     let appMenu = NSMenu()
     appMenuItem.submenu = appMenu
-    appMenu.addItem(withTitle: "About Boltty",
+    appMenu.addItem(withTitle: String(localized: "About Boltty"),
                     action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
                     keyEquivalent: "")
-    let updatesItem = appMenu.addItem(withTitle: "Check for Updates…",
+    let updatesItem = appMenu.addItem(withTitle: String(localized: "Check for Updates…"),
                                       action: #selector(checkForUpdates),
                                       keyEquivalent: "")
     updatesItem.target = self
     appMenu.addItem(NSMenuItem.separator())
-    let settingsItem = appMenu.addItem(withTitle: "Settings…",
+    let settingsItem = appMenu.addItem(withTitle: String(localized: "Settings…"),
                                        action: #selector(openSettings),
                                        keyEquivalent: ",")
     settingsItem.target = self
     bindings?.bind(settingsItem, to: "settings")
     appMenu.addItem(NSMenuItem.separator())
     appMenu.addItem(
-      withTitle: "Hide Boltty",
+      withTitle: String(localized: "Hide Boltty"),
       action: #selector(NSApplication.hide(_:)),
       keyEquivalent: "h"
     )
     let hideOthers = appMenu.addItem(
-      withTitle: "Hide Others",
+      withTitle: String(localized: "Hide Others"),
       action: #selector(NSApplication.hideOtherApplications(_:)),
       keyEquivalent: "h"
     )
     hideOthers.keyEquivalentModifierMask = [.command, .option]
     appMenu.addItem(
-      withTitle: "Show All",
+      withTitle: String(localized: "Show All"),
       action: #selector(NSApplication.unhideAllApplications(_:)),
       keyEquivalent: ""
     )
     appMenu.addItem(NSMenuItem.separator())
-    let closeItem = appMenu.addItem(withTitle: "Close Boltty",
+    let closeItem = appMenu.addItem(withTitle: String(localized: "Close Boltty"),
                                     action: #selector(closeBoltty),
                                     keyEquivalent: "q")
     closeItem.target = self
     bindings?.bind(closeItem, to: "closeBoltty")
-    let quitItem = appMenu.addItem(withTitle: "Quit Boltty",
+    let quitItem = appMenu.addItem(withTitle: String(localized: "Quit Boltty"),
                                    action: #selector(requestQuit),
                                    keyEquivalent: "")
     quitItem.target = self
 
     let editMenuItem = NSMenuItem()
     mainMenu.addItem(editMenuItem)
-    let editMenu = NSMenu(title: "Edit")
+    let editMenu = NSMenu(title: String(localized: "Edit"))
     editMenuItem.submenu = editMenu
     bindings?.bind(
-      editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z"),
+      editMenu.addItem(withTitle: String(localized: "Undo"), action: Selector(("undo:")), keyEquivalent: "z"),
       to: "undo"
     )
     bindings?.bind(
-      editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z"),
+      editMenu.addItem(withTitle: String(localized: "Redo"), action: Selector(("redo:")), keyEquivalent: "z"),
       to: "redo"
     )
     editMenu.addItem(NSMenuItem.separator())
     bindings?.bind(
-      editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"),
+      editMenu.addItem(withTitle: String(localized: "Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x"),
       to: "cut"
     )
     bindings?.bind(
-      editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"),
+      editMenu.addItem(withTitle: String(localized: "Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c"),
       to: "copy"
     )
     bindings?.bind(
-      editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"),
+      editMenu.addItem(withTitle: String(localized: "Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v"),
       to: "paste"
     )
     editMenu.addItem(NSMenuItem.separator())
     bindings?.bind(
       editMenu.addItem(
-        withTitle: "Select All",
+        withTitle: String(localized: "Select All"),
         action: #selector(NSText.selectAll(_:)),
         keyEquivalent: "a"
       ),
       to: "selectAll"
     )
     editMenu.addItem(NSMenuItem.separator())
-    let servicesMenu = NSMenu(title: "Services")
-    let servicesItem = editMenu.addItem(withTitle: "Services", action: nil, keyEquivalent: "")
+    let servicesMenu = NSMenu(title: String(localized: "Services"))
+    let servicesItem = editMenu.addItem(withTitle: String(localized: "Services"), action: nil, keyEquivalent: "")
     servicesItem.submenu = servicesMenu
     NSApplication.shared.servicesMenu = servicesMenu
 
     let windowMenuItem = NSMenuItem()
     mainMenu.addItem(windowMenuItem)
-    let windowMenu = NSMenu(title: "Window")
+    let windowMenu = NSMenu(title: String(localized: "Window"))
     windowMenuItem.submenu = windowMenu
 
     bindings?.bind(
       windowMenu.addItem(
-        withTitle: "Minimize",
+        withTitle: String(localized: "Minimize"),
         action: #selector(NSWindow.performMiniaturize(_:)),
         keyEquivalent: "m"
       ),
       to: "minimize"
     )
     windowMenu.addItem(
-      withTitle: "Zoom",
+      withTitle: String(localized: "Zoom"),
       action: #selector(NSWindow.performZoom(_:)),
       keyEquivalent: ""
     )
@@ -872,7 +872,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     windowMenu.addItem(NSMenuItem.separator())
     windowMenu.addItem(
-      withTitle: "Bring All to Front",
+      withTitle: String(localized: "Bring All to Front"),
       action: #selector(NSApplication.arrangeInFront(_:)),
       keyEquivalent: ""
     )

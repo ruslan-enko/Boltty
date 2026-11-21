@@ -44,7 +44,7 @@ final class SettingsWindowController: NSWindowController {
       backing: .buffered,
       defer: false
     )
-    window.title = "Settings"
+    window.title = String(localized: "Settings")
     window.identifier = NSUserInterfaceItemIdentifier("boltty.settings.window")
     window.tabbingMode = .disallowed
     window.contentMinSize = Self.minimumContentSize

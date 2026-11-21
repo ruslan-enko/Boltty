@@ -772,8 +772,8 @@ final class PaletteCodeBlockView: NSView {
     copyButton.hoverBackground = .clear
     copyButton.target = self
     copyButton.action = #selector(copyCode)
-    copyButton.toolTip = "Copy code"
-    copyButton.setAccessibilityLabel("Copy code")
+    copyButton.toolTip = String(localized: "Copy code")
+    copyButton.setAccessibilityLabel(String(localized: "Copy code"))
     copyButton.isHidden = true
     applyCopyGlyph(.copy)
     addSubview(copyButton)
@@ -830,7 +830,7 @@ final class PaletteCodeBlockView: NSView {
   }
 
   private func applyCopyGlyph(_ icon: BolttyIcon) {
-    copyButton.image = icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: "Copy code")
+    copyButton.image = icon.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: String(localized: "Copy code"))
   }
 
   static func attributed(_ code: String) -> NSAttributedString {

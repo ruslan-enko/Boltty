@@ -147,7 +147,7 @@ struct AccessPermissionList: View {
       }
 
       if model.statuses[.screen] == .refused {
-        SettingsNote("Screen Recording takes effect once Boltty is quit and opened again.")
+        SettingsNote(String(localized: "Screen Recording takes effect once Boltty is quit and opened again."))
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     }
@@ -244,7 +244,7 @@ final class AccessPermissionsWindowController: NSWindowController, NSWindowDeleg
       backing: .buffered,
       defer: false
     )
-    window.title = "Boltty AI Access"
+    window.title = String(localized: "Boltty AI Access")
     window.identifier = NSUserInterfaceItemIdentifier("boltty.access.window")
     window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true

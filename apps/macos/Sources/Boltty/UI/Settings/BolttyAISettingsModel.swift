@@ -8,6 +8,7 @@ final class BolttyAISettingsModel: ObservableObject {
   let engine: ConversationEngine
   let updater: AppUpdater?
   let loginItem: LoginItem
+  let language: AppLanguage
 
   @Published private(set) var dictationLanguages: [DictationLanguage] = []
   @Published var dictationDownload: DictationDownloadState = .idle
@@ -36,6 +37,7 @@ final class BolttyAISettingsModel: ObservableObject {
     engine: ConversationEngine,
     updater: AppUpdater? = nil,
     loginItem: LoginItem = LoginItem(),
+    language: AppLanguage = AppLanguage(),
     speech: SpeechOutput? = nil,
     localModels: LocalModelStore? = nil
   ) {
@@ -45,10 +47,14 @@ final class BolttyAISettingsModel: ObservableObject {
     self.engine = engine
     self.updater = updater
     self.loginItem = loginItem
+    self.language = language
     updater?.objectWillChange
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
     loginItem.objectWillChange
+      .sink { [weak self] _ in self?.objectWillChange.send() }
+      .store(in: &cancellables)
+    language.objectWillChange
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
     speech?.objectWillChange
@@ -287,7 +293,7 @@ final class BolttyAISettingsModel: ObservableObject {
       return AgentSettingsRow(
         agent: agent,
         enabled: appModel.settings.isProviderEnabled(agent.rawValue),
-        status: installation?.statusText ?? "Not installed",
+        status: installation?.statusText ?? String(localized: "Not installed"),
         isReady: installation?.isReady == true,
         offersModels: installation?.capabilities.contains(.modelSelection) == true,
         models: models,
@@ -373,8 +379,8 @@ final class BolttyAISettingsModel: ObservableObject {
       .sorted()
     guard !others.isEmpty else { return nil }
     return others.count == 1
-      ? "Also \(others[0])"
-      : "Also \(others.joined(separator: ", "))"
+      ? String(localized: "Also \(others[0])")
+      : String(localized: "Also \(others.joined(separator: ", "))")
   }
 
   func shortcutOwner(of binding: ShortcutBinding, except id: String) -> String? {
@@ -531,7 +537,7 @@ final class BolttyAISettingsModel: ObservableObject {
 
   static let localVoices: [(id: String, title: String)] = SupertonicSynthesizer.presets.map { id in
     let number = id.dropFirst()
-    return (id, id.hasPrefix("F") ? "Female \(number)" : "Male \(number)")
+    return (id, id.hasPrefix("F") ? String(localized: "Female \(number)") : String(localized: "Male \(number)"))
   }
 
   var localVoice: String {
@@ -547,7 +553,7 @@ final class BolttyAISettingsModel: ObservableObject {
 
   var localPreviewLanguage: String {
     let code = LanguageCode.of(Locale.current.identifier)
-    return SupertonicText.languages.contains(code) ? code : "en"
+    return SupertonicText.languages.contains(code) && Self.localSamples[code] != nil ? code : "en"
   }
 
   func previewLocalVoice() {
@@ -560,6 +566,12 @@ final class BolttyAISettingsModel: ObservableObject {
   private static let localSamples = [
     "en": "This is how Boltty reads its answers, on this Mac.",
     "uk": "Ось так Boltty читає свої відповіді, просто на цьому Маку.",
+    "de": "So liest Boltty seine Antworten vor, direkt auf diesem Mac.",
+    "fr": "Voici comment Boltty lit ses réponses, sur ce Mac.",
+    "es": "Así lee Boltty sus respuestas, en este Mac.",
+    "pt": "É assim que o Boltty lê as respostas, neste Mac.",
+    "ja": "Bolttyはこのように、このMacで回答を読み上げます。",
+    "ko": "Boltty는 이 Mac에서 이렇게 답변을 읽어 줍니다.",
   ]
 
   func loadDictationLanguages() async {

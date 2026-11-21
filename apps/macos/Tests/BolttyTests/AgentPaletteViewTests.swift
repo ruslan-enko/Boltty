@@ -4115,7 +4115,7 @@ extension AgentPaletteViewTests {
         for other in frames.dropFirst(index + 1) {
           XCTAssertLessThan(
             face.intersection(other).width * face.intersection(other).height,
-            face.width * face.height * 0.35,
+            min(face.width * face.height, other.width * other.height) * 0.5,
             "\(count): a face is never mostly under another")
         }
       }

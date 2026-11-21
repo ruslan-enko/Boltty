@@ -26,9 +26,9 @@ final class LocalModelStore: ObservableObject {
     var errorDescription: String? {
       switch self {
       case let .secondCopy(name):
-        "Another Boltty is already running. Download \(name) in that one."
+        String(localized: "Another Boltty is already running. Download \(name) in that one.")
       case let .space(name, needs):
-        "Not enough free space: \(name) needs \(Self.size(needs)) free to download."
+        String(localized: "Not enough free space: \(name) needs \(Self.size(needs)) free to download.")
       case let .download(name, reason):
         "\(name) could not be downloaded: \(reason)"
       case let .checksum(name):

@@ -137,7 +137,7 @@ extension ConversationMessage {
       }
     }
     if let failure {
-      blocks.append(.failure(failure.isAbort ? "Stopped" : failure.message))
+      blocks.append(.failure(failure.isAbort ? String(localized: "Stopped") : failure.message))
     }
     return blocks
   }

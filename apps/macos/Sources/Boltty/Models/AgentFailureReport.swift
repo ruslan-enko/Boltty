@@ -11,13 +11,13 @@ struct AgentFailureReport: Equatable, Sendable {
 
   var canRetry: Bool { retryPrompt != nil }
 
-  static let universalSentence = "This turn didn't finish — your conversation is saved."
+  static let universalSentence = String(localized: "This turn didn't finish — your conversation is saved.")
 
-  static let modelGoneSentence = "This model isn't available any more. Choose another, then try again."
+  static let modelGoneSentence = String(localized: "This model isn't available any more. Choose another, then try again.")
 
-  static let folderGoneSentence = "This chat's folder is gone. Choose another, then try again."
+  static let folderGoneSentence = String(localized: "This chat's folder is gone. Choose another, then try again.")
 
-  static let folderGoneFixedSentence = "This chat's folder is gone. Put it back to go on here."
+  static let folderGoneFixedSentence = String(localized: "This chat's folder is gone. Put it back to go on here.")
 
   static func saysModelIsGone(_ failure: MessageFailure) -> Bool {
     if failure.name == "provider.no-route" { return true }
@@ -28,9 +28,9 @@ struct AgentFailureReport: Equatable, Sendable {
 
   static func rateLimitSentence(_ hit: RateLimitHit, now: Date = Date()) -> String {
     guard let reset = hit.resetsAt, reset > now else {
-      return "Your plan's limit is used up — try again once it resets."
+      return String(localized: "Your plan's limit is used up — try again once it resets.")
     }
-    return "Your plan's limit is used up — it comes back \(AgentUsageWindow.resetPhrase(reset, now: now))."
+    return String(localized: "Your plan's limit is used up — it comes back \(AgentUsageWindow.resetPhrase(reset, now: now)).")
   }
 
   static func make(from preview: BolttyAISessionPreview) -> AgentFailureReport? {
@@ -71,7 +71,7 @@ struct AgentFailureReport: Equatable, Sendable {
       sentence: latestHit.map { rateLimitSentence($0) }
         ?? (modelGone ? modelGoneSentence : universalSentence),
       details: evidence.isEmpty
-        ? "The agent reported a failure without saying anything about it."
+        ? String(localized: "The agent reported a failure without saying anything about it.")
         : evidence.joined(separator: "\n\n"),
       retryPrompt: preview.retryPrompt,
       offersModelChoice: modelGone && preview.modelChip != nil

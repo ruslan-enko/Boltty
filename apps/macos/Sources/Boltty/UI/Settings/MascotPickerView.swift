@@ -154,7 +154,7 @@ struct MascotChoiceRows: View {
 
   var body: some View {
     let current = model.mascotLook(for: agent)
-    row("Shape") {
+    row(String(localized: "Shape")) {
       ForEach(MascotShape.allCases) { shape in
         MascotChoice(
           model: model, agent: agent,
@@ -163,7 +163,7 @@ struct MascotChoiceRows: View {
         )
       }
     }
-    row("Gradient") {
+    row(String(localized: "Gradient")) {
       ForEach(MascotPalette.catalog) { palette in
         MascotChoice(
           model: model, agent: agent,
@@ -172,7 +172,7 @@ struct MascotChoiceRows: View {
         )
       }
     }
-    row("Finish") {
+    row(String(localized: "Finish")) {
       ForEach(MascotFinish.allCases) { finish in
         MascotChoice(
           model: model, agent: agent,
@@ -246,9 +246,9 @@ private struct MascotCell: View {
     .buttonStyle(MascotCellStyle(isHovered: isHovered && takenBy == nil, isChosen: isChosen))
     .disabled(takenBy != nil)
     .onHover { isHovered = $0 }
-    .help(takenBy.map { "\(name) — worn by \($0)" } ?? name)
+    .help(takenBy.map { String(localized: "\(name) — worn by \($0)") } ?? name)
     .accessibilityLabel(name)
-    .accessibilityValue(isChosen ? "Selected" : takenBy.map { "Worn by \($0)" } ?? "")
+    .accessibilityValue(isChosen ? String(localized: "Selected") : takenBy.map { String(localized: "Worn by \($0)") } ?? "")
   }
 }
 

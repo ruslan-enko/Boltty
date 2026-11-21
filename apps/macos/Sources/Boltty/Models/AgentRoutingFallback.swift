@@ -6,7 +6,7 @@ struct AgentRoutingFallback: Equatable, Sendable {
   let reason: String
 
   var sentence: String {
-    "\(preferred.displayName) isn't ready — sent to \(used.displayName) instead."
+    String(localized: "\(preferred.displayName) isn't ready — sent to \(used.displayName) instead.")
   }
 
   var tooltip: String {

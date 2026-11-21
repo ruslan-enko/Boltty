@@ -7,7 +7,7 @@ final class BolttyAINoAgentsView: NSView {
   private let faces = AgentHistory.tabOrder.map {
     MascotNSView(conversationID: BolttyAINoAgentsView.identity, look: MascotLook.face(for: $0))
   }
-  private let settingsButtonPill = GlassPillButton.titled("Open Settings")
+  private let settingsButtonPill = GlassPillButton.titled(String(localized: "Open Settings"))
   private var settingsButton: NSButton { settingsButtonPill.button }
 
   var faceLooksForTesting: [MascotLook] { faces.map(\.look) }
@@ -36,13 +36,13 @@ final class BolttyAINoAgentsView: NSView {
       ])
     }
 
-    let title = NSTextField(labelWithString: "No agents found")
+    let title = NSTextField(labelWithString: String(localized: "No agents found"))
     title.font = roundedAppFont(size: AgentPaletteMetrics.resultsTitleFontSize)
     title.textColor = .labelColor
 
     let subtitle = NSTextField(
       wrappingLabelWithString:
-        "Boltty works with the CLI agents already installed on this Mac."
+        String(localized: "Boltty works with the CLI agents already installed on this Mac.")
     )
     subtitle.font = roundedAppFont(size: AgentPaletteMetrics.resultsSubtitleFontSize)
     subtitle.textColor = .secondaryLabelColor

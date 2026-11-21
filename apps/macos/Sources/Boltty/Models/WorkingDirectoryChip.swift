@@ -21,8 +21,8 @@ struct WorkingDirectoryChip: Equatable, Sendable {
 
   var displayPath: String {
     let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return "Home" }
-    if trimmed == WorkingDirectoryResolver.homeDirectoryPath { return "Home" }
+    guard !trimmed.isEmpty else { return String(localized: "Home") }
+    if trimmed == WorkingDirectoryResolver.homeDirectoryPath { return String(localized: "Home") }
     if trimmed == "/" { return "/" }
     let name = (trimmed as NSString).lastPathComponent
     return name.isEmpty ? trimmed : name
@@ -43,26 +43,24 @@ struct WorkingDirectoryChip: Equatable, Sendable {
 
   var warning: String? {
     guard isIgnoredByAgent else { return nil }
-    return "This chat doesn't work in the folder you choose — "
-      + "its agent keeps its own scratch directory, and files land there."
+    return String(localized: "This chat doesn't work in the folder you choose — its agent keeps its own scratch directory, and files land there.")
   }
 
   var tooltip: String {
     var lines = [path]
     if let warning { lines.append(warning) }
     if isEditable {
-      lines.append("Click to choose the folder this chat works in.")
+      lines.append(String(localized: "Click to choose the folder this chat works in."))
     } else {
       lines.append(
-        "Fixed when the conversation started — the session is rooted here. "
-          + "A new chat can start somewhere else."
+        String(localized: "Fixed when the conversation started — the session is rooted here. A new chat can start somewhere else.")
       )
     }
     return lines.joined(separator: "\n")
   }
 
   var accessibilityLabel: String {
-    let state = isEditable ? "Working folder" : "Working folder, fixed"
+    let state = isEditable ? String(localized: "Working folder") : String(localized: "Working folder, fixed")
     return "\(state), \(displayPath)"
   }
 

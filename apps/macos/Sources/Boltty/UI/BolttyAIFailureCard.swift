@@ -7,9 +7,9 @@ final class BolttyAIFailureCard: NSView {
 
   private let symbol = NSImageView()
   private let sentence = NSTextField(wrappingLabelWithString: "")
-  private let retryButton = GlassPillButton.titled("Retry")
-  private let chooseModelButton = GlassPillButton.titled("Choose Model")
-  private let chooseFolderButton = GlassPillButton.titled("Choose Folder…")
+  private let retryButton = GlassPillButton.titled(String(localized: "Retry"))
+  private let chooseModelButton = GlassPillButton.titled(String(localized: "Choose Model"))
+  private let chooseFolderButton = GlassPillButton.titled(String(localized: "Choose Folder…"))
   private let disclosure = PaletteDisclosureButton()
   private let detailsText = NSTextField(wrappingLabelWithString: "")
   private let copyButton = PaletteIconButton()
@@ -75,8 +75,8 @@ final class BolttyAIFailureCard: NSView {
     copyButton.restingTint = ComposerControlGroup.restingInk
     copyButton.hoverTint = .white
     copyButton.hoverBackground = .clear
-    copyButton.toolTip = "Copy"
-    copyButton.setAccessibilityLabel("Copy the details")
+    copyButton.toolTip = String(localized: "Copy")
+    copyButton.setAccessibilityLabel(String(localized: "Copy the details"))
     copyButton.target = self
     copyButton.action = #selector(copyDetails(_:))
     copyButton.setAccessibilityIdentifier("boltty.ask.failure.copy")
@@ -222,15 +222,15 @@ final class BolttyAIFailureCard: NSView {
 
   private func applyDisclosure() {
     let open = !detailsBox.isHidden
-    disclosure.title = "Details"
+    disclosure.title = String(localized: "Details")
     disclosure.image = (open ? BolttyIcon.chevronDown : .chevronRight)
       .image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize))
-    disclosure.setAccessibilityValue(open ? "expanded" : "collapsed")
+    disclosure.setAccessibilityValue(open ? String(localized: "expanded") : String(localized: "collapsed"))
   }
 
   private func applyCopyGlyph(_ icon: BolttyIcon) {
     copyButton.image = icon.image(
-      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: "Copy the details")
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewFileGlyphPointSize), description: String(localized: "Copy the details"))
   }
 
   @objc private func retry(_ sender: NSButton) {

@@ -35,7 +35,7 @@ final class AntigravityPermissionGate: @unchecked Sendable {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let descriptor = open(directory.path, O_EVTONLY)
     guard descriptor >= 0 else {
-      throw AgentClientError.transport("Boltty could not watch \(directory.path).")
+      throw AgentClientError.transport(String(localized: "Boltty could not watch \(directory.path)."))
     }
     let source = DispatchSource.makeFileSystemObjectSource(
       fileDescriptor: descriptor, eventMask: [.write], queue: queue
@@ -141,7 +141,7 @@ final class AntigravityPermissionGate: @unchecked Sendable {
       if !data.isEmpty {
         guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
           throw AgentClientError.transport(
-            "\(hooksFile.path) is not plain JSON, so Boltty left it alone."
+            String(localized: "\(hooksFile.path) is not plain JSON, so Boltty left it alone.")
           )
         }
         hooks = parsed

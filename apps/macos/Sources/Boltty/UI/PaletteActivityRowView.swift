@@ -175,7 +175,7 @@ final class PaletteActivityRowView: NSView {
     button.isEnabled = opens
     chevron.image = (expanded ? BolttyIcon.chevronDown : .chevronRight).image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize),
-      description: expanded ? "Hide output" : "Show output"
+      description: expanded ? String(localized: "Hide output") : String(localized: "Show output")
     )
     applyInk()
 
@@ -191,7 +191,7 @@ final class PaletteActivityRowView: NSView {
       ? NSAttributedString()
       : Self.detailText(value.detail ?? "")
     setAccessibilityLabel(value.headline)
-    setAccessibilityValue(expanded ? "expanded" : "collapsed")
+    setAccessibilityValue(expanded ? String(localized: "expanded") : String(localized: "collapsed"))
     needsLayout = true
   }
 
@@ -208,7 +208,7 @@ final class PaletteActivityRowView: NSView {
     guard lines.count > AgentPaletteMetrics.previewActivityDetailLineCap else { return trimmed }
     let kept = lines.prefix(AgentPaletteMetrics.previewActivityDetailLineCap)
       .joined(separator: "\n")
-    return kept + "\n… \(lines.count - AgentPaletteMetrics.previewActivityDetailLineCap) more lines"
+    return kept + "\n… " + String(localized: "\(lines.count - AgentPaletteMetrics.previewActivityDetailLineCap) more lines")
   }
 
   private static func detailText(_ raw: String) -> NSAttributedString {
@@ -276,7 +276,12 @@ final class PaletteActivityRowView: NSView {
       glyph.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewActivityGlyphSize),
     ])
     row.setAccessibilityElement(true)
-    row.setAccessibilityLabel("\(step.text), \(step.status.rawValue)")
+    let status = switch step.status {
+    case .pending: String(localized: "to do")
+    case .inProgress: String(localized: "in progress")
+    case .completed: String(localized: "done")
+    }
+    row.setAccessibilityLabel("\(step.text), \(status)")
     return row
   }
 
@@ -341,7 +346,7 @@ final class PaletteActivityGroupView: NSView {
       glyph.imageScaling = .scaleProportionallyDown
     }
     warning.image = BolttyIcon.warning.image(
-      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityGlyphPointSize), description: "Something failed")
+      size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityGlyphPointSize), description: String(localized: "Something failed"))
     warning.contentTintColor = AgentPaletteMetrics.failureCardAccent
 
     button.translatesAutoresizingMaskIntoConstraints = false
@@ -419,7 +424,7 @@ final class PaletteActivityGroupView: NSView {
     headline.toolTip = value.filter { !$0.isThought }.map(\.headline).joined(separator: "\n")
     chevron.image = (isExpanded ? BolttyIcon.chevronUp : .chevronDown).image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewWorkPillChevronPointSize),
-      description: isExpanded ? "Hide steps" : "Show steps"
+      description: isExpanded ? String(localized: "Hide steps") : String(localized: "Show steps")
     )
     applyInk()
 
@@ -439,7 +444,7 @@ final class PaletteActivityGroupView: NSView {
     list.isHidden = !isExpanded
     thread.isHidden = !isExpanded
     setAccessibilityLabel(headline.stringValue)
-    setAccessibilityValue(isExpanded ? "expanded" : "collapsed")
+    setAccessibilityValue(isExpanded ? String(localized: "expanded") : String(localized: "collapsed"))
     needsLayout = true
   }
 

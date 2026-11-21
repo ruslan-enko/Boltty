@@ -42,16 +42,16 @@ struct AgentQuestion: Equatable, Sendable {
   var keyboardFooter: String {
     if takesWordsAsAnswer {
       return allowsMultiple
-        ? "↑↓ move · Space chooses · ↵ sends · or type your own answer below"
-        : "↑↓ move · ↵ confirms · click a row, or type your own answer below"
+        ? String(localized: "↑↓ move · Space chooses · ↵ sends · or type your own answer below")
+        : String(localized: "↑↓ move · ↵ confirms · click a row, or type your own answer below")
     }
     let numbers = answersByNumber ? (options.count == 1 ? "1" : "1–\(options.count)") : nil
     if allowsMultiple {
-      return numbers.map { "↑↓ move · Space or \($0) chooses · ↵ sends · click a row to choose it" }
-        ?? "↑↓ move · Space chooses · ↵ sends · click a row to choose it"
+      return numbers.map { String(localized: "↑↓ move · Space or \($0) chooses · ↵ sends · click a row to choose it") }
+        ?? String(localized: "↑↓ move · Space chooses · ↵ sends · click a row to choose it")
     }
-    return numbers.map { "↑↓ move · ↵ confirms · \($0) or click a row to confirm it" }
-      ?? "↑↓ move · ↵ confirms · click a row to confirm it"
+    return numbers.map { String(localized: "↑↓ move · ↵ confirms · \($0) or click a row to confirm it") }
+      ?? String(localized: "↑↓ move · ↵ confirms · click a row to confirm it")
   }
 
   var answersByNumber: Bool {
@@ -64,7 +64,7 @@ struct AgentQuestion: Equatable, Sendable {
     kind == .plan ? [PlanDecision.cancelled.rawValue, words] : Self.refusal(saying: words)
   }
 
-  var refusalWords: String { kind == .plan ? "Request Changes" : "Deny and send" }
+  var refusalWords: String { kind == .plan ? String(localized: "Request Changes") : String(localized: "Deny and send") }
 
   var returnReachableCount: Int {
     kind == .plan ? max(options.count - 1, 1) : options.count
@@ -72,7 +72,7 @@ struct AgentQuestion: Equatable, Sendable {
 
   var takesWordsAsAnswer: Bool { kind == .question && allowsCustom }
 
-  static let typedAnswerFooter = "↵ sends what you typed as the answer"
+  static let typedAnswerFooter = String(localized: "↵ sends what you typed as the answer")
 
   static func answer(_ values: [String], carries typed: String) -> Bool {
     let words = typed.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -88,9 +88,9 @@ struct AgentQuestion: Equatable, Sendable {
     let patterns = savePatterns
       .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
       .filter { !$0.isEmpty }
-    guard !patterns.isEmpty else { return "this session" }
+    guard !patterns.isEmpty else { return String(localized: "this session") }
     return patterns.count == 1
-      ? "this chat, for \(patterns[0])"
-      : "this chat, for \(patterns.count) rules"
+      ? String(localized: "this chat, for \(patterns[0])")
+      : String(localized: "this chat, for \(patterns.count) rules")
   }
 }

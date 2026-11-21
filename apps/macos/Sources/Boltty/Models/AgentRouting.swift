@@ -100,9 +100,9 @@ struct AgentHandOver: Equatable, Sendable {
 
   static func sentence(skipped: String, why: Reason, next: String) -> String {
     switch why {
-    case .spent: "\(skipped)'s limit is used up · \(next) answers"
-    case .modelGone: "\(skipped)'s model is gone · \(next) answers"
-    case .failed: "\(skipped) could not answer · \(next) answers"
+    case .spent: String(localized: "\(skipped)'s limit is used up · \(next) answers")
+    case .modelGone: String(localized: "\(skipped)'s model is gone · \(next) answers")
+    case .failed: String(localized: "\(skipped) could not answer · \(next) answers")
     }
   }
 }

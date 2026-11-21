@@ -13,19 +13,19 @@ enum AccessKind: String, CaseIterable, Identifiable, Sendable {
 
   var title: String {
     switch self {
-    case .dictation: "Microphone"
-    case .screen: "Screen Recording"
-    case .notifications: "Notifications"
-    case .finder: "Finder"
+    case .dictation: String(localized: "Microphone")
+    case .screen: String(localized: "Screen Recording")
+    case .notifications: String(localized: "Notifications")
+    case .finder: String(localized: "Finder")
     }
   }
 
   var purpose: String {
     switch self {
-    case .dictation: "Speak a prompt instead of typing it."
-    case .screen: "Ask about a part of the screen you select."
-    case .notifications: "Know when a reply is ready or an agent needs you."
-    case .finder: "Talk about the files you have selected."
+    case .dictation: String(localized: "Speak a prompt instead of typing it.")
+    case .screen: String(localized: "Ask about a part of the screen you select.")
+    case .notifications: String(localized: "Know when a reply is ready or an agent needs you.")
+    case .finder: String(localized: "Talk about the files you have selected.")
     }
   }
 

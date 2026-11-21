@@ -195,7 +195,7 @@ final class AskBolttySession: ObservableObject {
     }.value
     guard !Task.isCancelled, phase == .thinking else { return }
     guard let screenURL = urls.0, let areaURL = urls.1 else {
-      return fail("Boltty could not keep a picture of the screen.")
+      return fail(String(localized: "Boltty could not keep a picture of the screen."))
     }
     var place: FinderPlace?
     if let spot = selection.finderSpot { place = await findPlace?(spot) }
@@ -238,7 +238,7 @@ final class AskBolttySession: ObservableObject {
     chunker = SentenceChunker()
     sentencesSaid = 0
     guard coordinator.sendFollowUp(bracket + words, pictures: pictures, to: id) else {
-      return fail("That question was not sent.")
+      return fail(String(localized: "That question was not sent."))
     }
     isNewConversation = false
     watch(id)
@@ -337,7 +337,7 @@ final class AskBolttySession: ObservableObject {
     case .waiting:
       if conversation.readOnly,
          case .permission? = coordinator.store.transcript(id: id).openInteraction?.kind { return }
-      phase = .needsYou("\(name(of: conversation)) needs your answer in Boltty.")
+      phase = .needsYou(String(localized: "\(name(of: conversation)) needs your answer in Boltty."))
       return
     case .failed, .rateLimited:
       if spokenText.isEmpty { return handOver(from: conversation, failure: failure) }
@@ -384,12 +384,12 @@ final class AskBolttySession: ObservableObject {
       case .spent:
         let reset = failure?.rateLimit?.resetsAt.flatMap { $0 > now() ? $0 : nil }
         return fail(reset.map {
-          "\(who)'s limit is used up — it comes back \(AgentUsageWindow.resetPhrase($0, now: now()))."
-        } ?? "\(who)'s limit is used up.")
+          String(localized: "\(who)'s limit is used up — it comes back \(AgentUsageWindow.resetPhrase($0, now: now())).")
+        } ?? String(localized: "\(who)'s limit is used up."))
       case .modelGone:
-        return fail("\(who)'s model isn't available any more.")
+        return fail(String(localized: "\(who)'s model isn't available any more."))
       case .failed:
-        return fail("\(who) could not answer that.")
+        return fail(String(localized: "\(who) could not answer that."))
       }
     }
     let next = fallbacks.removeFirst()
@@ -675,7 +675,7 @@ final class AskBolttySession: ObservableObject {
   }
 
   private func name(of conversation: Conversation) -> String {
-    AgentId(rawValue: conversation.providerID)?.displayName ?? "The agent"
+    AgentId(rawValue: conversation.providerID)?.displayName ?? String(localized: "The agent")
   }
 }
 

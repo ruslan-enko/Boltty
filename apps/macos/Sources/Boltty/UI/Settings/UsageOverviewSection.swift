@@ -15,7 +15,7 @@ struct UsageOverviewSection: View {
   enum Tab: String, CaseIterable, Identifiable {
     case overview, models
     var id: String { rawValue }
-    var title: String { self == .overview ? "Overview" : "Models" }
+    var title: String { self == .overview ? String(localized: "Overview") : String(localized: "Models") }
   }
 
   var body: some View {
@@ -37,16 +37,16 @@ struct UsageOverviewSection: View {
       .accessibilityElement(children: .contain)
       .accessibilityIdentifier("boltty.settings.usage.overview")
     } header: {
-      SettingsSectionHeader("Activity")
+      SettingsSectionHeader(String(localized: "Activity"))
     } footer: {
-      SettingsNote("Counted from each CLI’s own history on this Mac: what you sent and every reply, and the tokens each CLI wrote down.")
+      SettingsNote(String(localized: "Counted from each CLI’s own history on this Mac: what you sent and every reply, and the tokens each CLI wrote down."))
     }
   }
 
   private var controls: some View {
     HStack(spacing: 12) {
       GlassSegments(
-        title: "View",
+        title: String(localized: "View"),
         options: Tab.allCases.map { (value: $0, title: $0.title) },
         selection: $tab
       )
@@ -68,7 +68,7 @@ struct UsageOverviewSection: View {
       }
 
       GlassSegments(
-        title: "Range",
+        title: String(localized: "Range"),
         options: AgentStatisticsRange.allCases.map { (value: $0, title: $0.title) },
         selection: $range
       )
@@ -109,14 +109,14 @@ struct UsageOverviewSection: View {
   private func tiles(_ summary: AgentStatisticsSummary) -> some View {
     Grid(horizontalSpacing: 8, verticalSpacing: 8) {
       GridRow {
-        tile("Sessions", Self.decimal(summary.sessions))
-        tile("Messages", Self.decimal(summary.messages))
-        tile("Total tokens", summary.tokens > 0 ? AgentActivityHistory.compact(Double(summary.tokens)) : "—")
+        tile(String(localized: "Sessions"), Self.decimal(summary.sessions))
+        tile(String(localized: "Messages"), Self.decimal(summary.messages))
+        tile(String(localized: "Total tokens"), summary.tokens > 0 ? AgentActivityHistory.compact(Double(summary.tokens)) : "—")
       }
       GridRow {
-        tile("Active days", Self.decimal(summary.activeDays))
-        tile("Peak hour", summary.peakHour.map(Self.hourName) ?? "—")
-        tile("Favorite model", summary.favoriteModel ?? "—", isName: true)
+        tile(String(localized: "Active days"), Self.decimal(summary.activeDays))
+        tile(String(localized: "Peak hour"), summary.peakHour.map(Self.hourName) ?? "—")
+        tile(String(localized: "Favorite model"), summary.favoriteModel ?? "—", isName: true)
       }
     }
   }
@@ -174,8 +174,8 @@ struct UsageOverviewSection: View {
   private func caption(_ row: AgentStatisticsSummary.Model) -> String {
     var parts: [String] = []
     if let agent = row.agent { parts.append(agent.displayName) }
-    parts.append(row.messages == 1 ? "1 reply" : "\(Self.decimal(row.messages)) replies")
-    parts.append(row.sessions == 1 ? "1 session" : "\(Self.decimal(row.sessions)) sessions")
+    parts.append(String(localized: "\(row.messages) replies"))
+    parts.append(String(localized: "\(row.sessions) sessions"))
     return parts.joined(separator: " · ")
   }
 
@@ -280,9 +280,9 @@ private struct UsageDayGrid: View {
 
   private static func caption(_ date: Date, _ day: AgentStatisticsSummary.Day?) -> String {
     let name = dayFormatter.string(from: date)
-    guard let day, day.messages > 0 || day.tokens > 0 else { return "\(name): nothing" }
-    var parts = ["\(name): \(day.messages) message\(day.messages == 1 ? "" : "s")"]
-    if day.tokens > 0 { parts.append("\(AgentActivityHistory.compact(Double(day.tokens))) tokens") }
+    guard let day, day.messages > 0 || day.tokens > 0 else { return String(localized: "\(name): nothing") }
+    var parts = ["\(name): \(String(localized: "\(day.messages) messages"))"]
+    if day.tokens > 0 { parts.append(String(localized: "\(AgentActivityHistory.compact(Double(day.tokens))) tokens")) }
     return parts.joined(separator: ", ")
   }
 }

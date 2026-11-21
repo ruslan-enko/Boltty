@@ -101,7 +101,7 @@ final class JSONLineProcess: @unchecked Sendable {
         try inPipe.fileHandleForWriting.write(contentsOf: data)
       }
     } catch {
-      throw AgentClientError.transport("The agent stopped accepting input.")
+      throw AgentClientError.transport(String(localized: "The agent stopped accepting input."))
     }
   }
 

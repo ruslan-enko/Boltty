@@ -6,17 +6,17 @@ final class FirstRunShowController {
   // MARK: - What it says
 
   static let captions = [
-    "Ask any agent, from anywhere.",
-    "Every chat, by agent.",
-    "Select anything, and ask out loud.",
+    String(localized: "Ask any agent, from anywhere."),
+    String(localized: "Every chat, by agent."),
+    String(localized: "Select anything, and ask out loud."),
   ]
-  static let placeholder = "Ask anything"
-  static let prompt = "Make this launch video small enough to email"
-  static let answer = "Done — launch.mp4 is 18 MB, down from 240. It’s right next to the original."
-  static let worked = "Worked for 14 s  ›"
-  static let askQuestion = "What can I cut here?"
-  static let askAnswer = "This stretch is silent. You can cut it."
-  static let askDrawn = "It answers right on your screen."
+  static let placeholder = String(localized: "Ask anything")
+  static let prompt = String(localized: "Make this launch video small enough to email")
+  static let answer = String(localized: "Done — launch.mp4 is 18 MB, down from 240. It’s right next to the original.")
+  static let worked = String(localized: "Worked for 14 s  ›")
+  static let askQuestion = String(localized: "What can I cut here?")
+  static let askAnswer = String(localized: "This stretch is silent. You can cut it.")
+  static let askDrawn = String(localized: "It answers right on your screen.")
 
   // MARK: - Timing
 
@@ -435,7 +435,7 @@ final class FirstRunShowController {
         after(1.1 + 0.42 * Double(index)) { [weak self] in
           keycap.press()
           face.view.apply(look: MascotLook.face(for: agent))
-          prompt.placeholder("Ask \(agent.shortDisplayName)")
+          prompt.placeholder(String(localized: "Ask \(agent.shortDisplayName)"))
           self?.sound(.tap, index)
         }
       }
@@ -470,7 +470,7 @@ final class FirstRunShowController {
       card.grow(from: typed)
       self.after(0.12) { [weak self] in
         card.ask(from: prompt.textFrame, size: prompt.fontSize)
-        prompt.clear(placeholder: "Ask anything")
+        prompt.clear(placeholder: String(localized: "Ask anything"))
       }
       prompt.becomeComposer()
       self.after(0.85) {
@@ -549,7 +549,7 @@ final class FirstRunShowController {
 
     let from = space.point(598, 725)
     let to = space.point(1408, 879)
-    after(1.0) { ask.pointer(at: from, hint: "Drag to ask about an area") }
+    after(1.0) { ask.pointer(at: from, hint: String(localized: "Drag to ask about an area")) }
     let shell = keep(ShowAskShell(in: view, space: space, clock: clock, face: face, words: Self.askQuestion,
                                   leftOf: to.x + space.v(14), top: to.y + space.v(63)))
     after(1.9) { [weak self] in
@@ -640,7 +640,7 @@ final class FirstRunShowController {
     return [
       AskBolttyShape(kind: .path(loop), label: nil),
       AskBolttyShape(kind: .path(arrow), label: nil),
-      AskBolttyShape(kind: .label(at: ask.mark(space.point(tail.x + 20, tail.y - 34))), label: "12 s of silence"),
+      AskBolttyShape(kind: .label(at: ask.mark(space.point(tail.x + 20, tail.y - 34))), label: String(localized: "12 s of silence")),
     ]
   }
 
@@ -1227,7 +1227,7 @@ final class ShowPrompt {
     }
     folder = control(.folder)
     microphone = control(.mic)
-    model = ShowText.label("Default", size: space.v(22), weight: .medium)
+    model = ShowText.label(String(localized: "Default"), size: space.v(22), weight: .medium)
     model.sizeToFit()
     model.alphaValue = 0
     glass.content.addSubview(model)
@@ -1605,7 +1605,7 @@ final class ShowAppWindow {
                  ink: CGColor(gray: 0, alpha: 0.58), radius: 64)
     sketch.text("launch.mov — Clips", at: 0, middle: 38, size: 17, alpha: 0.85, weight: .medium, width: 1064)
     sketch.block(36, 76, 190, 530, alpha: 0.2, radius: 28)
-    sketch.text("Library", at: 58, middle: 106, size: 14, alpha: 0.55, weight: .semibold)
+    sketch.text(String(localized: "Library"), at: 58, middle: 106, size: 14, alpha: 0.55, weight: .semibold)
     let clips: [(String, BolttyIcon)] = [
       ("launch.mov", .film), ("intro.mov", .film), ("demo-v2.mov", .film),
       ("voiceover.m4a", .waveform), ("music.m4a", .music), ("logo.png", .photo),
@@ -1677,7 +1677,7 @@ final class ShowMenuBar {
       labels.append(icon)
       x = icon.frame.maxX + space.v(30)
     }
-    for (index, title) in [app, "File", "Edit", "View", "Clip", "Window", "Help"].enumerated() {
+    for (index, title) in [app, String(localized: "File"), String(localized: "Edit"), String(localized: "View"), String(localized: "Clip"), String(localized: "Window"), String(localized: "Help")].enumerated() {
       let label = ShowText.label(title, size: space.v(size), weight: index == 0 ? .bold : .medium)
       label.sizeToFit()
       label.frame.origin = CGPoint(x: x.rounded(), y: (middle - label.frame.height / 2).rounded())
@@ -1685,7 +1685,7 @@ final class ShowMenuBar {
       labels.append(label)
       x = label.frame.maxX + space.v(30)
     }
-    let clock = ShowText.label("Fri 9:41", size: space.v(size), weight: .medium)
+    let clock = ShowText.label(String(localized: "Fri 9:41"), size: space.v(size), weight: .medium)
     clock.sizeToFit()
     clock.frame.origin = CGPoint(x: (space.point(1800 - 42, 0).x - clock.frame.width).rounded(),
                                  y: (middle - clock.frame.height / 2).rounded())
@@ -1836,7 +1836,7 @@ final class ShowAsk {
   }
 
   func think() {
-    say("Thinking…", quiet: true, lines: 1)
+    say(String(localized: "Thinking…"), quiet: true, lines: 1)
     ShowClock.fade(bubble, to: 1, duration: Motion.quick)
   }
 
@@ -2156,8 +2156,8 @@ final class ShowChatList {
   private static let rowHeight: CGFloat = 62
   private static let wordsLeading: CGFloat = 62
   private static let titles = [
-    "Fix the flaky sign-up test", "Why is the build slow?", "Rename the pricing tiers",
-    "Sort the screenshots by date",
+    String(localized: "Fix the flaky sign-up test"), String(localized: "Why is the build slow?"), String(localized: "Rename the pricing tiers"),
+    String(localized: "Sort the screenshots by date"),
   ]
 
   private struct Row {
@@ -2207,7 +2207,7 @@ final class ShowChatList {
     if !isAlone {
       let all = box(x, Self.tabsTop, 84, Self.tabHeight)
       tabs[.none] = all
-      let allLabel = ShowText.label("All", size: space.v(18), weight: .semibold)
+      let allLabel = ShowText.label(String(localized: "All"), size: space.v(18), weight: .semibold)
       allLabel.sizeToFit()
       allLabel.frame.origin = CGPoint(x: (all.midX - allLabel.frame.width / 2).rounded(),
                                       y: (all.midY - allLabel.frame.height / 2).rounded())
@@ -2238,8 +2238,8 @@ final class ShowChatList {
     content.addSubview(rowsView)
     let others = agents.filter { $0 != planned }
     let own: [(String, String?)] = [
-      (FirstRunShowController.prompt, "Done — launch.mp4 is 18 MB"), ("Pick a thumbnail for the video", nil),
-      ("Draft the launch post", nil), ("Check the press kit’s links", nil),
+      (FirstRunShowController.prompt, String(localized: "Done — launch.mp4 is 18 MB")), (String(localized: "Pick a thumbnail for the video"), nil),
+      (String(localized: "Draft the launch post"), nil), (String(localized: "Check the press kit’s links"), nil),
     ]
     var days: [[(AgentId, String, String?)]] = [[], []]
     for slot in 0..<8 {
@@ -2256,7 +2256,7 @@ final class ShowChatList {
     var y = Self.listTop
     let wide = Self.width - Self.inset * 2
     for (day, items) in days.enumerated() {
-      let heading = ShowText.label(day == 0 ? "Today" : "Yesterday", size: space.v(15),
+      let heading = ShowText.label(day == 0 ? String(localized: "Today") : String(localized: "Yesterday"), size: space.v(15),
                                    ink: NSColor.white.withAlphaComponent(0.55), weight: .semibold)
       heading.sizeToFit()
       let line = row(Self.inset + 14, y, wide, Self.headingHeight)
@@ -2381,7 +2381,7 @@ final class SunsetView: NSView {
     (OKLCH(0.765, 0.153, 359.3), 0.26, CGPoint(x: 0.74, y: 0.42), 33),
     (OKLCH(0.821, 0.091, 254.3), 0.30, CGPoint(x: 0.55, y: 0.78), 29),
   ]
-  private let skip = NSTextField(labelWithString: "Skip Intro")
+  private let skip = NSTextField(labelWithString: String(localized: "Skip Intro"))
   private let palette: MascotPalette?
   private var backdrop: AgentBackdropView?
 

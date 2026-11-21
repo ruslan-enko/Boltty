@@ -41,10 +41,10 @@ struct AgentUsageWindow: Equatable, Sendable {
 
     var title: String {
       switch self {
-      case .session: "5-hour"
-      case .weekly: "Weekly"
+      case .session: String(localized: "5-hour")
+      case .weekly: String(localized: "Weekly")
       case let .other(minutes):
-        minutes % 1_440 == 0 ? "\(minutes / 1_440)-day" : "\(max(minutes / 60, 1))-hour"
+        minutes % 1_440 == 0 ? String(localized: "\(minutes / 1_440)-day") : String(localized: "\(max(minutes / 60, 1))-hour")
       case let .named(name, _): name
       }
     }
@@ -156,9 +156,9 @@ extension AgentUsageWindow {
   static func countdown(to date: Date, now: Date = Date()) -> String {
     let minutes = max(1, Int((date.timeIntervalSince(now) / 60).rounded(.up)))
     let days = minutes / 1_440, hours = minutes % 1_440 / 60, rest = minutes % 60
-    if days > 0 { return hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
-    if hours > 0 { return rest > 0 ? "\(hours)h \(rest)m" : "\(hours)h" }
-    return "\(rest)m"
+    if days > 0 { return hours > 0 ? String(localized: "\(days)d \(hours)h") : String(localized: "\(days)d") }
+    if hours > 0 { return rest > 0 ? String(localized: "\(hours)h \(rest)m") : String(localized: "\(hours)h") }
+    return String(localized: "\(rest)m")
   }
 
   static func resetPhrase(_ date: Date, now: Date = Date()) -> String {
@@ -232,9 +232,9 @@ enum AgentCompaction {
   static let toolName = "compact"
 
   static func activity(id: String, before: Int? = nil, after: Int? = nil) -> AgentActivity {
-    var summary = "Compacted the conversation"
+    var summary = String(localized: "Compacted the conversation")
     if let before, let after, before > after {
-      summary += " · \(tokens(before)) → \(tokens(after)) tokens"
+      summary += String(localized: " · \(tokens(before)) → \(tokens(after)) tokens")
     }
     return AgentActivity(
       id: id, name: toolName, summary: summary, state: .completed,
@@ -299,7 +299,7 @@ struct AgentActivityHistory: Equatable, Sendable {
       days: lastDays(values, today: today),
       streakDays: summary?.int("currentStreakDays"),
       summary: summary?.double("lifetimeTokens").map {
-        "\(AgentActivityHistory.compact($0)) tokens all time"
+        String(localized: "\(AgentActivityHistory.compact($0)) tokens all time")
       })
   }
 

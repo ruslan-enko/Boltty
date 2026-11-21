@@ -8,8 +8,8 @@ enum MascotFinish: String, CaseIterable, Codable, Identifiable, Sendable {
 
   var displayName: String {
     switch self {
-    case .velvet: "Velvet"
-    case .fur: "Fur"
+    case .velvet: String(localized: "Velvet")
+    case .fur: String(localized: "Fur")
     }
   }
 }

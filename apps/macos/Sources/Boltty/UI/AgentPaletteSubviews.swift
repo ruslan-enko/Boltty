@@ -235,7 +235,7 @@ final class BolttyAIEmptyResultsView: NSView, FillsResultsViewport {
   var mascotLookForTesting: MascotLook { mascotView.look }
 
   convenience init(emptyHistoryFor agent: AgentId) {
-    self.init(query: "", message: "No chats with \(agent.shortDisplayName) yet", agent: agent)
+    self.init(query: "", message: String(localized: "No chats with \(agent.shortDisplayName) yet"), agent: agent)
   }
 
   convenience init(query: String, agent: AgentId? = nil) {
@@ -251,11 +251,11 @@ final class BolttyAIEmptyResultsView: NSView, FillsResultsViewport {
     super.init(frame: .zero)
     mascotView.emotion = message != nil ? .sleeping : trimmed.isEmpty ? .curious : .concerned
     label.stringValue = message ?? (
-      trimmed.isEmpty ? "No chats yet" : "Send as new prompt"
+      trimmed.isEmpty ? String(localized: "No chats yet") : String(localized: "Send as new prompt")
     )
     label.setAccessibilityLabel(label.stringValue)
     if !trimmed.isEmpty {
-      label.setAccessibilityHelp("Starts a new chat with \(trimmed)")
+      label.setAccessibilityHelp(String(localized: "Starts a new chat with \(trimmed)"))
     }
     label.lineBreakMode = .byTruncatingTail
     translatesAutoresizingMaskIntoConstraints = false

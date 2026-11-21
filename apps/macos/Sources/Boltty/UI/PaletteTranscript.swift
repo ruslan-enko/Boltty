@@ -6,23 +6,34 @@ enum AgentActivityGroup {
 
     func counted(_ count: Int) -> String {
       switch self {
-      case .edit: "Edited \(count) files"
-      case .browse: "Visited \(count) pages"
-      case .read: "Read \(count) files"
-      case .search: "Ran \(count) searches"
-      case .command: "Ran \(count) commands"
-      case .other: "Used \(count) tools"
+      case .edit: String(localized: "Edited \(count) files")
+      case .browse: String(localized: "Visited \(count) pages")
+      case .read: String(localized: "Read \(count) files")
+      case .search: String(localized: "Ran \(count) searches")
+      case .command: String(localized: "Ran \(count) commands")
+      case .other: String(localized: "Used \(count) tools")
       }
     }
 
     var progressive: String {
       switch self {
-      case .edit: "Editing"
-      case .browse: "Browsing"
-      case .read: "Reading"
-      case .search: "Searching"
-      case .command: "Running a command"
-      case .other: "Using a tool"
+      case .edit: String(localized: "Editing…")
+      case .browse: String(localized: "Browsing…")
+      case .read: String(localized: "Reading…")
+      case .search: String(localized: "Searching…")
+      case .command: String(localized: "Running a command…")
+      case .other: String(localized: "Using a tool…")
+      }
+    }
+
+    func progressive(on name: String) -> String {
+      switch self {
+      case .edit: String(localized: "Editing \(name)")
+      case .browse: String(localized: "Browsing \(name)")
+      case .read: String(localized: "Reading \(name)")
+      case .search: String(localized: "Searching \(name)")
+      case .command: String(localized: "Running a command \(name)")
+      case .other: String(localized: "Using a tool \(name)")
       }
     }
   }
@@ -30,7 +41,7 @@ enum AgentActivityGroup {
   static let thoughtName = "boltty.thought"
 
   static func thought(id: String) -> AgentActivity {
-    AgentActivity(id: id, name: thoughtName, summary: "Thought", state: .completed)
+    AgentActivity(id: id, name: thoughtName, summary: String(localized: "Thought"), state: .completed)
   }
 
   static func isGroupable(_ activity: AgentActivity) -> Bool {
@@ -56,7 +67,7 @@ enum AgentActivityGroup {
   }
 
   static func summary(of activities: [AgentActivity]) -> String {
-    var phrases: [String] = activities.contains(where: \.isThought) ? ["Thought"] : []
+    var phrases: [String] = activities.contains(where: \.isThought) ? [String(localized: "Thought")] : []
     var stretch: [AgentActivity] = []
     func close() {
       defer { stretch = [] }
@@ -75,7 +86,7 @@ enum AgentActivityGroup {
     let headline = activity.headline
     guard let first = headline.first, first.isLowercase else { return headline }
     guard kind(of: activity) == .command else { return first.uppercased() + headline.dropFirst() }
-    return headline.contains(where: { $0 == " " || $0 == "/" }) ? "Ran " + headline : headline
+    return headline.contains(where: { $0 == " " || $0 == "/" }) ? String(localized: "Ran \(headline)") : headline
   }
 
   static func progress(for activity: AgentActivity) -> String {
@@ -83,12 +94,12 @@ enum AgentActivityGroup {
     if kind == .command {
       let line = activity.headline.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
       if let first = line.first, first.isUppercase { return line }
-      if line.contains(where: { $0 == " " || $0 == "/" }) { return "Running " + line }
+      if line.contains(where: { $0 == " " || $0 == "/" }) { return String(localized: "Running \(line)") }
     }
     if let file = activity.files.first {
-      return "\(kind.progressive) \((file as NSString).lastPathComponent)"
+      return kind.progressive(on: (file as NSString).lastPathComponent)
     }
-    return kind.progressive + "…"
+    return kind.progressive
   }
 
   static func id(of activities: [AgentActivity]) -> String {
@@ -109,16 +120,17 @@ struct PaletteTurnHeader: Equatable {
 
   func text(now: Date = Date()) -> String {
     let seconds = max(1, Int(((endedAt ?? now).timeIntervalSince(startedAt)).rounded()))
-    return (isRunning ? "Working for " : "Worked for ") + Self.duration(seconds)
+    let duration = Self.duration(seconds)
+    return isRunning ? String(localized: "Working for \(duration)") : String(localized: "Worked for \(duration)")
   }
 
   static func duration(_ seconds: Int) -> String {
     let hours = seconds / 3600
     let minutes = seconds % 3600 / 60
     let rest = seconds % 60
-    if hours > 0 { return "\(hours)h \(minutes)m" }
-    if minutes > 0 { return "\(minutes)m \(rest)s" }
-    return "\(rest)s"
+    if hours > 0 { return String(localized: "\(hours)h \(minutes)m") }
+    if minutes > 0 { return String(localized: "\(minutes)m \(rest)s") }
+    return String(localized: "\(rest)s")
   }
 }
 

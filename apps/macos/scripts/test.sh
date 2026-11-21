@@ -159,7 +159,7 @@ print "suites: ${suites:-<the whole bundle>}"
 # which reported every failing run as a pass.
 set +e
 xcodebuild -scheme Boltty -configuration Debug -destination 'platform=macOS' \
-  -derivedDataPath .derivedData "${only[@]}" test \
+  -derivedDataPath .derivedData -testLanguage en -testRegion US "${only[@]}" test \
   | grep -E "error:|warning: .*(never used|unused)|Test Case .* failed|Executed [0-9]+ test|\*\* TEST"
 # Not `status`: zsh reserves that name (it is `$?`), and assigning to it fails
 # silently enough that this script reported a failing run as a pass.

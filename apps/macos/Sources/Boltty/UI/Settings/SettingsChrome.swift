@@ -97,7 +97,7 @@ struct SettingsFilterField: View {
             .background(Circle().fill(Color.primary.opacity(0.08)))
         }
         .buttonStyle(.plain)
-        .help("Clear")
+        .help("Clear the filter")
         .transition(.opacity)
       }
     }

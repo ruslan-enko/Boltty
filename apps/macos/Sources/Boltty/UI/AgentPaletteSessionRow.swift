@@ -168,7 +168,7 @@ final class BolttyAISessionRowView: NSView {
   }
 
   private func accessibilityText(for item: BolttyAISessionItem) -> String {
-    "\(item.title), \(item.subtitle)" + (item.hasUnread ? ", unread" : "")
+    "\(item.title), \(item.subtitle)" + (item.hasUnread ? String(localized: ", unread") : "")
   }
 
   private func syncUnread() {

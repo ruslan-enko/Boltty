@@ -124,20 +124,24 @@ private struct SettingsSidebarRow: View {
   let action: () -> Void
   @State private var isHovered = false
 
+  private static let tile: CGFloat = 28
+  /// The same on every side, so the selection's corner is concentric with the tile's.
+  private static let inset: CGFloat = 4
+
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 8) {
-        SettingsPageTile(page: page)
+      HStack(spacing: 10) {
+        SettingsPageTile(page: page, side: Self.tile)
         Text(page.title)
           .fontWeight(isSelected ? .semibold : .regular)
           .foregroundStyle(.primary)
         Spacer(minLength: 0)
       }
-      .padding(.horizontal, 6)
-      .frame(height: 32)
+      .padding(.horizontal, Self.inset)
+      .frame(height: Self.tile + 2 * Self.inset)
       .background(
         Color.primary.opacity(isSelected ? 0.08 : (isHovered ? 0.04 : 0)),
-        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        in: RoundedRectangle(cornerRadius: SettingsPageTile.corner(Self.tile) + Self.inset, style: .continuous)
       )
       .contentShape(Rectangle())
     }
@@ -153,6 +157,8 @@ private struct SettingsSidebarRow: View {
 struct SettingsPageTile: View {
   let page: SettingsPage
   var side: CGFloat = 24
+
+  static func corner(_ side: CGFloat) -> CGFloat { side * 0.26 }
 
   @MainActor private static var images: [SettingsPage: NSImage] = [:]
 
@@ -177,7 +183,7 @@ struct SettingsPageTile: View {
       }
     }
     .frame(width: side, height: side)
-    .clipShape(RoundedRectangle(cornerRadius: side * 0.26, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous))
     .accessibilityHidden(true)
   }
 }

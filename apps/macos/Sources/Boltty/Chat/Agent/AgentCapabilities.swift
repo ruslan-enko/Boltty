@@ -75,9 +75,9 @@ struct AgentInstallation: Identifiable, Equatable, Sendable {
   var statusText: String {
     switch availability {
     case let .available(version):
-      return version.map { "Ready · \(Self.displayVersion($0))" } ?? "Ready"
+      return version.map { String(localized: "Ready · \(Self.displayVersion($0))") } ?? String(localized: "Ready")
     case .notInstalled:
-      return "Not installed"
+      return String(localized: "Not installed")
     case let .needsLogin(detail):
       return detail
     case let .unavailable(reason):

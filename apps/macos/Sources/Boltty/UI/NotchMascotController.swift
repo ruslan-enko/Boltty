@@ -105,7 +105,7 @@ struct NotchMascotStatus: Equatable {
     }
     let active = conversations.filter { rank($0) > 0 }.sorted(by: before)
     guard let conversation = active.first else {
-      return Self(conversationID: nil, agent: nil, emotion: .sleeping, label: "Open Boltty AI")
+      return Self(conversationID: nil, agent: nil, emotion: .sleeping, label: String(localized: "Open Boltty AI"))
     }
     var leaders: [Conversation] = []
     var counts: [String: Int] = [:]
@@ -129,12 +129,12 @@ struct NotchMascotStatus: Equatable {
     let need = SystemAttentionNotification.needsWords(for: waitingOn[conversation.id])
     let state: String
     switch conversation.lastKnownState {
-    case .working: state = "Working"
+    case .working: state = String(localized: "Working")
     case .waiting: state = need
-    case .failed: state = "Task failed"
-    case .interrupted: state = "Interrupted"
-    case .rateLimited: state = "Rate limited"
-    case .idle: state = "Finished"
+    case .failed: state = String(localized: "Task failed")
+    case .interrupted: state = String(localized: "Interrupted")
+    case .rateLimited: state = String(localized: "Rate limited")
+    case .idle: state = String(localized: "Finished")
     }
     let agent = AgentId(rawValue: conversation.providerID)
     let title = conversation.title.middleTruncated(to: lineTitleLimit)
@@ -142,11 +142,11 @@ struct NotchMascotStatus: Equatable {
     let line: String
     switch conversation.lastKnownState {
     case .waiting: line = "\(need) · \(who)"
-    case .working: line = "Working · \(who)"
-    case .failed: line = "Didn't finish · \(title)"
-    case .interrupted: line = "Interrupted · \(title)"
-    case .rateLimited: line = "Rate limited · \(title)"
-    case .idle: line = "Done · \(title)"
+    case .working: line = String(localized: "Working · \(who)")
+    case .failed: line = String(localized: "Didn't finish · \(title)")
+    case .interrupted: line = String(localized: "Interrupted · \(title)")
+    case .rateLimited: line = String(localized: "Rate limited · \(title)")
+    case .idle: line = String(localized: "Done · \(title)")
     }
     return Self(conversationID: conversation.id, agent: agent,
                 emotion: MascotEmotion(executionState: conversation.lastKnownState),
@@ -547,7 +547,7 @@ private final class NotchMascotView: NSView {
     }
     toolTip = status.label
     setAccessibilityLabel(shownLine ?? status.label)
-    setAccessibilityHelp("Open Boltty AI")
+    setAccessibilityHelp(String(localized: "Open Boltty AI"))
     needsLayout = true
     layoutSubtreeIfNeeded()
   }

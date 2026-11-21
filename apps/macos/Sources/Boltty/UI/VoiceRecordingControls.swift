@@ -79,7 +79,7 @@ final class VoiceRecordingControls: NSView {
 
     setAccessibilityElement(true)
     setAccessibilityRole(.group)
-    setAccessibilityLabel("Recording")
+    setAccessibilityLabel(String(localized: "Recording"))
     setContentHuggingPriority(.required, for: .horizontal)
     setContentCompressionResistancePriority(.required, for: .horizontal)
   }
@@ -134,9 +134,9 @@ final class VoiceRecordingControls: NSView {
     button.setButtonType(.momentaryChange)
     button.image = icon.image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.voiceControlsIconSize),
-      description: icon == .xmark ? "Cancel dictation" : "Send dictation"
+      description: icon == .xmark ? String(localized: "Cancel dictation") : String(localized: "Send dictation")
     )
-    button.toolTip = icon == .xmark ? "Cancel dictation — restore the draft" : "Confirm and send recording"
+    button.toolTip = icon == .xmark ? String(localized: "Cancel dictation — restore the draft") : String(localized: "Confirm and send recording")
     button.helpShortcut = icon == .check ? "↵" : nil
     button.contentTintColor = tint
     button.restingTint = tint
@@ -238,14 +238,14 @@ final class ChatDictationBar: NSView {
 
   private let cancelDisc = GlassCircleButton(
     icon: .xmark,
-    accessibilityDescription: "Cancel dictation",
+    accessibilityDescription: String(localized: "Cancel dictation"),
     diameter: ComposerControlGroup.target,
     size: ComposerControlGroup.iconSize(chat: true),
     showsGlass: false
   )
   private let stopDisc = GlassCircleButton(
     icon: .mic,
-    accessibilityDescription: "Stop dictation",
+    accessibilityDescription: String(localized: "Stop dictation"),
     diameter: ComposerControlGroup.target,
     size: ComposerControlGroup.iconSize(chat: true),
     showsGlass: false
@@ -267,14 +267,14 @@ final class ChatDictationBar: NSView {
     ComposerControlGroup.style(cancelDisc.button)
     cancelDisc.button.target = self
     cancelDisc.button.action = #selector(cancelPressed)
-    cancelDisc.button.toolTip = "Cancel dictation"
+    cancelDisc.button.toolTip = String(localized: "Cancel dictation")
     cancelDisc.button.helpShortcut = "esc"
     cancelDisc.button.setAccessibilityIdentifier("boltty.ask.voice.cancel")
     ComposerControlGroup.style(stopDisc.button)
     stopDisc.button.restingTint = ComposerControlGroup.hoverInk
     stopDisc.button.target = self
     stopDisc.button.action = #selector(stopPressed)
-    stopDisc.button.toolTip = "Stop dictation"
+    stopDisc.button.toolTip = String(localized: "Stop dictation")
     stopDisc.button.helpShortcut = ComposerChord.dictate.display
     stopDisc.button.setAccessibilityIdentifier("boltty.ask.voice.stop")
 
@@ -301,7 +301,7 @@ final class ChatDictationBar: NSView {
     ])
     setAccessibilityElement(true)
     setAccessibilityRole(.group)
-    setAccessibilityLabel("Dictating")
+    setAccessibilityLabel(String(localized: "Dictating"))
   }
 
   @available(*, unavailable)

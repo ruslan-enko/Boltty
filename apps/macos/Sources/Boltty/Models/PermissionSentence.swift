@@ -46,21 +46,21 @@ enum PermissionSentence {
 
     var general: String {
       switch self {
-      case .run: "Run this command?"
-      case .edit: "Edit a file?"
-      case .read: "Read a file?"
-      case .delete: "Delete a file?"
-      case .fetch: "Fetch from the web?"
-      case .outside: "Work outside the project folder?"
-      case let .other(action): "Allow “\(action)”?"
+      case .run: String(localized: "Run this command?")
+      case .edit: String(localized: "Edit a file?")
+      case .read: String(localized: "Read a file?")
+      case .delete: String(localized: "Delete a file?")
+      case .fetch: String(localized: "Fetch from the web?")
+      case .outside: String(localized: "Work outside the project folder?")
+      case let .other(action): String(localized: "Allow “\(action)”?")
       }
     }
 
     func phrase(for name: String) -> String? {
       switch self {
-      case .edit: "Edit \(name)?"
-      case .read: "Read \(name)?"
-      case .delete: "Delete \(name)?"
+      case .edit: String(localized: "Edit \(name)?")
+      case .read: String(localized: "Read \(name)?")
+      case .delete: String(localized: "Delete \(name)?")
       case .run, .fetch, .outside, .other: nil
       }
     }

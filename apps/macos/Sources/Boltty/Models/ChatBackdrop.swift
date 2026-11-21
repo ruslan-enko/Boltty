@@ -9,9 +9,9 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
 
   var title: String {
     switch self {
-    case .standard: "Standard"
-    case .sky: "Sky"
-    case .space: "Space"
+    case .standard: String(localized: "Standard")
+    case .sky: String(localized: "Sky")
+    case .space: String(localized: "Space")
     }
   }
 

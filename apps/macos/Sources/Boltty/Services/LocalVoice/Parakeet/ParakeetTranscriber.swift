@@ -8,7 +8,7 @@ final class ParakeetTranscriber: @unchecked Sendable {
 
     var errorDescription: String? {
       switch self {
-      case let .missing(file): "Parakeet is missing \(file)."
+      case let .missing(file): String(localized: "Parakeet is missing \(file).")
       case let .stage(stage, reason): "Parakeet's \(stage) failed: \(reason)"
       }
     }

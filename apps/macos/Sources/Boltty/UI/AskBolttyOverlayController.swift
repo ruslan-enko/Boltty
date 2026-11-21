@@ -124,7 +124,7 @@ final class AskBolttyOverlayController {
       }
       return
     case .thinking:
-      next = step ?? "Thinking…"
+      next = step ?? String(localized: "Thinking…")
       emotion = .thinking
       if previous == .idle {
         release()
