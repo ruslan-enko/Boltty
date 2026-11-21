@@ -22207,54 +22207,54 @@
         }
       }
     },
-    "Key %u" : {
+    "Key %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taste %u"
+            "value" : "Taste %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tecla %u"
+            "value" : "Tecla %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touche %u"
+            "value" : "Touche %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キー%u"
+            "value" : "キー%@"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "키 %u"
+            "value" : "키 %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tecla %u"
+            "value" : "Tecla %@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Клавіша %u"
+            "value" : "Клавіша %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "按键 %u"
+            "value" : "按键 %@"
           }
         }
       }

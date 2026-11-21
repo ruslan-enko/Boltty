@@ -72,7 +72,7 @@ extension HotkeyBinding {
     if let fallback = KeyboardLayoutCharacter.ascii(for: keyCode), !fallback.isEmpty {
       return fallback.uppercased()
     }
-    return String(localized: "Key \(keyCode)")
+    return String(localized: "Key \(String(keyCode))")
   }
 }
 
