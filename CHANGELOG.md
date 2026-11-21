@@ -2,6 +2,23 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.11.0
+
+**Languages**
+- Boltty speaks Ukrainian, German, French, Spanish, Brazilian Portuguese,
+  Japanese, Simplified Chinese and Korean. Settings › General › Language picks
+  one, or follows the system; it applies after Relaunch Boltty.
+
+**Limits**
+- A window's name and how much is used stand on one line, and when it comes
+  back on a line of its own under the meter.
+- OpenCode shows only its Go and Console limits.
+
+**Look**
+- The faces of Automatic, in Settings and on the chat list's All tab, stand
+  together in a loose ring.
+- Settings' sidebar has new, larger page tiles.
+
 ## 0.10.0
 
 **Chats**
