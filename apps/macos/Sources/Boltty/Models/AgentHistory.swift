@@ -80,8 +80,8 @@ enum AgentHistory {
     let start = calendar.startOfDay(for: day)
     let distance = calendar.dateComponents([.day], from: start, to: today).day ?? 0
 
-    if distance == 0 { return "Today" }
-    if distance == 1 { return "Yesterday" }
+    if distance == 0 { return String(localized: "Today") }
+    if distance == 1 { return String(localized: "Yesterday") }
 
     let formatter = DateFormatter()
     formatter.locale = .autoupdatingCurrent

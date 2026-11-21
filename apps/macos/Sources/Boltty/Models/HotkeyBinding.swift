@@ -72,7 +72,7 @@ extension HotkeyBinding {
     if let fallback = KeyboardLayoutCharacter.ascii(for: keyCode), !fallback.isEmpty {
       return fallback.uppercased()
     }
-    return "Key \(keyCode)"
+    return String(localized: "Key \(keyCode)")
   }
 }
 
@@ -145,7 +145,7 @@ enum HotkeyRejection: Equatable, Sendable {
     case .noModifier:
       KeyChordSymbols.noModifierMessage
     case .reservedBySystem:
-      "macOS reserves that shortcut."
+      String(localized: "macOS reserves that shortcut.")
     }
   }
 }

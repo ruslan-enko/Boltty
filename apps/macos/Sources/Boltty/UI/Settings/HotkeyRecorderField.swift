@@ -22,7 +22,7 @@ struct HotkeyRecorderField: View {
     ShortcutRecorderCapsule(
       display: display,
       isEnabled: isEnabled,
-      accessibilityName: "Boltty AI shortcut",
+      accessibilityName: String(localized: "Boltty AI shortcut"),
       accessibilityIdentifier: "boltty.settings.hotkeyRecorder",
       isConflicting: problem?.isConflict == true,
       restoreAlwaysShown: true,
@@ -110,7 +110,7 @@ struct MenuShortcutRecorderField: View {
     ShortcutRecorderCapsule(
       display: binding.isUnbound ? "" : binding.displayName,
       isEnabled: true,
-      accessibilityName: "\(KeyboardShortcutCatalog.shortcut(for: id).title) shortcut",
+      accessibilityName: String(localized: "\(KeyboardShortcutCatalog.shortcut(for: id).title) shortcut"),
       accessibilityIdentifier: "boltty.settings.shortcutRecorder.\(id)",
       isConflicting: isConflicting,
       isRowHovered: isRowHovered,
@@ -214,8 +214,8 @@ private struct SuggestionAnchor: NSViewRepresentable {
       item.representedObject = Box(binding)
       item.state = binding == current ? .on : .off
       item.subtitle = probe(binding).isFree
-        ? "Press together and let go"
-        : "Press together and let go · needs Input Monitoring"
+        ? String(localized: "Press together and let go")
+        : String(localized: "Press together and let go · needs Input Monitoring")
       item.toolTip = suggestion.rationale
       menu.addItem(item)
     }
@@ -230,9 +230,9 @@ private struct SuggestionAnchor: NSViewRepresentable {
     if let rejection { return rejection.message }
     switch availability {
     case .free: return suggestion.rationale
-    case .taken: return "Already used by another app"
-    case .failed: return "Carbon refused this chord"
-    case .needsInputMonitoring: return "Needs Input Monitoring"
+    case .taken: return String(localized: "Already used by another app")
+    case .failed: return String(localized: "Carbon refused this chord")
+    case .needsInputMonitoring: return String(localized: "Needs Input Monitoring")
     }
   }
 

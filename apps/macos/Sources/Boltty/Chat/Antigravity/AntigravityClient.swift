@@ -287,7 +287,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       "event": "user",
       "message": ["role": "user", "content": text],
     ]) else {
-      throw AgentClientError.transport("That prompt could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That prompt could not be encoded."))
     }
 
     let process = lock.withLock { () -> JSONLineProcess? in
@@ -526,7 +526,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   static func failure(of result: JSONObject, stopped: Bool) -> MessageFailure? {
     if result.string("status") != "SUCCESS" {
-      let error = result.string("error") ?? "Antigravity ended the turn without a result."
+      let error = result.string("error") ?? String(localized: "Antigravity ended the turn without a result.")
       if stopped || error == "interrupted" { return MessageFailure(name: "aborted", message: error) }
       return MessageFailure(name: turnErrorName, message: error)
     }
@@ -535,12 +535,11 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     guard !denied.isEmpty else { return nil }
     let onlyEdits = actions.allSatisfy { $0.string("action") == "write_file" }
     let remedy = onlyEdits
-      ? "Turn on Auto Mode for this chat to allow edits, or allow them in Antigravity's settings (permissions.allow)."
-      : "Allow them in Antigravity's settings (permissions.allow)."
+      ? String(localized: "Turn on Auto Mode for this chat to allow edits, or allow them in Antigravity's settings (permissions.allow).")
+      : String(localized: "Allow them in Antigravity's settings (permissions.allow).")
     return MessageFailure(
       name: deniedName,
-      message: "Antigravity cannot ask for permission when Boltty runs it, so it refused: "
-        + denied.joined(separator: ", ") + ". " + remedy
+      message: String(localized: "Antigravity cannot ask for permission when Boltty runs it, so it refused: \(denied.joined(separator: ", ")). \(remedy)")
     )
   }
 

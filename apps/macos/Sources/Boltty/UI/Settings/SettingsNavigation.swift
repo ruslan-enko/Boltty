@@ -13,12 +13,12 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .general: "General"
-    case .agents: "Agents"
-    case .usage: "Usage"
-    case .voice: "Voice"
-    case .askBoltty: "Ask Boltty"
-    case .shortcuts: "Shortcuts"
+    case .general: String(localized: "General")
+    case .agents: String(localized: "Agents")
+    case .usage: String(localized: "Usage")
+    case .voice: String(localized: "Voice")
+    case .askBoltty: String(localized: "Ask Boltty")
+    case .shortcuts: String(localized: "Shortcuts")
     }
   }
 

@@ -43,10 +43,10 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       cachedCommands = [:]
     }
     guard let handshake = await handshake() else {
-      return .unavailable("Claude Code did not answer. Try running `claude` once in a terminal.")
+      return .unavailable(String(localized: "Claude Code did not answer. Try running `claude` once in a terminal."))
     }
     guard Self.isSignedIn(handshake.object("account")) else {
-      return .needsLogin("Signed out — run `claude auth login` in a terminal.")
+      return .needsLogin(String(localized: "Signed out — run `claude auth login` in a terminal."))
     }
     return .available(version: await version())
   }
@@ -248,7 +248,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "session_id": sessionID
     ]
     guard let line = JSONObject.encode(frame) else {
-      throw AgentClientError.transport("That message could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That message could not be encoded."))
     }
     session.rememberOutgoing(messageID: messageID, text: text)
     try session.process.writeLine(line)
@@ -259,7 +259,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   func steer(messageID: String, text: String, to sessionID: String) async throws {
     let session = try await requireSession(sessionID)
     guard session.executionState == .working else {
-      throw AgentClientError.transport("No turn is running to add to.")
+      throw AgentClientError.transport(String(localized: "No turn is running to add to."))
     }
     let frame: [String: Any] = [
       "type": "user",
@@ -268,7 +268,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "session_id": sessionID
     ]
     guard let line = JSONObject.encode(frame) else {
-      throw AgentClientError.transport("That message could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That message could not be encoded."))
     }
     session.rememberOutgoing(messageID: messageID, text: text)
     try session.process.writeLine(line)
@@ -281,7 +281,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "message": ["role": "user", "content": [["type": "text", "text": "/compact"]]],
       "parent_tool_use_id": NSNull(),
       "session_id": sessionID
-    ]) else { throw AgentClientError.transport("That request could not be encoded.") }
+    ]) else { throw AgentClientError.transport(String(localized: "That request could not be encoded.")) }
     try session.process.writeLine(line)
     session.executionState = .working
     emit(.executionStateChanged(sessionID: sessionID, state: .working))
@@ -312,11 +312,11 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   // MARK: - Interactions
 
   func answerQuestion(requestID: String, sessionID: String, answers: [[String]]) async throws {
-    throw AgentClientError.transport("Claude Code does not ask multiple-choice questions.")
+    throw AgentClientError.transport(String(localized: "Claude Code does not ask multiple-choice questions."))
   }
 
   func rejectQuestion(requestID: String, sessionID: String) async throws {
-    throw AgentClientError.transport("Claude Code does not ask multiple-choice questions.")
+    throw AgentClientError.transport(String(localized: "Claude Code does not ask multiple-choice questions."))
   }
 
   func answerPermission(
@@ -352,7 +352,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       ]
     ]
     guard let line = JSONObject.encode(frame) else {
-      throw AgentClientError.transport("That reply could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That reply could not be encoded."))
     }
     try session.process.writeLine(line)
   }
@@ -402,7 +402,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "response": ["subtype": "success", "request_id": pending.controlRequestID, "response": response],
     ]
     guard let line = JSONObject.encode(frame) else {
-      throw AgentClientError.transport("That reply could not be encoded.")
+      throw AgentClientError.transport(String(localized: "That reply could not be encoded."))
     }
     try session.process.writeLine(line)
     if decision == .abandoned { try await stop(sessionID: sessionID) }
@@ -587,7 +587,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
           sessionID: id,
           failure: MessageFailure(
             name: "ProcessExited",
-            message: stderr.isEmpty ? "Claude Code stopped (status \(status))." : stderr
+            message: stderr.isEmpty ? String(localized: "Claude Code stopped (status \(status)).") : stderr
           )
         ))
       }
@@ -753,7 +753,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   private func rewind(sessionID: String, question: Int, directory: String, dryRun: Bool) async throws -> FileUndo {
     guard let record = ClaudeCodeTranscript.questionRecord(sessionID: sessionID, index: question) else {
-      throw AgentClientError.transport("Claude Code has no record of that request.")
+      throw AgentClientError.transport(String(localized: "Claude Code has no record of that request."))
     }
     let parameters: [String: Any] = ["user_message_id": record, "dry_run": dryRun]
     let response: JSONObject?
@@ -764,7 +764,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
         subtype: "rewind_files", directory: directory, arguments: ["--resume", sessionID], parameters: parameters)
     }
     guard let response, response.bool("canRewind") != false else {
-      throw AgentClientError.transport(response?.string("error") ?? "Claude Code cannot undo that.")
+      throw AgentClientError.transport(response?.string("error") ?? String(localized: "Claude Code cannot undo that."))
     }
     return FileUndo(
       files: response.raw["filesChanged"] as? [String] ?? [],
@@ -994,7 +994,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
         sessionID: session.id,
         failure: MessageFailure(
           name: frame.string("subtype") ?? "Error",
-          message: frame.string("result") ?? "That turn ended with an error."
+          message: frame.string("result") ?? String(localized: "That turn ended with an error.")
         )
       ))
     }
@@ -1013,7 +1013,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       sessionID: session.id,
       failure: MessageFailure(
         name: "rate_limit_event",
-        message: detail ?? "The plan's limit refused this turn.",
+        message: detail ?? String(localized: "The plan's limit refused this turn."),
         rateLimit: hit
       )
     ))

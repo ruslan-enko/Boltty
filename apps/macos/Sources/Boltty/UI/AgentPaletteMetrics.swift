@@ -170,8 +170,8 @@ enum AgentPaletteMetrics {
   static let screenSelectionMinimumSide: CGFloat = 12
   static let screenSelectionLineWidth: CGFloat = 2.5
   static let screenSelectionCornerRadius: CGFloat = 8
-  static let screenSelectionHintText = "Drag to ask about an area"
-  static let screenSelectionChatHintText = "Drag to add an area"
+  static let screenSelectionHintText = String(localized: "Drag to ask about an area")
+  static let screenSelectionChatHintText = String(localized: "Drag to add an area")
   static let regionHintUses = 3
   static let regionsDrawnKey = "boltty.selection.regionsDrawn"
   static let screenSelectionHintOffset = CGSize(width: 14, height: 24)

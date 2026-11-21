@@ -99,7 +99,7 @@ enum PromptExpansionError: Error, LocalizedError, Equatable {
   var errorDescription: String? {
     switch self {
     case let .attachmentUnavailable(label):
-      "Could not prepare “\(label)” for the agent."
+      String(localized: "Could not prepare “\(label)” for the agent.")
     }
   }
 }

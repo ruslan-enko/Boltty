@@ -11,14 +11,14 @@ enum BolttyAIAnnouncement {
     }
 
     if current.question != nil, previous?.question == nil {
-      return "Waiting for your answer. " + current.question!.prompt
+      return String(localized: "Waiting for your answer. \(current.question!.prompt)")
     }
     switch current.state {
     case .failed:
       return AgentFailureReport.universalSentence
     case .finished:
       let opening = firstSentence(of: current.displayBody)
-      return opening.isEmpty ? "Answer ready." : "Answer ready. " + opening
+      return opening.isEmpty ? String(localized: "Answer ready.") : String(localized: "Answer ready. \(opening)")
     case .running, .blocked, .none:
       return nil
     }

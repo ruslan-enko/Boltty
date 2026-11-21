@@ -36,8 +36,8 @@ enum CodexMapper {
         id: id,
         name: "edit",
         summary: files.count == 1
-          ? "Edited \((files[0] as NSString).lastPathComponent)"
-          : "Edited \(files.count) files",
+          ? String(localized: "Edited \((files[0] as NSString).lastPathComponent)")
+          : String(localized: "Edited \(files.count) files"),
         state: state(item.string("status"), completed: completed),
         files: files,
         endedAt: completed ? Date() : nil
@@ -57,7 +57,7 @@ enum CodexMapper {
       return .activity(AgentActivity(
         id: id,
         name: "search",
-        summary: item.string("query").map { "Searched \($0)" },
+        summary: item.string("query").map { String(localized: "Searched \($0)") },
         state: completed ? .completed : .running,
         endedAt: completed ? Date() : nil
       ))
@@ -66,7 +66,7 @@ enum CodexMapper {
       return .activity(AgentActivity(
         id: id,
         name: "image",
-        summary: item.string("path").map { "Viewed \(($0 as NSString).lastPathComponent)" },
+        summary: item.string("path").map { String(localized: "Viewed \(($0 as NSString).lastPathComponent)") },
         state: .completed,
         files: [item.string("path")].compactMap { $0 }
       ))

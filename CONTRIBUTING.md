@@ -166,6 +166,15 @@ git checkout Boltty.xcodeproj/xcshareddata/xcschemes/Boltty.xcscheme
 
 XcodeGen rewrites the shared scheme every time, so put it back as above.
 
+## Strings
+
+Text the person reads is written with `String(localized:)` (or as a literal in
+SwiftUI's `Text`, `Button` and the like) and lives in
+`Resources/Localizable.xcstrings`. After adding or changing such text, run
+`apps/macos/scripts/sync-strings.sh` to bring the catalog up to date; Xcode
+does the same when it builds. Prompts sent to agents stay in English and are
+not localized.
+
 ## Pull requests
 
 - Keep a PR to one thing. A UI change is easier to review with a screenshot or

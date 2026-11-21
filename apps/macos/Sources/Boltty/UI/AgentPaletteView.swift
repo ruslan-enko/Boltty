@@ -86,7 +86,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private weak var heldSelection: NSTextView?
   private let attachRestDisc = GlassCircleButton(
     icon: .plus,
-    accessibilityDescription: "Attach a file",
+    accessibilityDescription: String(localized: "Attach a file"),
     diameter: AgentPaletteMetrics.voiceOrbDiameter,
     size: ComposerControlGroup.iconSize(chat: false),
     showsGlass: false
@@ -124,29 +124,29 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private let latestPill: GlassCircleButton = {
     let disc = GlassCircleButton(
       icon: .arrowDown,
-      accessibilityDescription: "Latest",
+      accessibilityDescription: String(localized: "Latest"),
       diameter: AgentPaletteMetrics.previewCloseDiameter,
       size: AgentPaletteMetrics.discArrowGlyphPointSize
     )
-    disc.button.toolTip = "Latest"
+    disc.button.toolTip = String(localized: "Latest")
     return disc
   }()
   private var offersLatest = false
   private let historyNewChatButton = GlassCircleButton(
     icon: .plus,
-    accessibilityDescription: "New Chat",
+    accessibilityDescription: String(localized: "New Chat"),
     diameter: AgentPaletteMetrics.previewCloseDiameter,
     size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
   private let historySettingsButton = GlassCircleButton(
     icon: .settings,
-    accessibilityDescription: "Settings",
+    accessibilityDescription: String(localized: "Settings"),
     diameter: AgentPaletteMetrics.previewCloseDiameter,
     size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
   private var showsHistoryFoot: Bool { !historyNewChatButton.isHidden }
   private var acceptsAttachments = false
-  private var stopTooltip = "Stop response"
+  private var stopTooltip = String(localized: "Stop response")
 
   private func submitSteeringFromKeyboard() -> Bool {
     guard mode == .prompt, let preview = addressedPreview, preview.isBusy,
@@ -171,12 +171,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   var onCompact: (() -> Void)?
   private let routingRow = NSStackView()
   private let routingLabel = NSTextField(labelWithString: "")
-  private let routingButton = GlassPillButton.titled("Open Settings")
+  private let routingButton = GlassPillButton.titled(String(localized: "Open Settings"))
   private let promptHost: PaletteGlassHost
   private let trailingControls = NSStackView()
   private let leadingControls = NSStackView()
   private let sendButton = GlassCircleButton(
-    icon: .keyReturn, accessibilityDescription: "Send message",
+    icon: .keyReturn, accessibilityDescription: String(localized: "Send message"),
     diameter: ComposerControlGroup.sendDisc,
     size: ComposerControlGroup.sendIconSize, showsGlass: false)
   private let sendSlot = NSView()
@@ -188,8 +188,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if sendSlotStops { onStop?() } else { confirmSelectionOrSubmit() }
   }
   private var sendSlotStops = false
-  private let returnGlyph = ComposerControlGroup.sendIcon(.keyReturn, description: "Send message")
-  private let stopGlyph = ComposerControlGroup.sendIcon(.stop, description: "Stop")
+  private let returnGlyph = ComposerControlGroup.sendIcon(.keyReturn, description: String(localized: "Send message"))
+  private let stopGlyph = ComposerControlGroup.sendIcon(.stop, description: String(localized: "Stop"))
   private var composerGlyphsAreChat = false
   private func applyComposerGlyphSize(chat: Bool) {
     guard chat != composerGlyphsAreChat else { return }
@@ -226,9 +226,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       sendButton.button.image = returnGlyph
       setSendDiscEnabled(!isVoiceProcessing && !field.draft.isEffectivelyEmpty)
       sendButton.button.toolTip = addressedPreview?.isBusy == true
-        ? "Queue message — sends when this turn finishes" : "Send message"
+        ? String(localized: "Queue message — sends when this turn finishes") : String(localized: "Send message")
       sendButton.button.helpShortcut = "↵"
-      sendButton.button.setAccessibilityLabel("Send message")
+      sendButton.button.setAccessibilityLabel(String(localized: "Send message"))
       return
     }
     sendSlotStops = stopIsAvailable && !answering && field.draft.isEffectivelyEmpty
@@ -237,16 +237,16 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       setSendDiscEnabled(true)
       sendButton.button.toolTip = stopTooltip
       sendButton.button.helpShortcut = "⌘."
-      sendButton.button.setAccessibilityLabel("Stop")
+      sendButton.button.setAccessibilityLabel(String(localized: "Stop"))
       return
     }
     sendButton.button.image = returnGlyph
-    sendButton.button.setAccessibilityLabel("Send message")
+    sendButton.button.setAccessibilityLabel(String(localized: "Send message"))
     setSendDiscEnabled(!isVoiceProcessing && (!field.draft.isEffectivelyEmpty || answering))
     sendButton.button.toolTip = refusing
       ? (previewCard.pendingQuestion?.kind == .plan ? Self.planChangesHelp : Self.refusalHelp)
-      : answering ? "Answer question" : addressedPreview?.isBusy == true
-      ? "Queue message — sends when this turn finishes" : "Send message"
+      : answering ? String(localized: "Answer question") : addressedPreview?.isBusy == true
+      ? String(localized: "Queue message — sends when this turn finishes") : String(localized: "Send message")
     sendButton.button.helpShortcut = "↵"
   }
   private func setSendDiscEnabled(_ enabled: Bool) {
@@ -377,7 +377,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   }
 
   private var isShowingChatDictation = false
-  private static let listeningPlaceholder = "Listening…"
+  private static let listeningPlaceholder = String(localized: "Listening…")
 
   private func chatPlaceholder(for preview: BolttyAISessionPreview) -> String {
     dictatesInChat ? Self.listeningPlaceholder : Self.composerPlaceholder(for: preview)
@@ -523,7 +523,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private lazy var fileMention: ComposerSuggestionPicker<FileMention.Candidate> = {
     let picker = ComposerSuggestionPicker<FileMention.Candidate>(
-      host: self, field: field, label: "Files", token: ComposerToken.mention(in:caret:)
+      host: self, field: field, label: String(localized: "Files"), token: ComposerToken.mention(in:caret:)
     ) { candidate in
       let parent = (candidate.relativePath as NSString).deletingLastPathComponent
       return ComposerSuggestion(
@@ -540,7 +540,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private lazy var commandPicker: ComposerSuggestionPicker<AgentCommand> = {
     let picker = ComposerSuggestionPicker<AgentCommand>(
-      host: self, field: field, label: "Skills and commands", token: ComposerToken.command(in:caret:)
+      host: self, field: field, label: String(localized: "Skills and commands"), token: ComposerToken.command(in:caret:)
     ) { command in
       ComposerSuggestion(icon: .sparkles, title: command.invocation, detail: command.summary,
                          detailLeads: true)
@@ -932,12 +932,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private var regionHints: [PaletteKeyHints.Hint] {
     typealias Hint = PaletteKeyHints.Hint
-    let cancel = Hint(key: "esc", words: "Cancel")
-    if regionIsAsking || holdsQuestionWords { return [Hint(key: nil, words: "Asking…")] }
+    let cancel = Hint(key: "esc", words: String(localized: "Cancel"))
+    if regionIsAsking || holdsQuestionWords { return [Hint(key: nil, words: String(localized: "Asking…"))] }
     guard isVoiceListening else { return [cancel] }
     return field.draft.isEffectivelyEmpty
-      ? [Hint(key: nil, words: "Speak your question"), cancel]
-      : [Hint(key: "⏎", words: "Ask"), cancel]
+      ? [Hint(key: nil, words: String(localized: "Speak your question")), cancel]
+      : [Hint(key: "⏎", words: String(localized: "Ask")), cancel]
   }
 
   /// How far a pause after speech has gone toward sending it by itself.
@@ -1119,7 +1119,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     button.title = chip.title
     button.restingTint = chip.isGone ? AgentPaletteMetrics.failureCardAccent : ComposerControlGroup.restingInk
     button.toolTip = chip.help
-    button.setAccessibilityLabel("Model")
+    button.setAccessibilityLabel(String(localized: "Model"))
     button.setAccessibilityValue(chip.title)
   }
 
@@ -1182,23 +1182,23 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   @objc private func scrollTranscriptToLatest() { previewCard.glideToLatest() }
 
-  static let chatComposerPlaceholder = "Describe a task or ask"
+  static let chatComposerPlaceholder = String(localized: "Describe a task or ask")
 
   static func composerPlaceholder(for preview: BolttyAISessionPreview) -> String {
     if preview.question?.kind == .plan {
-      return "Or tell \(preview.agent.shortDisplayName) what to change"
+      return String(localized: "Or tell \(preview.agent.shortDisplayName) what to change")
     }
     if preview.question?.takesWordsAsRefusal == true {
-      return "Or tell \(preview.agent.shortDisplayName) what to do instead"
+      return String(localized: "Or tell \(preview.agent.shortDisplayName) what to do instead")
     }
     if preview.question?.takesWordsAsAnswer == true {
-      return "Or type your own answer"
+      return String(localized: "Or type your own answer")
     }
     return chatComposerPlaceholder
   }
 
-  static let refusalHelp = "Deny, and send these words to the agent"
-  static let planChangesHelp = "Request changes, and send these words to the agent"
+  static let refusalHelp = String(localized: "Deny, and send these words to the agent")
+  static let planChangesHelp = String(localized: "Request changes, and send these words to the agent")
 
   private var draftHasWords: Bool {
     !field.draft.typedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -1216,8 +1216,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   private func applyStopAffordance(_ preview: BolttyAISessionPreview) {
     stopTooltip = preview.stopIsAbrupt
-      ? "Stop — this turn is lost, the chat is kept"
-      : "Stop response"
+      ? String(localized: "Stop — this turn is lost, the chat is kept")
+      : String(localized: "Stop response")
   }
 
   private var showsHandOverNote = false
@@ -1774,7 +1774,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   func setCatalogScanning(_ scanning: Bool) {
     if scanning, agentForNewPrompt == nil, field.isEmptyPrompt, mode == .prompt {
-      hintLabel.stringValue = "Looking for agents…"
+      hintLabel.stringValue = String(localized: "Looking for agents…")
       hintLabel.isHidden = false
       selectedAgentImage.showMascot(
         conversationID: pendingConversationID,
@@ -1823,7 +1823,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     keyboardSelectionPointerAnchor = pointerLocation
     setResultHoverQuiet(true)
     selectHistoryAgent(agent)
-    announce(agent?.shortDisplayName ?? "All")
+    announce(agent?.shortDisplayName ?? String(localized: "All"))
   }
 
   private func showInstallHintsIfNeeded() -> Bool {
@@ -1967,10 +1967,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if let agent = activeHistoryAgent {
       button.isEnabled = agentChoices.contains(agent)
       button.toolTip = button.isEnabled
-        ? "New Chat with \(agent.displayName)" : "\(agent.displayName) isn't ready"
+        ? String(localized: "New Chat with \(agent.displayName)") : String(localized: "\(agent.displayName) isn't ready")
     } else {
       button.isEnabled = !agentChoices.isEmpty
-      button.toolTip = "New Chat"
+      button.toolTip = String(localized: "New Chat")
     }
     button.helpShortcut = button.isEnabled ? "⌘N" : nil
   }
@@ -2102,8 +2102,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
     let item = resultItems[selectedResultIndex]
     render(agent: item.agent, conversationID: item.id, emotion: .focused, animated: false)
-    selectedAgentImage.toolTip = "Message \(item.title)"
-    hintLabel.stringValue = "Message this chat"
+    selectedAgentImage.toolTip = String(localized: "Message \(item.title)")
+    hintLabel.stringValue = String(localized: "Message this chat")
     hintLabel.isHidden = !field.isEmptyPrompt
   }
 
@@ -2198,7 +2198,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if let addressedPreview {
       if let question = previewCard.pendingQuestion {
         guard field.draft.attachments.isEmpty else {
-          showError("Answer this question with text or one of its options.")
+          showError(String(localized: "Answer this question with text or one of its options."))
           return
         }
         let typed = field.draft.typedText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2211,7 +2211,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
           return
         }
         if typed.isEmpty, previewCard.confirmOptions() { return }
-        showError(typed.isEmpty ? "Choose at least one option." : "Choose one of the offered options.")
+        showError(typed.isEmpty ? String(localized: "Choose at least one option.") : String(localized: "Choose one of the offered options."))
         return
       }
       onSubmit?(field.draft)
@@ -2269,9 +2269,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         emotion: .focused,
         look: MascotLook.face(for: agentForNewPrompt)
       )
-      selectedAgentImage.setAccessibilityLabel("Search chats")
-      selectedAgentImage.toolTip = "Searching chats"
-      hintLabel.stringValue = "Search chats"
+      selectedAgentImage.setAccessibilityLabel(String(localized: "Search chats"))
+      selectedAgentImage.toolTip = String(localized: "Searching chats")
+      hintLabel.stringValue = String(localized: "Search chats")
     case .picking:
       renderAddressee()
     case .prompt:
@@ -2388,9 +2388,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     field.suppressesCaret = resolved != .text
     switch resolved {
     case .folder:
-      announce(directoryChip.accessibilityLabel() ?? "Working folder")
+      announce(directoryChip.accessibilityLabel() ?? String(localized: "Working folder"))
     case .microphone:
-      announce("Dictate prompt")
+      announce(String(localized: "Dictate prompt"))
     case .text:
       break
     }
@@ -2440,10 +2440,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         return [PromptKeyHint(words: question.refusalWords, key: "↵")]
       }
       guard preview.isBusy, previewCard.pendingQuestion == nil else { return [] }
-      return [PromptKeyHint(words: "Queue", key: "↵")]
+      return [PromptKeyHint(words: String(localized: "Queue"), key: "↵")]
     }
     guard let agent = agentForNewPrompt else { return [] }
-    return [PromptKeyHint(words: "Ask \(agent.shortDisplayName)", key: "↵")]
+    return [PromptKeyHint(words: String(localized: "Ask \(agent.shortDisplayName)"), key: "↵")]
   }
 
   var trailingHintForTesting: [String] { field.trailingHint.map { "\($0.words) \($0.key)" } }
@@ -2478,20 +2478,20 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
 
     // An agent chosen with ⇧Tab can wear the same face as the default route.
-    hintLabel.stringValue = chosenAgent.map { "Ask \($0.displayName)" } ?? "Describe a task or ask"
+    hintLabel.stringValue = chosenAgent.map { String(localized: "Ask \($0.displayName)") } ?? String(localized: "Describe a task or ask")
     selectedAgentImage.showMascot(
       conversationID: pendingConversationID,
       emotion: isVoiceListening ? .listening : .curious,
       look: MascotLook.face(for: agentForNewPrompt)
     )
     selectedAgentImage.setAccessibilityLabel(
-      agentForNewPrompt.map { "Boltty AI — \($0.displayName)" } ?? "Boltty AI"
+      agentForNewPrompt.map { String(localized: "Boltty AI — \($0.displayName)") } ?? "Boltty AI"
     )
     selectedAgentImage.toolTip = agentForNewPrompt.map {
       agentChoices.count > 1
-        ? "Asking \($0.displayName) — press Shift-Tab for another agent"
-        : "Asking \($0.displayName)"
-    } ?? "Boltty AI — no agent selected yet"
+        ? String(localized: "Asking \($0.displayName) — press Shift-Tab for another agent")
+        : String(localized: "Asking \($0.displayName)")
+    } ?? String(localized: "Boltty AI — no agent selected yet")
     syncVoiceGlowPalette()
     applyPromptForegroundAppearance()
   }
@@ -2690,7 +2690,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       chatDictation.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
     ])
 
-    hintLabel.stringValue = "Describe a task or ask"
+    hintLabel.stringValue = String(localized: "Describe a task or ask")
     hintLabel.font = PromptTextView.promptFont
     hintLabel.textColor = AgentPaletteMetrics.chatComposerPlaceholderInk
     hintLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -2847,7 +2847,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       disc.isHidden = true
       resultsForeground.addSubview(disc)
     }
-    historySettingsButton.button.toolTip = "Settings"
+    historySettingsButton.button.toolTip = String(localized: "Settings")
     NSLayoutConstraint.activate([
       historyNewChatButton.trailingAnchor.constraint(
         equalTo: resultsForeground.trailingAnchor, constant: -footInset),
@@ -4527,11 +4527,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     attachRestSlot.addSubview(attachRestDisc)
     attachRestDisc.button.target = self
     attachRestDisc.button.action = #selector(attachButtonPressed)
-    attachRestDisc.button.toolTip = "Attach a file"
+    attachRestDisc.button.toolTip = String(localized: "Attach a file")
     attachRestDisc.button.helpShortcut = ComposerChord.attach.display
     attachRestDisc.setAccessibilityIdentifier("boltty.ask.attach")
     attachRestDisc.button.setAccessibilityIdentifier("boltty.ask.attach")
-    attachRestDisc.button.setAccessibilityLabel("Attach a file")
+    attachRestDisc.button.setAccessibilityLabel(String(localized: "Attach a file"))
     attachRestDisc.isHidden = true
     NSLayoutConstraint.activate([
       attachRestWidth,
@@ -4555,19 +4555,19 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     micButton.setListening(isVoiceListening)
     micButton.setShowsGlass(isVoiceListening)
     micButton.isEnabled = !isVoiceProcessing
-    micButton.toolTip = isVoiceProcessing ? "Processing recording…" : isVoiceListening
-      ? "Listening — hover for controls"
-      : "Dictate prompt"
+    micButton.toolTip = isVoiceProcessing ? String(localized: "Processing recording…") : isVoiceListening
+      ? String(localized: "Listening — hover for controls")
+      : String(localized: "Dictate prompt")
     micButton.helpShortcut = isVoiceProcessing || isVoiceListening ? nil : ComposerChord.dictate.display
-    micButton.setAccessibilityLabel(isVoiceProcessing ? "Processing recording" : isVoiceListening ? "Listening" : "Dictate prompt")
-    micButton.setAccessibilityValue(isVoiceProcessing ? "Processing" : isVoiceListening ? "Listening" : "Idle")
+    micButton.setAccessibilityLabel(isVoiceProcessing ? String(localized: "Processing recording") : isVoiceListening ? String(localized: "Listening") : String(localized: "Dictate prompt"))
+    micButton.setAccessibilityValue(isVoiceProcessing ? String(localized: "Processing") : isVoiceListening ? String(localized: "Listening") : String(localized: "Idle"))
     if isVoiceListening {
       micButton.setAccessibilityCustomActions([
-        NSAccessibilityCustomAction(name: "Cancel dictation") { [weak self] in
+        NSAccessibilityCustomAction(name: String(localized: "Cancel dictation")) { [weak self] in
           self?.onVoiceCancel?()
           return true
         },
-        NSAccessibilityCustomAction(name: "Send dictation") { [weak self] in
+        NSAccessibilityCustomAction(name: String(localized: "Send dictation")) { [weak self] in
           self?.onVoiceConfirm?()
           return true
         },
@@ -4950,7 +4950,7 @@ extension AgentPaletteView: NSTextViewDelegate {
       field.insertPlainText(text)
       hideNotice()
     case let .tooManyFiles(limit):
-      showError("Too many files — paste up to \(limit) at once.")
+      showError(String(localized: "Too many files — paste up to \(limit) at once."))
     case .nothing:
       break
     }

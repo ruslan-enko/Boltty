@@ -152,12 +152,12 @@ struct AgentStatisticsSummary: Equatable, Sendable {
   static func bookComparison(tokens: Int) -> String? {
     guard tokens > 0 else { return nil }
     let books: [(title: String, tokens: Double)] = [
-      ("Animal Farm", 39_000),
-      ("The Great Gatsby", 61_000),
-      ("Nineteen Eighty-Four", 116_000),
-      ("Moby-Dick", 273_000),
-      ("War and Peace", 763_000),
-      ("every Harry Potter book", 1_409_000),
+      (String(localized: "Animal Farm"), 39_000),
+      (String(localized: "The Great Gatsby"), 61_000),
+      (String(localized: "Nineteen Eighty-Four"), 116_000),
+      (String(localized: "Moby-Dick"), 273_000),
+      (String(localized: "War and Peace"), 763_000),
+      (String(localized: "every Harry Potter book"), 1_409_000),
     ]
     let count = Double(tokens)
     let formatter = NumberFormatter()
@@ -165,11 +165,11 @@ struct AgentStatisticsSummary: Equatable, Sendable {
     formatter.maximumFractionDigits = 0
     if let book = books.last(where: { count >= $0.tokens * 2 }) {
       let times = formatter.string(from: NSNumber(value: (count / book.tokens).rounded())) ?? ""
-      return "You’ve used ~\(times)× more tokens than \(book.title)."
+      return String(localized: "You’ve used ~\(times)× more tokens than \(book.title).")
     }
     let shortest = books[0]
     let share = max(1, Int((count / shortest.tokens * 100).rounded()))
-    return "You’ve used ~\(share)% of the tokens in \(shortest.title)."
+    return String(localized: "You’ve used ~\(share)% of the tokens in \(shortest.title).")
   }
 }
 

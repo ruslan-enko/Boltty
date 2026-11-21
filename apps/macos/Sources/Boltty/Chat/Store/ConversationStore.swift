@@ -176,7 +176,7 @@ final class ConversationStore: ObservableObject {
     let title = conversation.title.trimmingCharacters(in: .whitespacesAndNewlines)
     persistence.trashConversations(
       [conversation],
-      named: "Boltty Chat – \(title.isEmpty ? "Untitled" : String(title.prefix(60)))"
+      named: String(localized: "Boltty Chat – \(title.isEmpty ? String(localized: "Untitled") : String(title.prefix(60)))")
     )
     saveIndexNow()
   }
@@ -216,7 +216,7 @@ final class ConversationStore: ObservableObject {
       damagedConversationIDs.remove(id)
     }
     if let selected = selectedConversationID, ids.contains(selected) { selectedConversationID = nil }
-    persistence.trashConversations(old, named: "Boltty History, older chats")
+    persistence.trashConversations(old, named: String(localized: "Boltty History, older chats"))
     saveIndexNow()
     return old.count
   }

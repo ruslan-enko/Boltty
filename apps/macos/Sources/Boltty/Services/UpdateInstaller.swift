@@ -17,14 +17,14 @@ enum UpdateInstaller {
 
     var errorDescription: String? {
       switch self {
-      case let .download(reason): "The download failed: \(reason)"
-      case .checksum: "The download does not match its checksum."
-      case let .mount(reason): "The disk image would not open: \(reason)"
-      case .noApp: "The disk image holds no Boltty."
-      case let .wrongVersion(found): "The disk image holds Boltty \(found), not the release."
-      case let .signature(reason): "The new Boltty is not signed the way this one is (\(reason))."
-      case let .notWritable(folder): "Boltty can't write to \(folder)."
-      case let .replace(reason): "Boltty could not be replaced: \(reason)"
+      case let .download(reason): String(localized: "The download failed: \(reason)")
+      case .checksum: String(localized: "The download does not match its checksum.")
+      case let .mount(reason): String(localized: "The disk image would not open: \(reason)")
+      case .noApp: String(localized: "The disk image holds no Boltty.")
+      case let .wrongVersion(found): String(localized: "The disk image holds Boltty \(found), not the release.")
+      case let .signature(reason): String(localized: "The new Boltty is not signed the way this one is (\(reason)).")
+      case let .notWritable(folder): String(localized: "Boltty can't write to \(folder).")
+      case let .replace(reason): String(localized: "Boltty could not be replaced: \(reason)")
       }
     }
   }
@@ -58,7 +58,7 @@ enum UpdateInstaller {
       ["attach", image.path, "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mount.path],
       deadline: mountDeadline, includeStandardError: true, searchPath: false)
     guard let attach, attach.exitCode == 0 else {
-      throw Failure.mount(attach?.output.trimmingCharacters(in: .whitespacesAndNewlines) ?? "timed out")
+      throw Failure.mount(attach?.output.trimmingCharacters(in: .whitespacesAndNewlines) ?? String(localized: "timed out"))
     }
     defer {
       _ = OneShotCommand.runBlocking(
@@ -78,7 +78,7 @@ enum UpdateInstaller {
       deadline: copyDeadline, includeStandardError: true, searchPath: false)
     guard let copy, copy.exitCode == 0 else {
       try? FileManager.default.removeItem(at: staged)
-      throw Failure.replace(copy?.output.trimmingCharacters(in: .whitespacesAndNewlines) ?? "the copy timed out")
+      throw Failure.replace(copy?.output.trimmingCharacters(in: .whitespacesAndNewlines) ?? String(localized: "the copy timed out"))
     }
     do {
       try verifySignature(of: staged)
@@ -152,7 +152,7 @@ enum UpdateInstaller {
     do {
       let (file, response) = try await URLSession.shared.download(from: url)
       let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-      guard status == 200 else { throw Failure.download("GitHub answered \(status).") }
+      guard status == 200 else { throw Failure.download(String(localized: "GitHub answered \(status).")) }
       try FileManager.default.moveItem(at: file, to: destination)
     } catch let failure as Failure {
       throw failure
@@ -191,7 +191,7 @@ enum UpdateInstaller {
           SecCodeCopyStaticCode(running, [], &runningStatic) == errSecSuccess, let runningStatic,
           SecCodeCopyDesignatedRequirement(runningStatic, [], &requirement) == errSecSuccess,
           let requirement
-    else { throw Failure.signature("this copy has no requirement to match") }
+    else { throw Failure.signature(String(localized: "this copy has no requirement to match")) }
     var candidate: SecStaticCode?
     guard SecStaticCodeCreateWithPath(app as CFURL, [], &candidate) == errSecSuccess, let candidate else {
       throw Failure.signature("unreadable")

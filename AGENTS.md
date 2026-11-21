@@ -97,6 +97,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyDrawingLayer.swift`; the region is the panel's (`AgentPaletteController.beginScreenAsk`) |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
+| Strings and translations | `Resources/Localizable.xcstrings`, `Resources/InfoPlist.xcstrings`, `scripts/sync-strings.sh` (*Languages*) |
 | Updates, login item, releases | `Services/AppUpdater.swift`, `Services/LoginItem.swift`, `scripts/release.sh`, `scripts/bump-version.sh` |
 
 **A chat's model is the conversation's, and the engine applies it.**
@@ -915,7 +916,7 @@ The loop that must keep working:
   from the tabs, the rows and the search, and from Usage, until it is switched on
   again; its chats stay on disk, and one still working is reached from the tray
   and the notch. Settings › Agents lists every agent, since that is where one is
-  switched on. All wears the faces of enabled agents, arranged like die pips.
+  switched on. All wears the faces of enabled agents in a loose ring.
 - **Nothing offers a choice with nothing to choose among.** With one agent there is
   no All, no agent menu on Usage, no ⇧Tab or ←/→ in Settings › Shortcuts and none
   suggested when it is not ready, no New Chats strip in Settings › Agents, and the first
@@ -1328,7 +1329,7 @@ so in the orb ("No sound is reaching the microphone…",
   no alternate icons, so it only ever showed while a Boltty window was open.
   `boltty.appIcon` is a retired key, inert on disk.
 - **Settings › Agents** opens on **New Chats** (two agents or more): a strip of
-  bare faces, Automatic first (the enabled agents' faces as die pips,
+  bare faces, Automatic first (the enabled agents' faces in a loose ring,
   `FaceCluster`) then each enabled agent (`NewChatsPicker`), and under it a line
   saying who takes the next chat. A picture of the first screen and of each
   agent's plan under the strip was tried and removed: the strip says it. A
@@ -1656,6 +1657,45 @@ so in the orb ("No sound is reaching the microphone…",
 - Never use `Date.FormatStyle`: on a locale with a regional override
   (`en_US@rg=uazzzz`) it returns empty strings. Use `DateFormatter` built from
   templates.
+
+## Languages
+
+- Every word the person reads goes through the String Catalog
+  (`Resources/Localizable.xcstrings`; usage descriptions in
+  `InfoPlist.xcstrings`): `String(localized:)` in AppKit and wherever a
+  `String` is passed on, a literal in SwiftUI's own `Text`, `Button`, `Toggle`,
+  `Picker`, `.help`. English is the source. The language is chosen in Settings ›
+  General › Language (`AppLanguage`): the app's own `AppleLanguages`, the
+  value System Settings › Language & Region › Applications writes, so the two
+  agree; Follow System removes it. Each language is named in itself. It applies
+  from the next launch, so a change offers Relaunch Boltty
+  (`UpdateInstaller.relaunch`, the new copy waiting for this one to quit).
+- A sentence is one key with its values inside (`"\(name) is not ready."`),
+  never glued from pieces: word order differs. A count is its own key with
+  plural variants (`"\(count) replies"`); Ukrainian has four forms.
+- What goes to an agent stays English and is never localized: prompts
+  (`AskBolttyPrompt`, `AskBolttyConfiguration`), refusal messages the model
+  reads (`readOnlyRefusal`, `denialMessage`, the gate's reasons), the
+  `[Selected on screen…]` bracket. So do stored values (`ConversationEngine.untitled`),
+  ids, `case` patterns and JSON keys. Key names on keycaps stay Latin.
+- One English word in two senses is two keys: "Clear" glass and "Clear the
+  filter" read differently in Ukrainian. The catalog holds English,
+  Ukrainian, German, French, Spanish, Brazilian Portuguese, Japanese,
+  Simplified Chinese and Korean (`uk de fr es pt-BR ja zh-Hans ko`), each
+  with its own plural forms; a string added in English is translated into all
+  of them in the same change. Russian is not offered.
+- SF Pro Rounded has no CJK glyphs, nor does SF Pro: the system font's cascade
+  draws them in Hiragino Sans (ja), PingFang SC (zh-Hans) or Apple SD Gothic
+  Neo (ko), chosen by the app's language, inside SF Pro Rounded's line height
+  (measured). Nothing in Boltty names a CJK font.
+- A label in a control of fixed width is measured in every language: the
+  shortcut capsule (`ShortcutRecorderMetrics`, 128) took "Record Shortcut" only
+  as one short word in Ukrainian, German, French and Japanese.
+- Tests read English: `-testLanguage en` in `test.sh` and CI, and `language`
+  on the scheme's TestAction only (XcodeGen's `language` would set Run too, and
+  the scheme is restored from git after `xcodegen generate` anyway).
+- `scripts/sync-strings.sh` builds and merges the compiler's extraction into
+  the catalog, as Xcode does on its builds; run it after changing strings.
 
 ## Releasing
 

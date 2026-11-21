@@ -12,12 +12,12 @@ enum MascotShape: String, CaseIterable, Codable, Identifiable, Sendable {
 
   var displayName: String {
     switch self {
-    case .bloom: "Blossom"
-    case .capsule: "Hotdog"
-    case .daisy: "Spotty"
-    case .hex: "Boltty"
-    case .orb: "Pampuh"
-    case .triangle: "Onigiri"
+    case .bloom: String(localized: "Blossom")
+    case .capsule: String(localized: "Hotdog")
+    case .daisy: String(localized: "Spotty")
+    case .hex: String(localized: "Boltty")
+    case .orb: String(localized: "Pampuh")
+    case .triangle: String(localized: "Onigiri")
     }
   }
 

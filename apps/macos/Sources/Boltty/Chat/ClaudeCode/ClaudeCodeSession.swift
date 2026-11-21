@@ -115,7 +115,7 @@ extension ClaudeCodeClient {
         "type": "control_request",
         "request_id": requestID,
         "request": request
-      ]) else { throw AgentClientError.transport("That request could not be encoded.") }
+      ]) else { throw AgentClientError.transport(String(localized: "That request could not be encoded.")) }
 
       let timeoutTask = Task { [weak self] in
         try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
@@ -140,7 +140,7 @@ extension ClaudeCodeClient {
       else { return }
       if response.string("subtype") == "error" {
         resume(requestID, with: .failure(
-          AgentClientError.transport(response.string("error") ?? "The agent refused that request.")
+          AgentClientError.transport(response.string("error") ?? String(localized: "The agent refused that request."))
         ))
         return
       }

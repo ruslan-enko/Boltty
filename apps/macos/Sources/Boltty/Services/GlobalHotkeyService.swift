@@ -23,11 +23,11 @@ enum HotkeyAvailability: Equatable, Sendable {
     case .free:
       binding.displayName
     case .taken:
-      "\(binding.displayName) is already used by another app."
+      String(localized: "\(binding.displayName) is already used by another app.")
     case .failed:
-      "Boltty could not register \(binding.displayName)."
+      String(localized: "Boltty could not register \(binding.displayName).")
     case .needsInputMonitoring:
-      "\(binding.displayName) needs Input Monitoring: allow Boltty in System Settings › Privacy & Security › Input Monitoring."
+      String(localized: "\(binding.displayName) needs Input Monitoring: allow Boltty in System Settings › Privacy & Security › Input Monitoring.")
     }
   }
 }

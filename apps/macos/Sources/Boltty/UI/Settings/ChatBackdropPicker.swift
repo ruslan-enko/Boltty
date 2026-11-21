@@ -33,10 +33,10 @@ struct AppearancePicker: View {
   }
 
   private var glass: some View {
-    cluster("Panel glass") {
+    cluster(String(localized: "Panel glass")) {
       ForEach([true, false], id: \.self) { clear in
         RingedChoice(
-          title: clear ? "Clear" : "Frosted", isChosen: model.panelClearGlass == clear, tile: Self.tile
+          title: clear ? String(localized: "Clear") : String(localized: "Frosted"), isChosen: model.panelClearGlass == clear, tile: Self.tile
         ) {
           withAnimation(SettingsMotion.quick) { model.panelClearGlass = clear }
         } picture: { _ in
@@ -51,7 +51,7 @@ struct AppearancePicker: View {
   }
 
   private var backdrop: some View {
-    cluster("Backdrop") {
+    cluster(String(localized: "Backdrop")) {
       ForEach(ChatBackdrop.allCases, id: \.self) { backdrop in
         RingedChoice(title: backdrop.title, isChosen: chosen == backdrop, tile: Self.tile) {
           withAnimation(SettingsMotion.quick) { stored = backdrop.rawValue }

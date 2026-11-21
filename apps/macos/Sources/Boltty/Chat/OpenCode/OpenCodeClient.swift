@@ -76,7 +76,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   func probe() async -> AgentAvailability {
     guard await server.locateExecutable() != nil else { return .notInstalled }
     guard let version = await server.version() else {
-      return .unavailable("OpenCode did not report a version.")
+      return .unavailable(String(localized: "OpenCode did not report a version."))
     }
     return .available(version: version)
   }
@@ -441,7 +441,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
     let questions = try await loadSession(id: sessionID).messages.filter { $0.role == .user }
     guard questions.indices.contains(question) else {
-      throw AgentClientError.transport("OpenCode has no record of that request.")
+      throw AgentClientError.transport(String(localized: "OpenCode has no record of that request."))
     }
     let staged: JSONValue = try await post(
       "/api/session/\(sessionID)/revert/stage",
@@ -551,7 +551,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         body: OpenCodeDTO.MoveRequest(directory: directory), on: own ? ownServer : server
       )
     } catch AgentClientError.sessionNotFound {
-      throw AgentClientError.transport("This OpenCode cannot move a chat to another folder.")
+      throw AgentClientError.transport(String(localized: "This OpenCode cannot move a chat to another folder."))
     } catch let AgentClientError.indeterminate(detail) {
       throw AgentClientError.transport(detail)
     }
@@ -754,7 +754,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         }
         if let http = response as? HTTPURLResponse, http.statusCode == 401 {
           guard endpoint.isService else {
-            emit(AgentEventEnvelope(event: .connection(.failed("Authentication failed"))))
+            emit(AgentEventEnvelope(event: .connection(.failed(String(localized: "Authentication failed")))))
             return
           }
           await server.invalidate(endpoint)

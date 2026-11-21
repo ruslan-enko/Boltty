@@ -157,7 +157,7 @@ final class StatusBarController {
 
     let jump = addItem(
       to: menu,
-      title: "Jump to Latest Unread",
+      title: String(localized: "Jump to Latest Unread"),
       action: #selector(jumpLatestUnread),
       icon: .bellBadge
     )
@@ -166,7 +166,7 @@ final class StatusBarController {
     if snapshot.latestUnreadSessionID == nil {
       let empty = addItem(
         to: menu,
-        title: "No Unread Chats",
+        title: String(localized: "No Unread Chats"),
         action: nil,
         icon: .bellSlash
       )
@@ -177,40 +177,40 @@ final class StatusBarController {
       menu.addItem(.separator())
       let readOnly = addItem(
         to: menu,
-        title: "Read-only — another Boltty owns the store",
+        title: String(localized: "Read-only — another Boltty owns the store"),
         action: nil,
         icon: .lock
       )
       readOnly.isEnabled = false
-      readOnly.toolTip = "Chats can be read. New ones will not be saved until that Boltty quits."
+      readOnly.toolTip = String(localized: "Chats can be read. New ones will not be saved until that Boltty quits.")
     }
 
     switch updateOffer {
     case let .download(version):
       addItem(
         to: menu,
-        title: "Download Boltty \(version)…",
+        title: String(localized: "Download Boltty \(version)…"),
         action: #selector(checkForUpdates),
         icon: .arrowDownCircle
       )
     case let .install(version):
       addItem(
         to: menu,
-        title: "Install Boltty \(version)…",
+        title: String(localized: "Install Boltty \(version)…"),
         action: #selector(checkForUpdates),
         icon: .arrowDownCircle
       )
     case let .installing(version):
       addItem(
         to: menu,
-        title: "Installing Boltty \(version)…",
+        title: String(localized: "Installing Boltty \(version)…"),
         action: nil,
         icon: .arrowDownCircle
       )
     case let .check(enabled):
       let check = addItem(
         to: menu,
-        title: "Check for Updates…",
+        title: String(localized: "Check for Updates…"),
         action: #selector(checkForUpdates),
         icon: .sync
       )
@@ -218,9 +218,9 @@ final class StatusBarController {
     case nil:
       break
     }
-    addItem(to: menu, title: "Settings…", action: #selector(openSettings), icon: .settings)
+    addItem(to: menu, title: String(localized: "Settings…"), action: #selector(openSettings), icon: .settings)
     menu.addItem(.separator())
-    addItem(to: menu, title: "Quit Boltty", action: #selector(quitApp), icon: .power)
+    addItem(to: menu, title: String(localized: "Quit Boltty"), action: #selector(quitApp), icon: .power)
     return menu
   }
 

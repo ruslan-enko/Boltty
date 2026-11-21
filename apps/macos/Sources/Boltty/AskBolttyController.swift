@@ -109,14 +109,14 @@ final class AskBolttyController {
   // MARK: - A question about a region
 
   static func keyHints(phase: AskBolttySession.Phase, guiding: Bool) -> [PaletteKeyHints.Hint] {
-    let stop = PaletteKeyHints.Hint(key: "esc", words: "Stop")
-    if guiding { return [PaletteKeyHints.Hint(key: nil, words: "Click to go on"), stop] }
+    let stop = PaletteKeyHints.Hint(key: "esc", words: String(localized: "Stop"))
+    if guiding { return [PaletteKeyHints.Hint(key: nil, words: String(localized: "Click to go on")), stop] }
     return phase == .thinking ? [stop] : []
   }
 
   static func restHint(launchKey: String?) -> String {
-    guard let launchKey else { return "Esc to close" }
-    return "\(launchKey) to ask more · Esc to close"
+    guard let launchKey else { return String(localized: "Esc to close") }
+    return String(localized: "\(launchKey) to ask more · Esc to close")
   }
 
   var answeringAgent: AgentId? {

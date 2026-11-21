@@ -148,10 +148,10 @@ final class AgentHistoryTabView: NSView {
     }
     applyLiveFaces(agents: faceAgents, poke: isChosenNow && reacts)
     setAccessibilityLabel(title)
-    setAccessibilityValue(isActive ? "Selected" : "Not selected")
+    setAccessibilityValue(isActive ? String(localized: "Selected") : String(localized: "Not selected"))
     setAccessibilityHelp(
-      agent == nil ? "Show the latest chats of every agent"
-        : isEmpty ? "No chats with \(title) yet" : "Show only \(title) chats"
+      agent == nil ? String(localized: "Show the latest chats of every agent")
+        : isEmpty ? String(localized: "No chats with \(title) yet") : String(localized: "Show only \(title) chats")
     )
     applyAppearance()
   }
@@ -259,40 +259,55 @@ final class AgentHistoryTabView: NSView {
     }
   }
 
-  private static let pips: [[(x: CGFloat, y: CGFloat, d: CGFloat)]] = [
-    [(0.5, 0.5, 1.0)],
-    [(0.31, 0.31, 0.62), (0.69, 0.69, 0.62)],
-    [(0.27, 0.27, 0.54), (0.73, 0.27, 0.54), (0.5, 0.73, 0.54)],
-    [(0.27, 0.27, 0.54), (0.73, 0.27, 0.54), (0.27, 0.73, 0.54), (0.73, 0.73, 0.54)],
-    [(0.23, 0.23, 0.46), (0.77, 0.23, 0.46), (0.23, 0.77, 0.46), (0.77, 0.77, 0.46),
-     (0.5, 0.5, 0.46)],
-  ]
+  // Each face a little off its even place on the ring and a little off the
+  // others' size, so the group reads as a crowd rather than a dial.
+  private static let ringTurn: [CGFloat] = [0, 9, -6, 7, -10]
+  private static let ringReach: [CGFloat] = [1, 0.92, 1.06, 0.95, 1.04]
+  private static let ringScale: [CGFloat] = [1.05, 0.96, 1, 1.04, 0.95]
+  /// Neighbours stand this many faces apart, so they overlap by the rest.
+  private static let ringSpacing: CGFloat = 0.62
 
+  /// The faces in a loose ring, as large as fits `side`, the group centred on it.
   static func faceFrames(count: Int, in side: CGFloat) -> [CGRect] {
     guard count > 0 else { return [] }
-    let placed = pips[min(count, pips.count) - 1]
-    func grid(_ value: CGFloat) -> CGFloat { (value * 2).rounded() / 2 }
-    return placed.prefix(count).map { pip in
-      let diameter = pip.d * side
+    let count = min(count, ringTurn.count)
+    guard count > 1 else { return [CGRect(x: 0, y: 0, width: side, height: side)] }
+    let radius = ringSpacing / (2 * sin(.pi / CGFloat(count)))
+    let circles: [CGRect] = (0..<count).map { index in
+      let angle = (-108 + CGFloat(index) * 360 / CGFloat(count) + ringTurn[index]) * .pi / 180
+      let distance = radius * ringReach[index]
+      let diameter = ringScale[index]
       return CGRect(
-        x: grid(pip.x * side - diameter / 2), y: grid(pip.y * side - diameter / 2),
+        x: cos(angle) * distance - diameter / 2, y: sin(angle) * distance - diameter / 2,
         width: diameter, height: diameter)
+    }
+    let group = circles.reduce(CGRect.null) { $0.union($1) }
+    let scale = side / max(group.width, group.height)
+    let inset = CGPoint(x: (side - group.width * scale) / 2, y: (side - group.height * scale) / 2)
+    func grid(_ value: CGFloat) -> CGFloat { (value * 2).rounded() / 2 }
+    return circles.map { circle in
+      CGRect(
+        x: grid((circle.minX - group.minX) * scale + inset.x),
+        y: grid((circle.minY - group.minY) * scale + inset.y),
+        width: grid(circle.width * scale), height: grid(circle.height * scale))
     }
   }
 
   private static func faceFrames(count: Int, isCluster: Bool) -> [CGRect] {
     isCluster
-      ? faceFrames(count: count, in: AgentPaletteMetrics.historyTabClusterSide)
+      ? clusterFrames(count: count)
       : [CGRect(
           x: 0, y: 0,
           width: AgentPaletteMetrics.historyTabMascotSize,
           height: AgentPaletteMetrics.historyTabMascotSize)]
   }
 
+  private static func clusterFrames(count: Int) -> [CGRect] {
+    faceFrames(count: count, in: AgentPaletteMetrics.historyTabClusterSide)
+  }
+
   static var clusterFaceSides: [CGFloat] {
-    let sides = (1...clusterCapacity).flatMap {
-      faceFrames(count: $0, in: AgentPaletteMetrics.historyTabClusterSide).map(\.width)
-    }
+    let sides = (1...clusterCapacity).flatMap { clusterFrames(count: $0).map(\.width) }
     return Array(Set(sides)).sorted()
   }
 
@@ -451,7 +466,7 @@ final class AgentHistoryTabStripView: NSView {
   func apply(tabs: [AgentHistory.Tab], activeAgent: AgentId?, everyone: [AgentId] = []) {
     self.activeAgent = activeAgent
     let entries: [(agent: AgentId?, title: String, isEmpty: Bool)] =
-      (tabs.count == 1 ? [] : [(nil, "All", false)]) + tabs.map { ($0.agent, $0.title, $0.isEmpty) }
+      (tabs.count == 1 ? [] : [(nil, String(localized: "All"), false)]) + tabs.map { ($0.agent, $0.title, $0.isEmpty) }
     let wanted = entries.map(\.agent)
     let kept = tabViews.filter { wanted.contains($0.agent) }
     if kept.count != tabViews.count {

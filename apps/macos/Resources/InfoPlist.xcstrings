@@ -1,0 +1,183 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSMicrophoneUsageDescription": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Boltty uses the microphone to turn what you say into a prompt for Boltty AI or Ask Boltty."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty використовує мікрофон, щоб перетворити сказане на запит для Boltty AI або Ask Boltty."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty nutzt das Mikrofon, um das Gesagte in eine Eingabe für Boltty AI oder Ask Boltty zu verwandeln."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty utilise le micro pour transformer ce que vous dites en demande pour Boltty AI ou Ask Boltty."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty usa el micrófono para convertir lo que dices en una petición para Boltty AI o Ask Boltty."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Boltty usa o microfone para transformar o que você diz em um pedido para o Boltty AI ou o Ask Boltty."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bolttyはマイクを使って、話した内容をBoltty AIやAsk Boltty向けのリクエストにします。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty 使用麦克风，把你说的话变成给 Boltty AI 或 Ask Boltty 的请求。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty는 마이크를 사용해 말한 내용을 Boltty AI 또는 Ask Boltty에 보낼 요청으로 바꿉니다."
+          }
+        }
+      }
+    },
+    "NSAppleEventsUsageDescription": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Boltty reads the files you have selected in Finder so you can talk about them without typing a path."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty читає файли, вибрані у Finder, щоб про них можна було говорити, не набираючи шлях."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty liest die im Finder ausgewählten Dateien, damit du über sie sprechen kannst, ohne einen Pfad zu tippen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty lit les fichiers sélectionnés dans le Finder pour que vous puissiez en parler sans taper de chemin."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty lee los archivos que tienes seleccionados en el Finder para que puedas hablar de ellos sin escribir una ruta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Boltty lê os arquivos selecionados no Finder para que você possa falar sobre eles sem digitar um caminho."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BolttyはFinderで選択中のファイルを読み取り、パスを入力せずにそのファイルについて話せるようにします。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty 会读取你在 Finder 中选中的文件，这样你无需输入路径就能谈论它们。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty는 Finder에서 선택한 파일을 읽어 경로를 입력하지 않고도 파일에 대해 이야기할 수 있게 합니다."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Boltty uses Apple speech recognition to transcribe what you say to Boltty AI or Ask Boltty."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty використовує розпізнавання мовлення Apple, щоб записати сказане для Boltty AI або Ask Boltty."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty nutzt die Spracherkennung von Apple, um das Gesagte für Boltty AI oder Ask Boltty aufzuschreiben."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty utilise la reconnaissance vocale d’Apple pour transcrire ce que vous dites à Boltty AI ou Ask Boltty."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty usa el reconocimiento de voz de Apple para transcribir lo que dices a Boltty AI o Ask Boltty."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Boltty usa o reconhecimento de fala da Apple para transcrever o que você diz ao Boltty AI ou ao Ask Boltty."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BolttyはAppleの音声認識を使って、Boltty AIやAsk Bolttyに話した内容を書き起こします。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty 使用 Apple 语音识别，把你对 Boltty AI 或 Ask Boltty 说的话转写成文字。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boltty는 Apple 음성 인식을 사용해 Boltty AI 또는 Ask Boltty에 말한 내용을 받아 적습니다."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

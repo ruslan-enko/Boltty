@@ -8,11 +8,11 @@ extension PromptAttachment {
     case let .file(url):
       url.path
     case let .imageData(data, type):
-      "Pasted \(type.localizedDescription ?? "image") · \(Self.byteLabel(data.count))"
+      String(localized: "Pasted \(type.localizedDescription ?? String(localized: "image")) · \(Self.byteLabel(data.count))")
     case let .text(text):
-      "Pasted text · \(Self.byteLabel(text.utf8.count))"
+      String(localized: "Pasted text · \(Self.byteLabel(text.utf8.count))")
     case let .screen(selection):
-      selection.context.map { "Selected on screen in \($0)" } ?? "Selected on screen"
+      selection.context.map { String(localized: "Selected on screen in \($0)") } ?? String(localized: "Selected on screen")
     }
   }
 
@@ -47,11 +47,11 @@ final class PromptAttachmentCard: NSView {
   static func look(for attachment: PromptAttachment) -> Look {
     switch attachment.payload {
     case let .imageData(data, _):
-      Look(picture: .data(data), words: .path(attachment.label), tag: "Image")
+      Look(picture: .data(data), words: .path(attachment.label), tag: String(localized: "Image"))
     case let .screen(selection):
-      Look(picture: .data(selection.region), words: .path(attachment.label), tag: "Image")
+      Look(picture: .data(selection.region), words: .path(attachment.label), tag: String(localized: "Image"))
     case let .text(text):
-      Look(picture: nil, words: .excerpt(excerpt(of: text)), tag: "Text")
+      Look(picture: nil, words: .excerpt(excerpt(of: text)), tag: String(localized: "Text"))
     case let .file(url):
       Look(
         picture: attachment.kind == .image ? .file(url) : nil,
@@ -64,10 +64,10 @@ final class PromptAttachmentCard: NSView {
     let url = URL(fileURLWithPath: path)
     let named = name ?? restoredName(of: url)
     guard FileManager.default.fileExists(atPath: path) else {
-      return Look(picture: nil, words: .path(shownPath(of: url, named: named)), tag: "Missing", isMissing: true)
+      return Look(picture: nil, words: .path(shownPath(of: url, named: named)), tag: String(localized: "Missing"), isMissing: true)
     }
     if isBolttysOwn(path), url.pathExtension == "txt", let text = beginning(of: url) {
-      return Look(picture: nil, words: .excerpt(excerpt(of: text)), tag: "Text")
+      return Look(picture: nil, words: .excerpt(excerpt(of: text)), tag: String(localized: "Text"))
     }
     let isPicture = UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) == true
     return Look(
@@ -77,7 +77,7 @@ final class PromptAttachmentCard: NSView {
   }
 
   static func tag(forPath path: String) -> String {
-    PaletteFileRowView.kindWord(ofPath: path) ?? "File"
+    PaletteFileRowView.kindWord(ofPath: path) ?? String(localized: "File")
   }
 
   static func shownPath(of url: URL, named name: String) -> String {
@@ -200,7 +200,7 @@ final class PromptAttachmentCard: NSView {
     self.sentURL = url
     self.corner = corner
     closeButton = GlassCircleButton(
-      icon: .xmark, accessibilityDescription: "Remove",
+      icon: .xmark, accessibilityDescription: String(localized: "Remove"),
       diameter: AgentPaletteMetrics.attachmentCloseDiameter,
       size: AgentPaletteMetrics.attachmentCloseGlyph)
     super.init(frame: NSRect(
@@ -249,7 +249,7 @@ final class PromptAttachmentCard: NSView {
     closeButton.button.refusesFirstResponder = true
     closeButton.button.target = self
     closeButton.button.action = #selector(didPressClose)
-    closeButton.button.setAccessibilityLabel("Remove")
+    closeButton.button.setAccessibilityLabel(String(localized: "Remove"))
     closeButton.isHidden = true
     addSubview(closeButton)
     let overhang = AgentPaletteMetrics.attachmentCloseOverhang
@@ -364,10 +364,10 @@ final class PromptAttachmentCard: NSView {
   override func menu(for event: NSEvent) -> NSMenu? {
     guard sentURL != nil, !look.isMissing else { return super.menu(for: event) }
     let menu = NSMenu()
-    menu.addItem(withTitle: "Quick Look", action: #selector(lookAtCard), keyEquivalent: "").target = self
-    menu.addItem(withTitle: "Show in Finder", action: #selector(showInFinder), keyEquivalent: "").target = self
+    menu.addItem(withTitle: String(localized: "Quick Look"), action: #selector(lookAtCard), keyEquivalent: "").target = self
+    menu.addItem(withTitle: String(localized: "Show in Finder"), action: #selector(showInFinder), keyEquivalent: "").target = self
     if onUse != nil {
-      menu.addItem(withTitle: "Use in Follow-up", action: #selector(useInFollowUp), keyEquivalent: "").target = self
+      menu.addItem(withTitle: String(localized: "Use in Follow-up"), action: #selector(useInFollowUp), keyEquivalent: "").target = self
     }
     return menu
   }

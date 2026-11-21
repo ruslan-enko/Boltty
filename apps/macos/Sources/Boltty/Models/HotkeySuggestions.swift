@@ -8,18 +8,18 @@ enum HotkeySuggestions {
   }
 
   static let all: [Suggestion] = [
-    suggestion(kVK_Space, optionKey, "what Boltty has always used"),
-    suggestion(kVK_Space, controlKey | optionKey, "the chord it had before the recorder existed"),
-    suggestion(kVK_Space, cmdKey | shiftKey, "the same key with a handier finger"),
-    suggestion(kVK_ANSI_E, optionKey, "a single unmodified letter, next to the prompt"),
-    suggestion(kVK_ANSI_F, optionKey, "the same, on the other hand"),
-    suggestion(kVK_ANSI_E, controlKey | optionKey, "two modifiers, harder to hit by accident"),
+    suggestion(kVK_Space, optionKey, String(localized: "what Boltty has always used")),
+    suggestion(kVK_Space, controlKey | optionKey, String(localized: "the chord it had before the recorder existed")),
+    suggestion(kVK_Space, cmdKey | shiftKey, String(localized: "the same key with a handier finger")),
+    suggestion(kVK_ANSI_E, optionKey, String(localized: "a single unmodified letter, next to the prompt")),
+    suggestion(kVK_ANSI_F, optionKey, String(localized: "the same, on the other hand")),
+    suggestion(kVK_ANSI_E, controlKey | optionKey, String(localized: "two modifiers, harder to hit by accident")),
   ]
 
   static let modifierOnly: [Suggestion] = [
     Suggestion(
       binding: .optionCommand,
-      rationale: "⌥ and ⌘ pressed together and let go. Needs Input Monitoring."
+      rationale: String(localized: "⌥ and ⌘ pressed together and let go. Needs Input Monitoring.")
     ),
   ]
 

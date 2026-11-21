@@ -18,23 +18,23 @@ struct UsageGlanceRow: Equatable {
 }
 
 enum UsageGlanceText {
-  static let takesNextChat = "Next chat"
+  static let takesNextChat = String(localized: "Next chat")
 
   static func used(_ window: AgentUsageWindow) -> String {
-    "\(min(100, max(0, window.usedPercent)))% used"
+    String(localized: "\(min(100, max(0, window.usedPercent)))% used")
   }
 
   static func reset(_ window: AgentUsageWindow, now: Date = Date()) -> String? {
     guard let date = window.resetsAt, date > now else { return nil }
     if window.severity == .exhausted {
-      return "back \(AgentUsageWindow.resetPhrase(date, now: now))"
+      return String(localized: "back \(AgentUsageWindow.resetPhrase(date, now: now))")
     }
-    return "resets in \(AgentUsageWindow.countdown(to: date, now: now))"
+    return String(localized: "resets in \(AgentUsageWindow.countdown(to: date, now: now))")
   }
 
   static func waiting(isReading: Bool) -> String {
-    isReading ? "Reading…" : "No limits reported yet"
+    isReading ? String(localized: "Reading limits…") : String(localized: "No limits reported yet")
   }
 
-  static let noPlanLimit = "Reports no plan limit"
+  static let noPlanLimit = String(localized: "Reports no plan limit")
 }

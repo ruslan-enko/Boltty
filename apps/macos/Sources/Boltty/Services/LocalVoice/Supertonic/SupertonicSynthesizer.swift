@@ -9,7 +9,7 @@ final class SupertonicSynthesizer: @unchecked Sendable {
 
     var errorDescription: String? {
       switch self {
-      case let .missing(file): "Supertonic is missing \(file)."
+      case let .missing(file): String(localized: "Supertonic is missing \(file).")
       case let .badVoice(name): "Supertonic's voice \(name) could not be read."
       case let .stage(stage, reason): "Supertonic's \(stage) failed: \(reason)"
       }

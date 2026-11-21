@@ -81,7 +81,7 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     let size = named ? ComposerControlGroup.glyph : ComposerControlGroup.iconSize(chat: isChatSized)
     guard size != iconPointSize else { return }
     iconPointSize = size
-    icon.image = BolttyIcon.folder.image(size: AgentPaletteMetrics.iconSide(size), description: "Working folder")
+    icon.image = BolttyIcon.folder.image(size: AgentPaletteMetrics.iconSide(size), description: String(localized: "Working folder"))
   }
   private var iconPointSize: CGFloat = 0
 
@@ -199,20 +199,20 @@ enum UsagePillText {
   static func title(for usage: AgentUsage, now: Date = Date()) -> String? {
     guard let window = usage.pressing else { return nil }
     if window.severity == .exhausted {
-      guard let reset = window.resetsAt else { return "Limit reached" }
-      return "Limit reached · back \(when(reset, now: now))"
+      guard let reset = window.resetsAt else { return String(localized: "Limit reached") }
+      return String(localized: "Limit reached · back \(when(reset, now: now))")
     }
     return "\(window.title) \(window.usedPercent)%"
   }
 
   static func detail(for usage: AgentUsage, agent: AgentId, now: Date = Date()) -> String {
-    (["\(agent.displayName) plan", windowDetails(for: usage, now: now)]).joined(separator: "\n")
+    ([String(localized: "\(agent.displayName) plan"), windowDetails(for: usage, now: now)]).joined(separator: "\n")
   }
 
   static func windowDetails(for usage: AgentUsage, now: Date = Date()) -> String {
     usage.windows.map { window in
-      var line = "\(window.title): \(window.usedPercent)% used"
-      if let reset = window.resetsAt { line += ", resets \(when(reset, now: now))" }
+      var line = String(localized: "\(window.title): \(window.usedPercent)% used")
+      if let reset = window.resetsAt { line += String(localized: ", resets \(when(reset, now: now))") }
       return line
     }.joined(separator: "\n")
   }
@@ -235,14 +235,14 @@ enum PlanUsageRingReading {
   static func detail(
     usage: AgentUsage?, agent: AgentId?, context: AgentContextUsage?, chatIsOpen: Bool
   ) -> String {
-    let heading = agent.map { "\($0.displayName) plan limits" } ?? "Plan limits"
+    let heading = agent.map { String(localized: "\($0.displayName) plan limits") } ?? String(localized: "Plan limits")
     let plan = usage.flatMap { $0.windows.isEmpty ? nil : $0 }.map {
       UsagePillText.windowDetails(for: $0)
-    } ?? "Usage is not available from this agent."
+    } ?? String(localized: "Usage is not available from this agent.")
     let contextText = (chatIsOpen ? context : nil).map {
-      "Chat context: \($0.percent)% used\n"
-        + "\(AgentCompaction.tokens($0.usedTokens)) of \(AgentCompaction.tokens($0.limitTokens)) tokens"
-    } ?? (chatIsOpen ? "Chat context: usage is not available." : "Chat context: available after a chat starts.")
+      let used = AgentCompaction.tokens($0.usedTokens), limit = AgentCompaction.tokens($0.limitTokens)
+      return String(localized: "Chat context: \($0.percent)% used\n\(used) of \(limit) tokens")
+    } ?? (chatIsOpen ? String(localized: "Chat context: usage is not available.") : String(localized: "Chat context: available after a chat starts."))
     return "\(heading)\n\(plan)\n\n\(contextText)"
   }
 }
@@ -277,7 +277,7 @@ final class PlanUsageRingView: PaletteIconButton {
   var onCompact: (() -> Void)?
   var percentForTesting: Int { PlanUsageRingReading.percent(usage) }
   var tintForTesting: NSColor { AgentPaletteMetrics.planRingInk }
-  var titleForTesting: String { usage.flatMap { UsagePillText.title(for: $0) } ?? "Plan usage unavailable" }
+  var titleForTesting: String { usage.flatMap { UsagePillText.title(for: $0) } ?? String(localized: "Plan usage unavailable") }
   var detailForTesting: String { toolTip ?? "" }
   private var cacheIsCold = false
   var offersCompactForTesting: Bool {
@@ -296,7 +296,7 @@ final class PlanUsageRingView: PaletteIconButton {
     target = self
     action = #selector(showLimits)
     setAccessibilityIdentifier("boltty.ask.usage")
-    setAccessibilityLabel("Plan limits and chat context")
+    setAccessibilityLabel(String(localized: "Plan limits and chat context"))
     NSLayoutConstraint.activate([diameterConstraint, widthConstraint])
     syncWidth()
     refreshHelp()
@@ -328,7 +328,7 @@ final class PlanUsageRingView: PaletteIconButton {
   private func refreshHelp() {
     toolTip = PlanUsageRingReading.detail(usage: usage, agent: agent, context: context, chatIsOpen: chatIsOpen)
       + (cacheIsCold && offersCompactForTesting
-        ? "\n\nAway for over an hour, this chat's cache has expired: compacting first makes the next message cheaper."
+        ? String(localized: "\n\nAway for over an hour, this chat's cache has expired: compacting first makes the next message cheaper.")
         : "")
     setAccessibilityValue(titleForTesting)
     if PaletteHelpPresenter.shared.isPinned(for: self) { showLimits() }
@@ -337,7 +337,7 @@ final class PlanUsageRingView: PaletteIconButton {
     let offers = offersCompactForTesting
     PaletteHelpPresenter.shared.show(
       for: self, text: detailForTesting, pinned: true,
-      actionTitle: offers ? "Compact conversation" : nil,
+      actionTitle: offers ? String(localized: "Compact conversation") : nil,
       action: offers ? { [weak self] in
         guard let self, self.offersCompactForTesting else { return }
         self.onCompact?()

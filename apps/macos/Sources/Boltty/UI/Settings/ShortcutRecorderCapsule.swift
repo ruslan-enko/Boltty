@@ -45,9 +45,9 @@ struct ShortcutRecorderCapsule: View {
         accessibilityIdentifier: accessibilityIdentifier,
         help: isRecording
           ? (canClear
-              ? "Type the new shortcut. Esc cancels, Delete removes it."
-              : "Type the new shortcut, or press Esc to cancel.")
-          : "Click to change this shortcut",
+              ? String(localized: "Type the new shortcut. Esc cancels, Delete removes it.")
+              : String(localized: "Type the new shortcut, or press Esc to cancel."))
+          : String(localized: "Click to change this shortcut"),
         onArm: { isRecording = true },
         onEvent: handle(event:),
         onCancel: { isRecording = false }
@@ -166,7 +166,7 @@ private struct RecorderButton: NSViewRepresentable {
     view.isRecording = isRecording
     view.toolTip = help
     view.setAccessibilityLabel(accessibilityName)
-    view.setAccessibilityValue(isRecording ? "Recording" : (display.isEmpty ? "None" : display))
+    view.setAccessibilityValue(isRecording ? String(localized: "Recording") : (display.isEmpty ? String(localized: "None") : display))
     view.setAccessibilityHelp(help)
     view.setAccessibilityIdentifier(accessibilityIdentifier ?? "")
   }
@@ -196,8 +196,8 @@ final class ShortcutRecorderButton: NSButton {
 
   private var heldModifiers: NSEvent.ModifierFlags = []
 
-  static let unboundTitle = "Record Shortcut"
-  static let recordingTitle = "Type Shortcut"
+  static let unboundTitle = String(localized: "Record Shortcut")
+  static let recordingTitle = String(localized: "Type Shortcut")
 
   init() {
     super.init(frame: .zero)
@@ -227,7 +227,7 @@ final class ShortcutRecorderButton: NSButton {
     if isRecording {
       title = heldModifiers.isEmpty ? Self.recordingTitle : Self.glyphs(for: heldModifiers)
       ink = BolttyBrand.onAccent
-    } else if chord.isEmpty || chord == "None" {
+    } else if chord.isEmpty || chord == String(localized: "None") {
       title = Self.unboundTitle
       ink = .secondaryLabelColor
     } else {

@@ -94,8 +94,7 @@ final class ConversationEngine: ObservableObject {
       settingsInForce[remote]?.autoApprove = enabled
     } catch {
       notices[conversationID] = EngineNotice(
-        text: "\(agentName(for: conversationID)) did not take that change. It will apply to the "
-          + "next conversation.",
+        text: String(localized: "\(agentName(for: conversationID)) did not take that change. It will apply to the next conversation."),
         isBlocking: false
       )
     }
@@ -497,7 +496,7 @@ final class ConversationEngine: ObservableObject {
       try await client.compact(sessionID: remote)
     } catch {
       notices[conversationID] = EngineNotice(
-        text: "\(agentName(for: conversationID)) could not compact this conversation: \(error.localizedDescription)",
+        text: String(localized: "\(agentName(for: conversationID)) could not compact this conversation: \(error.localizedDescription)"),
         isBlocking: false
       )
     }
@@ -563,8 +562,7 @@ final class ConversationEngine: ObservableObject {
         )
       )
       notices[conversationID] = EngineNotice(
-        text: "This conversation is no longer on \(agentName(for: conversationID)). Its history "
-          + "is kept, but sending will start a new session.",
+        text: String(localized: "This conversation is no longer on \(agentName(for: conversationID)). Its history is kept, but sending will start a new session."),
         isBlocking: false
       )
       return true
@@ -642,7 +640,7 @@ final class ConversationEngine: ObservableObject {
     guard let conversation = store.conversation(id: conversationID) else { return false }
     guard !Self.folderIsGone(conversation.workingDirectory) else {
       notices[conversationID] = EngineNotice(
-        text: "\(Self.abbreviated(conversation.workingDirectory)) is not on this Mac any more.",
+        text: String(localized: "\(Self.abbreviated(conversation.workingDirectory)) is not on this Mac any more."),
         isBlocking: false,
         folderIsGone: true
       )
@@ -657,7 +655,7 @@ final class ConversationEngine: ObservableObject {
       remote = try await ensureRemoteSession(for: conversationID)
     } catch {
       notices[conversationID] = EngineNotice(
-        text: reason(error, for: conversationID, fallback: "could not be started"),
+        text: reason(error, for: conversationID),
         isBlocking: true
       )
       return false
@@ -728,8 +726,7 @@ final class ConversationEngine: ObservableObject {
       )
       if sent {
         notices[conversationID] = EngineNotice(
-          text: "\(agentName(for: conversationID)) had no record of this conversation, so Boltty "
-            + "started a new session. The history above is kept, but the agent has not seen it.",
+          text: String(localized: "\(agentName(for: conversationID)) had no record of this conversation, so Boltty started a new session. The history above is kept, but the agent has not seen it."),
           isBlocking: false
         )
       }
@@ -743,7 +740,7 @@ final class ConversationEngine: ObservableObject {
       )
       store.setExecutionState(.idle, for: conversationID)
       notices[conversationID] = EngineNotice(
-        text: (error as? LocalizedError)?.errorDescription ?? "That message was not sent.",
+        text: (error as? LocalizedError)?.errorDescription ?? String(localized: "That message was not sent."),
         isBlocking: false
       )
       return false
@@ -761,16 +758,16 @@ final class ConversationEngine: ObservableObject {
   }
 
   private func agentName(for conversationID: UUID) -> String {
-    provider(for: conversationID)?.displayName ?? "that agent"
+    provider(for: conversationID)?.displayName ?? String(localized: "that agent")
   }
 
-  private func reason(_ error: Error, for conversationID: UUID, fallback: String) -> String {
+  private func reason(_ error: Error, for conversationID: UUID) -> String {
     let name = agentName(for: conversationID)
     if case AgentClientError.notInstalled = error {
-      return "\(name) is not installed."
+      return String(localized: "\(name) is not installed.")
     }
     guard let described = (error as? LocalizedError)?.errorDescription else {
-      return "\(name) \(fallback)."
+      return String(localized: "\(name) could not be started.")
     }
     return "\(name): \(described)"
   }
@@ -795,8 +792,7 @@ final class ConversationEngine: ObservableObject {
       )
       store.setExecutionState(.idle, for: conversationID)
       notices[conversationID] = EngineNotice(
-        text: "That message did not reach \(agentName(for: conversationID)). It is back in the "
-          + "composer — send it again when you are ready.",
+        text: String(localized: "That message did not reach \(agentName(for: conversationID)). It is back in the composer — send it again when you are ready."),
         isBlocking: false
       )
       return false
@@ -808,8 +804,7 @@ final class ConversationEngine: ObservableObject {
         store.setExecutionState(.idle, for: conversationID)
       }
       notices[conversationID] = EngineNotice(
-        text: "Boltty could not confirm whether that message was sent. Check the conversation "
-          + "before sending it again.",
+        text: String(localized: "Boltty could not confirm whether that message was sent. Check the conversation before sending it again."),
         isBlocking: false
       )
       return true
@@ -923,10 +918,10 @@ final class ConversationEngine: ObservableObject {
         return words
       }
       notices[conversationID] = EngineNotice(
-        text: "Files are back as they were before “\(Self.title(from: words))”.", isBlocking: false)
+        text: String(localized: "Files are back as they were before “\(Self.title(from: words))”."), isBlocking: false)
     } catch {
       notices[conversationID] = EngineNotice(
-        text: "\(agentName(for: conversationID)) could not undo its changes.", isBlocking: false)
+        text: String(localized: "\(agentName(for: conversationID)) could not undo its changes."), isBlocking: false)
     }
     return nil
   }
@@ -1010,7 +1005,7 @@ final class ConversationEngine: ObservableObject {
       await refresh(conversationID: conversationID)
     } catch {
       notices[conversationID] = EngineNotice(
-        text: "Boltty could not reach \(agentName(for: conversationID)) to stop that.",
+        text: String(localized: "Boltty could not reach \(agentName(for: conversationID)) to stop that."),
         isBlocking: false
       )
     }
@@ -1077,7 +1072,7 @@ final class ConversationEngine: ObservableObject {
     } catch {
       store.cancelSubmitting(interactionID: interactionID, in: conversationID)
       notices[conversationID] = EngineNotice(
-        text: "That answer was not delivered. Try again.",
+        text: String(localized: "That answer was not delivered. Try again."),
         isBlocking: false
       )
       return false
@@ -1133,7 +1128,7 @@ final class ConversationEngine: ObservableObject {
     } catch {
       store.cancelSubmitting(interactionID: permissionID, in: conversationID)
       notices[conversationID] = EngineNotice(
-        text: "That reply was not delivered. Try again.",
+        text: String(localized: "That reply was not delivered. Try again."),
         isBlocking: false
       )
       return false
@@ -1184,7 +1179,7 @@ final class ConversationEngine: ObservableObject {
     } catch {
       store.cancelSubmitting(interactionID: planID, in: conversationID)
       notices[conversationID] = EngineNotice(
-        text: "That reply was not delivered. Try again.",
+        text: String(localized: "That reply was not delivered. Try again."),
         isBlocking: false
       )
       return false
@@ -1205,7 +1200,7 @@ final class ConversationEngine: ObservableObject {
 
   nonisolated static let untitled = "New conversation"
   static let secondCopyRefusal =
-    "Another Boltty is already running and owns your conversations. Use that one to send."
+    String(localized: "Another Boltty is already running and owns your conversations. Use that one to send.")
 
   static let readOnlyRefusal =
     "This chat is read-only: answer from what you can see, without changing files or running commands."

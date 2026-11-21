@@ -73,7 +73,7 @@ struct AskBolttySettingsSection: View {
       AskBolttyAgentPicker(model: model)
       if !model.askBolttyIsAutomatic, !model.askBolttyModels.isEmpty { modelPicker }
     } header: {
-      SettingsSectionHeader("Who answers")
+      SettingsSectionHeader(String(localized: "Who answers"))
     } footer: {
       SettingsNote(answererNote)
     }
@@ -95,9 +95,9 @@ struct AskBolttySettingsSection: View {
       }
       .accessibilityIdentifier("boltty.settings.talkAccess")
     } header: {
-      SettingsSectionHeader("Answers")
+      SettingsSectionHeader(String(localized: "Answers"))
     } footer: {
-      SettingsNote("Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the window under that area and the menu bar; the rest of the screen is hidden from it unless you select all of it.")
+      SettingsNote(String(localized: "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the window under that area and the menu bar; the rest of the screen is hidden from it unless you select all of it."))
     }
   }
 
@@ -145,16 +145,16 @@ struct AskBolttySettingsSection: View {
     guard let agent = model.askBolttyAgent,
           let name = model.adapterRows.first(where: { $0.agent == agent })?
             .currentModel?.selection.displayName
-    else { return "Agent default" }
-    return "Agent default (\(name))"
+    else { return String(localized: "Agent default") }
+    return String(localized: "Agent default (\(name))")
   }
 
   private var answererNote: String {
-    let quick = "Every model thinks as little as it can, so answers come quickly."
+    let quick = String(localized: "Every model thinks as little as it can, so answers come quickly.")
     guard model.askBolttyAgents.count > 1 else { return quick }
     let automatic = model.routesAutomatically
-      ? "Automatic gives a question to whoever has the most of their plan left."
-      : "Automatic gives a question to the agent new chats go to."
+      ? String(localized: "Automatic gives a question to whoever has the most of their plan left.")
+      : String(localized: "Automatic gives a question to the agent new chats go to.")
     return "\(automatic) \(quick)"
   }
 }
@@ -174,7 +174,7 @@ private struct AskBolttyAgentPicker: View {
     } else {
       ChoiceStrip(title: nil, identifier: "boltty.settings.talkAgent") {
       if model.askBolttyAgents.count > 1 {
-        RingedChoice(title: "Automatic", isChosen: automatic, isRinged: false) {
+        RingedChoice(title: String(localized: "Automatic"), isChosen: automatic, isRinged: false) {
           guard !automatic else { return }
           withAnimation(SettingsMotion.quick) { model.chooseAskBolttyAgent(nil) }
         } picture: { _ in

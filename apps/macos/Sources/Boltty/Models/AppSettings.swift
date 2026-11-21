@@ -277,13 +277,25 @@ enum HistoryRetention {
 
   static func title(_ days: Int) -> String {
     switch days {
-    case 0: "Forever"
-    case 7: "1 Week"
-    case 14: "2 Weeks"
-    case 30: "1 Month"
-    case 182: "6 Months"
-    case 365: "1 Year"
-    default: "\(days) Days"
+    case 0: String(localized: "Forever")
+    case 7: String(localized: "1 Week")
+    case 14: String(localized: "2 Weeks")
+    case 30: String(localized: "1 Month")
+    case 182: String(localized: "6 Months")
+    case 365: String(localized: "1 Year")
+    default: String(localized: "\(days) Days")
+    }
+  }
+
+  /// The same span inside a sentence ("older than 1 week").
+  static func span(_ days: Int) -> String {
+    switch days {
+    case 7: String(localized: "1 week")
+    case 14: String(localized: "2 weeks")
+    case 30: String(localized: "1 month")
+    case 182: String(localized: "6 months")
+    case 365: String(localized: "1 year")
+    default: String(localized: "\(days) days")
     }
   }
 

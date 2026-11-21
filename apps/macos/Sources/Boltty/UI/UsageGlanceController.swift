@@ -223,7 +223,7 @@ final class UsageGlanceController: NSObject {
     list.arrangedSubviews.forEach { $0.removeFromSuperview() }
     add(header())
     if rows.isEmpty {
-      add(Self.label("No agents are switched on.", size: AgentPaletteMetrics.typeMeta, ink: PaletteInk.secondary), inset: 8)
+      add(Self.label(String(localized: "No agents are switched on."), size: AgentPaletteMetrics.typeMeta, ink: PaletteInk.secondary), inset: 8)
     }
     for row in rows { add(well(for: row)) }
     add(foot())
@@ -250,7 +250,7 @@ final class UsageGlanceController: NSObject {
   }
 
   private func header() -> NSView {
-    let title = Self.label("Limits", size: AgentPaletteMetrics.typeMeta, weight: .semibold, ink: PaletteInk.primary)
+    let title = Self.label(String(localized: "Limits"), size: AgentPaletteMetrics.typeMeta, weight: .semibold, ink: PaletteInk.primary)
     let row = NSStackView(views: [title, NSView(), spinner])
     row.orientation = .horizontal
     row.alignment = .centerY
@@ -293,21 +293,17 @@ final class UsageGlanceController: NSObject {
         place(line)
       }
     case let .signedOut(command):
+      let sentence = String(localized: "Signed out. Run \(command) in a terminal.")
       let words = NSMutableAttributedString(
-        string: "Signed out. Run ",
+        string: sentence,
         attributes: Self.attributes(size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
       )
-      words.append(NSAttributedString(
-        string: command,
-        attributes: [
+      if let range = sentence.range(of: command) {
+        words.addAttributes([
           .font: NSFont.monospacedSystemFont(ofSize: AgentPaletteMetrics.typeFootnote, weight: .regular),
           .foregroundColor: PaletteInk.primary,
-        ]
-      ))
-      words.append(NSAttributedString(
-        string: " in a terminal.",
-        attributes: Self.attributes(size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
-      ))
+        ], range: NSRange(range, in: sentence))
+      }
       let label = NSTextField(labelWithAttributedString: words)
       label.isSelectable = false
       label.maximumNumberOfLines = 0
@@ -358,36 +354,36 @@ final class UsageGlanceController: NSObject {
       string: window.title,
       attributes: Self.attributes(size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.primary)
     )
+    // Title and share used share a line; when it comes back has a line of its
+    // own under the meter, since in longer languages the three did not fit one.
     let title = NSTextField(labelWithAttributedString: words)
     title.isSelectable = false
-    title.maximumNumberOfLines = 1
-    title.cell?.wraps = false
+    title.maximumNumberOfLines = 2
+    title.lineBreakMode = .byWordWrapping
     title.cell?.truncatesLastVisibleLine = true
-    title.lineBreakMode = .byTruncatingTail
-    if let date = window.resetsAt { title.toolTip = "Resets \(AgentUsageWindow.resetPhrase(date))" }
     title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-    var heading: [NSView] = [title]
-    // Cut before the title is, so a long title never hides when it comes back.
-    if let reset = UsageGlanceText.reset(window) {
-      let when = Self.label("· \(reset)", size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.tertiary)
-      when.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
-      when.setContentHuggingPriority(.required, for: .horizontal)
-      heading.append(when)
-    }
-    let left = Self.label(UsageGlanceText.used(window), size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
-    left.font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote).withMonospacedDigits
-    left.setContentCompressionResistancePriority(.required, for: .horizontal)
-    let top = NSStackView(views: heading + [NSView(), left])
+    let used = Self.label(UsageGlanceText.used(window), size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
+    used.font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote).withMonospacedDigits
+    used.setContentCompressionResistancePriority(.required, for: .horizontal)
+    used.setContentHuggingPriority(.required, for: .horizontal)
+    title.preferredMaxLayoutWidth = (Self.width - 2 * (Self.inset + Self.wellPadding)
+      - used.fittingSize.width - 2 * 8).rounded(.down)
+    let top = NSStackView(views: [title, NSView(), used])
     top.orientation = .horizontal
     top.alignment = .firstBaseline
-    top.setCustomSpacing(4, after: title)
+    top.spacing = 8
 
     let meter = UsageGlanceMeter()
     meter.used = Double(min(100, max(0, window.usedPercent))) / 100
     meter.translatesAutoresizingMaskIntoConstraints = false
     meter.heightAnchor.constraint(equalToConstant: Self.meterHeight).isActive = true
 
-    let lines: [NSView] = [top, meter]
+    var lines: [NSView] = [top, meter]
+    if let reset = UsageGlanceText.reset(window) {
+      let when = Self.label(reset.capitalizedFirst, size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.tertiary)
+      if let date = window.resetsAt { when.toolTip = String(localized: "Resets \(AgentUsageWindow.resetPhrase(date))") }
+      lines.append(when)
+    }
     let block = NSStackView(views: lines)
     block.orientation = .vertical
     block.alignment = .leading
@@ -405,20 +401,20 @@ final class UsageGlanceController: NSObject {
 
   private func foot() -> NSView {
     let settings = GlassCircleButton(
-      icon: .settings, accessibilityDescription: "Usage in Settings",
+      icon: .settings, accessibilityDescription: String(localized: "Usage in Settings"),
       diameter: Self.footDisc, size: Self.footGlyph
     )
     settings.button.target = self
     settings.button.action = #selector(openSettings)
-    settings.button.toolTip = "Usage in Settings"
+    settings.button.toolTip = String(localized: "Usage in Settings")
     let more = GlassCircleButton(
-      icon: .chevronDown, accessibilityDescription: "More",
+      icon: .chevronDown, accessibilityDescription: String(localized: "More"),
       diameter: Self.footDisc, size: Self.footGlyph
     )
     more.button.image = more.button.image.map { Self.lowered($0, by: Self.chevronDrop) }
     more.button.target = self
     more.button.action = #selector(openMore)
-    more.button.toolTip = "Boltty AI, chats, updates and Quit"
+    more.button.toolTip = String(localized: "Boltty AI, chats, updates and Quit")
     let row = NSStackView(views: [settings, NSView(), more])
     row.orientation = .horizontal
     row.alignment = .centerY
@@ -509,5 +505,12 @@ private extension NSFont {
       ]],
     ])
     return NSFont(descriptor: descriptor, size: pointSize) ?? self
+  }
+}
+
+private extension String {
+  var capitalizedFirst: String {
+    guard let first else { return self }
+    return String(first).localizedUppercase + dropFirst()
   }
 }

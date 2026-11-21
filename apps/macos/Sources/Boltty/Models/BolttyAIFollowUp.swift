@@ -29,25 +29,25 @@ enum BolttyAIFollowUp {
   static func queuedMessage(_ outcome: QueuedSend, agent: AgentId) -> String {
     switch outcome {
     case .queued:
-      return "Waiting for this turn to finish — this sends next."
+      return String(localized: "Waiting for this turn to finish — this sends next.")
     case .replaced:
-      return "Replaced the message that was waiting — this sends next."
+      return String(localized: "Replaced the message that was waiting — this sends next.")
     case .steered:
-      return "Added to the turn that's running."
+      return String(localized: "Added to the turn that's running.")
     }
   }
 
   static func busyMessage(agent: AgentId) -> String {
-    "There's a question above waiting for an answer — reply to it first"
+    String(localized: "There's a question above waiting for an answer — reply to it first")
   }
 
   static func statusLabel(reported: AgentReportedState?) -> String {
     switch reported {
-    case .blocked: "Waiting for you"
-    case .running: "Working"
-    case .finished: "Finished"
-    case .failed: "Failed"
-    case nil: "Running"
+    case .blocked: String(localized: "Waiting for you")
+    case .running: String(localized: "Working")
+    case .finished: String(localized: "Finished")
+    case .failed: String(localized: "Failed")
+    case nil: String(localized: "Running")
     }
   }
 }
@@ -113,7 +113,7 @@ struct BolttyAISessionPreview: Equatable, Sendable {
     let activities = inFlightActivities
     if let plan = activities.last(where: { $0.plan != nil })?.plan,
        let index = plan.firstIndex(where: { $0.status == .inProgress }) {
-      let count = "\(index + 1) of \(plan.count) · "
+      let count = String(localized: "\(index + 1) of \(plan.count)") + " · "
       let room = max(BolttyAISessionPreview.stepLabelLimit - count.count, 8)
       let text = plan[index].text
       return count + (text.count > room ? String(text.prefix(room - 1)) + "…" : text)

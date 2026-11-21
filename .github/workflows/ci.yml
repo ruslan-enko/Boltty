@@ -56,5 +56,5 @@ jobs:
           xcodebuild test -project Boltty.xcodeproj -scheme Boltty \
             -destination 'platform=macOS' \
             -derivedDataPath .derivedData \
-            -only-testing:BolttyTests \
+            -only-testing:BolttyTests -testLanguage en -testRegion US \
             CODE_SIGN_IDENTITY=- ENABLE_HARDENED_RUNTIME=NO

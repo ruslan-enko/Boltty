@@ -15,7 +15,7 @@ enum ModelMenu {
 
     if let gone = content.goneName {
       let item = NSMenuItem(title: gone, action: nil, keyEquivalent: "")
-      item.subtitle = "No longer offered"
+      item.subtitle = String(localized: "No longer offered")
       item.state = .on
       item.isEnabled = false
       menu.addItem(item)
@@ -23,9 +23,9 @@ enum ModelMenu {
     addModels(content, to: menu, choose: chooseModel)
 
     if !content.efforts.isEmpty {
-      menu.addItem(.sectionHeader(title: "Effort"))
+      menu.addItem(.sectionHeader(title: String(localized: "Effort")))
       if content.canResetEffort || content.effort == nil {
-        menu.addItem(item(title: "Default", isOn: content.effort == nil) { chooseEffort(nil) })
+        menu.addItem(item(title: String(localized: "Default"), isOn: content.effort == nil) { chooseEffort(nil) })
       }
       for effort in content.efforts {
         menu.addItem(item(title: effort.label, isOn: content.effort == effort.value) {
@@ -36,15 +36,15 @@ enum ModelMenu {
 
     if let on = content.planMode {
       if menu.numberOfItems > 0 { menu.addItem(.separator()) }
-      let plan = item(title: "Plan First", isOn: on) { setPlanMode(!on) }
-      plan.subtitle = "Changes nothing until you approve its plan"
+      let plan = item(title: String(localized: "Plan First"), isOn: on) { setPlanMode(!on) }
+      plan.subtitle = String(localized: "Changes nothing until you approve its plan")
       plan.setAccessibilityIdentifier("boltty.ask.planMode")
       menu.addItem(plan)
     }
 
     if let on = content.autoMode {
       if menu.numberOfItems > 0, content.planMode == nil { menu.addItem(.separator()) }
-      let auto = item(title: "Auto Mode", isOn: on) { setAutoMode(!on) }
+      let auto = item(title: String(localized: "Auto Mode"), isOn: on) { setAutoMode(!on) }
       let reach = AgentsSettingsPage.autoModeReach(for: content.agent)
       auto.subtitle = reach.prefix(1).uppercased() + reach.dropFirst()
       auto.setAccessibilityIdentifier("boltty.ask.autoMode")
@@ -64,7 +64,7 @@ enum ModelMenu {
     }
     func row(_ option: AgentModelOption) -> NSMenuItem {
       let row = item(title: option.selection.displayName, isOn: option == content.current) { choose(option) }
-      if option.isDefault { row.subtitle = "Default" }
+      if option.isDefault { row.subtitle = String(localized: "Default") }
       return row
     }
     guard providers.count > 1 else {

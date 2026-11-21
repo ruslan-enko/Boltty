@@ -24,7 +24,7 @@ enum OpenCodeMapper {
             ConversationAttachment(
               id: "\(dto.id)-file-\(index)",
               displayName: file.name ?? (file.uri.map { ($0 as NSString).lastPathComponent }
-                ?? "Attachment"),
+                ?? String(localized: "Attachment")),
               url: file.uri.flatMap(URL.init(string:)),
               mimeType: file.mime
             )
@@ -114,7 +114,7 @@ enum OpenCodeMapper {
       return .attachment(
         ConversationAttachment(
           id: dto.id,
-          displayName: dto.filename ?? "Attachment",
+          displayName: dto.filename ?? String(localized: "Attachment"),
           url: dto.url.flatMap(URL.init(string:)),
           mimeType: dto.mime
         )
@@ -227,8 +227,8 @@ enum OpenCodeMapper {
       return QuestionItem(
         key: field.key, header: header, question: question,
         choices: [
-          AgentChoice(value: "true", label: "Yes"),
-          AgentChoice(value: "false", label: "No"),
+          AgentChoice(value: "true", label: String(localized: "Yes")),
+          AgentChoice(value: "false", label: String(localized: "No")),
         ],
         allowsMultiple: false, allowsCustom: false
       )
@@ -236,7 +236,7 @@ enum OpenCodeMapper {
       return QuestionItem(
         key: field.key, header: header,
         question: [question, field.url].compactMap { $0 }.joined(separator: "\n\n"),
-        choices: [AgentChoice(value: "true", label: "Done")],
+        choices: [AgentChoice(value: "true", label: String(localized: "Done"))],
         allowsMultiple: false, allowsCustom: false
       )
     default:
@@ -329,7 +329,7 @@ enum OpenCodeMapper {
   static func efforts(from variants: JSONValue?) -> [AgentEffortOption] {
     (variants?.arrayValue ?? []).compactMap { variant in
       guard let id = variant["id"]?.stringValue, !id.isEmpty else { return nil }
-      return AgentEffortOption(value: id, label: id == "none" ? "None" : nil)
+      return AgentEffortOption(value: id, label: id == "none" ? String(localized: "None") : nil)
     }
   }
 
@@ -384,7 +384,7 @@ extension OpenCodeMapper {
     }
 
     if windows.isEmpty, data == nil || data == .null {
-      notes.append("Go and Console limits show once OpenCode is signed in to its Console.")
+      notes.append(String(localized: "Go and Console limits show once OpenCode is signed in to its Console."))
     }
     return AgentUsage(windows: windows, notes: notes)
   }

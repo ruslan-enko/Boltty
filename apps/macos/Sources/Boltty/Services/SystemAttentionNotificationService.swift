@@ -25,14 +25,14 @@ final class SystemAttentionNotificationService: NSObject, UNUserNotificationCent
   nonisolated private static var category: UNNotificationCategory {
     let reply = UNTextInputNotificationAction(
       identifier: replyActionID,
-      title: "Reply",
+      title: String(localized: "Reply"),
       options: [],
-      textInputButtonTitle: "Send",
-      textInputPlaceholder: "Reply to this chat"
+      textInputButtonTitle: String(localized: "Send"),
+      textInputPlaceholder: String(localized: "Reply to this chat")
     )
     let open = UNNotificationAction(
       identifier: openActionID,
-      title: "Open",
+      title: String(localized: "Open"),
       options: [.foreground]
     )
     return UNNotificationCategory(
