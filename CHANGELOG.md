@@ -2,6 +2,23 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.2
+
+**Chats**
+- Your question is a round white bubble; its time and Copy show under the
+  pointer, and it stands nearer its answer than the turn before.
+- What the agent is doing is said on the working line, by its face, and the
+  answer's words fade in one after another.
+- A file opens over the panel, so the panel no longer hides.
+- Models are shown by name ("Claude Opus 4.6"), not by their ids.
+- OpenCode: commands are named by their line; the ring shows the chat's
+  context on the free models.
+- The Copy button under an answer is no longer cut off.
+
+**Look**
+- A new app icon.
+- Settings' sidebar has new page icons, at System Settings' size.
+
 ## 0.12.1
 
 **Limits**
