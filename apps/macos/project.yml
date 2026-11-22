@@ -48,8 +48,7 @@ targets:
       - path: Resources/Sounds
         buildPhase: resources
       # Boltty's licence and the notices of what it ships from others, in
-      # every copy of the app — the GPL asks for the notice in a binary as much as
-      # in source.
+      # every copy of the app: the MIT License asks for its notice in every copy.
       - path: ../../LICENSE
         buildPhase: resources
       - path: ../../THIRD_PARTY_NOTICES.md
@@ -63,7 +62,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Boltty
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 Enko. GPL-3.0-or-later.
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 Enko. MIT License.
         # Hardened runtime gates the microphone and Apple Events behind these
         # two. Without them a notarized build drops dictation and Finder's
         # selection silently — see AGENTS.md, *Releasing*.

@@ -1936,7 +1936,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Boltty;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Boltty reads the files you have selected in Finder so you can talk about them without typing a path.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Enko. GPL-3.0-or-later.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Enko. MIT License.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Boltty uses the microphone to turn what you say into a prompt for Boltty AI or Ask Boltty.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Boltty uses Apple speech recognition to transcribe what you say to Boltty AI or Ask Boltty.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1984,7 +1984,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Boltty;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Boltty reads the files you have selected in Finder so you can talk about them without typing a path.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Enko. GPL-3.0-or-later.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Enko. MIT License.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Boltty uses the microphone to turn what you say into a prompt for Boltty AI or Ask Boltty.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Boltty uses Apple speech recognition to transcribe what you say to Boltty AI or Ask Boltty.";
 				LD_RUNPATH_SEARCH_PATHS = (

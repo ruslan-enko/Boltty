@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/ruslan-enko/boltty/releases/latest"><img src="https://img.shields.io/github/v/release/ruslan-enko/boltty?label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-black" alt="macOS 26+">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
 
 ---
@@ -171,6 +171,6 @@ What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-GPL-3.0-or-later, see [LICENSE](LICENSE). Use it, change it, share it. If you ship
-a changed version, its source has to be open under the same licence. Found a
-security problem? Please read [SECURITY.md](SECURITY.md) first.
+MIT, see [LICENSE](LICENSE). Use it, change it, share it, keeping the
+copyright notice. Found a security problem? Please read
+[SECURITY.md](SECURITY.md) first.

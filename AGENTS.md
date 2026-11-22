@@ -171,7 +171,7 @@ no adapter; never offer a toggle for them.
 | | |
 |---|---|
 | Stack | Swift, AppKit; SwiftUI only in `UI/Settings/`. No web view, no embedded terminal |
-| Platform | macOS 26.0+, hardened runtime in Release. Universal DMG on GitHub releases, GPL-3.0-or-later. Not the App Store (private API, no sandbox) |
+| Platform | macOS 26.0+, hardened runtime in Release. Universal DMG on GitHub releases, MIT. Not the App Store (private API, no sandbox) |
 | Return in the panel | Starts a conversation **in the background**: no window raised, no `NSApp.activate`. An empty Return starts nothing and plays the system alert |
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing: the agent with the most of its plan left (*Who takes a new chat*), or always one agent when Settings › Agents says so. Fixed once the conversation has a session. An agent the person chose that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon, which stands on a flat fill (`keyboardTargetFill`): a brighter ink alone was not seen |
