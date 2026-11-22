@@ -127,13 +127,13 @@ private struct SettingsSidebarRow: View {
   let action: () -> Void
   @State private var isHovered = false
 
-  private static let tile: CGFloat = 28
+  private static let tile: CGFloat = 24
   /// The same on every side, so the selection's corner is concentric with the tile's.
   private static let inset: CGFloat = 4
 
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 10) {
+      HStack(spacing: 8) {
         SettingsPageTile(page: page, side: Self.tile)
         Text(page.title)
           .fontWeight(isSelected ? .semibold : .regular)
@@ -187,6 +187,10 @@ struct SettingsPageTile: View {
     }
     .frame(width: side, height: side)
     .clipShape(RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous)
+        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+    )
     .accessibilityHidden(true)
   }
 }

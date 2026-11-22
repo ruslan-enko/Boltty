@@ -1,35 +1,42 @@
 {
   "color-space-for-untagged-svg-colors" : "display-p3",
-  "fill" : {
-    "automatic-gradient" : "display-p3:1.00000,0.78431,0.00000,1.00000"
-  },
+  "fill-specializations" : [
+    {
+      "value" : {
+        "solid" : "display-p3:1.00000,0.77255,0.00000,1.00000"
+      }
+    },
+    {
+      "appearance" : "light",
+      "value" : {
+        "solid" : "display-p3:0.96880,0.97553,1.00000,1.00000"
+      }
+    }
+  ],
   "groups" : [
     {
       "layers" : [
         {
-          "blend-mode" : "overlay",
-          "fill" : {
-            "linear-gradient" : [
-              "display-p3:1.00000,1.00000,1.00000,1.00000",
-              "display-p3:0.95000,0.95000,0.95000,0.90000"
-            ],
-            "orientation" : {
-              "start" : {
-                "x" : 0.5,
-                "y" : 1
-              },
-              "stop" : {
-                "x" : 0.5,
-                "y" : 0
+          "blend-mode" : "normal",
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "display-p3:1.00000,1.00000,1.00000,1.00000"
+              }
+            },
+            {
+              "appearance" : "light",
+              "value" : {
+                "solid" : "display-p3:1.00000,0.77255,0.00000,1.00000"
               }
             }
-          },
+          ],
           "hidden" : false,
           "image-name" : "213 2.png",
           "name" : "213 2",
           "opacity" : 1,
           "position" : {
-            "scale" : 0.5499999999999999,
+            "scale" : 0.54,
             "translation-in-points" : [
               0,
               0

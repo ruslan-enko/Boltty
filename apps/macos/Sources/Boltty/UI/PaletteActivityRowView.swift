@@ -167,7 +167,8 @@ final class PaletteActivityRowView: NSView {
     )
     glyph.contentTintColor = tint
 
-    headline.stringValue = value.headline
+    headline.stringValue = value.saysOnlyItsName && !value.isThought
+      ? AgentActivityGroup.sentence(for: value) : value.headline
     headline.toolTip = value.files.first ?? value.name
 
     let opens = Self.opens(value)
@@ -190,7 +191,7 @@ final class PaletteActivityRowView: NSView {
     detail.attributedStringValue = detail.isHidden
       ? NSAttributedString()
       : Self.detailText(value.detail ?? "")
-    setAccessibilityLabel(value.headline)
+    setAccessibilityLabel(headline.stringValue)
     setAccessibilityValue(expanded ? String(localized: "expanded") : String(localized: "collapsed"))
     needsLayout = true
   }

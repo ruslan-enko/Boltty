@@ -139,7 +139,6 @@ final class BolttyAIPreviewCard: NSView {
   private var turnHeaders: [String: PaletteTurnHeaderView] = [:]
   private var expandedTurns: Set<String> = []
   private var turnClock: Timer?
-  private var pinnedFloor: NSLayoutConstraint!
   private var reflowedWidth: CGFloat = 0
   private var isReflowSettleScheduled = false
   private var isFlying = false
@@ -168,6 +167,7 @@ final class BolttyAIPreviewCard: NSView {
   var workingLineForTesting: PaletteWorkingLineView { workingLine }
   private let streamingTail = PaletteStreamingTailView()
   private var streamedMessageID: String?
+  private var pendingHandOff: PaletteStreamingTailView.HandOff?
   var streamingTailTextForTesting: String? { streamingTail.isHidden ? nil : streamingTail.textForTesting }
   var streamingTailForTesting: PaletteStreamingTailView { streamingTail }
   private let statusLabel = NSTextField(wrappingLabelWithString: "")
@@ -299,6 +299,7 @@ final class BolttyAIPreviewCard: NSView {
       in: .leading
     )
     streamingTail.isHidden = true
+    streamingTail.onHandOff = { [weak self] in self?.pendingHandOff = $0 }
     recoverButton.target = self
     recoverButton.action = #selector(recoverPrompt)
     recoverButton.isHidden = true
@@ -354,7 +355,6 @@ final class BolttyAIPreviewCard: NSView {
     options.translatesAutoresizingMaskIntoConstraints = false
     options.isHidden = true
 
-    pinnedFloor = content.heightAnchor.constraint(greaterThanOrEqualToConstant: 0)
     let horizontal = AgentPaletteMetrics.previewContentHorizontalPadding
     let top = scroll.topAnchor.constraint(equalTo: topAnchor)
     let bottom = scroll.bottomAnchor.constraint(equalTo: bottomAnchor)
@@ -372,7 +372,6 @@ final class BolttyAIPreviewCard: NSView {
       content.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
       content.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
       content.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
-      pinnedFloor,
       questionSurface.widthAnchor.constraint(equalTo: content.widthAnchor),
       queuedRow.widthAnchor.constraint(equalTo: content.widthAnchor),
     ])
@@ -400,7 +399,6 @@ final class BolttyAIPreviewCard: NSView {
   override func layout() {
     super.layout()
     updateScrollEdge()
-    updatePinnedFloor()
     if pendingBottomScroll, !isFlying {
       pendingBottomScroll = false
       scrollToLatest()
@@ -423,9 +421,8 @@ final class BolttyAIPreviewCard: NSView {
     }
   }
 
-  /// A new width wraps the words again in a pass after this one. The floor read
-  /// now is the old one, and a chat made wider stood on the blank under its end,
-  /// so the floor and the place at the end are worked out once they have.
+  /// A new width wraps the words again in a pass after this one, so the place
+  /// at the end is worked out once it has.
   private func scheduleReflowSettle() {
     guard !isReflowSettleScheduled else { return }
     isReflowSettleScheduled = true
@@ -433,25 +430,8 @@ final class BolttyAIPreviewCard: NSView {
       guard let self else { return }
       self.isReflowSettleScheduled = false
       self.layoutSubtreeIfNeeded()
-      if self.updatePinnedFloor() { self.layoutSubtreeIfNeeded() }
       if self.followsBottom, !self.isFlying { self.scrollToLatest() }
     }
-  }
-
-  @discardableResult
-  private func updatePinnedFloor() -> Bool {
-    var floor: CGFloat = 0
-    if let preview = displayedPreview, !messages.isHidden,
-       let request = preview.visibleMessages.last(where: { $0.role == .user }),
-       let row = messageRows[request.id], row.superview != nil {
-      let top = content.convert(row.bounds, from: row).minY
-      let visible = scroll.contentView.bounds.height
-        - scroll.contentInsets.top - scroll.contentInsets.bottom
-      floor = max(0, top + visible)
-    }
-    guard abs(pinnedFloor.constant - floor) > 0.5 else { return false }
-    pinnedFloor.constant = floor
-    return true
   }
 
   func prepareFileFlights(_ origins: [String: FlightOrigin]) {
@@ -896,6 +876,7 @@ final class BolttyAIPreviewCard: NSView {
     workingLine.isHidden = !preview.isBusy || preview.question != nil
     guard !workingLine.isHidden else { return }
     workingLine.apply(preview)
+    workingLine.say(Self.liveWords(Self.liveWork(of: preview).work))
   }
 
   var permissionWellTextForTesting: String? { permissionWell.isHidden ? nil : permissionWell.stringForTesting }
@@ -931,8 +912,12 @@ final class BolttyAIPreviewCard: NSView {
   }
 
   private static func streamingTailSpacing(_ preview: BolttyAISessionPreview) -> CGFloat {
-    guard let last = preview.visibleMessages.last, last.role == .agent,
-          let segment = last.paletteSegments.last else { return AgentPaletteMetrics.previewMessageSpacing }
+    guard let last = preview.visibleMessages.last(where: PaletteChatMessageView.draws) else {
+      return AgentPaletteMetrics.previewMessageSpacing
+    }
+    guard last.role == .agent, let segment = last.paletteSegments.last else {
+      return PaletteChatMessageView.spacing(after: last, before: nil, offersCopy: false)
+    }
     switch segment {
     case .group: return AgentPaletteMetrics.previewWorkPillSpacingBelow
     case .text: return AgentPaletteMetrics.answerParagraphSpacing
@@ -1056,8 +1041,12 @@ final class BolttyAIPreviewCard: NSView {
     let bottomWhole = max(topWhole, height - edge - soft)
     let bottomGone = min(height, max(bottomWhole, height - edge + soft))
 
+    // Gone by the back disc's middle, as the list's rows are by its foot discs'.
+    let topGone = min(
+      topWhole, AgentPaletteMetrics.previewCloseInset + AgentPaletteMetrics.previewCloseDiameter / 2)
     let curve = ScrollEdgeBlur.smoothstep
-    var stops: [(y: CGFloat, alpha: CGFloat)] = curve.map { (topWhole * $0.t, $0.s) }
+    var stops: [(y: CGFloat, alpha: CGFloat)] = [(0, 0)]
+    stops += curve.map { (topGone + (topWhole - topGone) * $0.t, $0.s) }
     stops += curve.map { (bottomWhole + (bottomGone - bottomWhole) * $0.t, 1 - $0.s) }
     stops.append((height, 0))
 
@@ -1109,6 +1098,10 @@ final class BolttyAIPreviewCard: NSView {
       preview, changedConversation: changedConversation,
       revealsArrivals: previous != nil && !changedConversation,
       sentID: sent?.id)
+    if let handOff = pendingHandOff {
+      pendingHandOff = nil
+      if !changedConversation, let id = streamedMessageID { messageRows[id]?.continueArrival(handOff) }
+    }
     applyWorkingLine(preview)
     let body = preview.question == nil
       ? ""
@@ -1146,7 +1139,6 @@ final class BolttyAIPreviewCard: NSView {
     statusLabel.stringValue = status
     statusLabel.isHidden = status.isEmpty
     layoutSubtreeIfNeeded()
-    if updatePinnedFloor() { layoutSubtreeIfNeeded() }
     if isFlying {
       pendingBottomScroll = pendingBottomScroll || follow
     } else if !preview.visibleMessages.isEmpty || preview.question != nil {
@@ -1166,10 +1158,47 @@ final class BolttyAIPreviewCard: NSView {
   private func transcriptItems(for preview: BolttyAISessionPreview) -> [PaletteTranscriptItem] {
     if let body = Self.bodyMessage(for: preview) { return [.message(body, folded: false)] }
     return PaletteTranscript.items(
-      for: preview.visibleMessages.filter(PaletteChatMessageView.draws),
+      for: Self.liveWork(of: preview).messages,
       isBusy: preview.isBusy,
       expandedTurns: expandedTurns
     )
+  }
+
+  /// The work since the agent's last words, said on the working line.
+  static func liveWork(
+    of preview: BolttyAISessionPreview
+  ) -> (messages: [ConversationMessage], work: [AgentActivity]) {
+    var messages = preview.visibleMessages.filter(PaletteChatMessageView.draws)
+    guard preview.isBusy, preview.question == nil, preview.streamingTail == nil else { return (messages, []) }
+    var work: [AgentActivity] = []
+    while let last = messages.last, last.role == .agent {
+      let words = last.parts.lastIndex { part in
+        switch part {
+        case let .text(text): !text.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .attachment: true
+        case .reasoning, .activity: false
+        }
+      }
+      work = last.parts[(words.map { $0 + 1 } ?? 0)...].compactMap { part in
+        if case let .activity(activity) = part { return activity }
+        return nil
+      } + work
+      guard let words else {
+        messages.removeLast()
+        continue
+      }
+      var kept = last
+      kept.parts = Array(last.parts[...words])
+      if PaletteChatMessageView.draws(kept) { messages[messages.count - 1] = kept } else { messages.removeLast() }
+      break
+    }
+    return (messages, work)
+  }
+
+  static func liveWords(_ work: [AgentActivity]) -> String {
+    guard let doing = work.last(where: { ($0.state == .running || $0.state == .pending) && !$0.isThought })
+    else { return String(localized: "Thinking") }
+    return AgentActivityGroup.progress(for: doing)
   }
 
   private static func bodyMessage(for preview: BolttyAISessionPreview) -> ConversationMessage? {
@@ -1610,8 +1639,7 @@ final class BolttyAIPreviewCard: NSView {
 }
 
 final class PaletteChatMessageView: NSView {
-  private let bubble = NSView()
-  private let tail = MessageTailView()
+  private let bubble = MessageBubbleView()
   private let bodyStack = NSStackView()
   private var textViews: [NSTextField] = []
   private var answerViews: [PaletteAnswerTextView] = []
@@ -1758,7 +1786,6 @@ final class PaletteChatMessageView: NSView {
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
     bubble.translatesAutoresizingMaskIntoConstraints = false
-    bubble.wantsLayer = true
     bodyStack.translatesAutoresizingMaskIntoConstraints = false
     bodyStack.orientation = .vertical
     bodyStack.alignment = .leading
@@ -1771,20 +1798,9 @@ final class PaletteChatMessageView: NSView {
     fileStack.alignment = .leading
     fileStack.spacing = AgentPaletteMetrics.previewFileRowSpacing
     if !user { bubble.addSubview(fileStack) }
-    bubble.layer?.backgroundColor = user
-      ? AgentPaletteMetrics.previewUserBubbleFill.cgColor
-      : NSColor.clear.cgColor
-    if user {
-      bubble.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.previewUserBubbleCornerRadius)
-      bubble.layer?.maskedCorners = MessageTailView.roundedCorners
-      tail.fill = AgentPaletteMetrics.previewUserBubbleFill
-      addSubview(tail)
-      NSLayoutConstraint.activate([
-        tail.leadingAnchor.constraint(equalTo: bubble.trailingAnchor),
-        tail.bottomAnchor.constraint(equalTo: bubble.bottomAnchor),
-      ])
-    }
-    bubble.layer?.masksToBounds = user
+    if user { bubble.fill = AgentPaletteMetrics.previewUserBubbleFill }
+    // The answer's Copy stands past the bubble's edge, by its corner.
+    bubble.clipsToBounds = user
     let side = user ? AgentPaletteMetrics.previewUserBubbleHorizontalPadding : 0
     let top = user ? AgentPaletteMetrics.previewUserBubbleVerticalPadding : 0
     if user {
@@ -1800,7 +1816,7 @@ final class PaletteChatMessageView: NSView {
       bubbleBottom,
       userMaxWidth ?? bubble.widthAnchor.constraint(equalTo: widthAnchor),
       user
-        ? bubble.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -MessageTailView.size.width)
+        ? bubble.trailingAnchor.constraint(equalTo: trailingAnchor)
         : bubble.leadingAnchor.constraint(equalTo: leadingAnchor),
       bodyStack.leadingAnchor.constraint(equalTo: bubble.leadingAnchor, constant: side),
       bodyStack.trailingAnchor.constraint(equalTo: bubble.trailingAnchor, constant: -side),
@@ -1897,7 +1913,8 @@ final class PaletteChatMessageView: NSView {
     NSLayoutConstraint.activate([
       copyButton.widthAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewCopyButtonSize),
       copyButton.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewQuestionMetaRowHeight),
-      questionMeta.topAnchor.constraint(equalTo: bubble.bottomAnchor),
+      questionMeta.topAnchor.constraint(
+        equalTo: bubble.bottomAnchor, constant: AgentPaletteMetrics.previewQuestionMetaTopGap),
       questionMeta.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewQuestionMetaRowHeight),
       questionMeta.trailingAnchor.constraint(
         equalTo: bubble.trailingAnchor,
@@ -1927,7 +1944,7 @@ final class PaletteChatMessageView: NSView {
 
   static func questionMetaHeight(for message: ConversationMessage) -> CGFloat {
     message.role == .user && !message.copyableText.isEmpty
-      ? AgentPaletteMetrics.previewQuestionMetaRowHeight : 0
+      ? AgentPaletteMetrics.previewQuestionMetaTopGap + AgentPaletteMetrics.previewQuestionMetaRowHeight : 0
   }
 
   private static func statusImage(answered: Bool) -> NSImage? {
@@ -2230,6 +2247,24 @@ final class PaletteChatMessageView: NSView {
     }
   }
 
+  /// The words that left the streaming paragraph finish arriving here, where
+  /// the same words now stand at the end of the answer.
+  func continueArrival(_ handOff: PaletteStreamingTailView.HandOff) {
+    guard let view = answerViews.last, !handOff.words.isEmpty else { return }
+    let shown = view.string as NSString
+    let all = PaletteStreamingTailView.words(in: view.string)
+    // The delta that closed the paragraph may carry its last few words too.
+    for extra in 0...min(12, max(0, all.count - handOff.words.count)) {
+      let ranges = Array(all.suffix(handOff.words.count + extra))
+      guard zip(ranges, handOff.words).allSatisfy({ shown.substring(with: $0) == $1 }) else { continue }
+      let births = handOff.births + PaletteStreamingTailView.births(
+        for: extra, after: handOff.births.last, now: Motion.now)
+      view.arrival.light = handOff.light
+      view.arrival.add(zip(ranges, births).map { WordArrival.Word(range: $0, born: $1) })
+      return
+    }
+  }
+
   func revealArrival() {
     Self.reveal(bodyStack.arrangedSubviews + fileRows)
   }
@@ -2342,7 +2377,7 @@ final class PaletteChatMessageView: NSView {
   /// An asked region stands over the question as wide as the column, its edge
   /// with the bubble's.
   static func askedRegionWidth(in width: CGFloat) -> CGFloat {
-    max(0, width - MessageTailView.size.width)
+    max(0, width)
   }
 
   var fileCardsForFlight: [(path: String, name: String?, frame: NSRect)] {
@@ -2382,14 +2417,8 @@ final class PaletteChatMessageView: NSView {
       let offset = Self.userBubbleOffset(for: message, width: width)
       if abs(userBubbleTop.constant - offset) > 0.5 { userBubbleTop.constant = offset }
       bubble.isHidden = !drawsBubble
-      tail.isHidden = bubble.isHidden
     }
-    if message.role == .user {
-      placeSentCards()
-      bubble.layer?.applyPaletteCorner(
-        radius: AgentPaletteMetrics.previewUserBubbleCornerRadius
-      )
-    }
+    if message.role == .user { placeSentCards() }
   }
 
   static func textWidth(for message: ConversationMessage, in width: CGFloat) -> CGFloat {
@@ -2474,14 +2503,20 @@ final class PaletteChatMessageView: NSView {
   static func spacing(
     after message: ConversationMessage, before next: ConversationMessage?, offersCopy: Bool
   ) -> CGFloat {
-    if message.role == .agent, next?.role == .agent { return AgentPaletteMetrics.previewAgentMessageSpacing }
+    if message.role == .agent, let next, next.role == .agent {
+      if let last = units(of: message, folded: false).last, !last.isText,
+         let first = units(of: next, folded: false).first, !first.isText {
+        return AgentPaletteMetrics.previewActivityRowSpacing
+      }
+      return AgentPaletteMetrics.previewAgentMessageSpacing
+    }
     if message.role == .user {
-      return max(0, AgentPaletteMetrics.previewMessageSpacing - questionMetaHeight(for: message))
+      return max(0, AgentPaletteMetrics.previewQuestionAnswerSpacing - questionMetaHeight(for: message))
     }
-    guard message.role == .agent, offersCopy, !message.copyableText.isEmpty else {
-      return AgentPaletteMetrics.previewMessageSpacing
-    }
-    return max(0, AgentPaletteMetrics.previewMessageSpacing - AgentPaletteMetrics.previewCopyRowHeight)
+    let gap = next?.role == .user
+      ? AgentPaletteMetrics.previewTurnSpacing : AgentPaletteMetrics.previewMessageSpacing
+    guard message.role == .agent, offersCopy, !message.copyableText.isEmpty else { return gap }
+    return max(0, gap - AgentPaletteMetrics.previewCopyRowHeight)
   }
 
   static func fileRowsHeight(for message: ConversationMessage) -> CGFloat {
@@ -2493,93 +2528,121 @@ final class PaletteChatMessageView: NSView {
   }
 }
 
+/// The paragraph still growing at the end of a running reply, drawn as the
+/// answer draws it, so nothing moves when it closes and joins the reply.
 final class PaletteStreamingTailView: NSView {
-  private let field = NSTextField(wrappingLabelWithString: "")
+  struct HandOff {
+    let words: [String]
+    let births: [CFTimeInterval]
+    let light: [NSColor]
+  }
+
+  private let text = PaletteAnswerTextView()
+  private var arrival: WordArrival { text.arrival }
   private(set) var textForTesting = ""
-  private var text: String { textForTesting }
-  private var births: [(range: NSRange, born: CFTimeInterval)] = []
-  private var link: CADisplayLink?
+  private var raw: String { textForTesting }
   private var height: NSLayoutConstraint!
   private var agent: AgentId?
   private(set) var lightForTesting: [NSColor] = []
-  private var light: [NSColor] { lightForTesting }
+  /// The words of a paragraph that has closed, or of the last one when the
+  /// reply ends, for the reply's row to finish their arrival.
+  var onHandOff: ((HandOff) -> Void)?
 
   init() {
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
-    field.translatesAutoresizingMaskIntoConstraints = false
-    field.isSelectable = false
-    field.lineBreakMode = .byWordWrapping
-    addSubview(field)
+    text.isSelectable = false
+    addSubview(text)
     height = heightAnchor.constraint(equalToConstant: 0)
     NSLayoutConstraint.activate([
-      field.leadingAnchor.constraint(equalTo: leadingAnchor),
-      field.trailingAnchor.constraint(equalTo: trailingAnchor),
-      field.topAnchor.constraint(equalTo: topAnchor),
+      text.leadingAnchor.constraint(equalTo: leadingAnchor),
+      text.trailingAnchor.constraint(equalTo: trailingAnchor),
+      text.topAnchor.constraint(equalTo: topAnchor),
       height,
     ])
   }
   required init?(coder: NSCoder) { nil }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
   func apply(_ newText: String, column: CGFloat, agent: AgentId) {
     defer { fit(column) }
     if agent != self.agent {
       self.agent = agent
       lightForTesting = MascotLook.face(for: agent).palette.arrivalLight
-      if newText == text { render(at: Motion.now) }
+      arrival.light = lightForTesting
     }
-    guard newText != text else { return }
+    guard newText != raw else { return }
     let now = Motion.now
-    let previous = !text.isEmpty && newText.hasPrefix(text) ? births : []
+    let continues = !raw.isEmpty && newText.hasPrefix(raw)
+    if !continues { handOff() }
     textForTesting = newText
-    births = Self.words(in: newText).map { range in
-      (range, previous.first { $0.range.location == range.location }?.born ?? now)
-    }
-    render(at: now)
-    startClockIfNeeded()
+    let rendered = Self.rendered(newText)
+    text.attributedStringValue = rendered
+    let ranges = Self.words(in: rendered.string)
+    var births = continues ? Array(arrival.words.map(\.born).prefix(ranges.count)) : []
+    births += Self.births(for: ranges.count - births.count, after: births.last, now: now)
+    arrival.show(zip(ranges, births).map { WordArrival.Word(range: $0, born: $1) })
   }
 
   func clear() {
-    stopClock()
+    handOff()
+    arrival.finish()
     textForTesting = ""
-    births = []
-    field.attributedStringValue = NSAttributedString()
+    text.attributedStringValue = NSAttributedString()
+  }
+
+  private func handOff() {
+    let settling = arrival.words.filter { Motion.now - $0.born < AgentPaletteMetrics.previewStreamingWordSettle }
+    guard !settling.isEmpty else { return }
+    let shown = text.string as NSString
+    let words = arrival.words.filter { NSMaxRange($0.range) <= shown.length }
+    onHandOff?(HandOff(
+      words: words.map { shown.substring(with: $0.range) },
+      births: words.map(\.born),
+      light: lightForTesting))
+    arrival.finish()
   }
 
   func arriveForTesting(every interval: TimeInterval) {
     let now = Motion.now
-    let count = births.count
-    births = births.enumerated().map { index, word in
-      (word.range, now - Double(count - index) * interval)
-    }
-    render(at: now)
+    let count = arrival.words.count
+    arrival.show(arrival.words.enumerated().map { index, word in
+      WordArrival.Word(range: word.range, born: now - Double(count - index) * interval)
+    })
   }
 
-  func suspend() { stopClock() }
+  func suspend() { arrival.stop() }
+  func resume() { arrival.resume() }
+
+  static func rendered(_ text: String) -> NSAttributedString {
+    PaletteAnswerText.growing(text, color: PaletteInk.primary)
+  }
 
   static func height(of text: String, width: CGFloat) -> CGFloat {
-    PaletteChatMessageView.height(
-      of: PaletteAnswerText.streaming(text, color: PaletteInk.primary), width: width)
+    PaletteAnswerText.height(of: rendered(text), width: width)
   }
 
   private func fit(_ column: CGFloat) {
-    field.preferredMaxLayoutWidth = column
-    let measured = Self.height(of: text, width: column)
+    let measured = Self.height(of: raw, width: column)
+    text.fit(width: column)
     if abs(height.constant - measured) > 0.5 { height.constant = measured }
   }
 
-  func resume() {
-    guard !births.isEmpty else { return }
-    render(at: Motion.now)
-    startClockIfNeeded()
+  /// A reply comes in bursts; its words are let in one after another, never
+  /// more than `previewStreamingWordLag` behind what has come.
+  static func births(
+    for count: Int, after last: CFTimeInterval?, now: CFTimeInterval
+  ) -> [CFTimeInterval] {
+    guard count > 0 else { return [] }
+    let gap = AgentPaletteMetrics.previewStreamingWordGap
+    let start = max(now, last.map { $0 + gap } ?? now)
+    let room = max(gap, now + AgentPaletteMetrics.previewStreamingWordLag - start)
+    let step = min(gap, room / Double(count))
+    return (0..<count).map { start + step * Double($0) }
   }
 
-  override func viewDidMoveToWindow() {
-    super.viewDidMoveToWindow()
-    if window == nil { stopClock() } else { startClockIfNeeded() }
-  }
-
-  private static func words(in text: String) -> [NSRange] {
+  static func words(in text: String) -> [NSRange] {
     let ns = text as NSString
     var ranges: [NSRange] = []
     var start: Int?
@@ -2595,51 +2658,6 @@ final class PaletteStreamingTailView: NSView {
     return ranges
   }
 
-  private var isSettling: Bool {
-    let now = Motion.now
-    return births.contains { now - $0.born < AgentPaletteMetrics.previewStreamingWordSettle }
-  }
-
-  private func startClockIfNeeded() {
-    guard link == nil, window != nil, isSettling else { return }
-    let link = displayLink(target: self, selector: #selector(tick))
-    link.add(to: .main, forMode: .common)
-    self.link = link
-  }
-
-  private func stopClock() {
-    link?.invalidate()
-    link = nil
-  }
-
-  @objc private func tick() {
-    render(at: Motion.now)
-    if !isSettling { stopClock() }
-  }
-
-  private func render(at now: CFTimeInterval) {
-    let base = PaletteAnswerText.streaming(text, color: PaletteInk.primary)
-    guard !births.isEmpty else { field.attributedStringValue = base; return }
-    let styled = NSMutableAttributedString(attributedString: base)
-    let still = MotionPreferences.reduceMotion
-    var ink = PaletteInk.primary
-    effectiveAppearance.performAsCurrentDrawingAppearance {
-      ink = PaletteInk.primary.usingColorSpace(.sRGB) ?? PaletteInk.primary
-    }
-    for word in births {
-      let age = now - word.born
-      guard age < AgentPaletteMetrics.previewStreamingWordSettle,
-            NSMaxRange(word.range) <= styled.length else { continue }
-      let fade = Self.smoothstep(age / AgentPaletteMetrics.previewStreamingWordFade)
-      let colour = still
-        ? ink
-        : Self.light(at: age / AgentPaletteMetrics.previewStreamingWordSettle, through: light, ink: ink)
-      styled.addAttribute(
-        .foregroundColor, value: colour.withAlphaComponent(ink.alphaComponent * fade), range: word.range)
-    }
-    field.attributedStringValue = styled
-  }
-
   static func light(at progress: Double, through light: [NSColor], ink: NSColor) -> NSColor {
     let stops = light + [ink]
     guard stops.count >= 2 else { return ink }
@@ -2649,11 +2667,111 @@ final class PaletteStreamingTailView: NSView {
     return MascotPalette.mix(stops[index], stops[index + 1], local)
   }
 
-  private static func smoothstep(_ x: Double) -> CGFloat {
+  static func smoothstep(_ x: Double) -> CGFloat {
     let t = CGFloat(min(1, max(0, x)))
     return t * t * (3 - 2 * t)
   }
+}
 
+/// Words arriving: each fades in from its birth and passes through the agent's
+/// light to its own ink. Drawn as the layout manager's temporary colour, so the
+/// text is set once per change, not once a frame.
+@MainActor
+final class WordArrival: NSObject {
+  struct Word {
+    var range: NSRange
+    var born: CFTimeInterval
+  }
+
+  private weak var text: NSTextView?
+  private(set) var words: [Word] = []
+  var light: [NSColor] = []
+  private var link: CADisplayLink?
+
+  init(text: NSTextView) {
+    self.text = text
+  }
+
+  func show(_ words: [Word]) {
+    self.words = words
+    render(at: Motion.now)
+    resume()
+  }
+
+  /// Adds words without letting go of those still arriving elsewhere in the text.
+  func add(_ more: [Word]) {
+    let now = Motion.now
+    let kept = words.filter { word in
+      now - word.born < AgentPaletteMetrics.previewStreamingWordSettle
+        && !more.contains { NSIntersectionRange($0.range, word.range).length > 0 }
+    }
+    show(kept + more)
+  }
+
+  func resume() {
+    guard link == nil, let text, text.window != nil, isSettling else { return }
+    let link = text.displayLink(target: self, selector: #selector(tick))
+    link.add(to: .main, forMode: .common)
+    self.link = link
+  }
+
+  func stop() {
+    link?.invalidate()
+    link = nil
+  }
+
+  /// Setting the text drops temporary attributes; drawn again at once.
+  func refresh() {
+    if !words.isEmpty { render(at: Motion.now) }
+  }
+
+  func finish() {
+    stop()
+    words = []
+    clearInk()
+  }
+
+  private var isSettling: Bool {
+    let now = Motion.now
+    return words.contains { now - $0.born < AgentPaletteMetrics.previewStreamingWordSettle }
+  }
+
+  @objc private func tick() {
+    guard text?.window != nil else { return stop() }
+    render(at: Motion.now)
+    if !isSettling { finish() }
+  }
+
+  private func clearInk() {
+    guard let text, let layout = text.layoutManager, let storage = text.textStorage else { return }
+    layout.removeTemporaryAttribute(
+      .foregroundColor, forCharacterRange: NSRange(location: 0, length: storage.length))
+  }
+
+  private func render(at now: CFTimeInterval) {
+    guard let text, let layout = text.layoutManager, let storage = text.textStorage else { return }
+    let length = storage.length
+    let first = words.map(\.range.location).min() ?? length
+    layout.removeTemporaryAttribute(
+      .foregroundColor, forCharacterRange: NSRange(location: first, length: length - first))
+    let settle = AgentPaletteMetrics.previewStreamingWordSettle
+    let still = MotionPreferences.reduceMotion
+    text.effectiveAppearance.performAsCurrentDrawingAppearance {
+      for word in words where NSMaxRange(word.range) <= length {
+        let age = now - word.born
+        guard age < settle else { continue }
+        let own = storage.attribute(.foregroundColor, at: word.range.location, effectiveRange: nil)
+          as? NSColor ?? PaletteInk.primary
+        let ink = own.usingColorSpace(.sRGB) ?? own
+        let fade = PaletteStreamingTailView.smoothstep(age / AgentPaletteMetrics.previewStreamingWordFade)
+        let colour = still || light.isEmpty
+          ? ink : PaletteStreamingTailView.light(at: age / settle, through: light, ink: ink)
+        layout.addTemporaryAttribute(
+          .foregroundColor, value: colour.withAlphaComponent(ink.alphaComponent * fade),
+          forCharacterRange: word.range)
+      }
+    }
+  }
 }
 
 final class PaletteTurnHeaderView: NSView {
@@ -2784,8 +2902,11 @@ final class PaletteWorkingLineView: NSView {
       faceBox.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.workingLineFaceSize),
       label.leadingAnchor.constraint(
         equalTo: faceBox.trailingAnchor, constant: AgentPaletteMetrics.workingLineFaceGap),
+      label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
       label.centerYAnchor.constraint(equalTo: centerYAnchor),
     ])
+    label.lineBreakMode = .byTruncatingTail
+    label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     setAccessibilityElement(true)
     setAccessibilityRole(.staticText)
     setAccessibilityLabel(label.stringValue)
@@ -2813,6 +2934,14 @@ final class PaletteWorkingLineView: NSView {
       needsLayout = true
     }
     motionChanged()
+  }
+
+  func say(_ words: String) {
+    guard label.stringValue != words else { return }
+    label.stringValue = words
+    setAccessibilityLabel(words)
+    maskedSize = .zero
+    needsLayout = true
   }
 
   func suspend() {
@@ -2937,51 +3066,50 @@ final class PaletteWorkingLineView: NSView {
   }
 }
 
-/// The tail a sent message's bubble has at its foot, as Messages draws it: the
-/// bubble's side runs straight down and flares out into a point on its baseline.
-/// It stands beside the bubble, whose corner on that side is square.
-final class MessageTailView: NSView {
-  static let size = CGSize(width: 6, height: 11)
-  static let roundedCorners: CACornerMask = [
-    .layerMinXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner,
-  ]
+/// A sent message's bubble: a plain round shape, a capsule while it is one line.
+final class MessageBubbleView: NSView {
+  var fill: NSColor? { didSet { applyFill() } }
+  var radius: CGFloat = AgentPaletteMetrics.previewUserBubbleCornerRadius {
+    didSet { reshape() }
+  }
 
-  var fill: NSColor = .white { didSet { needsDisplay = true } }
-  private let scale: CGFloat
-
-  /// `scale` draws it for a bubble larger than the transcript's (the first-run
-  /// show's); the scaled tail is placed by frame.
-  init(scale: CGFloat = 1) {
-    self.scale = scale
-    super.init(frame: CGRect(
-      origin: .zero, size: CGSize(width: Self.size.width * scale, height: Self.size.height * scale)))
-    guard scale == 1 else { return }
-    translatesAutoresizingMaskIntoConstraints = false
-    NSLayoutConstraint.activate([
-      widthAnchor.constraint(equalToConstant: Self.size.width),
-      heightAnchor.constraint(equalToConstant: Self.size.height),
-    ])
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    wantsLayer = true
+    layer?.cornerCurve = .continuous
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-  override var isFlipped: Bool { false }
-  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+  override var wantsUpdateLayer: Bool { true }
+  override func updateLayer() { applyFill() }
 
-  override func draw(_ dirtyRect: NSRect) {
-    let reach = Self.size.width * scale
-    let radius = Self.size.height * scale
-    let centre = CGPoint(x: radius, y: radius)
-    let tipHeight = radius - (radius * radius - (radius - reach) * (radius - reach)).squareRoot()
-    let path = NSBezierPath()
-    path.move(to: .zero)
-    path.line(to: CGPoint(x: reach, y: 0))
-    path.line(to: CGPoint(x: reach, y: tipHeight))
-    let start = atan2(tipHeight - radius, reach - radius) * 180 / .pi
-    path.appendArc(withCenter: centre, radius: radius, startAngle: start, endAngle: 180, clockwise: true)
-    path.close()
-    fill.setFill()
-    path.fill()
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    guard !clipsToBounds, !isHidden else { return super.hitTest(point) }
+    let local = convert(point, from: superview)
+    for child in subviews.reversed() where !child.isHidden && child.frame.contains(local) {
+      if let hit = child.hitTest(local) { return hit }
+    }
+    return super.hitTest(point)
+  }
+
+  override func setFrameSize(_ newSize: NSSize) {
+    super.setFrameSize(newSize)
+    reshape()
+  }
+
+  private func applyFill() {
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    layer?.backgroundColor = fill?.cgColor
+    CATransaction.commit()
+  }
+
+  private func reshape() {
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    layer?.cornerRadius = min(radius, bounds.height / 2, bounds.width / 2)
+    CATransaction.commit()
   }
 }

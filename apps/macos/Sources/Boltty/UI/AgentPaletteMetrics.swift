@@ -572,8 +572,17 @@ enum AgentPaletteMetrics {
   static let previewUserBubbleInk = NSColor.black
   static let previewUserBubbleHorizontalPadding: CGFloat = 13
   static let previewUserBubbleVerticalPadding: CGFloat = 5.5
-  static let previewUserBubbleCornerRadius: CGFloat = 14
+  static let previewUserBubbleCornerRadius: CGFloat = 18
   static let previewMessageSpacing: CGFloat = 25.5
+  static let previewQuestionAnswerSpacing: CGFloat = 28
+
+  static let lightboxDim: CGFloat = 0.7
+  static let lightboxMargin: CGFloat = 48
+  static let lightboxCorner: CGFloat = 12
+  static let lightboxDuration: TimeInterval = 0.32
+  static let lightboxMaxPixels = 6000
+  static let lightboxDocumentSize = CGSize(width: 820, height: 1000)
+  static let previewTurnSpacing: CGFloat = 40
   static let previewAgentMessageSpacing: CGFloat = answerParagraphSpacing
 
   static let previewWorkPillHeight: CGFloat = 28
@@ -643,15 +652,18 @@ enum AgentPaletteMetrics {
 
   static let previewCopyButtonSize: CGFloat = 30
   static let previewCopyRowHeight: CGFloat = previewCopyButtonSize + 6
-  static let previewQuestionMetaRowHeight: CGFloat = 28
+  static let previewQuestionMetaRowHeight: CGFloat = 22
+  static let previewQuestionMetaTopGap: CGFloat = 6
   static let previewQuestionMetaSpacing: CGFloat = 6
 
   static let previewScrollEdgeSoftness: CGFloat = previewContentVerticalPadding / 2
   static let scrollEdgeBlurRadius: CGFloat = 8
   static var historyTabOverlap: CGFloat { onPixelGrid(historyTabHeight * 0.45) }
 
-  static let previewStreamingWordFade: TimeInterval = Motion.standard
+  static let previewStreamingWordFade: TimeInterval = 0.32
   static let previewStreamingWordSettle: TimeInterval = Motion.standard * 6
+  static let previewStreamingWordGap: TimeInterval = 0.03
+  static let previewStreamingWordLag: TimeInterval = 0.35
 
   static let previewRevealDuration: TimeInterval = Motion.standard
   static let previewRevealStagger: TimeInterval = 0.06

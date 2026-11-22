@@ -76,11 +76,11 @@ enum OpenCodeMapper {
         AgentActivity(
           id: partID,
           name: content.name ?? "tool",
-          summary: nil,
+          summary: summary(forTool: content.name, input: state?.input),
           state: activityState(state?.status, errorType: state?.error?.type),
           detail: (isInterruption(state?.error?.type) ? nil : state?.error?.message)
             ?? (outputs?.isEmpty == false ? outputs : nil),
-          files: state?.outputPaths ?? [],
+          files: Array(Set((state?.outputPaths ?? []) + inputPaths(forTool: content.name, input: state?.input))).sorted(),
           startedAt: date(content.time?.created),
           endedAt: content.time?.completed.map { Date(timeIntervalSince1970: $0 / 1000) }
         )
@@ -151,6 +151,23 @@ enum OpenCodeMapper {
     }
     return Array(Set(paths)).sorted()
   }
+
+  /// The record keeps no title for a call (2.3.2), so a command is named by its line.
+  static func summary(forTool name: String?, input: JSONValue?) -> String? {
+    guard let name, ["shell", "bash"].contains(name),
+          let command = input?["command"]?.stringValue else { return nil }
+    let line = command.split(whereSeparator: \.isNewline).first
+      .map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+    return line.isEmpty ? nil : line
+  }
+
+  /// Only OpenCode's own file tools: a path another tool names is not a file it made.
+  private static func inputPaths(forTool name: String?, input: JSONValue?) -> [String] {
+    guard let name, fileTools.contains(name) else { return [] }
+    return ["filePath", "path", "file"].compactMap { input?[$0]?.stringValue }
+  }
+
+  private static let fileTools: Set<String> = ["read", "write", "edit", "multiedit", "patch", "apply_patch"]
 
   /// A tool cut off with its turn did not fail: the turn's own "Stopped" says it,
   /// so its line ("Tool execution interrupted") is not shown as an error.

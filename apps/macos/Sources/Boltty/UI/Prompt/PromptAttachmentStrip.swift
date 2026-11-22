@@ -17,7 +17,7 @@ final class PromptAttachmentStrip: NSView {
   }
 
   var onRemove: ((UUID) -> Void)?
-  var onOpen: ((PromptAttachment) -> Void)?
+  var onOpen: ((PromptAttachment, NSView) -> Void)?
 
   private let scroll = AttachmentStripScrollView()
   private let document = StripDocumentView()
@@ -87,7 +87,10 @@ final class PromptAttachmentStrip: NSView {
     for attachment in next where !knew.contains(attachment.id) {
       let card = PromptAttachmentCard(attachment: attachment, corner: placement.corner)
       card.onRemove = { [weak self] in self?.onRemove?(attachment.id) }
-      card.onOpen = { [weak self] in self?.onOpen?(attachment) }
+      card.onOpen = { [weak self, weak card] in
+        guard let card else { return }
+        self?.onOpen?(attachment, card)
+      }
       kept.append(card)
       arriving.append(card)
       document.addSubview(card)

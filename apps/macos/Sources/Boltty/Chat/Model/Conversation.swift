@@ -137,7 +137,52 @@ struct ModelSelection: Codable, Equatable, Hashable, Sendable {
   init(providerID: String, modelID: String, displayName: String? = nil) {
     self.providerID = providerID
     self.modelID = modelID
-    self.displayName = displayName ?? modelID
+    self.displayName = displayName.flatMap { $0 == modelID ? nil : $0 } ?? Self.readable(modelID)
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.init(
+      providerID: try container.decode(String.self, forKey: .providerID),
+      modelID: try container.decode(String.self, forKey: .modelID),
+      displayName: try container.decodeIfPresent(String.self, forKey: .displayName))
+  }
+
+  private static let spelled = [
+    "gpt": "GPT", "glm": "GLM", "deepseek": "DeepSeek", "oss": "OSS", "xai": "xAI", "ai": "AI", "vl": "VL",
+  ]
+
+  /// A CLI that lists only ids gets them read as a name: `claude-opus-4-6-thinking`
+  /// is "Claude Opus 4.6 Thinking". An id already written as a name stays.
+  static func readable(_ id: String) -> String {
+    let last = id.split(separator: "/").last.map(String.init) ?? id
+    guard !last.isEmpty, !last.contains(" "), last == last.lowercased() else { return id }
+    var tokens = last.split(whereSeparator: { $0 == "-" || $0 == "_" }).map(String.init)
+    if tokens.count >= 3 {
+      let date = tokens.suffix(3).map(\.count)
+      if date == [4, 2, 2], tokens.suffix(3).allSatisfy({ $0.allSatisfy(\.isNumber) }) {
+        tokens.removeLast(3)
+      }
+    }
+    var words: [String] = []
+    for token in tokens {
+      if token.count == 8, token.allSatisfy(\.isNumber) { continue }
+      if token.count <= 3, token.first?.isLetter == true, token.dropFirst().allSatisfy(\.isNumber) {
+        words.append(token.first == "o" ? token : token.uppercased())
+        continue
+      }
+      if let previous = words.last, Self.isVersionPart(previous), Self.isVersionPart(token),
+         token.count <= 2, previous.count <= 3 {
+        words[words.count - 1] = previous + "." + token
+        continue
+      }
+      words.append(spelled[token] ?? (token.first.map { $0.uppercased() + token.dropFirst() } ?? token))
+    }
+    return words.joined(separator: " ")
+  }
+
+  private static func isVersionPart(_ token: String) -> Bool {
+    !token.isEmpty && token.allSatisfy { $0.isNumber || $0 == "." }
   }
 }
 

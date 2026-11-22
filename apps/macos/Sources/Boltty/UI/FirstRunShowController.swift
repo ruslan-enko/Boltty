@@ -1451,21 +1451,17 @@ final class ShowChatCard {
     paper.sizeToFit()
     let pad = CGSize(width: space.v(Self.bubblePadding.width), height: space.v(Self.bubblePadding.height))
     let box = CGSize(width: ink.frame.width + pad.width * 2, height: ink.frame.height + pad.height * 2)
-    let bubble = NSView(frame: CGRect(origin: .zero, size: box))
-    bubble.wantsLayer = true
-    bubble.layer?.backgroundColor = CGColor(gray: 1, alpha: 0)
-    bubble.layer?.cornerRadius = box.height / 2
-    bubble.layer?.cornerCurve = .continuous
-    bubble.layer?.maskedCorners = MessageTailView.roundedCorners
-    let tail = MessageTailView(scale: size / AgentPaletteMetrics.typeChat)
-    tail.alphaValue = 0
+    let bubble = MessageBubbleView()
+    bubble.frame = CGRect(origin: .zero, size: box)
+    bubble.radius = box.height / 2
+    bubble.fill = NSColor.white.withAlphaComponent(0)
     for label in [ink, paper] {
       label.frame.origin = CGPoint(x: pad.width, y: pad.height)
       bubble.addSubview(label)
     }
     ink.alphaValue = 0
     let inset = space.v(Self.inset)
-    let end = CGRect(x: frame.maxX - inset - tail.frame.width - box.width, y: frame.maxY - inset - box.height,
+    let end = CGRect(x: frame.maxX - inset - box.width, y: frame.maxY - inset - box.height,
                      width: box.width, height: box.height)
     bubbleBottom = end.minY
     let grown = startSize / size
@@ -1489,13 +1485,9 @@ final class ShowChatCard {
         bubble.frame = place
         bubble.autoresizingMask = [.minXMargin, .minYMargin]
         inside.addSubview(bubble)
-        tail.frame.origin = CGPoint(x: place.maxX, y: place.minY)
-        tail.autoresizingMask = [.minXMargin, .minYMargin]
-        inside.addSubview(tail)
       }
       self?.clock.tween(0.2, curve: Motion.standardCurve) { t in
-        bubble.layer?.backgroundColor = CGColor(gray: 1, alpha: t)
-        tail.alphaValue = t
+        bubble.fill = NSColor.white.withAlphaComponent(t)
         paper.alphaValue = 1 - t
         ink.alphaValue = t
       }

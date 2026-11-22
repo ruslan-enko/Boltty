@@ -276,6 +276,11 @@ final class PlanUsageRingView: PaletteIconButton {
   }
   var onCompact: (() -> Void)?
   var percentForTesting: Int { PlanUsageRingReading.percent(usage) }
+  /// The plan's, else, for an agent whose usage came with no plan, the chat's context.
+  var showsContext: Bool { usage?.windows.isEmpty == true && context != nil }
+  var shownPercent: Int {
+    showsContext ? min(100, max(0, context?.percent ?? 0)) : PlanUsageRingReading.percent(usage)
+  }
   var tintForTesting: NSColor { AgentPaletteMetrics.planRingInk }
   var titleForTesting: String { usage.flatMap { UsagePillText.title(for: $0) } ?? String(localized: "Plan usage unavailable") }
   var detailForTesting: String { toolTip ?? "" }
@@ -322,6 +327,7 @@ final class PlanUsageRingView: PaletteIconButton {
     self.context = context
     self.canCompact = canCompact
     self.cacheIsCold = cacheIsCold
+    needsDisplay = true
     syncWidth()
     refreshHelp()
   }
@@ -330,7 +336,8 @@ final class PlanUsageRingView: PaletteIconButton {
       + (cacheIsCold && offersCompactForTesting
         ? String(localized: "\n\nAway for over an hour, this chat's cache has expired: compacting first makes the next message cheaper.")
         : "")
-    setAccessibilityValue(titleForTesting)
+    setAccessibilityValue(showsContext
+      ? String(localized: "Chat context: \(shownPercent)% used") : titleForTesting)
     if PaletteHelpPresenter.shared.isPinned(for: self) { showLimits() }
   }
   @objc private func showLimits() {
@@ -357,7 +364,7 @@ final class PlanUsageRingView: PaletteIconButton {
     track.lineWidth = stroke
     AgentPaletteMetrics.planRingTrack.setStroke()
     track.stroke()
-    let percent = percentForTesting
+    let percent = shownPercent
     guard percent > 0 else { return }
     let top: CGFloat = isFlipped ? 270 : 90
     let sweep = CGFloat(percent) * 3.6

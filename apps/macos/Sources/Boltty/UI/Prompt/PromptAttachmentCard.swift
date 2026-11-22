@@ -358,7 +358,7 @@ final class PromptAttachmentCard: NSView {
 
   private func open() {
     if let onOpen { return onOpen() }
-    if let sentURL { FileQuickLookStore.shared.show(url: sentURL) }
+    if let sentURL { FileQuickLookStore.shared.show(url: sentURL, from: self) }
   }
 
   override func menu(for event: NSEvent) -> NSMenu? {

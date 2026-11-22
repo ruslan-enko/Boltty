@@ -1145,6 +1145,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
             AgentActivity(
               id: callID,
               name: data["tool"]?.stringValue ?? data["name"]?.stringValue ?? "",
+              summary: OpenCodeMapper.summary(
+                forTool: data["tool"]?.stringValue ?? data["name"]?.stringValue, input: data["input"]),
               state: .running,
               files: filePaths(fromToolInput: data["input"]),
               startedAt: date()

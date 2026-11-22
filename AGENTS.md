@@ -590,6 +590,10 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
 - Auto Mode is Boltty answering `edit` asks, and `bash` asks whose every resource
   `AutoModeCommands` passes, "once"; a file outside the folder asks
   `external_directory` first.
+- The record keeps no title for a tool call (2.3.2): a `shell` call is named by its
+  command line, and a file tool's (`read`, `write`, `edit`, `multiedit`, `patch`)
+  file comes from its input (`filePath`, `path`, `file`). Another tool's path is
+  not taken, so it gets no file row.
 - **The free tier refuses a session whose id is not in OpenCode's own
   spelling** (`FreeTierError`, measured 2.0.12–2.0.27; on 2.2.5 it is a 429
   `provider.free-limit`, "Free usage limit reached", which reads as a spent
@@ -712,10 +716,14 @@ The loop that must keep working:
   the glass's fill while there is nothing to send, a stop square while
   it stops). The ring is thin, from twelve o'clock
   clockwise, in the group's inks; from 80% used its arc is the accent on glass
-  (`planRingWarningPercent`): in the ink, nearly full read as empty. The first screen keeps ring, folder and microphone together on the
+  (`planRingWarningPercent`): in the ink, nearly full read as empty. An agent
+  that reports no plan (OpenCode's free models) has the chat's context drawn
+  there instead (`shownPercent`): an empty ring read as broken. The first screen keeps ring, folder and microphone together on the
   right; the folder's slot moves between the two stacks
   (`placeDirectorySlot`).
-- **The model chip says what the chat runs on, in words** ("Opus · High"), in the
+- **The model chip says what the chat runs on, in words** ("Opus · High"; a
+  CLI that lists only ids gets them read as a name, `ModelSelection.readable`:
+  `claude-opus-4-6-thinking` is "Claude Opus 4.6 Thinking"), in the
   group's inks; a long name gives way in its middle. Its menu (`ModelMenu`) is the
   models (under their providers when there are several, in submenus past 14), the
   chosen model's efforts, and Auto Mode with what it lets through for this agent.
@@ -810,13 +818,16 @@ The loop that must keep working:
 
 ### The transcript
 
-- The question is a white bubble with black text and a tail at its foot, as
-  Messages draws one (`MessageTailView`: the side runs straight down and flares
-  into a point on the baseline; that corner is square, the tip stands where the
-  bubble's edge did); the answer is prose on the
+- The question is a white bubble with black text, round and with no tail
+  (`MessageBubbleView`: a capsule while it is one line, else the layer's
+  continuous corner of 18; a Messages tail was tried and removed); the answer is prose on the
   glass, Codex's proportions (headings 1.5/1.25/1.125×, line 24 on 15). A
   turn's last answer always has Copy and, where it can be read, the speaker
-  under it; a question's row shows under the pointer.
+  under it; a question's row (status, time, Copy) shows under the pointer, 6
+  below the bubble, in room kept for it.
+  A question stands nearer its answer (`previewQuestionAnswerSpacing`) than
+  the turn before it (`previewTurnSpacing`), so each pair reads as one. An open
+  chat's empty composer says "Reply…"; the first screen's says what it can do.
 - **Selecting never takes the keyboard from the composer.** A press in an
   answer gives focus back as it ends, the words staying selected
   (`returnFocusAfterReadingPress`), and ⌘C copies them while the composer has
@@ -830,13 +841,26 @@ The loop that must keep working:
   row's output sits in a filled well. Messages with no words of their own join the next
   (`PaletteTranscript.joined`), so every agent's turn draws alike. A tool
   id with no description of its own is read as words (`run_command` → "Run
-  command"); Antigravity's calls fall back to their command and file.
+  command"), and a bare id of a known kind as that kind ("execute" → "Ran 1
+  command", `saysOnlyItsName`); Antigravity's calls fall back to their command
+  and file, OpenCode's `shell` to its command line (its record keeps no title).
+  Work rows of two messages in a row stand as close as rows of one.
 - A finished turn with work gets "Worked for …" and folds to its last prose. A
   running turn, the first one included, shows the transcript and under it a
-  working line with the agent's face.
-- Streaming prose: finished paragraphs are rendered as markdown; the paragraph
-  still growing is plain text with words fading in through the agent's light
-  (`MascotPalette.arrivalLight`). A face of one hue (Ember, Mist, Lilac)
+  working line with the agent's face. **The work since the agent's last words
+  is said there**, not as a line of its own above it ("Reading config.ts",
+  "Running npm test", else "Thinking"; `liveWork`, `liveWords`), and joins the
+  transcript as its folded line once the agent speaks again or the turn ends:
+  a line of work over a "Thinking" line read as two statuses.
+- Streaming prose: the paragraph still growing (`PaletteStreamingTailView`) is
+  drawn as the answer draws it, markdown and all, in the same text view, so it
+  does not move or change when it closes and joins the reply. Its words fade in
+  through the agent's light (`MascotPalette.arrivalLight`) one after another,
+  however the deltas bunch them (`previewStreamingWordGap`, never more than
+  `previewStreamingWordLag` behind), and the words still arriving when their
+  paragraph closes finish in the reply's row (`continueArrival`). The light is
+  the layout manager's temporary colour (`WordArrival`): the text is set once
+  per change, not once a frame. A face of one hue (Ember, Mist, Lilac)
   has its light fanned 80° round that hue: lifted as it was, it was one
   pastel and read as no light at all.
   A single newline in an answer is a line, as in Messages: plain markdown read
@@ -844,7 +868,19 @@ The loop that must keep working:
   (`PaletteAnswerText.keepingLineBreaks`).
 - Only files a turn **made** get file rows (`PaletteFileRowView`, with their
   actions in reach); reads and searches leave activity rows only. Pictures get
-  Quick Look thumbnails that resolve out of a blur.
+  Quick Look thumbnails that resolve out of a blur. **A file opens over the
+  panel itself** (`PaletteLightboxView`, through `FileQuickLookStore.show(url:from:)`
+  and `LightboxHosting`), never in Quick Look's panel, which took the key and the
+  panel hid. A picture grows out of what was pressed over a dimmed panel; anything
+  else (PDF, video, text) is Quick Look's own view (`QLPreviewView`) there, at its
+  page's or frame's shape, fading in, with its controls in reach. A press outside
+  it, Escape, Space or Return puts it back. It is a window of its own over the
+  panel's, which keeps the key: drawn inside the panel, the chat's content stood
+  over it and the controls under it still lit and opened. Every key is its while
+  it is up, and nothing else opens over it. A file that is gone plays the system
+  alert. The whole screen opens out of the region it holds (`crop`, the layer's
+  `contentsRect`) and closes back into it: grown from the region's frame, it
+  stood squeezed. A file pressed outside the panel still goes to Quick Look's panel.
 - What the person sent stands over their words as the cards it came as, in rows
   from the right (`AgentPaletteMetrics.sentCardFrames`; `Conversation.sentFiles`,
   `SentFile.lift`), stored on the conversation because providers re-file requests
@@ -880,12 +916,14 @@ The loop that must keep working:
   wide-line renderer, which can hand Metal a zero-instance draw). A Debug build
   stopped on a Metal assertion is paused, not hung — `sample <pid>` it.
 - Sizes are arithmetic: the same function measures and draws.
+- **The chat rests on its last words**, as Messages does, never on blank under
+  them: a floor that let the question stand at the top of the view, during a
+  turn or after it, was tried and removed.
 - **The card stands in the panel at its width before it measures a chat**
-  (`enterAddressing`). Measured with no width, the words wrapped narrow, the floor
-  stayed that tall, and the first long chat since launch opened on the blank under
-  its end. A new width wraps the words in a pass after the card's own, so the
-  floor and the place at the end are worked out again once it has
-  (`scheduleReflowSettle`).
+  (`enterAddressing`). Measured with no width, the words wrapped narrow and the
+  first long chat since launch opened on the blank under its end. A new width
+  wraps the words in a pass after the card's own, so the place at the end is
+  worked out again once it has (`scheduleReflowSettle`).
 
 ### The permission card
 
@@ -1319,7 +1357,7 @@ so in the orb ("No sound is reaching the microphone…",
   the segments are drawn here, since a `List`'s selection and a segmented
   `Picker` take the person's accent. The sidebar wears the page's grey: the
   system's sidebar glass took the wallpaper's tint beside it. A row (`SettingsSidebarRow`) leads with its page's
-  tile (`SettingsPageTile`): a square picture, the maintainer's own, in
+  tile (`SettingsPageTile`, 24 pt, as System Settings' are): a square picture, the maintainer's own, in
   `Resources/Icons/Settings/<page raw value>.png`, given its continuous corner
   (26 % of its side) in code so all six agree; the chosen row a
   quiet grey fill with semibold words: a yellow fill there shouted over the
@@ -1609,7 +1647,8 @@ so in the orb ("No sound is reaching the microphone…",
   `PaletteCorner.edgeOverlap` (2) under it. The pool's hole cut exactly at the
   edge left a light hairline round the foot where neither covered the desktop.
 - The transcript dissolves under floating controls (a gradient mask, and in the
-  history a private `variableBlur` filter); the scroll indicator bends round the
+  history a private `variableBlur` filter); in a chat it is gone by the back
+  disc's middle, as the list's rows are by its foot discs'; the scroll indicator bends round the
   shell's corners (`PaletteCornerScrollIndicator`).
 - **Type**: five sizes in `AgentPaletteMetrics` — 18, 15 (`typeSecondary` and
   `typeChat`), 13, 11; the first screen's 20 is the exception (key hints
@@ -1636,7 +1675,8 @@ so in the orb ("No sound is reaching the microphone…",
   a flat fill; nothing is finished with a stroke or a hairline round it. The
   glass's own edge is the system's. Left on purpose: table rules, a quote's bar,
   the work thread, the screen selection's edge, the Ask pointer's white edge
-  (it stands on any screen), and `RingedChoice`'s ring.
+  (it stands on any screen), `RingedChoice`'s ring, and the 1-point inner edge
+  of white at 10% on Settings' sidebar tiles (`SettingsPageTile`).
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
   concentric (`outer = inner + inset`), in Settings too: a stage that fills its

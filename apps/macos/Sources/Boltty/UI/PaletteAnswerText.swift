@@ -35,6 +35,16 @@ enum PaletteAnswerText {
   private static let setCacheLimit = 512
   nonisolated(unsafe) private static var setCache: [SetKey: NSAttributedString] = [:]
 
+  /// Kept out of the caches: a paragraph still streaming is new text on every delta.
+  static func growing(_ markdown: String, color: NSColor) -> NSAttributedString {
+    if let last = lastGrowing, last.text == markdown, last.color == color { return last.set }
+    let set = NSMutableAttributedString(attributedString: setUncached(blocks: [.prose(markdown)], color: color))
+    lastGrowing = (markdown, color, set)
+    return set
+  }
+
+  nonisolated(unsafe) private static var lastGrowing: (text: String, color: NSColor, set: NSAttributedString)?
+
   private static func setUncached(
     blocks: [PaletteMessageBlock], color: NSColor
   ) -> NSAttributedString {
@@ -640,10 +650,17 @@ final class PaletteAnswerTextView: NSTextView {
         ? NSAttributedString(attributedString: newValue) : newValue
       guard let textStorage, !textStorage.isEqual(to: newValue) else { return }
       textStorage.setAttributedString(newValue)
+      arrival.refresh()
       needsDisplay = true
     }
   }
   private var shown: NSAttributedString?
+  private(set) lazy var arrival = WordArrival(text: self)
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    if window == nil { arrival.stop() } else { arrival.resume() }
+  }
 
   private var isResizing = false
 

@@ -33,13 +33,14 @@ a status line, an error.
 
 ## The icon
 
-A soft hexagon of light on a honey field. It is defined in
-`apps/macos/AppIcon.icon` (Icon Composer) and rendered to `.github/icon.png`.
+A soft hexagon in Boltty's yellow, flat and solid. It is defined in
+`apps/macos/AppIcon.icon` (Icon Composer) and rendered to `.github/icon.png`
+(the light one). Both are glass of 20% translucency with a neutral shadow.
 
 | | Field | Hexagon |
 |---|---|---|
-| **Light** | gradient, `#FFEB01` to `#FFA500` | white, fading downward into the field |
-| **Dark** | the system's dark icon field | white at the top, fading to `#FFB815` |
+| **Light** | a pale cool white, `display-p3(0.969, 0.976, 1)` | yellow, `display-p3(1, 0.773, 0)` |
+| **Dark and the rest** | yellow, `display-p3(1, 0.773, 0)` | white |
 
 - The icon is the logo. There is no separate wordmark: where the name stands beside
   it, it is set in SF Pro Rounded.

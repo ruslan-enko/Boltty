@@ -203,4 +203,21 @@ final class ModelSwitchingTests: XCTestCase {
     XCTAssertEqual(failure.name, "provider.no-route")
     XCTAssertTrue(AgentFailureReport.saysModelIsGone(failure))
   }
+
+  func testModelIdsAreReadAsNames() {
+    XCTAssertEqual(ModelSelection.readable("claude-opus-4-6-thinking"), "Claude Opus 4.6 Thinking")
+    XCTAssertEqual(ModelSelection.readable("claude-3-5-haiku-20241022"), "Claude 3.5 Haiku")
+    XCTAssertEqual(ModelSelection.readable("gpt-5-2025-08-07"), "GPT 5")
+    XCTAssertEqual(ModelSelection.readable("openai/gpt-oss-120b"), "GPT OSS 120b")
+    XCTAssertEqual(ModelSelection.readable("Claude Sonnet 4.5"), "Claude Sonnet 4.5")
+    XCTAssertEqual(ModelSelection.readable("moonshotai/kimi-k2"), "Kimi K2")
+    XCTAssertEqual(ModelSelection.readable("deepseek-r1"), "DeepSeek R1")
+    XCTAssertEqual(ModelSelection.readable("o3-mini"), "o3 Mini")
+  }
+
+  func testStoredModelWithItsIdAsNameIsReadAsAName() throws {
+    let stored = Data(#"{"providerID":"anthropic","modelID":"claude-opus-4-6","displayName":"claude-opus-4-6"}"#.utf8)
+    let model = try JSONDecoder().decode(ModelSelection.self, from: stored)
+    XCTAssertEqual(model.displayName, "Claude Opus 4.6")
+  }
 }

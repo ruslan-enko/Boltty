@@ -83,9 +83,11 @@ enum AgentActivityGroup {
   }
 
   static func sentence(for activity: AgentActivity) -> String {
+    let kind = kind(of: activity)
+    if activity.saysOnlyItsName, kind != .other { return kind.counted(1) }
     let headline = activity.headline
     guard let first = headline.first, first.isLowercase else { return headline }
-    guard kind(of: activity) == .command else { return first.uppercased() + headline.dropFirst() }
+    guard kind == .command else { return first.uppercased() + headline.dropFirst() }
     return headline.contains(where: { $0 == " " || $0 == "/" }) ? String(localized: "Ran \(headline)") : headline
   }
 
@@ -109,6 +111,9 @@ enum AgentActivityGroup {
 
 extension AgentActivity {
   var isThought: Bool { name == AgentActivityGroup.thoughtName }
+
+  /// Nothing but the tool's id to go on ("execute", "shell").
+  var saysOnlyItsName: Bool { (summary ?? "").isEmpty && files.isEmpty }
 }
 
 struct PaletteTurnHeader: Equatable {

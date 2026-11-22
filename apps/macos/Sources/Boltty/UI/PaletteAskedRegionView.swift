@@ -202,15 +202,19 @@ final class PaletteAskedRegionView: NSView {
   override func mouseUp(with event: NSEvent) {
     guard event.clickCount == 1,
           picture.frame.contains(convert(event.locationInWindow, from: nil)) else { return }
-    FileQuickLookStore.shared.show(url: URL(fileURLWithPath: regionPath))
+    FileQuickLookStore.shared.show(url: URL(fileURLWithPath: regionPath), from: picture)
   }
 
   @objc private func showWholeScreen() {
-    FileQuickLookStore.shared.show(url: URL(fileURLWithPath: region.screenPath))
+    PaletteHelpPresenter.shared.dismiss()
+    let area = region.areaRect
+    FileQuickLookStore.shared.show(
+      url: URL(fileURLWithPath: region.screenPath), from: picture,
+      crop: CGRect(x: area.minX / 1000, y: area.minY / 1000, width: area.width / 1000, height: area.height / 1000))
   }
 
   @objc private func lookAtRegion() {
-    FileQuickLookStore.shared.show(url: URL(fileURLWithPath: regionPath))
+    FileQuickLookStore.shared.show(url: URL(fileURLWithPath: regionPath), from: picture)
   }
 
   @objc private func showInFinder() {

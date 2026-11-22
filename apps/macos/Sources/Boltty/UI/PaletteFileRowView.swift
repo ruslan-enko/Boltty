@@ -153,7 +153,7 @@ final class PaletteFileRowView: NSView {
       useButton.heightAnchor.constraint(equalToConstant: AgentPaletteMetrics.previewFileButtonSize),
     ])
 
-    onPreview = { FileQuickLookStore.shared.show(url: $0) }
+    onPreview = { [weak self] in FileQuickLookStore.shared.show(url: $0, from: self?.thumbnail ?? self) }
     onReveal = { NSWorkspace.shared.activateFileViewerSelecting([$0]) }
 
     if isMissing {
@@ -335,8 +335,20 @@ final class FileQuickLookStore: NSObject, QLPreviewPanelDataSource {
   nonisolated(unsafe) static let shared = FileQuickLookStore()
   nonisolated(unsafe) private var url: URL?
 
+  /// Over the panel it was pressed in (`LightboxHosting`), else Quick Look's panel.
   @MainActor
-  func show(url: URL) {
+  func show(url: URL, from source: NSView? = nil, crop: CGRect? = nil) {
+    if let source, let host = source.window?.contentView as? LightboxHosting {
+      guard FileManager.default.fileExists(atPath: url.path) else { return NSSound.beep() }
+      let content: PaletteLightboxView.Content
+      if UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) == true,
+         let image = PaletteLightboxView.picture(at: url) {
+        content = .picture(image)
+      } else {
+        content = .document(url)
+      }
+      if host.showLightbox(content, named: url.lastPathComponent, from: source, crop: crop) { return }
+    }
     self.url = url
     guard let panel = QLPreviewPanel.shared() else { return }
     panel.dataSource = self
@@ -398,5 +410,224 @@ final class FileThumbnails {
         }
       }
     }
+  }
+}
+
+@MainActor
+protocol LightboxHosting: AnyObject {
+  /// `crop` is the part of the picture `source` shows, top left at 0 0 in
+  /// fractions of it: the picture opens out of that part and closes back into it.
+  func showLightbox(
+    _ content: PaletteLightboxView.Content, named name: String, from source: NSView, crop: CGRect?
+  ) -> Bool
+}
+
+/// A window of its own over the panel's, so nothing under it is lit, hovered or pressed.
+final class PaletteLightboxView: NSView {
+  enum Content {
+    case picture(CGImage)
+    case document(URL)
+  }
+
+  private let backdrop = NSView()
+  private var document: QLPreviewView?
+  private let picture = NSView()
+  private weak var source: NSView?
+  private let room: CGRect
+  private let natural: CGSize
+  private let crop: CGRect
+  private(set) var isClosing = false
+  var onClosed: (() -> Void)?
+
+  /// Read as the file means it to stand (EXIF orientation), no larger than a
+  /// screen needs.
+  static func picture(at url: URL) -> CGImage? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceShouldCacheImmediately: true,
+      kCGImageSourceThumbnailMaxPixelSize: AgentPaletteMetrics.lightboxMaxPixels,
+    ]
+    return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+  }
+
+  init(content: Content, named name: String, source: NSView, room: CGRect, scale: CGFloat, crop: CGRect? = nil) {
+    self.source = source
+    let whole = CGRect(x: 0, y: 0, width: 1, height: 1)
+    let part = crop?.intersection(whole) ?? whole
+    self.crop = part.width > 0 && part.height > 0
+      ? CGRect(x: part.minX, y: 1 - part.maxY, width: part.width, height: part.height) : whole
+    self.room = room
+    switch content {
+    case let .picture(image):
+      natural = CGSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale)
+    case let .document(url):
+      natural = Self.documentSize(of: url)
+    }
+    super.init(frame: .zero)
+    wantsLayer = true
+    backdrop.wantsLayer = true
+    backdrop.layer?.backgroundColor = NSColor.black.withAlphaComponent(AgentPaletteMetrics.lightboxDim).cgColor
+    backdrop.alphaValue = 0
+    backdrop.autoresizingMask = [.width, .height]
+    addSubview(backdrop)
+    picture.wantsLayer = true
+    switch content {
+    case let .picture(image):
+      picture.layer?.contents = image
+      picture.layer?.contentsGravity = .resizeAspect
+    case let .document(url):
+      picture.layer?.backgroundColor = NSColor.black.cgColor
+      if let preview = QLPreviewView(frame: .zero, style: .normal) {
+        preview.autoresizingMask = [.width, .height]
+        preview.autostarts = true
+        preview.previewItem = url as NSURL
+        picture.addSubview(preview)
+        document = preview
+      }
+    }
+    picture.layer?.cornerCurve = .continuous
+    picture.layer?.cornerRadius = AgentPaletteMetrics.lightboxCorner
+    picture.layer?.masksToBounds = true
+    addSubview(picture)
+    setAccessibilityElement(true)
+    setAccessibilityRole(document == nil ? .image : .group)
+    setAccessibilityLabel(name)
+    setAccessibilityIdentifier("boltty.ask.chat.lightbox")
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    if !isClosing, document != nil, picture.frame.contains(convert(point, from: superview)) {
+      return super.hitTest(point) ?? self
+    }
+    return self
+  }
+
+  /// A document's own size where it has one (a PDF's page, a video's frame),
+  /// else a page's shape.
+  private static func documentSize(of url: URL) -> CGSize {
+    let type = UTType(filenameExtension: url.pathExtension)
+    if type?.conforms(to: .pdf) == true,
+       let page = PDFDocument(url: url)?.page(at: 0) {
+      let box = page.bounds(for: .cropBox)
+      let turned = page.rotation % 180 != 0
+      return turned ? CGSize(width: box.height, height: box.width) : box.size
+    }
+    if type?.conforms(to: .movie) == true || type?.conforms(to: .video) == true {
+      if let item = MDItemCreateWithURL(nil, url as CFURL),
+         let width = MDItemCopyAttribute(item, kMDItemPixelWidth) as? Double,
+         let height = MDItemCopyAttribute(item, kMDItemPixelHeight) as? Double,
+         width > 0, height > 0 {
+        return CGSize(width: width, height: height)
+      }
+      return CGSize(width: 16, height: 9)
+    }
+    return AgentPaletteMetrics.lightboxDocumentSize
+  }
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+  override func mouseDown(with event: NSEvent) {
+    if event.clickCount < 2 { close() }
+  }
+  override func rightMouseDown(with event: NSEvent) { close() }
+  override func otherMouseDown(with event: NSEvent) { close() }
+  override func scrollWheel(with event: NSEvent) {}
+  override func accessibilityPerformPress() -> Bool {
+    close()
+    return true
+  }
+
+  override func resetCursorRects() {
+    addCursorRect(bounds, cursor: .arrow)
+  }
+
+  private var fitted: CGRect {
+    let space = room.insetBy(dx: AgentPaletteMetrics.lightboxMargin, dy: AgentPaletteMetrics.lightboxMargin)
+    guard natural.width > 0, natural.height > 0, space.width > 0, space.height > 0 else { return space }
+    let largest = min(space.width / natural.width, space.height / natural.height)
+    let s = document == nil ? min(1, largest) : largest
+    let size = CGSize(width: max(1, (natural.width * s).rounded()), height: max(1, (natural.height * s).rounded()))
+    return CGRect(x: (space.midX - size.width / 2).rounded(), y: (space.midY - size.height / 2).rounded(),
+                  width: size.width, height: size.height)
+  }
+
+  /// Where the picture stands in what was pressed, as long as that is still seen.
+  private var sourceFrame: CGRect? {
+    guard let source, let from = source.window, from.isVisible, let to = window,
+          !source.isHiddenOrHasHiddenAncestor, !source.visibleRect.isEmpty else { return nil }
+    let screen = from.convertToScreen(source.convert(source.bounds, to: nil))
+    let frame = convert(to.convertFromScreen(screen), from: nil)
+    let shown = CGSize(width: natural.width * crop.width, height: natural.height * crop.height)
+    guard frame.width > 0, frame.height > 0, shown.width > 0, shown.height > 0 else { return nil }
+    let s = min(frame.width / shown.width, frame.height / shown.height)
+    let size = CGSize(width: shown.width * s, height: shown.height * s)
+    return CGRect(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2,
+                  width: size.width, height: size.height)
+  }
+
+  func open() {
+    backdrop.frame = bounds
+    let target = fitted
+    let start = zooms ? sourceFrame : nil
+    picture.frame = start ?? target
+    picture.alphaValue = start == nil ? 0 : 1
+    if start != nil { uncrop(from: crop, to: Self.whole, duration: AgentPaletteMetrics.lightboxDuration) }
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = Motion.scaled(AgentPaletteMetrics.lightboxDuration)
+      context.timingFunction = Motion.emphasizedCurve
+      context.allowsImplicitAnimation = true
+      backdrop.animator().alphaValue = 1
+      picture.animator().alphaValue = 1
+      picture.animator().frame = target
+    }
+  }
+
+  func close(animated: Bool = true) {
+    guard !isClosing else {
+      if !animated { finish() }
+      return
+    }
+    isClosing = true
+    guard animated else { return finish() }
+    let back = zooms ? sourceFrame : nil
+    if back != nil { uncrop(from: Self.whole, to: crop, duration: AgentPaletteMetrics.lightboxDuration * 0.8) }
+    NSAnimationContext.runAnimationGroup { context in
+      context.duration = Motion.scaled(AgentPaletteMetrics.lightboxDuration * 0.8)
+      context.timingFunction = Motion.emphasizedCurve
+      context.allowsImplicitAnimation = true
+      backdrop.animator().alphaValue = 0
+      if let back { picture.animator().frame = back } else { picture.animator().alphaValue = 0 }
+    } completionHandler: { [weak self] in
+      MainActor.assumeIsolated { self?.finish() }
+    }
+  }
+
+  private static let whole = CGRect(x: 0, y: 0, width: 1, height: 1)
+
+  /// A picture grows out of what was pressed; a document, whose thumbnail is
+  /// another shape and whose view redraws as it is resized, fades in where it stands.
+  private var zooms: Bool { document == nil && !MotionPreferences.reduceMotion }
+
+  private func uncrop(from: CGRect, to: CGRect, duration: TimeInterval) {
+    guard let layer = picture.layer, from != to else { return }
+    let move = CABasicAnimation(keyPath: "contentsRect")
+    move.fromValue = NSValue(rect: from)
+    move.toValue = NSValue(rect: to)
+    move.duration = Motion.scaled(duration)
+    move.timingFunction = Motion.emphasizedCurve
+    layer.contentsRect = to
+    layer.add(move, forKey: "contentsRect")
+  }
+
+  private var isFinished = false
+
+  private func finish() {
+    guard !isFinished else { return }
+    isFinished = true
+    document?.close()
+    onClosed?()
   }
 }

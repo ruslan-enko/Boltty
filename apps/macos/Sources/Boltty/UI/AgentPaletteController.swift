@@ -701,6 +701,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     opensForRegion = false
     leftChat = panelView.addressedSessionID.map { (sessionID: $0, at: Date()) }
     saveCurrentDraft()
+    panelView.closeLightbox(animated: false)
     panelView.suspendChatAnimations()
     conversations?.setAddressedConversation(nil)
     stopObservingPreview()

@@ -1,7 +1,8 @@
 import AppKit
+import Carbon.HIToolbox
 import CoreImage
 
-final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
+final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting {
   var helpRoom: NSRect? { convert(surface.bounds, from: surface) }
 
   var onSubmit: ((PromptDraft) -> Void)?
@@ -1026,7 +1027,67 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     window?.makeFirstResponder(field)
   }
 
+  private var lightbox: PaletteLightboxView?
+
+  func showLightbox(
+    _ content: PaletteLightboxView.Content, named name: String, from source: NSView, crop: CGRect?
+  ) -> Bool {
+    if lightbox != nil { return true }
+    guard let parent = window, parent.isVisible else { return false }
+    let panel = PassivePanel(
+      contentRect: parent.frame, styleMask: [.borderless, .nonactivatingPanel],
+      backing: .buffered, defer: false)
+    panel.isOpaque = false
+    panel.backgroundColor = .clear
+    panel.hasShadow = false
+    panel.level = parent.level
+    panel.collectionBehavior = parent.collectionBehavior
+    panel.animationBehavior = .none
+    panel.hidesOnDeactivate = false
+    panel.isReleasedWhenClosed = false
+    panel.appearance = parent.appearance
+    Motion.applyTimeScale(to: panel)
+    var room = CGRect(origin: .zero, size: parent.frame.size)
+    room.size.height -= topReserve
+    let view = PaletteLightboxView(
+      content: content, named: name, source: source, room: room,
+      scale: parent.backingScaleFactor, crop: crop)
+    panel.contentView = view
+    view.onClosed = { [weak self, weak view, weak parent, weak panel] in
+      if let panel {
+        parent?.removeChildWindow(panel)
+        panel.orderOut(nil)
+      }
+      if let self, self.lightbox === view { self.lightbox = nil }
+    }
+    PaletteHelpPresenter.shared.dismiss()
+    parent.addChildWindow(panel, ordered: .above)
+    lightbox = view
+    view.open()
+    return true
+  }
+
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    takeKeyForLightbox(event) || super.performKeyEquivalent(with: event)
+  }
+
+  /// While a picture is open every key is its: those that close it do, the rest
+  /// reach nothing under it.
+  private func takeKeyForLightbox(_ event: NSEvent) -> Bool {
+    guard let lightbox else { return false }
+    if event.type == .keyDown,
+       [kVK_Escape, kVK_Space, kVK_Return, kVK_ANSI_KeypadEnter].contains(Int(event.keyCode)) {
+      lightbox.close()
+    }
+    return true
+  }
+
+  func closeLightbox(animated: Bool = true) {
+    lightbox?.close(animated: animated)
+  }
+
   func routeKeyFromReadingText(_ event: NSEvent) -> Bool {
+    if takeKeyForLightbox(event) { return true }
     let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
     if modifiers == [.command], event.latinCharactersIgnoringModifiers == "c" {
       guard window?.firstResponder === field, field.selectedRange().length == 0,
@@ -1185,7 +1246,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
 
   @objc private func scrollTranscriptToLatest() { previewCard.glideToLatest() }
 
-  static let chatComposerPlaceholder = String(localized: "Describe a task or ask")
+  static let chatComposerPlaceholder = String(localized: "Reply…", comment: "The open chat's empty composer")
 
   static func composerPlaceholder(for preview: BolttyAISessionPreview) -> String {
     if preview.question?.kind == .plan {
@@ -2578,9 +2639,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       self.field.removeAttachment(id: id)
       _ = self.focusField()
     }
-    attachmentStrip.onOpen = { attachment in
+    attachmentStrip.onOpen = { attachment, card in
       guard let url = try? PromptAttachmentStore.shared.fileURL(for: attachment) else { return }
-      FileQuickLookStore.shared.show(url: url)
+      FileQuickLookStore.shared.show(url: url, from: card)
     }
     registerForDraggedTypes([.fileURL, .png, .tiff, .string])
     let agentClick = NSClickGestureRecognizer(
