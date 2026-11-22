@@ -860,7 +860,36 @@ struct BolttyAISurfaceSizes: Equatable, Sendable {
   }
 }
 
+/// A shell's corner as its glass draws it. Read once off the glass host and
+/// handed whole to every layer on the shell's edge; none works it out again
+/// from its own bounds.
+struct PaletteCorner: Equatable {
+  var radius: CGFloat
+  var curve: CALayerCornerCurve
+
+  /// Concentric, `inset` inside the edge.
+  func inset(by inset: CGFloat) -> PaletteCorner {
+    PaletteCorner(radius: max(0, radius - inset), curve: curve)
+  }
+
+  /// A path has no continuous curve, so it is only for what is blurred (a
+  /// shadow) or stands at least `edgeOverlap` inside the edge (a hole).
+  func path(in rect: CGRect) -> CGPath {
+    let r = min(radius, rect.width / 2, rect.height / 2)
+    return CGPath(roundedRect: rect, cornerWidth: r, cornerHeight: r, transform: nil)
+  }
+
+  /// What lies under the glass's edge (a shadow's hole) runs this far under it,
+  /// so two antialiased edges never share a pixel and leave the desktop showing.
+  static let edgeOverlap: CGFloat = 2
+}
+
 extension CALayer {
+  func applyCorner(_ corner: PaletteCorner) {
+    cornerRadius = corner.radius
+    cornerCurve = corner.curve
+  }
+
   func applyPaletteCorner(radius: CGFloat) {
     cornerRadius = radius
     cornerCurve = AgentPaletteMetrics.cornerCurve(

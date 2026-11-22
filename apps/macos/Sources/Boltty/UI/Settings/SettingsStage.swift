@@ -288,8 +288,7 @@ final class BackdropSwatchView: NSView {
     host.layoutSubtreeIfNeeded()
 
     sky.frame = shell
-    sky.layer?.applyPaletteCorner(radius: host.renderedCornerRadius)
-    sky.layer?.cornerCurve = host.renderedCornerCurve
+    sky.layer?.applyCorner(host.renderedCorner)
     let scale = window?.backingScaleFactor ?? 2
     if shown?.backdrop != backdrop || shown?.palette != palette.id || shown?.size != shell.size {
       shown = (backdrop, palette.id, shell.size)

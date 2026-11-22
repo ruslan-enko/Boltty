@@ -332,6 +332,9 @@ struct PaletteSurfaceStyle: Equatable {
 }
 
 final class PaletteGlassHost: NSView {
+  var renderedCorner: PaletteCorner {
+    PaletteCorner(radius: effectiveCornerRadius, curve: effectiveCornerCurve)
+  }
   var cornerRadius: CGFloat {
     didSet {
       applyCornerRadius()
@@ -903,22 +906,17 @@ final class PaletteGlassHost: NSView {
     layer.shadowOpacity = Self.floatingShadowOpacity
     layer.shadowRadius = Self.floatingShadowRadius
     layer.shadowOffset = Self.floatingShadowOffset
-    layer.shadowPath = CGPath(
-      roundedRect: bounds,
-      cornerWidth: effectiveCornerRadius,
-      cornerHeight: effectiveCornerRadius,
-      transform: nil
-    )
+    layer.shadowPath = renderedCorner.path(in: bounds)
     shadowCornerRadiusForTesting = effectiveCornerRadius
   }
 
-  static let floatingShadowOpacity: Float = 0.40
-  static let floatingShadowRadius: CGFloat = 13.4
-  static let floatingShadowOffset = CGSize(width: 0, height: -1.3)
+  static let floatingShadowOpacity: Float = 0.68
+  static let floatingShadowRadius: CGFloat = 16
+  static let floatingShadowOffset = CGSize(width: 0, height: -4)
 
-  static let ambientShadowOpacity: Float = 0.35
-  static let ambientShadowRadius: CGFloat = 30
-  static let ambientShadowOffset = CGSize(width: 0, height: -14)
+  static let ambientShadowOpacity: Float = 0.78
+  static let ambientShadowRadius: CGFloat = 50
+  static let ambientShadowOffset = CGSize(width: 0, height: -26)
 
   nonisolated static let edgeHighlightAlpha: CGFloat = 0.20
 

@@ -177,6 +177,7 @@ final class BolttyAIPreviewCard: NSView {
   private var followsBottom = true
   private var pendingBottomScroll = false
   private let scroll = NSScrollView()
+  private var lastScrollOriginY: CGFloat = 0
   var transcriptScroll: NSScrollView { scroll }
   private let content = FlippedStackView()
   private var displayedPreview: BolttyAISessionPreview?
@@ -695,7 +696,17 @@ final class BolttyAIPreviewCard: NSView {
   @objc private func clipViewDidScroll() {
     guard !isGliding else { return }
     let distanceFromFloor = content.bounds.height - scroll.documentVisibleRect.maxY
-    followsBottom = distanceFromFloor <= AgentPaletteMetrics.transcriptFollowSlack
+    let originY = scroll.contentView.bounds.origin.y
+    let rose = originY < lastScrollOriginY - 0.5
+    lastScrollOriginY = originY
+    // Any move up lets go of the end: within the slack, the next streamed word
+    // pulled a slow scroll back down every time.
+    if rose, distanceFromFloor > 1 {
+      followsBottom = false
+      pendingBottomScroll = false
+    } else if distanceFromFloor <= AgentPaletteMetrics.transcriptFollowSlack {
+      followsBottom = true
+    }
     let hasTranscript = displayedPreview?.messages.isEmpty == false
     offersLatest =
       hasTranscript && distanceFromFloor > AgentPaletteMetrics.transcriptLatestPillSlack

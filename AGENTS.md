@@ -1574,6 +1574,17 @@ so in the orb ("No sound is reaching the microphone…",
   A glass host's corner must be set again whenever its size changes.
 - The shell casts two shadows: a tight contact one and a broad pool behind the
   glass with the shell's shape cut out.
+- **One corner for the shell's edge** (`PaletteCorner`): the glass host works it
+  out (`PaletteGlassHost.renderedCorner`, radius and curve) and every layer on
+  the edge takes it whole — ramp, rim shades, backdrop, content masks, listening
+  words, voice glow, shadows. None works it out again from its own bounds (the
+  curve turns circular near a capsule, and two layers deciding apart disagree).
+  A layer inside the edge is concentric (`inset(by:)`). Clipping is a layer's
+  corner, never a `CGPath`: a path has no continuous curve, so `path(in:)` is
+  only for what is blurred or stands inside the edge. **No two antialiased
+  edges share a pixel**: what lies under the glass's edge runs
+  `PaletteCorner.edgeOverlap` (2) under it. The pool's hole cut exactly at the
+  edge left a light hairline round the foot where neither covered the desktop.
 - The transcript dissolves under floating controls (a gradient mask, and in the
   history a private `variableBlur` filter); the scroll indicator bends round the
   shell's corners (`PaletteCornerScrollIndicator`).

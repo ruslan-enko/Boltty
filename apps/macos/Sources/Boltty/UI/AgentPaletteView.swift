@@ -2929,7 +2929,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     previewForeground.layer?.masksToBounds = true
     applyFloatingShadow(
       to: promptCapsule,
-      cornerRadius: AgentPaletteMetrics.cornerRadius
+      corner: PaletteCorner(radius: AgentPaletteMetrics.cornerRadius, curve: .continuous)
     )
 
     promptCapsule.addSubview(promptHost)
@@ -3325,8 +3325,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       at: rect
     )
     surface.layoutSubtreeIfNeeded()
-    let corner = surface.renderedCornerRadius
-    let curve = surface.renderedCornerCurve
+    let edge = surface.renderedCorner
+    let corner = edge.radius
+    let curve = edge.curve
     voiceGlow.surfaceCornerRadius = corner
     voiceGlow.surfaceCornerCurve = curve
     if !isDrippingIn {
@@ -3340,7 +3341,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     layoutResizeGrabber(in: rect, corner: corner)
     scrollIndicatorShell = (rect, corner)
     syncScrollIndicator()
-    applyFloatingShadow(to: surfaceContainer, cornerRadius: corner)
+    applyFloatingShadow(to: surfaceContainer, corner: edge)
     syncShellShadow()
     let clippedContent = [promptForeground, attachmentStrip, resultsForeground, previewForeground]
     for content in clippedContent {
@@ -3351,17 +3352,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
         mask.path = nil
         mask.backgroundColor = NSColor.black.cgColor
         mask.frame = local
-        mask.applyPaletteCorner(radius: corner)
+        mask.applyCorner(edge)
         mask.masksToBounds = true
       } else {
         mask.backgroundColor = nil
         mask.masksToBounds = false
-        mask.path = CGPath(
-          roundedRect: local,
-          cornerWidth: corner,
-          cornerHeight: corner,
-          transform: nil
-        )
+        mask.path = edge.path(in: local)
       }
       content.layer?.mask = mask
     }
@@ -4255,28 +4251,20 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     }
   }
 
-  private var shadowGeometry: [ObjectIdentifier: (bounds: CGRect, radius: CGFloat)] = [:]
+  private var shadowGeometry: [ObjectIdentifier: (bounds: CGRect, corner: PaletteCorner)] = [:]
 
-  private func applyFloatingShadow(to view: NSView, cornerRadius: CGFloat) {
+  private func applyFloatingShadow(to view: NSView, corner: PaletteCorner) {
     view.wantsLayer = true
     guard let layer = view.layer else { return }
 
-    let cornerCurve = AgentPaletteMetrics.cornerCurve(
-      radius: cornerRadius,
-      shorterSide: min(view.bounds.width, view.bounds.height)
-    )
     let key = ObjectIdentifier(view)
-    if let last = shadowGeometry[key],
-       last.radius == cornerRadius,
-       last.bounds == view.bounds,
-       layer.cornerCurve == cornerCurve {
+    if let last = shadowGeometry[key], last.corner == corner, last.bounds == view.bounds {
       return
     }
-    shadowGeometry[key] = (view.bounds, cornerRadius)
+    shadowGeometry[key] = (view.bounds, corner)
 
     layer.masksToBounds = false
-    layer.cornerRadius = cornerRadius
-    layer.cornerCurve = cornerCurve
+    layer.applyCorner(corner)
     layer.shadowColor = NSColor.black.cgColor
     layer.shadowOpacity = PaletteGlassHost.floatingShadowOpacity
     layer.shadowRadius = PaletteGlassHost.floatingShadowRadius
@@ -4284,14 +4272,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if view.bounds.isEmpty {
       layer.shadowPath = nil
     } else {
-      layer.shadowPath = CGPath(
-        roundedRect: view.bounds,
-        cornerWidth: cornerRadius,
-        cornerHeight: cornerRadius,
-        transform: nil
-      )
+      layer.shadowPath = corner.path(in: view.bounds)
     }
-    if view === surfaceContainer { applyAmbientShadow(in: layer, cornerRadius: cornerRadius) }
+    if view === surfaceContainer { applyAmbientShadow(in: layer, corner: corner) }
   }
 
   private var shellCastsShadow = true
@@ -4319,7 +4302,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   private let ambientShadow = CALayer()
   private let ambientShadowCutout = CAShapeLayer()
 
-  private func applyAmbientShadow(in container: CALayer, cornerRadius: CGFloat) {
+  private func applyAmbientShadow(in container: CALayer, corner: PaletteCorner) {
     if ambientShadow.superlayer !== container {
       ambientShadow.shadowColor = NSColor.black.cgColor
       ambientShadow.shadowOpacity = PaletteGlassHost.ambientShadowOpacity
@@ -4338,13 +4321,15 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
       ambientShadow.shadowPath = nil
       return
     }
-    let shape = CGPath(roundedRect: bounds, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+    let shape = corner.path(in: bounds)
     ambientShadow.frame = bounds
     ambientShadow.shadowPath = shape
     let reach = PaletteGlassHost.ambientShadowRadius * 3 + abs(PaletteGlassHost.ambientShadowOffset.height)
+    let overlap = PaletteCorner.edgeOverlap
+    let hole = corner.inset(by: overlap).path(in: bounds.insetBy(dx: overlap, dy: overlap))
     let cutout = CGMutablePath()
     cutout.addRect(bounds.insetBy(dx: -reach, dy: -reach))
-    cutout.addPath(shape)
+    cutout.addPath(hole)
     ambientShadowCutout.frame = bounds
     ambientShadowCutout.path = cutout
   }

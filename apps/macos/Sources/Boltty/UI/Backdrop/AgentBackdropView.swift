@@ -126,8 +126,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
   func layOut(in rect: CGRect, corner: CGFloat, curve: CALayerCornerCurve) {
     frame = rect
     if let layer {
-      layer.applyPaletteCorner(radius: corner)
-      layer.cornerCurve = curve
+      layer.applyCorner(PaletteCorner(radius: corner, curve: curve))
     }
     let scale = backdrop.pixelsPerPoint(backing: window?.backingScaleFactor ?? 2)
     if layer?.contentsScale != scale { layer?.contentsScale = scale }
