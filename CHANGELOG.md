@@ -2,6 +2,24 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.0
+
+**Ask Boltty**
+- Ask Boltty's chats are kept like any other and listed with the rest, each
+  row marked by the area it asked about.
+- In the chat, a question stands under the area it was about, with what the
+  answer drew and pointed at; Whole Screen shows the picture the agent was sent.
+
+**Chats**
+- A follow-up's words fly up from the composer into their bubble.
+- A chat list row is one line, its title; a working chat's title shimmers.
+- A chat scrolled up stays where it is while the answer streams.
+- OpenCode: a background command that ends is no longer shown as your message.
+
+**Look**
+- The panel's edge is one corner for every layer, with deeper shadows.
+- Settings' sidebar wears the page's grey.
+
 ## 0.11.0
 
 **Languages**
