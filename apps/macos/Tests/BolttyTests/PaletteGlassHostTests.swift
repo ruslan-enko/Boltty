@@ -67,22 +67,6 @@ final class PaletteGlassHostTests: XCTestCase {
     XCTAssertTrue(host.isVerticalOverlayInFrontOfGlassForTesting)
   }
 
-  func testBolttyAIDrawsNoScreenBlendedFootLift() {
-    for style in [PaletteSurfaceStyle.bolttyAI, .bolttyAIPrompt] {
-      let host = PaletteGlassHost(
-        content: NSView(),
-        cornerRadius: 28,
-        style: style
-      )
-      host.frame = NSRect(x: 0, y: 0, width: 520, height: 56)
-      host.apply(showsGlass: true)
-      host.layoutSubtreeIfNeeded()
-
-      XCTAssertTrue(host.isBottomHighlightHiddenForTesting)
-      XCTAssertFalse(host.usesBottomHighlightScreenBlendForTesting)
-    }
-  }
-
   func testThePromptRampRunsFromABlackCrownToHalfAtTheFoot() throws {
     try XCTSkipIf(PaletteGlassHost.prefersReducedTransparency, "Reduce Transparency has a flat fill, not the ramp")
     let host = PaletteGlassHost(
@@ -414,28 +398,6 @@ final class PaletteGlassHostTests: XCTestCase {
     XCTAssertFalse(prompt.drawsOuterShadow)
   }
 
-  func testInnerTopShadowPinsALipToTheCrownInPoints() throws {
-    let host = PaletteGlassHost(
-      content: NSView(),
-      cornerRadius: 24,
-      style: .bolttyAIPrompt
-    )
-    host.frame = NSRect(x: 0, y: 0, width: 520, height: 300)
-    host.apply(showsGlass: true)
-    host.layoutSubtreeIfNeeded()
-    XCTAssertTrue(host.hasVerticalOverlayForTesting, "the lip is drawn in the wash's view")
-
-    let frame = host.innerTopShadowFrameForTesting
-    XCTAssertEqual(frame.height, PaletteGlassHost.innerTopShadowHeight, accuracy: 0.5)
-    XCTAssertEqual(frame.maxY, host.bounds.maxY, accuracy: 0.5)
-
-    let colors = host.innerTopShadowColorsForTesting
-    let crown = try XCTUnwrap(NSColor(cgColor: try XCTUnwrap(colors.first))?.usingColorSpace(.sRGB))
-    let fade = try XCTUnwrap(NSColor(cgColor: try XCTUnwrap(colors.last))?.usingColorSpace(.sRGB))
-    XCTAssertGreaterThan(crown.alphaComponent, fade.alphaComponent)
-    XCTAssertEqual(fade.alphaComponent, 0, accuracy: 0.001)
-  }
-
   func testFloatingHUDShadowMatchesBolttyAIElevation() {
     let host = PaletteGlassHost(content: NSView(), cornerRadius: 28)
     host.frame = NSRect(x: 0, y: 0, width: 520, height: 56)
@@ -528,14 +490,15 @@ final class PaletteGlassHostTests: XCTestCase {
     )
     XCTAssertEqual(host.renderedCornerRadius, min(49, host.bounds.height / 2), accuracy: 0.01)
     XCTAssertEqual(
-      host.effectCornerRadiusForTesting, host.renderedCornerRadius, accuracy: 0.01,
+      host.effectCornerRadiusForTesting,
+      host.renderedCornerRadius - PaletteGlassHost.washedGlassInset, accuracy: 0.01,
       "the glass draws the capsule's own corner, not 0 under a clip of ours"
     )
 
     host.frame.size.height = 200
     host.layoutSubtreeIfNeeded()
     XCTAssertEqual(host.cornerCurveForTesting, .continuous)
-    XCTAssertEqual(host.effectCornerRadiusForTesting, 49,
+    XCTAssertEqual(host.effectCornerRadiusForTesting, 49 - PaletteGlassHost.washedGlassInset,
       "a taller card keeps the native continuous corner")
     XCTAssertFalse(host.effectViewClipsToCornerForTesting)
   }

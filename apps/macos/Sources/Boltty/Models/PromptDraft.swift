@@ -213,11 +213,32 @@ enum PromptExpansion {
   }
 }
 
+/// What an Ask Boltty question was about, kept so its chat can show it.
+struct AskedRegion: Codable, Equatable, Hashable, Sendable {
+  var screenPath: String
+  /// The region in thousandths of the screen picture, top left at 0 0, as the
+  /// answer's tags are; nil when the whole screen was asked about.
+  var area: [Double]?
+  var width: Double
+  var height: Double
+  var place: String?
+  /// The answer that followed, for its drawings: filled in as the chat is read.
+  var answer: String? = nil
+
+  private enum CodingKeys: String, CodingKey { case screenPath, area, width, height, place }
+
+  var areaRect: CGRect {
+    guard let area, area.count == 4 else { return CGRect(x: 0, y: 0, width: 1000, height: 1000) }
+    return CGRect(x: area[0], y: area[1], width: area[2], height: area[3])
+  }
+}
+
 struct SentFile: Codable, Equatable, Hashable, Sendable {
   var path: String
   var label: String
   var name: String
   var expansion: String?
+  var asked: AskedRegion? = nil
 
   static func lift(_ message: ConversationMessage, files: [SentFile]) -> ConversationMessage {
     guard message.role == .user, !files.isEmpty else { return message }
@@ -272,7 +293,18 @@ struct SentFile: Codable, Equatable, Hashable, Sendable {
     })
     lifted.parts += found.filter { !attached.contains($0.path) }.map { file in
       ConversationPart.attachment(ConversationAttachment(
-        id: "sent-\(file.path)", displayName: file.name, url: URL(fileURLWithPath: file.path)))
+        id: "sent-\(file.path)", displayName: file.name, url: URL(fileURLWithPath: file.path),
+        asked: file.asked))
+    }
+    let asked = Dictionary(
+      found.compactMap { file in file.asked.map { (file.path, $0) } }, uniquingKeysWith: { a, _ in a })
+    if !asked.isEmpty {
+      lifted.parts = lifted.parts.map { part in
+        guard case var .attachment(attachment) = part, attachment.asked == nil,
+              let region = attachment.url.flatMap({ asked[$0.path] }) else { return part }
+        attachment.asked = region
+        return .attachment(attachment)
+      }
     }
     return lifted
   }

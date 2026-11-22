@@ -148,17 +148,6 @@ enum PaletteGlassRamp {
   }
 }
 
-struct PaletteGlassBottomHighlight: Equatable {
-  let stops: [PaletteGlassGradientStop]
-  let compositingFilter: String?
-
-  init(stops: [PaletteGlassGradientStop], compositingFilter: String?) {
-    self.stops = stops
-    self.compositingFilter = compositingFilter
-  }
-
-}
-
 struct PaletteGlassVerticalOverlay: Equatable {
   let stops: [PaletteGlassGradientStop]
   let reducedTransparencyStops: [PaletteGlassGradientStop]
@@ -167,7 +156,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
   let bottomOpacity: CGFloat
   let baseFillColor: NSColor?
   let usesSoftLightBlend: Bool
-  let bottomHighlight: PaletteGlassBottomHighlight?
 
   let glassTintAlpha: CGFloat?
 
@@ -187,7 +175,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
     _ stops: [PaletteGlassGradientStop],
     reducedTransparencyStops: [PaletteGlassGradientStop] = [],
     baseFillColor: NSColor? = nil,
-    bottomHighlight: PaletteGlassBottomHighlight? = nil,
     glassTintAlpha: CGFloat? = nil
   ) -> PaletteGlassVerticalOverlay {
     PaletteGlassVerticalOverlay(
@@ -198,7 +185,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
       bottomOpacity: 1,
       baseFillColor: baseFillColor,
       usesSoftLightBlend: false,
-      bottomHighlight: bottomHighlight,
       glassTintAlpha: glassTintAlpha
     )
   }
@@ -216,7 +202,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
     self.bottomOpacity = bottomOpacity
     self.baseFillColor = nil
     self.usesSoftLightBlend = false
-    self.bottomHighlight = nil
     self.glassTintAlpha = nil
   }
 
@@ -226,7 +211,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
     bottomOpacity: CGFloat = 1,
     baseFillColor: NSColor? = nil,
     usesSoftLightBlend: Bool = false,
-    bottomHighlight: PaletteGlassBottomHighlight? = nil,
     glassTintAlpha: CGFloat? = nil
   ) {
     self.stops = []
@@ -236,7 +220,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
     self.bottomOpacity = bottomOpacity
     self.baseFillColor = baseFillColor
     self.usesSoftLightBlend = usesSoftLightBlend
-    self.bottomHighlight = bottomHighlight
     self.glassTintAlpha = glassTintAlpha
   }
 
@@ -248,7 +231,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
     bottomOpacity: CGFloat,
     baseFillColor: NSColor?,
     usesSoftLightBlend: Bool,
-    bottomHighlight: PaletteGlassBottomHighlight?,
     glassTintAlpha: CGFloat?
   ) {
     self.stops = stops
@@ -258,7 +240,6 @@ struct PaletteGlassVerticalOverlay: Equatable {
     self.bottomOpacity = bottomOpacity
     self.baseFillColor = baseFillColor
     self.usesSoftLightBlend = usesSoftLightBlend
-    self.bottomHighlight = bottomHighlight
     self.glassTintAlpha = glassTintAlpha
   }
 
@@ -332,9 +313,6 @@ struct PaletteSurfaceStyle: Equatable {
 }
 
 final class PaletteGlassHost: NSView {
-  var renderedCorner: PaletteCorner {
-    PaletteCorner(radius: effectiveCornerRadius, curve: effectiveCornerCurve)
-  }
   var cornerRadius: CGFloat {
     didSet {
       applyCornerRadius()
@@ -354,6 +332,9 @@ final class PaletteGlassHost: NSView {
 
   var renderedCornerRadius: CGFloat { effectiveCornerRadius }
   var renderedCornerCurve: CALayerCornerCurve { effectiveCornerCurve }
+  var renderedCorner: PaletteCorner {
+    PaletteCorner(radius: effectiveCornerRadius, curve: effectiveCornerCurve)
+  }
 
   var effectIsInteractive: Bool {
     didSet { applyInteractionState() }
@@ -394,14 +375,6 @@ final class PaletteGlassHost: NSView {
     verticalOverlayGradientLayer.locations?.map { CGFloat($0.doubleValue) } ?? []
   }
 
-  var usesBottomHighlightScreenBlendForTesting: Bool {
-    bottomHighlightGradientLayer.compositingFilter as? String == "screenBlendMode"
-  }
-
-  var isBottomHighlightHiddenForTesting: Bool {
-    bottomHighlightGradientLayer.isHidden
-  }
-
   var glassTintAlphaForTesting: CGFloat {
     if let glass = effectView as? NSGlassEffectView {
       guard let tint = glass.tintColor else { return 0 }
@@ -415,17 +388,9 @@ final class PaletteGlassHost: NSView {
     verticalOverlayGradientLayer.compositingFilter as? String == "softLightBlendMode"
   }
 
-  var innerTopShadowColorsForTesting: [CGColor] {
-    innerTopShadowLayer.colors as? [CGColor] ?? []
-  }
-
-  var innerTopShadowFrameForTesting: CGRect {
-    innerTopShadowLayer.frame
-  }
-
   var overlayAvoidsOffscreenPassForTesting: Bool {
     guard let overlay = verticalOverlayView.layer else { return false }
-    let layers = [overlay, verticalOverlayGradientLayer, innerTopShadowLayer]
+    let layers = [overlay, verticalOverlayGradientLayer] + rimShadeLayers
     return layers.allSatisfy { $0.filters == nil && !$0.shouldRasterize }
   }
 
@@ -476,14 +441,22 @@ final class PaletteGlassHost: NSView {
   private let colorLayerView = NSView(frame: .zero)
   private let verticalOverlayView = PaletteGlassOverlayView(frame: .zero)
   private let verticalOverlayGradientLayer = CAGradientLayer()
-  private let bottomHighlightGradientLayer = CAGradientLayer()
-  private let innerTopShadowLayer = CAGradientLayer()
   /// The glass lights its own rim, strongest along the foot and thinning up the
   /// corners. Through the wash's thin end that crescent read as a second, tighter
   /// corner inside the shell's, so the wash is denser over the rim's two points.
   private let rimShadeLayers = [CALayer(), CALayer()]
   static let rimShade: [(width: CGFloat, alpha: CGFloat)] = [(1, 0.21), (2, 0.15)]
   private var showsGlass = true
+  private var glassEdges: [NSLayoutConstraint] = []
+
+  /// The glass lights its own edge while its shape changes. Under the wash it
+  /// stands this far in, so that light falls under the ramp, not on the
+  /// antialiased pixel at the rim.
+  static let washedGlassInset: CGFloat = 0.5
+
+  private var glassInset: CGFloat {
+    (verticalOverlay ?? fadingOutOverlay) == nil ? 0 : Self.washedGlassInset
+  }
 
   init(
     content: NSView,
@@ -513,42 +486,28 @@ final class PaletteGlassHost: NSView {
 
   override func layout() {
     super.layout()
-    applyCornerRadius()
     ensureStackingOrder()
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    applyCornerRadius()
     layoutVerticalOverlayGradient()
+    CATransaction.commit()
     applyOuterShadow()
     applyEdge()
   }
 
+  /// The overlay view clips to the corner; its layers only fill it. The rim
+  /// shades keep the corner because a border follows it.
   private func layoutVerticalOverlayGradient() {
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
     let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
     let bounds = verticalOverlayView.bounds
-    for layer in [verticalOverlayGradientLayer, bottomHighlightGradientLayer] + rimShadeLayers {
+    for layer in [verticalOverlayGradientLayer] + rimShadeLayers {
       layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
       layer.frame = bounds
       layer.contentsScale = scale
-      applyContinuousCorner(to: layer, radius: effectiveCornerRadius, masksToBounds: true)
     }
-    layoutInnerTopShadow(in: bounds, scale: scale)
-    applyCornerRadius()
     applyVerticalOverlayColors()
-    CATransaction.commit()
   }
-
-  private func layoutInnerTopShadow(in bounds: CGRect, scale: CGFloat) {
-    let height = min(Self.innerTopShadowHeight, bounds.height)
-    innerTopShadowLayer.frame = CGRect(
-      x: 0,
-      y: bounds.maxY - height,
-      width: bounds.width,
-      height: height
-    )
-    innerTopShadowLayer.contentsScale = scale
-  }
-
-  static let innerTopShadowHeight: CGFloat = 14
 
   private func applyContinuousCorner(
     to layer: CALayer?,
@@ -628,7 +587,13 @@ final class PaletteGlassHost: NSView {
 
     if let effectView {
       addSubview(effectView)
-      pinEdges(of: effectView, to: self)
+      glassEdges = [
+        effectView.leadingAnchor.constraint(equalTo: leadingAnchor),
+        trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
+        effectView.topAnchor.constraint(equalTo: topAnchor),
+        bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+      ]
+      NSLayoutConstraint.activate(glassEdges)
     }
 
     verticalOverlayView.wantsLayer = true
@@ -637,16 +602,9 @@ final class PaletteGlassHost: NSView {
     verticalOverlayView.layer?.backgroundColor = NSColor.clear.cgColor
 
     configureGradientAxis(verticalOverlayGradientLayer)
-    configureGradientAxis(bottomHighlightGradientLayer)
-    bottomHighlightGradientLayer.isHidden = true
-
-    configureGradientAxis(innerTopShadowLayer)
-    applyInnerTopShadowColors()
 
     applyVerticalOverlayColors()
     verticalOverlayView.layer?.addSublayer(verticalOverlayGradientLayer)
-    verticalOverlayView.layer?.addSublayer(bottomHighlightGradientLayer)
-    verticalOverlayView.layer?.addSublayer(innerTopShadowLayer)
     for (layer, shade) in zip(rimShadeLayers, Self.rimShade) {
       layer.borderWidth = shade.width
       layer.borderColor = NSColor.black.withAlphaComponent(shade.alpha).cgColor
@@ -702,8 +660,14 @@ final class PaletteGlassHost: NSView {
     }
 
     applyEdge()
-    applyInnerTopShadowColors()
     applyVerticalOverlayColors()
+    applyGlassInset()
+  }
+
+  private func applyGlassInset() {
+    let inset = glassInset
+    for edge in glassEdges where edge.constant != inset { edge.constant = inset }
+    applyCornerRadius()
   }
 
   private var effectiveCornerRadius: CGFloat {
@@ -713,17 +677,16 @@ final class PaletteGlassHost: NSView {
 
   private func applyCornerRadius() {
     let radius = effectiveCornerRadius
+    let glassRadius = max(0, radius - glassInset)
 
-    (effectView as? NSGlassEffectView)?.cornerRadius = radius
+    (effectView as? NSGlassEffectView)?.cornerRadius = glassRadius
     if let effectView {
       effectView.wantsLayer = true
-      applyContinuousCorner(to: effectView.layer, radius: radius, masksToBounds: false)
+      applyContinuousCorner(to: effectView.layer, radius: glassRadius, masksToBounds: false)
     }
     applyContinuousCorner(to: colorLayerView.layer, radius: radius, masksToBounds: true)
     applyContinuousCorner(to: verticalOverlayView.layer, radius: radius, masksToBounds: true)
-    applyContinuousCorner(to: verticalOverlayGradientLayer, radius: radius, masksToBounds: true)
-    applyContinuousCorner(to: bottomHighlightGradientLayer, radius: radius, masksToBounds: true)
-    for rim in rimShadeLayers { applyContinuousCorner(to: rim, radius: radius, masksToBounds: true) }
+    for rim in rimShadeLayers { applyContinuousCorner(to: rim, radius: radius) }
     applyContinuousCorner(to: layer, radius: radius, masksToBounds: false)
   }
 
@@ -816,8 +779,6 @@ final class PaletteGlassHost: NSView {
       verticalOverlayGradientLayer.colors = nil
       verticalOverlayGradientLayer.compositingFilter = nil
       verticalOverlayGradientLayer.locations = [0, 1]
-      bottomHighlightGradientLayer.isHidden = true
-      bottomHighlightGradientLayer.colors = nil
       verticalOverlayView.layer?.backgroundColor = NSColor.clear.cgColor
       return
     }
@@ -851,16 +812,6 @@ final class PaletteGlassHost: NSView {
         ]
       }
     }
-
-    if let highlight = verticalOverlay.bottomHighlight, !highlight.stops.isEmpty {
-      bottomHighlightGradientLayer.isHidden = false
-      bottomHighlightGradientLayer.compositingFilter = highlight.compositingFilter
-      applyStops(highlight.stops, to: bottomHighlightGradientLayer)
-    } else {
-      bottomHighlightGradientLayer.isHidden = true
-      bottomHighlightGradientLayer.colors = nil
-      bottomHighlightGradientLayer.compositingFilter = nil
-    }
   }
 
   private func applyStops(_ stops: [PaletteGlassGradientStop], to layer: CAGradientLayer) {
@@ -868,22 +819,6 @@ final class PaletteGlassHost: NSView {
       stop.color.usingColorSpace(.sRGB)?.cgColor ?? stop.color.cgColor
     }
     layer.locations = stops.map { NSNumber(value: Double($0.location)) }
-  }
-
-  private func applyInnerTopShadowColors() {
-    let visible = showsGlass
-    innerTopShadowLayer.isHidden = !visible
-    guard visible else {
-      innerTopShadowLayer.colors = nil
-      return
-    }
-    applyStops(
-      PaletteGlassRamp.resample([
-        .srgb(0, 0, 0, alpha: 0.16, at: 0),
-        .srgb(0, 0, 0, alpha: 0, at: 1),
-      ]),
-      to: innerTopShadowLayer
-    )
   }
 
   private func applyInteractionState() {
@@ -922,8 +857,6 @@ final class PaletteGlassHost: NSView {
 
   private func applyEdge() {
     guard let layer else { return }
-
-    applyContinuousCorner(to: layer, radius: effectiveCornerRadius, masksToBounds: false)
     let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
     layer.borderWidth = style.edgeAlpha > 0 ? 1 / max(scale, 1) : 0
     layer.borderColor = NSColor.white.withAlphaComponent(style.edgeAlpha).cgColor

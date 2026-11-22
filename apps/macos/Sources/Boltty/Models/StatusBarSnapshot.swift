@@ -38,6 +38,9 @@ struct BolttyAISessionItem: Equatable, Identifiable, Sendable {
   var updatedAt: Date
   var state: AgentReportedState? = nil
   var hasUnread: Bool = false
+  var isAskBoltty = false
+  /// The region its latest question was about, for a picture on its row.
+  var askedRegionPath: String? = nil
 }
 
 enum BolttyAISessionList {
@@ -66,7 +69,10 @@ enum BolttyAISessionList {
         isCurrent: conversation.id == selectedID,
         updatedAt: conversation.updatedAt,
         state: conversation.lastKnownState.reportedState,
-        hasUnread: conversation.hasUnread
+        hasUnread: conversation.hasUnread,
+        isAskBoltty: conversation.isAskBoltty,
+        askedRegionPath: conversation.isAskBoltty
+          ? conversation.sentFiles.last { $0.asked != nil }?.path : nil
       )
     }
     return filter(rows, transcripts: transcripts, query: query)

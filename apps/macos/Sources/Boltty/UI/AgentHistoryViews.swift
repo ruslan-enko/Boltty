@@ -259,36 +259,34 @@ final class AgentHistoryTabView: NSView {
     }
   }
 
-  // Each face a little off its even place on the ring and a little off the
-  // others' size, so the group reads as a crowd rather than a dial.
-  private static let ringTurn: [CGFloat] = [0, 9, -6, 7, -10]
-  private static let ringReach: [CGFloat] = [1, 0.92, 1.06, 0.95, 1.04]
-  private static let ringScale: [CGFloat] = [1.05, 0.96, 1, 1.04, 0.95]
-  /// Neighbours stand this many faces apart, so they overlap by the rest.
-  private static let ringSpacing: CGFloat = 0.62
+  // The last face stands in the middle, drawn over the rest; the others gather
+  // round it each a little off its even place and size, so it reads as a crowd.
+  private static let crowdTurn: [CGFloat] = [0, 9, -7, 11]
+  private static let crowdReach: [CGFloat] = [0.66, 0.62, 0.7, 0.64]
+  private static let crowdScale: [CGFloat] = [0.86, 0.8, 0.9, 0.82]
+  private static let crowdStart: CGFloat = -135
 
-  /// The faces in a loose ring, as large as fits `side`, the group centred on it.
+  /// The faces round one in the middle, as large as fits `side`, that one at its centre.
   static func faceFrames(count: Int, in side: CGFloat) -> [CGRect] {
     guard count > 0 else { return [] }
-    let count = min(count, ringTurn.count)
+    let count = min(count, crowdTurn.count + 1)
     guard count > 1 else { return [CGRect(x: 0, y: 0, width: side, height: side)] }
-    let radius = ringSpacing / (2 * sin(.pi / CGFloat(count)))
-    let circles: [CGRect] = (0..<count).map { index in
-      let angle = (-108 + CGFloat(index) * 360 / CGFloat(count) + ringTurn[index]) * .pi / 180
-      let distance = radius * ringReach[index]
-      let diameter = ringScale[index]
+    let around = count - 1
+    var circles: [CGRect] = (0..<around).map { index in
+      let angle = (crowdStart + CGFloat(index) * 360 / CGFloat(around) + crowdTurn[index]) * .pi / 180
+      let distance = crowdReach[index]
+      let diameter = crowdScale[index]
       return CGRect(
         x: cos(angle) * distance - diameter / 2, y: sin(angle) * distance - diameter / 2,
         width: diameter, height: diameter)
     }
-    let group = circles.reduce(CGRect.null) { $0.union($1) }
-    let scale = side / max(group.width, group.height)
-    let inset = CGPoint(x: (side - group.width * scale) / 2, y: (side - group.height * scale) / 2)
+    circles.append(CGRect(x: -0.5, y: -0.5, width: 1, height: 1))
+    let reach = circles.map { max(-$0.minX, $0.maxX, -$0.minY, $0.maxY) }.max() ?? 0.5
+    let scale = side / (2 * reach)
     func grid(_ value: CGFloat) -> CGFloat { (value * 2).rounded() / 2 }
     return circles.map { circle in
       CGRect(
-        x: grid((circle.minX - group.minX) * scale + inset.x),
-        y: grid((circle.minY - group.minY) * scale + inset.y),
+        x: grid(circle.minX * scale + side / 2), y: grid(circle.minY * scale + side / 2),
         width: grid(circle.width * scale), height: grid(circle.height * scale))
     }
   }

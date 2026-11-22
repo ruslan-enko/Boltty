@@ -1032,6 +1032,18 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
+  /// Lets an idle chat's session go and keeps the chat: the next message resumes it.
+  func releaseSession(of id: UUID) {
+    guard let conversation = store.conversation(id: id),
+          !conversation.lastKnownState.blocksSending,
+          let remote = conversation.remoteSessionID, attached.contains(remote),
+          let client = registry.client(forProviderID: conversation.providerID)
+    else { return }
+    attached.remove(remote)
+    settingsInForce[remote] = nil
+    Task { await client.release(sessionID: remote) }
+  }
+
   func deleteConversation(id: UUID) async {
     if let conversation = store.conversation(id: id),
        let remote = conversation.remoteSessionID,

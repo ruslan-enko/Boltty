@@ -388,7 +388,7 @@ enum AgentPaletteMetrics {
   static let dripFallHeight: CGFloat = 0.92
 
   static let resultsTopSpacing = fromMock(6)
-  static let resultsRowHeight: CGFloat = fromHistoryMock(64)
+  static let resultsRowHeight: CGFloat = fromHistoryMock(48)
   static let resultsMaxVisibleRows = 6
   /// Measured: rendering a continuous layer at three radii gives 1.34 × radius
   /// every time.
@@ -431,8 +431,13 @@ enum AgentPaletteMetrics {
   static let resultsUnreadDotDiameter: CGFloat = 8
   static let resultsUnreadDotGap: CGFloat = 8
   static let resultsUnreadDotFill = OKLCH(0.624, 0.206, 255.5).color
+  /// A face stands in the row's round end, concentric with it: as far from the
+  /// side as from the top and foot.
+  static var resultsRowFaceInset: CGFloat {
+    onPixelGrid((resultsRowHeight - resultsRowInset * 2 - resultsMascotSize) / 2)
+  }
   static var resultsRowFacedTextLeading: CGFloat {
-    resultsRowTextLeading + resultsMascotSize + resultsRowIconTextSpacing
+    resultsRowFaceInset + resultsMascotSize + resultsRowIconTextSpacing
   }
 
   // MARK: - History
@@ -462,7 +467,7 @@ enum AgentPaletteMetrics {
   static let historyTabPadding: CGFloat = 10
   static let historyTabMascotSize: CGFloat = fromHistoryMock(40)
   static let historyTabMascotTextSpacing: CGFloat = fromHistoryMock(4)
-  static let historyTabLatestMascotSize: CGFloat = fromHistoryMock(20)
+  static let historyTabLatestMascotSize: CGFloat = fromHistoryMock(28)
   static let historyTabLatestTextSpacing: CGFloat = fromHistoryMock(6)
   static var historyTabClusterSide: CGFloat { 2 * historyTabLatestMascotSize }
   static let historyTabSegmentInset: CGFloat = 6
@@ -489,7 +494,6 @@ enum AgentPaletteMetrics {
   static let historyTabActiveTextColor = PaletteInk.primary
   static let historyTabTextColor = PaletteInk.secondary
 
-  static let resultsTitleSubtitleSpacing: CGFloat = 2
 
   static let targetSwapBlurRadius: CGFloat = 8
   static let targetSwapBlurDuration: TimeInterval = 0.18
@@ -654,6 +658,7 @@ enum AgentPaletteMetrics {
   static let previewRevealStaggerSteps = 4
 
   static let previewSendFlightDuration: TimeInterval = 0.45
+  static let sendWordsBubbleStartScale: CGFloat = 0.9
 
   // MARK: Shader effects (`PaletteEffects`)
 
@@ -760,7 +765,11 @@ enum AgentPaletteMetrics {
   static let planRingInk = ComposerControlGroup.restingInk
   static let planRingDiameter: CGFloat = 20
   static let planRingStroke: CGFloat = 2.5
-  static let planRingStrokeRatio: CGFloat = 0.125
+  // The circle icon's ink (r 6.25, stroke 1.425 on 16), so the ring stands as large and as thin as the icons beside it.
+  static let planRingStrokeRatio: CGFloat = 1.425 / 13.925
+  static func planRingOuterDiameter(chat: Bool) -> CGFloat {
+    iconSide(ComposerControlGroup.iconSize(chat: chat)) * 13.925 / 16
+  }
 
   static let directoryChipHeight: CGFloat = fromMock(30)
   static let latestComposerSpacing: CGFloat = fromMock(6)
@@ -774,7 +783,7 @@ enum AgentPaletteMetrics {
   static func folderChipPadding(chat: Bool) -> CGFloat { chat ? 6 : 7 }
   static func folderChipIconGap(chat: Bool) -> CGFloat { chat ? 5 : 6 }
   static func folderChipCornerRadius(chat: Bool) -> CGFloat { chat ? 6.5 : 7 }
-  static func folderChipFontSize(chat: Bool) -> CGFloat { typeSecondary }
+  static func folderChipFontSize(chat: Bool) -> CGFloat { chat ? 14.5 : typeSecondary }
   static let folderChipMaxNameWidth: CGFloat = 120
   static let folderChipSlotMargin: CGFloat = 2
   static let folderChipFill = PaletteInk.tertiaryFill

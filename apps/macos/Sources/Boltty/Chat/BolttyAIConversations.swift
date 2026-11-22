@@ -398,6 +398,27 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     )
   }
 
+  /// Each asked region carries the answer that followed it, for its drawings.
+  static func withAnswers(_ messages: [ConversationMessage]) -> [ConversationMessage] {
+    var messages = messages
+    for (index, message) in messages.enumerated() where message.role == .user {
+      guard message.parts.contains(where: { part in
+        if case let .attachment(attachment) = part { return attachment.asked != nil }
+        return false
+      }) else { continue }
+      let answer = messages[(index + 1)...]
+        .prefix { $0.role != .user }
+        .map(\.plainText)
+        .joined(separator: "\n\n")
+      messages[index].parts = message.parts.map { part in
+        guard case var .attachment(attachment) = part, attachment.asked != nil else { return part }
+        attachment.asked?.answer = answer
+        return .attachment(attachment)
+      }
+    }
+    return messages
+  }
+
   func preview(for id: UUID) -> BolttyAISessionPreview? {
     guard let conversation = store.conversation(id: id) else { return nil }
     let transcript = store.transcript(id: id)
@@ -411,6 +432,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       messages.append(ConversationMessage(id: "pending-\(id)", role: .user, createdAt: pending.sentAt, parts: [.text(TextPart(id: "prompt", kind: .text, text: pending.text))]))
     }
     messages = LiftedRequests.lift(messages, files: conversation.sentFiles, in: id)
+    if conversation.isAskBoltty { messages = Self.withAnswers(messages) }
     if let open = transcript.openInteraction, case let .plan(plan) = open.kind,
        let bubble = Self.planBubble(plan, id: open.id, unless: messages) {
       messages.append(bubble)

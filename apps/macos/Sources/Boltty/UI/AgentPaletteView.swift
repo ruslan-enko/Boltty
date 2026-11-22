@@ -32,6 +32,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
   func resumeChatAnimations() { previewCard.resumeAnimations() }
 
   func prepareFileFlights(_ files: [(attachment: UUID, file: SentFile)]) {
+    previewCard.prepareWordsFlight(
+      field.wordsSnapshot().map { .init(frameInWindow: $0.frameInWindow, image: $0.image) })
     guard !files.isEmpty else { return }
     let cards = attachmentStrip.cardSnapshots()
     var origins: [String: BolttyAIPreviewCard.FlightOrigin] = [:]
@@ -104,7 +106,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     return button
   }()
-  private static let modelChipFont = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
+  private static let modelChipFont = roundedAppFont(size: AgentPaletteMetrics.folderChipFontSize(chat: true))
   private static let modelChipMaxWidth: CGFloat = 164
   private let modelChipSlot = NSView()
   private lazy var modelChipWidth: NSLayoutConstraint = {
@@ -1072,7 +1074,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     let diameter = composerControlDiameter
     directoryChip.diameter = diameter
     planRing.diameter = diameter
-    planRing.ringOuterDiameter = ComposerControlGroup.glyph(chat: composerGlyphsAreChat)
+    planRing.ringOuterDiameter = AgentPaletteMetrics.planRingOuterDiameter(chat: composerGlyphsAreChat)
     trailingControls.setCustomSpacing(planRing.hasReading ? trailingControls.spacing : 0, after: planRing)
     let folderWidth: CGFloat = workingDirectory == nil || asksAboutRegion ? 0 : directoryChip.slotWidth
     if directorySlotWidth.constant != folderWidth { directorySlotWidth.constant = folderWidth }
@@ -1097,7 +1099,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     if modelChipButton.isHidden != hidden { modelChipButton.isHidden = hidden }
     let width = chip.map {
       let words = NSAttributedString(string: $0.title, attributes: [.font: Self.modelChipFont])
-      return min(ceil(words.size().width) + ComposerControlGroup.gap, Self.modelChipMaxWidth)
+      return min(ceil(words.size().width) + AgentPaletteMetrics.folderChipPadding(chat: true) * 2,
+                 Self.modelChipMaxWidth)
     } ?? 0
     if modelChipWidth.constant != width {
       modelChipWidth.constant = width
@@ -2647,6 +2650,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding {
     ComposerControlGroup.style(directoryChip)
     ComposerControlGroup.style(attachRestDisc.button)
     ComposerControlGroup.style(modelChipButton)
+    modelChipButton.wantsLayer = true
+    modelChipButton.restingBackground = AgentPaletteMetrics.folderChipFill
+    modelChipButton.hoverBackground = AgentPaletteMetrics.folderChipFill
+    modelChipButton.layer?.backgroundColor = AgentPaletteMetrics.folderChipFill.cgColor
+    modelChipButton.cornerRadius = AgentPaletteMetrics.folderChipCornerRadius(chat: true)
     ComposerControlGroup.styleSendDisc(sendButton.button)
     recordingControls.translatesAutoresizingMaskIntoConstraints = false
     recordingControls.isHidden = true

@@ -23,9 +23,10 @@ final class BolttyAISessionRowView: NSView {
 
   private let background = GradientFillView()
   private let titleLabel = NSTextField(labelWithString: "")
-  private let subtitleLabel = NSTextField(labelWithString: "")
   private let face = NSImageView()
   private(set) var showsFace = false
+  private let region = NSView()
+  private var shownRegionPath: String?
   private let unreadDot = NSView()
   private var isHovered = false
   var hoverIsQuiet = false {
@@ -50,23 +51,24 @@ final class BolttyAISessionRowView: NSView {
     addSubview(background)
 
     titleLabel.font = roundedAppFont(
-      size: AgentPaletteMetrics.resultsTitleFontSize, weight: .medium
+      size: AgentPaletteMetrics.resultsTitleFontSize, weight: .regular
     )
     titleLabel.textColor = PaletteInk.primary
     titleLabel.lineBreakMode = .byTruncatingTail
 
-    subtitleLabel.font = roundedAppFont(
-      size: AgentPaletteMetrics.resultsSubtitleFontSize, weight: .regular
-    )
-    subtitleLabel.textColor = PaletteInk.secondary
-    subtitleLabel.lineBreakMode = .byTruncatingTail
 
     background.addSubview(titleLabel)
-    background.addSubview(subtitleLabel)
     face.imageScaling = .scaleProportionallyUpOrDown
     face.isHidden = true
     face.setAccessibilityElement(false)
     background.addSubview(face)
+    region.wantsLayer = true
+    region.layer?.backgroundColor = PaletteInk.fill.cgColor
+    region.layer?.contentsGravity = .resizeAspectFill
+    region.layer?.masksToBounds = true
+    region.isHidden = true
+    region.setAccessibilityElement(false)
+    background.addSubview(region)
     unreadDot.wantsLayer = true
     unreadDot.layer?.backgroundColor = AgentPaletteMetrics.resultsUnreadDotFill.cgColor
     unreadDot.isHidden = true
@@ -105,7 +107,19 @@ final class BolttyAISessionRowView: NSView {
     let padding = AgentPaletteMetrics.resultsRowTextLeading
     let leading = showsFace ? AgentPaletteMetrics.resultsRowFacedTextLeading : padding
     let showsUnread = item.hasUnread
-    let trailing = AgentPaletteMetrics.resultsRowTextTrailing
+    let regionSide = AgentPaletteMetrics.resultsMascotSize
+    let faceInset = AgentPaletteMetrics.resultsRowFaceInset
+    let regionRoom = item.askedRegionPath == nil ? 0
+      : faceInset - AgentPaletteMetrics.resultsRowTextTrailing + regionSide + AgentPaletteMetrics.resultsUnreadDotGap
+    if item.askedRegionPath != nil {
+      let regionFrame = NSRect(
+        x: pill.width - faceInset - regionSide,
+        y: ((pill.height - regionSide) / 2).rounded(), width: regionSide, height: regionSide)
+      if region.frame != regionFrame { region.frame = regionFrame }
+      region.layer?.applyPaletteCorner(radius: max(
+        4, AgentPaletteMetrics.resultsRowCornerRadius - faceInset))
+    }
+    let trailing = AgentPaletteMetrics.resultsRowTextTrailing + regionRoom
       + (showsUnread
         ? AgentPaletteMetrics.resultsUnreadDotDiameter + AgentPaletteMetrics.resultsUnreadDotGap
         : 0)
@@ -113,30 +127,22 @@ final class BolttyAISessionRowView: NSView {
     if showsFace {
       let side = AgentPaletteMetrics.resultsMascotSize
       let faceFrame = NSRect(
-        x: padding, y: ((pill.height - side) / 2).rounded(), width: side, height: side
+        x: AgentPaletteMetrics.resultsRowFaceInset, y: ((pill.height - side) / 2).rounded(),
+        width: side, height: side
       )
       if face.frame != faceFrame { face.frame = faceFrame }
     }
     let titleHeight = ceil(titleLabel.intrinsicContentSize.height)
-    let subtitleHeight = ceil(subtitleLabel.intrinsicContentSize.height)
-    let spacing = AgentPaletteMetrics.resultsTitleSubtitleSpacing
-    let column = titleHeight + spacing + subtitleHeight
-    let bottom = ((pill.height - column) / 2).rounded()
-    let subtitleFrame = subtitleLabel.frame(
-      forAlignmentRect: NSRect(x: leading, y: bottom, width: width, height: subtitleHeight)
-    )
+    let bottom = ((pill.height - titleHeight) / 2).rounded()
     let titleFrame = titleLabel.frame(
-      forAlignmentRect: NSRect(
-        x: leading, y: bottom + subtitleHeight + spacing, width: width, height: titleHeight
-      )
+      forAlignmentRect: NSRect(x: leading, y: bottom, width: width, height: titleHeight)
     )
-    if subtitleLabel.frame != subtitleFrame { subtitleLabel.frame = subtitleFrame }
     if titleLabel.frame != titleFrame { titleLabel.frame = titleFrame }
     if showsUnread {
       let side = AgentPaletteMetrics.resultsUnreadDotDiameter
       let dotFrame = NSRect(
-        x: background.bounds.width - AgentPaletteMetrics.resultsRowTextTrailing - side,
-        y: (bottom + column / 2 - side / 2).rounded(),
+        x: background.bounds.width - AgentPaletteMetrics.resultsRowTextTrailing - regionRoom - side,
+        y: (bottom + titleHeight / 2 - side / 2).rounded(),
         width: side, height: side)
       if unreadDot.frame != dotFrame { unreadDot.frame = dotFrame }
       unreadDot.layer?.cornerRadius = side / 2
@@ -159,13 +165,28 @@ final class BolttyAISessionRowView: NSView {
       }
       titleLabel.stringValue = newItem.title
     }
-    if subtitleLabel.stringValue != newItem.subtitle {
-      subtitleLabel.stringValue = newItem.subtitle
-    }
     setAccessibilityLabel(accessibilityText(for: newItem))
     if unreadChanged { syncUnread() }
+    syncRegion()
     syncWorking()
   }
+
+  private func syncRegion() {
+    guard item.askedRegionPath != shownRegionPath else { return }
+    shownRegionPath = item.askedRegionPath
+    region.isHidden = shownRegionPath == nil
+    region.layer?.contents = nil
+    needsLayout = true
+    guard let path = shownRegionPath else { return }
+    FileThumbnails.shared.thumbnail(
+      of: URL(fileURLWithPath: path), side: AgentPaletteMetrics.resultsMascotSize,
+      done: { [weak self] image in
+        guard let self, self.shownRegionPath == path else { return }
+        self.region.layer?.contents = image
+      })
+  }
+
+  var regionPathForTesting: String? { region.isHidden ? nil : shownRegionPath }
 
   private func accessibilityText(for item: BolttyAISessionItem) -> String {
     "\(item.title), \(item.subtitle)" + (item.hasUnread ? String(localized: ", unread") : "")
@@ -174,7 +195,7 @@ final class BolttyAISessionRowView: NSView {
   private func syncUnread() {
     titleLabel.font = roundedAppFont(
       size: AgentPaletteMetrics.resultsTitleFontSize,
-      weight: item.hasUnread ? .semibold : .medium
+      weight: item.hasUnread ? .semibold : .regular
     )
     unreadDot.isHidden = !item.hasUnread
     setAccessibilityLabel(accessibilityText(for: item))
@@ -217,8 +238,8 @@ final class BolttyAISessionRowView: NSView {
 
   private func layoutShimmer() {
     guard isShowingWorking else { return }
-    let frame = subtitleLabel.frame
-    let words = min(frame.width, ceil(subtitleLabel.attributedStringValue.size().width) + 4)
+    let frame = titleLabel.frame
+    let words = min(frame.width, ceil(titleLabel.attributedStringValue.size().width) + 4)
     let still = MotionPreferences.reduceMotion
     let band = still
       ? words
@@ -261,16 +282,16 @@ final class BolttyAISessionRowView: NSView {
   }
 
   private func cutShimmerWords() {
-    let size = subtitleLabel.bounds.size
-    let text = subtitleLabel.stringValue
+    let size = titleLabel.bounds.size
+    let text = titleLabel.stringValue
     guard size.width > 0, size.height > 0,
           shimmerCut?.text != text || shimmerCut?.size != size,
-          let rep = subtitleLabel.bitmapImageRepForCachingDisplay(in: subtitleLabel.bounds)
+          let rep = titleLabel.bitmapImageRepForCachingDisplay(in: titleLabel.bounds)
     else { return }
-    let ink = subtitleLabel.textColor
-    subtitleLabel.textColor = .white
-    subtitleLabel.cacheDisplay(in: subtitleLabel.bounds, to: rep)
-    subtitleLabel.textColor = ink
+    let ink = titleLabel.textColor
+    titleLabel.textColor = .white
+    titleLabel.cacheDisplay(in: titleLabel.bounds, to: rep)
+    titleLabel.textColor = ink
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     shimmerWords.contents = rep.cgImage

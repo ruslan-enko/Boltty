@@ -149,6 +149,7 @@ final class BolttyAIPreviewCard: NSView {
   }
   private var fileFlightOrigins: [String: FlightOrigin] = [:]
   private var fileFlightOriginsAt: Date?
+  private var wordsFlightOrigin: FlightOrigin?
   private(set) var fileFlightsForTesting: [(path: String, start: NSRect, landing: NSRect)] = []
   private(set) var fileFlightGrowsForTesting: [Bool] = []
   private(set) var fileFlightWhipsForTesting = 0
@@ -176,8 +177,8 @@ final class BolttyAIPreviewCard: NSView {
   var onOffersLatestChange: ((Bool) -> Void)?
   private var followsBottom = true
   private var pendingBottomScroll = false
-  private let scroll = NSScrollView()
   private var lastScrollOriginY: CGFloat = 0
+  private let scroll = NSScrollView()
   var transcriptScroll: NSScrollView { scroll }
   private let content = FlippedStackView()
   private var displayedPreview: BolttyAISessionPreview?
@@ -458,9 +459,15 @@ final class BolttyAIPreviewCard: NSView {
     fileFlightOriginsAt = Date()
   }
 
+  func prepareWordsFlight(_ origin: FlightOrigin?) {
+    wordsFlightOrigin = origin
+    fileFlightOriginsAt = Date()
+  }
+
   private func takeFileFlightOrigins() -> [String: FlightOrigin] {
     defer {
       fileFlightOrigins = [:]
+      wordsFlightOrigin = nil
       fileFlightOriginsAt = nil
     }
     guard let at = fileFlightOriginsAt, Date().timeIntervalSince(at) < 2 else { return [:] }
@@ -468,6 +475,8 @@ final class BolttyAIPreviewCard: NSView {
   }
 
   private func launch(_ message: ConversationMessage, from origin: NSPoint) {
+    let spoken = fileFlightOriginsAt.map { Date().timeIntervalSince($0) < 2 } == true
+      ? wordsFlightOrigin : nil
     let origins = takeFileFlightOrigins()
     fileFlightsForTesting = []
     fileFlightGrowsForTesting = []
@@ -487,18 +496,31 @@ final class BolttyAIPreviewCard: NSView {
     let rise = liftOff - lead.midY
 
     var risers: [(view: NSView, landing: NSPoint)] = []
+    var wordsMorph: WordsMorph?
     if let words {
       var typed = message
       typed.parts.removeAll { part in
         if case let .attachment(attachment) = part { return attachment.url != nil }
         return false
       }
+      // The bubble is pinned to the row's top and to the room for the question's
+      // actions under it, so the ghost needs that room too.
+      let ghostFrame = isFlipped
+        ? NSRect(x: landing.minX, y: landedBubble.minY,
+                 width: landing.width, height: landing.maxY - landedBubble.minY)
+        : NSRect(x: landing.minX, y: landing.minY,
+                 width: landing.width, height: landedBubble.maxY - landing.minY)
       let ghost = PaletteChatMessageView(message: typed)
       ghost.translatesAutoresizingMaskIntoConstraints = true
-      ghost.frame = words.offsetBy(dx: 0, dy: rise)
+      ghost.frame = ghostFrame.offsetBy(dx: 0, dy: rise)
       addSubview(ghost, positioned: .above, relativeTo: scroll)
       ghost.layoutSubtreeIfNeeded()
-      risers.append((ghost, words.origin))
+      if let spoken, let image = spoken.image,
+         let morph = makeWordsMorph(ghost, landing: ghostFrame, row: row, from: spoken, image: image) {
+        wordsMorph = morph
+      } else {
+        risers.append((ghost, ghostFrame.origin))
+      }
     }
     var morphs: [(card: NSView, chip: NSImageView?, grow: CATransform3D?)] = []
     var whips: [PaletteWhipView] = []
@@ -538,7 +560,7 @@ final class BolttyAIPreviewCard: NSView {
     isFlying = true
     let duration = AgentPaletteMetrics.previewSendFlightDuration
     let ghosts = risers.map(\.view) + morphs.flatMap { [$0.card, $0.chip].compactMap { $0 } }
-      + whips
+      + whips + [wordsMorph?.bubble, wordsMorph?.typed, wordsMorph?.landed].compactMap { $0 }
     // Every part runs on Core Animation's clock. The clip view's animator() is
     // AppKit's timer on the main thread, which the turn starting keeps busy: the
     // transcript stuttered under a bubble that glided.
@@ -593,6 +615,34 @@ final class BolttyAIPreviewCard: NSView {
       morph.card.layer?.add(Self.fade([0, 1, 1], at: [0, 0.5, 1], over: duration), forKey: "sendFade")
       morph.chip?.layer?.add(Self.fade([1, 0, 0], at: [0, 0.4, 1], over: duration), forKey: "sendFade")
     }
+    if let wordsMorph {
+      let grow = CABasicAnimation(keyPath: "transform")
+      grow.fromValue = NSValue(caTransform3D: wordsMorph.from)
+      grow.toValue = NSValue(caTransform3D: CATransform3DIdentity)
+      grow.duration = duration
+      grow.timingFunction = Motion.emphasizedCurve
+      wordsMorph.bubble.layer?.add(grow, forKey: "sendFlight")
+      wordsMorph.bubble.layer?.add(
+        Self.fade([0, 1, 1], at: [0, 0.45, 1], over: duration), forKey: "sendFade")
+      let rise = { (words: NSView) in
+        words.layer?.add(Self.glide(
+          "position", by: CGPoint(x: -wordsMorph.by.x, y: -wordsMorph.by.y), over: duration),
+          forKey: "sendRise")
+      }
+      rise(wordsMorph.landed)
+      if wordsMorph.linesMatch {
+        rise(wordsMorph.typed)
+        wordsMorph.typed.layer?.add(
+          Self.fade([1, 1, 0, 0], at: [0, 0.1, 0.5, 1], over: duration), forKey: "sendFade")
+        wordsMorph.landed.layer?.add(
+          Self.fade([0, 0, 1, 1], at: [0, 0.1, 0.5, 1], over: duration), forKey: "sendFade")
+      } else {
+        wordsMorph.typed.layer?.add(
+          Self.fade([1, 0, 0], at: [0, 0.15, 1], over: duration), forKey: "sendFade")
+        wordsMorph.landed.layer?.add(
+          Self.fade([0, 1, 1], at: [0, 0.45, 1], over: duration), forKey: "sendFade")
+      }
+    }
     whips.forEach { $0.start() }
     if morphs.contains(where: { $0.chip != nil }) {
       NSAnimationContext.runAnimationGroup { context in
@@ -603,6 +653,60 @@ final class BolttyAIPreviewCard: NSView {
       }
     }
     CATransaction.commit()
+  }
+
+  private struct WordsMorph {
+    var bubble: NSView
+    var from: CATransform3D
+    var typed: NSImageView
+    var landed: NSImageView
+    var by: CGPoint
+    var linesMatch: Bool
+  }
+
+  /// The words leave the composer as they stood there and the bubble grows round
+  /// them on the way up, as Messages sends. Only the bubble scales: the words are
+  /// two pictures at their own size on one path, the typed ones fading into the
+  /// bubble's, so the lines never part. Where the composer wraps them otherwise
+  /// than the bubble does, the typed words fade where they stand instead.
+  private func makeWordsMorph(
+    _ bubble: NSView, landing: NSRect, row: PaletteChatMessageView,
+    from spoken: FlightOrigin, image: NSImage
+  ) -> WordsMorph? {
+    guard !isFlipped, let ghost = bubble as? PaletteChatMessageView,
+          let landedWords = row.bubbleTextSnapshotForFlight() else { return nil }
+    bubble.frame = landing
+    bubble.wantsLayer = true
+    bubble.layoutSubtreeIfNeeded()
+    ghost.hidesBubbleTextForFlight()
+    guard let layer = bubble.layer else { return nil }
+    let typedFrame = convert(spoken.frameInWindow, from: nil)
+    let textFrame = convert(landedWords.frame, from: row)
+    let by = CGPoint(x: textFrame.midX - typedFrame.midX, y: textFrame.midY - typedFrame.midY)
+
+    let scale: CGFloat = AgentPaletteMetrics.sendWordsBubbleStartScale
+    let position = layer.position
+    let anchor = CGPoint(x: textFrame.midX, y: textFrame.midY)
+    let target = CGPoint(x: typedFrame.midX, y: typedFrame.midY)
+    let shift = CGPoint(
+      x: target.x - position.x - scale * (anchor.x - position.x),
+      y: target.y - position.y - scale * (anchor.y - position.y))
+    let from = CATransform3DScale(CATransform3DMakeTranslation(shift.x, shift.y, 0), scale, scale, 1)
+
+    func picture(_ image: NSImage, at frame: NSRect) -> NSImageView {
+      let view = NSImageView(frame: frame)
+      view.image = image
+      view.imageScaling = .scaleNone
+      view.wantsLayer = true
+      addSubview(view, positioned: .above, relativeTo: bubble)
+      return view
+    }
+    let linesMatch = abs(typedFrame.width - textFrame.width) < 2
+      && abs(typedFrame.height - textFrame.height) < 2
+    let typed = picture(image, at: linesMatch ? typedFrame.offsetBy(dx: by.x, dy: by.y) : typedFrame)
+    let landed = picture(landedWords.image, at: textFrame)
+    return WordsMorph(
+      bubble: bubble, from: from, typed: typed, landed: landed, by: by, linesMatch: linesMatch)
   }
 
   /// Additive, so the model value is already where it ends and anything AppKit
@@ -1159,6 +1263,7 @@ final class BolttyAIPreviewCard: NSView {
         if let old = messageRows[message.id], old !== view { old.removeFromSuperview() }
         messageRows[message.id] = view
         view.setExpandedActivities(expandedActivities)
+        view.agent = preview.agent
         view.apply(message, folded: folded, offersCopy: copies.contains(message.id))
         view.isSpeaking = message.id == speakingMessageID
         view.isAnswered = answered.contains(message.id)
@@ -1533,10 +1638,24 @@ final class PaletteChatMessageView: NSView {
     didSet {
       for row in fileRows { row.onUse = onUseFile }
       for card in sentCards { card.onUse = onUseFile }
+      askedView?.onUse = onUseFile
     }
   }
   private var fileRows: [PaletteFileRowView] = []
   private var sentCards: [PromptAttachmentCard] = []
+  private var askedView: PaletteAskedRegionView?
+  var askedViewForTesting: PaletteAskedRegionView? { askedView }
+  /// Whose light the answer's drawings over an asked region are in.
+  var agent: AgentId? {
+    didSet {
+      guard agent != oldValue, let agent else { return }
+      askedView?.colours = Self.drawingColours(of: agent)
+    }
+  }
+
+  private static func drawingColours(of agent: AgentId) -> [NSColor] {
+    MascotLook.face(for: agent).palette.light(atLeast: AgentPaletteMetrics.screenSelectionLightness)
+  }
   var filePathsForTesting: [String] { shownFiles }
   var fileRowsForTesting: [PaletteFileRowView] { fileRows }
   var sentCardsForTesting: [PromptAttachmentCard] { sentCards }
@@ -1615,6 +1734,18 @@ final class PaletteChatMessageView: NSView {
     return (inSelf(copyButton), inSelf(answerViews.last ?? textViews.first ?? bodyStack))
   }
   var bubbleFrameForFlight: NSRect { convert(bubble.bounds, from: bubble) }
+  /// The bubble's words alone, where they stand in the row.
+  func bubbleTextSnapshotForFlight() -> (frame: NSRect, image: NSImage)? {
+    let rect = bodyStack.bounds
+    guard rect.width > 1, rect.height > 1,
+          let rep = bodyStack.bitmapImageRepForCachingDisplay(in: rect) else { return nil }
+    bodyStack.cacheDisplay(in: rect, to: rep)
+    let image = NSImage(size: rect.size)
+    image.addRepresentation(rep)
+    return (convert(rect, from: bodyStack), image)
+  }
+
+  func hidesBubbleTextForFlight() { bodyStack.alphaValue = 0 }
   func hoverForTesting(_ inside: Bool) { setCopyRevealed(inside) }
   func pressCopyForTesting() { copyText(copyButton) }
 
@@ -2131,7 +2262,33 @@ final class PaletteChatMessageView: NSView {
       : AgentPaletteMetrics.previewActivityRowSpacing
   }
 
+  private func syncAskedRegion(_ message: ConversationMessage) -> Bool {
+    guard message.role == .user, let asked = message.askedRegion else {
+      askedView?.removeFromSuperview()
+      askedView = nil
+      return false
+    }
+    if let askedView, askedView.regionPath == asked.path {
+      askedView.apply(asked.region, animates: true)
+    } else {
+      askedView?.removeFromSuperview()
+      let view = PaletteAskedRegionView(path: asked.path, region: asked.region)
+      if let agent { view.colours = Self.drawingColours(of: agent) }
+      view.onUse = onUseFile
+      addSubview(view)
+      askedView = view
+    }
+    if !sentCards.isEmpty {
+      sentCards.forEach { $0.removeFromSuperview() }
+      sentCards = []
+    }
+    shownFiles = []
+    placeSentCards()
+    return true
+  }
+
   private func syncFileRows(_ message: ConversationMessage) {
+    if syncAskedRegion(message) { return }
     let paths = message.resultFiles
     guard paths != shownFiles else { return }
     shownFiles = paths
@@ -2175,6 +2332,17 @@ final class PaletteChatMessageView: NSView {
       card.frame = CGRect(
         x: frame.minX, y: bounds.height - frame.maxY, width: frame.width, height: frame.height)
     }
+    if let askedView {
+      let side = Self.askedRegionWidth(in: width)
+      let height = PaletteAskedRegionView.height(for: askedView.region, width: side)
+      askedView.frame = CGRect(x: 0, y: bounds.height - height, width: side, height: height)
+    }
+  }
+
+  /// An asked region stands over the question as wide as the column, its edge
+  /// with the bubble's.
+  static func askedRegionWidth(in width: CGFloat) -> CGFloat {
+    max(0, width - MessageTailView.size.width)
   }
 
   var fileCardsForFlight: [(path: String, name: String?, frame: NSRect)] {
@@ -2291,6 +2459,11 @@ final class PaletteChatMessageView: NSView {
   }
 
   static func userBubbleOffset(for message: ConversationMessage, width: CGFloat) -> CGFloat {
+    if message.role == .user, let asked = message.askedRegion {
+      let region = PaletteAskedRegionView.height(for: asked.region, width: askedRegionWidth(in: width))
+      return units(of: message, folded: false).isEmpty
+        ? region : region + AgentPaletteMetrics.previewSentFilesGap
+    }
     let count = message.resultFiles.count
     guard count > 0 else { return 0 }
     let cards = AgentPaletteMetrics.sentCardsHeight(count: count, width: width)

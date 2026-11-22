@@ -1046,6 +1046,12 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
          "session.next.prompt.admitted", "session.next.prompted":
       guard let id = data["inboxID"]?.stringValue ?? data["messageID"]?.stringValue
       else { return [] }
+      // A finished background shell comes in as a `synthetic` item (2.3.2), and
+      // `delivered` carries no item at all: neither is the person's message.
+      let itemType = data["item"]?["type"]?.stringValue
+      guard itemType == "user" || (itemType == nil && data["prompt"] != nil) else {
+        return [.executionStateChanged(sessionID: sessionID, state: .working)]
+      }
       var message = ConversationMessage(
         id: id,
         role: .user,

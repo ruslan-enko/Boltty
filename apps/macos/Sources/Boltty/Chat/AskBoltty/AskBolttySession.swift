@@ -176,7 +176,7 @@ final class AskBolttySession: ObservableObject {
       return
     }
     discardIfNew()
-    coordinator.forgetAskBolttyChats()
+    coordinator.settleAskBolttyChats()
     let conversation = coordinator.prepareAskBolttyConversation(
       providerID: target.providerID, model: target.model, effort: target.effort,
       readOnly: target.readOnly)
@@ -218,9 +218,16 @@ final class AskBolttySession: ObservableObject {
     let pictures = wholeScreen
       ? [picture(screenURL, "Screen", selection.screen)]
       : [picture(screenURL, "Screen", selection.screen), picture(areaURL, "Area", selection.region)]
+    let shown = wholeScreen ? displayFrame : selection.frame
+    let asked = AskedRegion(
+      screenPath: screenURL.path,
+      area: wholeScreen ? nil : region.area.map {
+        [Double($0.minX), Double($0.minY), Double($0.width), Double($0.height)]
+      },
+      width: Double(shown.width), height: Double(shown.height), place: selection.context)
     coordinator.store.recordSentFiles(
       [SentFile(path: (wholeScreen ? screenURL : areaURL).path, label: "",
-                name: wholeScreen ? "Screen.png" : "Area.png", expansion: bracket)],
+                name: wholeScreen ? "Screen.png" : "Area.png", expansion: bracket, asked: asked)],
       for: id)
     if isNewConversation {
       coordinator.store.rename(id: id, to: ConversationEngine.title(from: words))
@@ -247,7 +254,7 @@ final class AskBolttySession: ObservableObject {
   private func reopen(_ id: UUID, in folder: String) -> UUID? {
     guard let old = coordinator.store.conversation(id: id), old.workingDirectory != folder else { return nil }
     discardIfNew()
-    coordinator.forgetAskBolttyChats()
+    coordinator.settleAskBolttyChats()
     let new = coordinator.prepareAskBolttyConversation(
       providerID: old.providerID, model: old.model, effort: old.reasoningEffort,
       readOnly: old.readOnly, workingDirectory: folder)
@@ -643,7 +650,7 @@ final class AskBolttySession: ObservableObject {
       scheduleExpiry()
       return
     }
-    coordinator.forgetAskBolttyChats()
+    coordinator.settleAskBolttyChats()
     conversationID = nil
     lastAnsweredAt = nil
   }

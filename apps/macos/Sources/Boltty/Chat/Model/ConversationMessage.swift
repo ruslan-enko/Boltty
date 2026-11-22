@@ -201,6 +201,7 @@ struct ConversationAttachment: Identifiable, Codable, Equatable, Sendable {
   var mimeType: String?
   var byteCount: Int?
   var isAnalysable: Bool
+  var asked: AskedRegion? = nil
 
   init(
     id: String,
@@ -208,7 +209,8 @@ struct ConversationAttachment: Identifiable, Codable, Equatable, Sendable {
     url: URL? = nil,
     mimeType: String? = nil,
     byteCount: Int? = nil,
-    isAnalysable: Bool = true
+    isAnalysable: Bool = true,
+    asked: AskedRegion? = nil
   ) {
     self.id = id
     self.displayName = displayName
@@ -216,5 +218,6 @@ struct ConversationAttachment: Identifiable, Codable, Equatable, Sendable {
     self.mimeType = mimeType
     self.byteCount = byteCount
     self.isAnalysable = isAnalysable
+    self.asked = asked
   }
 }

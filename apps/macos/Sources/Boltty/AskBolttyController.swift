@@ -95,7 +95,7 @@ final class AskBolttyController {
         self.onNeedsYou?(id)
       }
       .store(in: &cancellables)
-    coordinator.forgetAskBolttyChats()
+    coordinator.settleAskBolttyChats()
     // On the next turn of the run loop: `$speakingID` tells before the value
     // changes, and asked then the voice is still saying what it has finished.
     speech.$speakingID

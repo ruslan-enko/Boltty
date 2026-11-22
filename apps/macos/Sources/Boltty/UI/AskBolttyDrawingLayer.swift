@@ -13,6 +13,8 @@ final class AskBolttyDrawingLayer: CALayer {
 
   var colours: [NSColor] = []
   var scale: CGFloat = 1
+  /// Off, a shape stands at once: one drawn again, not being drawn.
+  var animates = true
 
   private(set) var shapeCount = 0
   private var queuedUntil: CFTimeInterval = 0
@@ -38,7 +40,7 @@ final class AskBolttyDrawingLayer: CALayer {
     shapeCount += 1
     let path = Self.path(of: shape, in: space, head: Self.arrowHead * scale)
     let length = Self.length(of: path)
-    let duration = MotionPreferences.reduceMotion ? 0
+    let duration = MotionPreferences.reduceMotion || !animates ? 0
       : min(max(Double(length / Self.drawSpeed), Self.drawDuration.lowerBound), Self.drawDuration.upperBound)
     queuedUntil = begin + duration + Self.stagger
 
@@ -142,7 +144,7 @@ final class AskBolttyDrawingLayer: CALayer {
     text.frame = CGRect(origin: CGPoint(x: padding.width, y: padding.height),
                         size: CGSize(width: box.width - padding.width * 2, height: box.height - padding.height * 2))
     pill.addSublayer(text)
-    if !MotionPreferences.reduceMotion {
+    if !MotionPreferences.reduceMotion, animates {
       let fade = CABasicAnimation(keyPath: "opacity")
       fade.fromValue = 0
       fade.toValue = 1
