@@ -405,7 +405,7 @@ private struct NewChatsPicker: View {
   }
 }
 
-/// The agents' faces in the loose ring the chat list's All tab wears. It
+/// The agents' faces gathered round one, as the chat list's All tab wears them. It
 /// reaches past `diameter`, into the room the strip leaves round a picture.
 struct FaceCluster: View {
   let looks: [MascotLook]

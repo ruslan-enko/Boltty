@@ -272,11 +272,18 @@ final class ChatWorkspaceCoordinator {
     forgetAskBolttyChat(id)
   }
 
-  func forgetAskBolttyChats(except kept: UUID? = nil) {
+  /// Ask Boltty chats are kept, their sessions let go; one nothing was asked in,
+  /// and one from before they were marked, goes.
+  func settleAskBolttyChats(except kept: UUID? = nil) {
     for conversation in store.conversations
     where conversation.id != kept && Self.isAskBoltty(conversation)
       && !conversation.lastKnownState.blocksSending {
-      forgetAskBolttyChat(conversation.id)
+      if !conversation.isAskBoltty || store.transcript(id: conversation.id).messages.isEmpty
+        && pendingPanelPrompts[conversation.id] == nil && conversation.sentFiles.isEmpty {
+        forgetAskBolttyChat(conversation.id)
+      } else {
+        engine.releaseSession(of: conversation.id)
+      }
     }
   }
 

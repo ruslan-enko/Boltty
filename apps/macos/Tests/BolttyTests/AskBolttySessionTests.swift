@@ -266,7 +266,7 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertNotNil(askBoltty.pointing, "it still points")
   }
 
-  func testAFinishedAskBolttyIsForgottenWhenTheNextOneBegins() async throws {
+  func testAFinishedAskBolttyIsKeptAndItsSessionLetGoWhenTheNextOneBegins() async throws {
     try ask("what is this?")
     try await waitFor("the question") { !self.client.sentMessages.isEmpty }
     let first = try XCTUnwrap(askBoltty.conversationID)
@@ -283,9 +283,10 @@ final class AskBolttySessionTests: XCTestCase {
     askBoltty.now = { Date().addingTimeInterval(AskBolttySession.followUpWindow + 1) }
     askBoltty.warmUp(target)
     XCTAssertNotEqual(askBoltty.conversationID, first)
-    XCTAssertNil(store.conversation(id: first), "its record goes at once")
+    XCTAssertNotNil(store.conversation(id: first), "it stays, in the Ask Boltty list")
     try await waitFor("its process to be let go") { self.client.released == [remote] }
-    try await waitFor("its screenshot to be deleted") { !FileManager.default.fileExists(atPath: picture) }
+    XCTAssertTrue(FileManager.default.fileExists(atPath: picture), "and so does what it was about")
+    XCTAssertNotNil(store.conversation(id: first)?.sentFiles.first?.asked)
   }
 
   func testChatsAskBolttyMadeBeforeItMarkedThemAreForgottenAndNothingElse() async throws {
@@ -294,7 +295,7 @@ final class AskBolttySessionTests: XCTestCase {
       providerID: AgentId.claude.rawValue)
     let kept = store.createConversation(
       title: "Fix the build", workingDirectory: "/tmp", providerID: AgentId.claude.rawValue)
-    coordinator.forgetAskBolttyChats()
+    coordinator.settleAskBolttyChats()
     XCTAssertNil(store.conversation(id: old.id))
     XCTAssertNotNil(store.conversation(id: kept.id))
   }
@@ -328,7 +329,7 @@ final class AskBolttySessionTests: XCTestCase {
 
     XCTAssertEqual(store.conversation(id: id)?.readOnly, true)
     engine.keepAskBolttyChat(id: id)
-    coordinator.forgetAskBolttyChats()
+    coordinator.settleAskBolttyChats()
 
     XCTAssertEqual(store.conversation(id: id)?.isAskBoltty, false)
     XCTAssertEqual(store.conversation(id: id)?.readOnly, false, "it asks as any chat does")

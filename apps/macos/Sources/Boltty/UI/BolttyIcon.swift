@@ -25,6 +25,7 @@ enum BolttyIcon: String, CaseIterable {
   case arrowDownCircle = "arrow-down-circle"
   case arrowUpCircle = "arrow-up-circle"
   case compact
+  case expand
   case undoCircle = "undo-circle"
   case circle
   case circleDashed = "circle-dashed"

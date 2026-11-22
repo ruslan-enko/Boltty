@@ -520,7 +520,9 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   durable per-session sequence (sent-exactly-once, reconnect without
   duplicates). The OpenAPI document is `GET /openapi.json` on 2.0.
 - Live events are `session.*` (2.0) / `session.next.*` (1.18), never
-  `message.*`. A turn ends with `session.step.ended` `finish: "stop"`, then
+  `message.*`. An inbox item is the person's only when its `type` is `user`: a
+  background shell that ends comes as `synthetic` (`<shell id=…>`, 2.3.2), and
+  the record files it under `synthetic` too. A turn ends with `session.step.ended` `finish: "stop"`, then
   `session.execution.succeeded` on 2.0. `OpenCodeLiveEventShapeTests` pins it.
 - 2.0 field renames: `ordinal` instead of `textID`/`reasoningID`, `id` for
   `callID`, the tool name only on `session.tool.input.started`, user messages as
@@ -846,9 +848,22 @@ The loop that must keep working:
 - What the person sent stands over their words as the cards it came as, in rows
   from the right (`AgentPaletteMetrics.sentCardFrames`; `Conversation.sentFiles`,
   `SentFile.lift`), stored on the conversation because providers re-file requests
-  under their own ids. Pasted text too: its words go inline, and a file written
+  under their own ids. A follow-up's words fly up as Messages sends them: a picture
+  of the typed words leaves the composer where they stood and fades into the white
+  bubble, which grows round them from 0.9 on the way (only the bubble: the words keep
+  their size, the typed picture fading into one of the bubble's words on the same path; where the
+  composer wraps them otherwise, the typed words fade where they stand) (`makeWordsMorph`,
+  `PromptTextView.wordsSnapshot`). Pasted text too: its words go inline, and a file written
   beside them is what its card stands on. A card flies there from the strip
   without changing shape. Right click: Quick Look, Show in Finder, Use in Follow-up.
+- An Ask Boltty question stands under what it was about, in place of its cards
+  (`PaletteAskedRegionView`, `ConversationMessage.askedRegion`): the app and window
+  in secondary ink, then the region at the column's width (at most 240 high, its
+  edge with the bubble's), with what the answer drew and pointed at on it in the
+  face's light (the answer's tags, laid over the region's thousandths;
+  `ChatWorkspaceCoordinator.withAnswers`). Drawn again, the drawings stand still;
+  ones that arrive while it is open are drawn. A press is Quick Look; the expand disc in its corner
+  (Whole Screen, `BolttyIcon.expand`) shows the picture the agent was sent.
 - A tool cut off with its turn (OpenCode's `error.type` `aborted`) is
   `AgentActivity.State.interrupted`: no warning and none of "Tool execution
   interrupted", since the turn's "Stopped" says it.
@@ -916,7 +931,13 @@ The loop that must keep working:
   from the tabs, the rows and the search, and from Usage, until it is switched on
   again; its chats stay on disk, and one still working is reached from the tray
   and the notch. Settings › Agents lists every agent, since that is where one is
-  switched on. All wears the faces of enabled agents in a loose ring.
+  switched on. All wears the faces of enabled agents gathered round the last of them,
+  which stands in the middle (`AgentHistoryTabView.faceFrames`).
+- Ask Boltty's chats are chats like any other, in All and their agent's tab; their
+  row carries the latest region asked about, at the face's size, as far in from the
+  trailing edge as the face from the leading one
+  (`BolttyAISessionItem.askedRegionPath`), so one is told at a glance. A list of
+  their own behind a foot capsule, and a tab of their own, were tried and removed.
 - **Nothing offers a choice with nothing to choose among.** With one agent there is
   no All, no agent menu on Usage, no ⇧Tab or ←/→ in Settings › Shortcuts and none
   suggested when it is not ready, no New Chats strip in Settings › Agents, and the first
@@ -938,10 +959,11 @@ The loop that must keep working:
   disk). `agy` cannot keep no record: each name leaves one conversation, which is
   left alone and counts in Usage. No name is no failure: the request stays, and
   the next turn tries again. Ask Boltty chats are not named, and what the
-  person typed is still found by search, off the transcript. Unread rows have a blue dot and a semibold title. A working
-  row's second line is the step it is on ("Reading upscale.py", "Thinking…",
-  `BolttyAISessionList.liveStep`; "Working…" between steps), with a band of the
-  agent's light sweeping across those words, as the CLIs' shimmer does. Nothing
+  person typed is still found by search, off the transcript. A row's title is regular; unread rows have a blue dot and a semibold title. **A row is
+  one line, the title**: a second line of preview or step was there and was
+  removed (the preview and step are still searched and read out to VoiceOver).
+  A working row's title has a band of the agent's light sweeping across it, as
+  the CLIs' shimmer does. Nothing
   runs round the pill: an orbiting outline read as a border and a second
   selection.
 - The order holds while the list is open.
@@ -1188,12 +1210,15 @@ so in the orb ("No sound is reaching the microphone…",
   words; under Reduce Motion they stay plain.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
-- Ask Boltty chats raise no banner, unread mark or notch line, and are forgotten
-  (record, screenshots, session released via `AgentClient.release`) ten minutes
-  after the last answer unless working, waiting or open in the panel; a question
-  within those ten minutes continues the chat. Until then one that was asked in
-  is a row in the chat list, the only way back to words that have gone from
-  beside the pointer. Gone on with in the panel it is the person's own chat
+- Ask Boltty chats raise no banner, unread mark or notch line. They are kept, as
+  any chat is (Settings › General › Keep chats), with the region and the whole
+  screen each question was about (`AskedRegion`, on its `SentFile`; both counted
+  in `filesInUse`), and are listed with the rest, marked by their region (*The chat list*). Ten minutes after the last answer, unless working, waiting or open in
+  the panel, the chat's session is let go (`settleAskBolttyChats`,
+  `ConversationEngine.releaseSession`) and the next region starts a new chat; a
+  question within those ten minutes continues it. A chat nothing was asked in,
+  and one from before Ask Boltty chats were marked, is forgotten. Gone on with in
+  the panel it is the person's own chat
   (`keepChat`): no longer read-only, its process let go before the next send, and
   a new region starts a chat of its own. A chat waiting on the person opens the
   panel on it, every time it waits; while it is open there, nothing about it shows
@@ -1330,7 +1355,7 @@ so in the orb ("No sound is reaching the microphone…",
   no alternate icons, so it only ever showed while a Boltty window was open.
   `boltty.appIcon` is a retired key, inert on disk.
 - **Settings › Agents** opens on **New Chats** (two agents or more): a strip of
-  bare faces, Automatic first (the enabled agents' faces in a loose ring,
+  bare faces, Automatic first (the enabled agents' faces gathered round one,
   `FaceCluster`) then each enabled agent (`NewChatsPicker`), and under it a line
   saying who takes the next chat. A picture of the first screen and of each
   agent's plan under the strip was tried and removed: the strip says it. A
@@ -1471,14 +1496,11 @@ so in the orb ("No sound is reaching the microphone…",
 
 ## The voice glow and shader effects
 
-- The glow (`UI/Voice/`) is a Metal view **under** the shell's glass: rays of the
-  face's colours whose angle-noise streams outward, moved by an integrated
-  `flow` so speed changes never jump. Nothing in it has an edge. Reduce
-  Transparency puts it over the shell. Never `presentsWithTransaction` (it
-  starved the run loop).
-- The listening orb is the shell's glass and draws no light of its own: the
-  glow view clears once and draws no more frames while `fillsShell`; its clock
-  still times the take.
+- The glow (`UI/Voice/`, `VoiceEdgeGlowView`) draws nothing: its rays of the
+  face's colours under the shell while listening were refused. The view stays
+  for the take's clock and phase. Never `presentsWithTransaction` (it starved
+  the run loop).
+- The listening orb is the shell's glass and draws no light of its own.
 - **Backdrops** (`AgentBackdropView`): what the chat list and the open chat
   wear behind their content, one choice for every agent in Settings › General ›
   Appearance (`boltty.backdrop`): Standard (the glass), Sky, Space. The first
@@ -1590,7 +1612,8 @@ so in the orb ("No sound is reaching the microphone…",
   shell's corners (`PaletteCornerScrollIndicator`).
 - **Type**: five sizes in `AgentPaletteMetrics` — 18, 15 (`typeSecondary` and
   `typeChat`), 13, 11; the first screen's 20 is the exception (key hints
-  take the typed size), and so is the notch badge's digit at 9. Whole points only, SF Pro Rounded everywhere, no `.kern`.
+  take the typed size), and so are the notch badge's digit at 9 and a chat's folder
+  and model chips at 14.5 (`folderChipFontSize`). Whole points only, SF Pro Rounded everywhere, no `.kern`.
 - **Colour**: `PaletteInk` — system label colours (dynamic) and fills written as
   values (they end up as `CGColor`). Pure white only for primary-action fills.
   **A colour with a hue is written in OKLCH** (`OKLCH(l, c, h)`, `Models/OKLCH.swift`),

@@ -211,6 +211,28 @@ final class PromptTextView: NSTextView {
   /// The sentence's face, never `font`, which answers with the first character's.
   private var caretFont: NSFont { isChatComposer ? Self.chatComposerFont : Self.promptFont }
 
+  /// Where the words stand, in the window, and a picture of them: what flies up
+  /// into the bubble as they are sent.
+  func wordsSnapshot() -> (frameInWindow: NSRect, image: NSImage)? {
+    guard let layoutManager, let textContainer, (textStorage?.length ?? 0) > 0, window != nil
+    else { return nil }
+    layoutManager.ensureLayout(for: textContainer)
+    let padding = textContainer.lineFragmentPadding
+    let used = layoutManager.usedRect(for: textContainer)
+      .insetBy(dx: padding, dy: 0)
+      .offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)
+      .intersection(visibleRect)
+    guard used.width > 1, used.height > 1,
+          let rep = bitmapImageRepForCachingDisplay(in: used) else { return nil }
+    let caretWasHidden = caretView.isHidden
+    caretView.isHidden = true
+    cacheDisplay(in: used, to: rep)
+    caretView.isHidden = caretWasHidden
+    let image = NSImage(size: used.size)
+    image.addRepresentation(rep)
+    return (convert(used, to: nil), image)
+  }
+
   var caretBarRect: NSRect? {
     guard let layoutManager, let textContainer, let storage = textStorage else { return nil }
     let selection = selectedRange()

@@ -288,7 +288,7 @@ struct GlassSegments<Value: Hashable>: View {
     HStack(spacing: 0) {
       ForEach(Array(options.enumerated()), id: \.offset) { index, option in
         Text(option.title)
-          .fontWeight(.medium)
+          .fontWeight(.regular)
           .foregroundStyle(.primary.opacity(index == chosenIndex ? 1 : (hovered == index ? 0.85 : 0.7)))
           .padding(.horizontal, 14)
           .frame(height: Self.height - 2 * Self.inset)

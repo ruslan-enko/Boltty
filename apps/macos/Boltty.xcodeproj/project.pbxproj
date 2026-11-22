@@ -169,6 +169,7 @@
 		6CB1F4E96B147B9CDCDFAC90 /* AgentFailureReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F98E1E94EB5E6C6F9AD9B63 /* AgentFailureReport.swift */; };
 		6CB68855DE384BA8FE879975 /* ConversationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFAEDE14FDE189440D7E996 /* ConversationStoreTests.swift */; };
 		6D73F2A30C1C73C3C5A3C3C7 /* AskBolttySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BF5880C3E66564A58DC28E /* AskBolttySession.swift */; };
+		6E5C4E1B8DE733862477CD4F /* PaletteAskedRegionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3753766B6E76DDA8240341FF /* PaletteAskedRegionView.swift */; };
 		6E89A5201A79D556A58F0E84 /* PromptAttachmentStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989BDF4201D0EC2CD964D5C3 /* PromptAttachmentStrip.swift */; };
 		6F8514381BE7AF7AAE9C8E88 /* MascotPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F79BA33EC53D187DB02481E /* MascotPalette.swift */; };
 		707F278C10F0255A8B787FA3 /* BolttyAIScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3741CC8770F4D873A8F84E0 /* BolttyAIScreenshotTests.swift */; };
@@ -462,6 +463,7 @@
 		37393B2EDC2ABEB81DF2065F /* OpenCodeDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenCodeDTO.swift; sourceTree = "<group>"; };
 		374C9FB4E52036F542AAF045 /* ExecutableLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutableLookup.swift; sourceTree = "<group>"; };
 		374D78531806A173D2369A9C /* ClaudeCodeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeSession.swift; sourceTree = "<group>"; };
+		3753766B6E76DDA8240341FF /* PaletteAskedRegionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteAskedRegionView.swift; sourceTree = "<group>"; };
 		37B150EECF419B1FAACA3BC0 /* PaletteNoticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteNoticeView.swift; sourceTree = "<group>"; };
 		37FE0089A218D7229D3E597A /* VoiceGlowPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceGlowPhase.swift; sourceTree = "<group>"; };
 		384C85E8B2EC689CCF6B5C6A /* MascotShapeContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotShapeContactSheet.swift; sourceTree = "<group>"; };
@@ -1299,6 +1301,7 @@
 				B1B5A46902FC1B2C9FEC926E /* NotchMascotController.swift */,
 				2182E6F034C7F8C5842C3D45 /* PaletteActivityRowView.swift */,
 				D3C673BD206909601AA84099 /* PaletteAnswerText.swift */,
+				3753766B6E76DDA8240341FF /* PaletteAskedRegionView.swift */,
 				17D1E4589B3E547086AF5501 /* PaletteCapsuleButton.swift */,
 				9E17179297F2494F7A24BA4C /* PaletteCornerScrollIndicator.swift */,
 				195A52A8C25ECDEC073FBBB5 /* PaletteDrip.swift */,
@@ -1671,6 +1674,7 @@
 				51914BE74EE11700FBB721A0 /* OpenCodeSessionStore.swift in Sources */,
 				33E17469CD8CBE4E079B7952 /* PaletteActivityRowView.swift in Sources */,
 				01F1C518066A6F473601BF96 /* PaletteAnswerText.swift in Sources */,
+				6E5C4E1B8DE733862477CD4F /* PaletteAskedRegionView.swift in Sources */,
 				6080D87D1E8BDC54AC4780BA /* PaletteCapsuleButton.swift in Sources */,
 				7A43FCE2ECC18DAB35AF9220 /* PaletteCornerScrollIndicator.swift in Sources */,
 				EECF495C12B2FABAECC34BC9 /* PaletteDrip.swift in Sources */,

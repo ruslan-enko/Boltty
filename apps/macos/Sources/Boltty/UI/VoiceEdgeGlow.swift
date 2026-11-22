@@ -83,7 +83,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
   private var link: CADisplayLink?
   private let glowRenderer: VoiceGlowRenderer?
   private var lastUniforms = VoiceGlowUniforms()
-  private var orbIsClear = false
   var surfaceCornerRadius: CGFloat = 0 {
     didSet { needsLayout = true }
   }
@@ -338,11 +337,7 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     let size = bounds.size
     guard size.width > 1, size.height > 1 else { return }
     lastUniforms = VoiceGlowRenderer.uniforms(for: makeFrame(size: size))
-    let visible = !isHidden && opacity > 0
-    guard visible else { return }
-    if fillsShell, orbIsClear { return }
-    orbIsClear = fillsShell
-    draw()
+    // The rays are no longer drawn: the view keeps only the take's clock and phase.
   }
 
   func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}

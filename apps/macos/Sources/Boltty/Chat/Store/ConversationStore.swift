@@ -225,7 +225,8 @@ final class ConversationStore: ObservableObject {
   /// in its draft.
   var filesInUse: Set<String> {
     Set(conversations.flatMap { conversation in
-      conversation.sentFiles.map(\.path) + conversation.draftAttachments.compactMap(\.url?.path)
+      conversation.sentFiles.map(\.path) + conversation.sentFiles.compactMap(\.asked?.screenPath)
+        + conversation.draftAttachments.compactMap(\.url?.path)
     })
   }
 

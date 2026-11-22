@@ -95,9 +95,13 @@ class PaletteIconButton: NSButton {
 
   override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsets() }
 
+  var cornerRadius: CGFloat? {
+    didSet { if cornerRadius != oldValue { needsLayout = true } }
+  }
+
   override func layout() {
     super.layout()
-    layer?.applyPaletteCorner(radius: bounds.height / 2)
+    layer?.applyPaletteCorner(radius: cornerRadius ?? bounds.height / 2)
   }
 
   override func updateTrackingAreas() {

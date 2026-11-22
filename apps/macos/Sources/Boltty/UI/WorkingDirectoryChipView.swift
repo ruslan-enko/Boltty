@@ -78,7 +78,7 @@ final class WorkingDirectoryChipView: PaletteIconButton {
 
   private func syncIcon() {
     let named = chip?.folderLabel != nil
-    let size = named ? ComposerControlGroup.glyph : ComposerControlGroup.iconSize(chat: isChatSized)
+    let size = named && !isChatSized ? ComposerControlGroup.glyph : ComposerControlGroup.iconSize(chat: isChatSized)
     guard size != iconPointSize else { return }
     iconPointSize = size
     icon.image = BolttyIcon.folder.image(size: AgentPaletteMetrics.iconSide(size), description: String(localized: "Working folder"))

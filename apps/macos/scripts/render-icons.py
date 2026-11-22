@@ -248,6 +248,11 @@ apex_d = APEX * math.sqrt(0.5)
 NE_LINE = [(13.75, 2.25), (9.25 + apex_d, 6.75 - apex_d)]
 w("compact", P(poly(NE)), P(line(*NE_LINE)), P(poly(rot(NE, 2))), P(line(*rot(NE_LINE, 2))))
 
+# Expand: compact turned outward, the corners at the box's and the diagonals reaching them
+NE_OUT = [(10.25, 2.25), (13.75, 2.25), (13.75, 5.75)]
+NE_OUT_LINE = [(9.25, 6.75), (13.75 - apex_d, 2.25 + apex_d)]
+w("expand", P(poly(NE_OUT)), P(line(*NE_OUT_LINE)), P(poly(rot(NE_OUT, 2))), P(line(*rot(NE_OUT_LINE, 2))))
+
 # Brain: two lobes, stepped, every step round
 
 # Keys

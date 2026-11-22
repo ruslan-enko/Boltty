@@ -467,6 +467,15 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(message.plainText, "say ok")
   }
 
+  func test20AFinishedShellIsNotThePersonsMessage() {
+    let mapped = events(
+      """
+      {"id":"e","type":"session.inbox.enqueued","data":{"sessionID":"ses_1",      "inboxID":"msg_2","item":{"type":"synthetic","delivery":"steer",      "payload":{"text":"<shell id=\\"sh_1\\" state=\\"completed\\">DONE</shell>"}}}}
+      """
+    )
+    XCTAssertEqual(mapped, [.executionStateChanged(sessionID: "ses_1", state: .working)])
+  }
+
   func test20AsksPermissionUnderTheShorterName() {
     let mapped = events(
       """

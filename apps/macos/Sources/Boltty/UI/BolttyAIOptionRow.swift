@@ -211,7 +211,7 @@ final class BolttyAIOptionRow: NSView {
     let string = NSMutableAttributedString(
       string: option.label,
       attributes: [
-        .font: roundedAppFont(size: AgentPaletteMetrics.previewBodyFontSize, weight: .medium),
+        .font: roundedAppFont(size: AgentPaletteMetrics.previewBodyFontSize),
         .foregroundColor: PaletteInk.primary,
         .paragraphStyle: labelParagraph,
       ]
