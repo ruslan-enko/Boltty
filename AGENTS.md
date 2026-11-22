@@ -1309,7 +1309,8 @@ so in the orb ("No sound is reaching the microphone…",
   the notch face's to show. A click opens **Limits** under it
   (`UsageGlanceController`, rows from `ChatWorkspaceCoordinator.usageGlanceRows`):
   each listed agent's face and plan windows on frosted panel glass (clear let the
-  window behind read through), read again as it opens; a click outside or Escape
+  window behind read through), straight on the glass with a gap between agents
+  (a filled well round each took room and said nothing), read again as it opens; a click outside or Escape
   closes it. On the automatic route the agent a new chat would go to now says
   "Next chat" beside its name. Its foot has Settings › Usage and More, which is the old menu; a right
   or Control-click on the mark opens that menu at once.

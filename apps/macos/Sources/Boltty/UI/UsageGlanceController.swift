@@ -32,8 +32,10 @@ final class UsageGlanceController: NSObject {
   static let width: CGFloat = 288
   static let cornerRadius: CGFloat = 24
   static let inset: CGFloat = 12
-  static let wellCorner: CGFloat = cornerRadius - inset
-  static let wellPadding: CGFloat = 11
+  /// The rows stand on the glass, in from its inset as far as the heading.
+  static let rowInset: CGFloat = 6
+  static let agentGap: CGFloat = 18
+  static let edgeGap: CGFloat = 12
   static let shadowMargin: CGFloat = 32
   static let gapUnderMenuBar: CGFloat = 6
   static let faceSize: CGFloat = 16
@@ -225,7 +227,14 @@ final class UsageGlanceController: NSObject {
     if rows.isEmpty {
       add(Self.label(String(localized: "No agents are switched on."), size: AgentPaletteMetrics.typeMeta, ink: PaletteInk.secondary), inset: 8)
     }
-    for row in rows { add(well(for: row)) }
+    var last = list.arrangedSubviews.last
+    for row in rows {
+      let view = agentRow(for: row)
+      if let last { list.setCustomSpacing(last === list.arrangedSubviews.first ? Self.edgeGap : Self.agentGap, after: last) }
+      add(view)
+      last = view
+    }
+    if let last { list.setCustomSpacing(Self.edgeGap, after: last) }
     add(foot())
     if isVisible { place() }
   }
@@ -259,19 +268,19 @@ final class UsageGlanceController: NSObject {
     return row
   }
 
-  private func well(for row: UsageGlanceRow) -> NSView {
-    let well = UsageGlanceWell()
+  private func agentRow(for row: UsageGlanceRow) -> NSView {
+    let group = NSView()
     let stack = NSStackView()
     stack.orientation = .vertical
     stack.alignment = .leading
     stack.spacing = 8
     stack.translatesAutoresizingMaskIntoConstraints = false
-    well.addSubview(stack)
+    group.addSubview(stack)
     NSLayoutConstraint.activate([
-      stack.leadingAnchor.constraint(equalTo: well.leadingAnchor, constant: Self.wellPadding),
-      stack.trailingAnchor.constraint(equalTo: well.trailingAnchor, constant: -Self.wellPadding),
-      stack.topAnchor.constraint(equalTo: well.topAnchor, constant: Self.wellPadding),
-      stack.bottomAnchor.constraint(equalTo: well.bottomAnchor, constant: -Self.wellPadding),
+      stack.leadingAnchor.constraint(equalTo: group.leadingAnchor, constant: Self.rowInset),
+      stack.trailingAnchor.constraint(equalTo: group.trailingAnchor, constant: -Self.rowInset),
+      stack.topAnchor.constraint(equalTo: group.topAnchor),
+      stack.bottomAnchor.constraint(equalTo: group.bottomAnchor),
     ])
 
     func place(_ view: NSView) {
@@ -289,7 +298,7 @@ final class UsageGlanceController: NSObject {
         let line = Self.label(note, size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary)
         line.lineBreakMode = .byWordWrapping
         line.maximumNumberOfLines = 0
-        line.preferredMaxLayoutWidth = Self.width - 2 * (Self.inset + Self.wellPadding)
+        line.preferredMaxLayoutWidth = Self.width - 2 * (Self.inset + Self.rowInset)
         place(line)
       }
     case let .signedOut(command):
@@ -307,7 +316,7 @@ final class UsageGlanceController: NSObject {
       let label = NSTextField(labelWithAttributedString: words)
       label.isSelectable = false
       label.maximumNumberOfLines = 0
-      label.preferredMaxLayoutWidth = Self.width - 2 * (Self.inset + Self.wellPadding)
+      label.preferredMaxLayoutWidth = Self.width - 2 * (Self.inset + Self.rowInset)
       place(label)
     case .noPlanLimit:
       place(Self.label(UsageGlanceText.noPlanLimit, size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary))
@@ -317,11 +326,11 @@ final class UsageGlanceController: NSObject {
         size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.secondary
       ))
     }
-    well.setAccessibilityElement(true)
-    well.setAccessibilityRole(.group)
-    well.setAccessibilityLabel(row.agent.displayName)
-    well.setAccessibilityIdentifier("boltty.usageGlance.\(row.agent.rawValue)")
-    return well
+    group.setAccessibilityElement(true)
+    group.setAccessibilityRole(.group)
+    group.setAccessibilityLabel(row.agent.displayName)
+    group.setAccessibilityIdentifier("boltty.usageGlance.\(row.agent.rawValue)")
+    return group
   }
 
   private func identity(of agent: AgentId, takesNextChat: Bool) -> NSView {
@@ -366,7 +375,7 @@ final class UsageGlanceController: NSObject {
     used.font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote).withMonospacedDigits
     used.setContentCompressionResistancePriority(.required, for: .horizontal)
     used.setContentHuggingPriority(.required, for: .horizontal)
-    title.preferredMaxLayoutWidth = (Self.width - 2 * (Self.inset + Self.wellPadding)
+    title.preferredMaxLayoutWidth = (Self.width - 2 * (Self.inset + Self.rowInset)
       - used.fittingSize.width - 2 * 8).rounded(.down)
     let top = NSStackView(views: [title, NSView(), used])
     top.orientation = .horizontal
@@ -463,20 +472,6 @@ final class UsageGlanceController: NSObject {
     label.isSelectable = false
     return label
   }
-}
-
-private final class UsageGlanceWell: NSView {
-  override init(frame: NSRect) {
-    super.init(frame: frame)
-    translatesAutoresizingMaskIntoConstraints = false
-    wantsLayer = true
-    layer?.backgroundColor = PaletteInk.tertiaryFill.cgColor
-    layer?.cornerRadius = UsageGlanceController.wellCorner
-    layer?.cornerCurve = .continuous
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 /// What is used, in Boltty's accent, on a track of the glass's own fill.
