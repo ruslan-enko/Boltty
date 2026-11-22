@@ -2,6 +2,12 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.1
+
+**Limits**
+- Each agent stands straight on the glass, with no well round it, so the
+  menu is much shorter.
+
 ## 0.12.0
 
 **Ask Boltty**
