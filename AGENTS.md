@@ -825,9 +825,10 @@ The loop that must keep working:
   sRGB over a dark wallpaper), so bare at the foot it read as grey, and darkened
   to hide that it read as too black. The glass lights its own rim, strongest
   along the foot and thinning up the corners; through the ramp's thin end that
-  crescent read as a second, tighter corner inside the shell's (the outlines
-  themselves agree to a pixel), so the ramp is denser over the rim's two points
-  (`rimShadeLayers`). It is worn by the shell
+  crescent read as a second, tighter corner inside the shell's, so the ramp is
+  denser over the rim, at the foot and fading up the corners (`rimShade`). Shaded
+  all the way round, with the glass half a point inside the ramp, the edge was a
+  black line: the glass runs to the shell's very edge. It is worn by the shell
   in every state
   — first screen, listening, list and chat — never by the composer, and only
   once the state has settled (`applySurfaceStyle` defers changes *to* a wash to
@@ -1661,8 +1662,9 @@ so in the orb ("No sound is reaching the microphone…",
 - **One corner for the shell's edge** (`PaletteCorner`): the glass host works it
   out (`PaletteGlassHost.renderedCorner`, radius and curve) and every layer on
   the edge takes it whole — ramp, rim shades, backdrop, content masks, listening
-  words, voice glow, shadows. None works it out again from its own bounds (the
-  curve turns circular near a capsule, and two layers deciding apart disagree).
+  words, voice glow, shadows. None works it out again from its own bounds. The
+  curve is continuous at every size: the glass draws so even in a capsule, and
+  circular layers over it left a dark sliver where the arc begins.
   A layer inside the edge is concentric (`inset(by:)`). Clipping is a layer's
   corner, never a `CGPath`: a path has no continuous curve, so `path(in:)` is
   only for what is blurred or stands inside the edge. **No two antialiased

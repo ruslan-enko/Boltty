@@ -3370,9 +3370,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     return corner
   }
 
-  private func drawSurface(at rect: CGRect) {
-    surfaceFrame = rect
-    rideAttachmentBand(at: rect)
+  private func drawSurface(at target: CGRect) {
+    surfaceFrame = target
+    // Between pixels the wash covers half of the glass's lit rim, which flashes.
+    let rect = window == nil ? target : backingAlignedRect(target, options: .alignAllEdgesNearest)
+    rideAttachmentBand(at: target)
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     surfaceContainer.frame = rect
@@ -3405,20 +3407,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     syncShellShadow()
     let clippedContent = [promptForeground, attachmentStrip, resultsForeground, previewForeground]
     for content in clippedContent {
-      let mask = (content.layer?.mask as? CAShapeLayer) ?? CAShapeLayer()
-      mask.frame = content.bounds
+      let mask = content.layer?.mask ?? CALayer()
       let local = convert(rect, to: content)
-      if curve == .continuous {
-        mask.path = nil
-        mask.backgroundColor = NSColor.black.cgColor
-        mask.frame = local
-        mask.applyCorner(edge)
-        mask.masksToBounds = true
-      } else {
-        mask.backgroundColor = nil
-        mask.masksToBounds = false
-        mask.path = edge.path(in: local)
-      }
+      mask.backgroundColor = NSColor.black.cgColor
+      mask.frame = local
+      mask.applyCorner(edge)
+      mask.masksToBounds = true
       content.layer?.mask = mask
     }
     CATransaction.commit()

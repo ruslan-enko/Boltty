@@ -338,7 +338,7 @@ final class PaletteGlassHostTests: XCTestCase {
     host.layoutSubtreeIfNeeded()
 
     let layer = try XCTUnwrap(host.layer)
-    XCTAssertEqual(layer.cornerCurve, .circular)
+    XCTAssertEqual(layer.cornerCurve, .continuous)
     XCTAssertEqual(host.cornerCurveForTesting, layer.cornerCurve)
     XCTAssertGreaterThan(layer.borderWidth, 0)
     XCTAssertLessThanOrEqual(layer.borderWidth, 1)
@@ -483,7 +483,7 @@ final class PaletteGlassHostTests: XCTestCase {
     host.apply(showsGlass: true)
     host.layoutSubtreeIfNeeded()
 
-    XCTAssertEqual(host.cornerCurveForTesting, .circular)
+    XCTAssertEqual(host.cornerCurveForTesting, .continuous)
     XCTAssertFalse(
       host.effectViewClipsToCornerForTesting,
       "a clip on the material cuts away the rim it draws along its edge"
@@ -491,14 +491,14 @@ final class PaletteGlassHostTests: XCTestCase {
     XCTAssertEqual(host.renderedCornerRadius, min(49, host.bounds.height / 2), accuracy: 0.01)
     XCTAssertEqual(
       host.effectCornerRadiusForTesting,
-      host.renderedCornerRadius - PaletteGlassHost.washedGlassInset, accuracy: 0.01,
+      host.renderedCornerRadius, accuracy: 0.01,
       "the glass draws the capsule's own corner, not 0 under a clip of ours"
     )
 
     host.frame.size.height = 200
     host.layoutSubtreeIfNeeded()
     XCTAssertEqual(host.cornerCurveForTesting, .continuous)
-    XCTAssertEqual(host.effectCornerRadiusForTesting, 49 - PaletteGlassHost.washedGlassInset,
+    XCTAssertEqual(host.effectCornerRadiusForTesting, 49,
       "a taller card keeps the native continuous corner")
     XCTAssertFalse(host.effectViewClipsToCornerForTesting)
   }

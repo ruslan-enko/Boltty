@@ -320,13 +320,9 @@ final class PaletteGlassHost: NSView {
     }
   }
 
-  private var effectiveCornerCurve: CALayerCornerCurve {
-    guard !bounds.isEmpty else { return .continuous }
-    return AgentPaletteMetrics.cornerCurve(
-      radius: cornerRadius,
-      shorterSide: min(bounds.width, bounds.height)
-    )
-  }
+  /// `NSGlassEffectView` draws the continuous curve at every radius, a capsule's
+  /// too: a circular layer over it left a dark sliver where the arc begins.
+  private let effectiveCornerCurve: CALayerCornerCurve = .continuous
 
   var cornerCurveForTesting: CALayerCornerCurve { renderedCornerCurve }
 
@@ -441,22 +437,16 @@ final class PaletteGlassHost: NSView {
   private let colorLayerView = NSView(frame: .zero)
   private let verticalOverlayView = PaletteGlassOverlayView(frame: .zero)
   private let verticalOverlayGradientLayer = CAGradientLayer()
-  /// The glass lights its own rim, strongest along the foot and thinning up the
-  /// corners. Through the wash's thin end that crescent read as a second, tighter
-  /// corner inside the shell's, so the wash is denser over the rim's two points.
-  private let rimShadeLayers = [CALayer(), CALayer()]
-  static let rimShade: [(width: CGFloat, alpha: CGFloat)] = [(1, 0.21), (2, 0.15)]
+  /// The glass lights its own rim along the foot, thinning up the corners, and
+  /// under the wash's thin end that read as a second edge. This dims it there
+  /// and nowhere else: round the whole shell it read as a black border.
+  private let rimShade = CALayer()
+  private let rimShadeFade = CAGradientLayer()
+  private let rimShadeLayers = PaletteGlassHost.rimShade.map { _ in CALayer() }
+  static let rimShade: [(width: CGFloat, alpha: CGFloat)] = [(0.5, 0.25), (1, 0.23), (1.5, 0.07)]
+  /// Regular glass lights its rim about a third less.
+  static let regularRimShade: Float = 0.7
   private var showsGlass = true
-  private var glassEdges: [NSLayoutConstraint] = []
-
-  /// The glass lights its own edge while its shape changes. Under the wash it
-  /// stands this far in, so that light falls under the ramp, not on the
-  /// antialiased pixel at the rim.
-  static let washedGlassInset: CGFloat = 0.5
-
-  private var glassInset: CGFloat {
-    (verticalOverlay ?? fadingOutOverlay) == nil ? 0 : Self.washedGlassInset
-  }
 
   init(
     content: NSView,
@@ -501,11 +491,12 @@ final class PaletteGlassHost: NSView {
   private func layoutVerticalOverlayGradient() {
     let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
     let bounds = verticalOverlayView.bounds
-    for layer in [verticalOverlayGradientLayer] + rimShadeLayers {
+    for layer in [verticalOverlayGradientLayer, rimShade] + rimShadeLayers {
       layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
       layer.frame = bounds
       layer.contentsScale = scale
     }
+    rimShadeFade.frame = CGRect(x: 0, y: 0, width: bounds.width, height: effectiveCornerRadius)
     applyVerticalOverlayColors()
   }
 
@@ -587,13 +578,7 @@ final class PaletteGlassHost: NSView {
 
     if let effectView {
       addSubview(effectView)
-      glassEdges = [
-        effectView.leadingAnchor.constraint(equalTo: leadingAnchor),
-        trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-        effectView.topAnchor.constraint(equalTo: topAnchor),
-        bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
-      ]
-      NSLayoutConstraint.activate(glassEdges)
+      pinEdges(of: effectView, to: self)
     }
 
     verticalOverlayView.wantsLayer = true
@@ -608,8 +593,13 @@ final class PaletteGlassHost: NSView {
     for (layer, shade) in zip(rimShadeLayers, Self.rimShade) {
       layer.borderWidth = shade.width
       layer.borderColor = NSColor.black.withAlphaComponent(shade.alpha).cgColor
-      verticalOverlayView.layer?.addSublayer(layer)
+      rimShade.addSublayer(layer)
     }
+    configureGradientAxis(rimShadeFade)
+    rimShadeFade.colors = [0, 0.45, 1].map { NSColor.black.withAlphaComponent($0).cgColor }
+    rimShadeFade.locations = [0, 0.72, 1]
+    rimShade.mask = rimShadeFade
+    verticalOverlayView.layer?.addSublayer(rimShade)
     addSubview(verticalOverlayView)
     pinEdges(of: verticalOverlayView, to: self)
 
@@ -661,12 +651,6 @@ final class PaletteGlassHost: NSView {
 
     applyEdge()
     applyVerticalOverlayColors()
-    applyGlassInset()
-  }
-
-  private func applyGlassInset() {
-    let inset = glassInset
-    for edge in glassEdges where edge.constant != inset { edge.constant = inset }
     applyCornerRadius()
   }
 
@@ -677,12 +661,10 @@ final class PaletteGlassHost: NSView {
 
   private func applyCornerRadius() {
     let radius = effectiveCornerRadius
-    let glassRadius = max(0, radius - glassInset)
-
-    (effectView as? NSGlassEffectView)?.cornerRadius = glassRadius
+    (effectView as? NSGlassEffectView)?.cornerRadius = radius
     if let effectView {
       effectView.wantsLayer = true
-      applyContinuousCorner(to: effectView.layer, radius: glassRadius, masksToBounds: false)
+      applyContinuousCorner(to: effectView.layer, radius: radius, masksToBounds: false)
     }
     applyContinuousCorner(to: colorLayerView.layer, radius: radius, masksToBounds: true)
     applyContinuousCorner(to: verticalOverlayView.layer, radius: radius, masksToBounds: true)
@@ -783,7 +765,8 @@ final class PaletteGlassHost: NSView {
       return
     }
 
-    for rim in rimShadeLayers { rim.isHidden = verticalOverlay != .bolttyAIPromptRamp }
+    rimShade.isHidden = verticalOverlay != .bolttyAIPromptRamp
+    rimShade.opacity = glassStyle == .clear ? 1 : Self.regularRimShade
 
     if let base = verticalOverlay.baseFillColor {
       verticalOverlayView.layer?.backgroundColor =
@@ -845,13 +828,13 @@ final class PaletteGlassHost: NSView {
     shadowCornerRadiusForTesting = effectiveCornerRadius
   }
 
-  static let floatingShadowOpacity: Float = 0.68
+  static let floatingShadowOpacity: Float = 0.34
   static let floatingShadowRadius: CGFloat = 16
   static let floatingShadowOffset = CGSize(width: 0, height: -4)
 
-  static let ambientShadowOpacity: Float = 0.78
+  static let ambientShadowOpacity: Float = 0.4
   static let ambientShadowRadius: CGFloat = 50
-  static let ambientShadowOffset = CGSize(width: 0, height: -26)
+  static let ambientShadowOffset = CGSize(width: 0, height: -20)
 
   nonisolated static let edgeHighlightAlpha: CGFloat = 0.20
 
