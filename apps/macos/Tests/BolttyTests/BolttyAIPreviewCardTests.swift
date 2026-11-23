@@ -2074,7 +2074,7 @@ final class PaletteAnswerCopyTests: XCTestCase {
     XCTAssertEqual(
       PaletteChatMessageView.spacing(
         after: answer, before: message("u", role: .user, parts: [prose("u", "Thanks")]), offersCopy: true),
-      max(0, AgentPaletteMetrics.previewMessageSpacing - AgentPaletteMetrics.previewCopyRowHeight),
+      max(0, AgentPaletteMetrics.previewTurnSpacing - AgentPaletteMetrics.previewCopyRowHeight),
       accuracy: 0.5, "the row is the gap to the next question, not added to it")
   }
 
@@ -2490,7 +2490,7 @@ final class PaletteTranscriptTests: XCTestCase {
     XCTAssertEqual(AgentActivityGroup.summary(of: [call("Bash", "List files in current directory")]),
                    "List files in current directory", "a call the CLI put in a sentence keeps it")
     XCTAssertEqual(AgentActivityGroup.summary(of: [call("Edit"), call("Edit"), call("Grep")]),
-                   "Edited 2 files • Grep")
+                   "Edited 2 files • Ran 1 search")
   }
 
   func testAThoughtIsSaidOnceAndDoesNotCutAStretch() {

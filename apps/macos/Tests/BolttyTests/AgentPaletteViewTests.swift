@@ -3356,14 +3356,14 @@ final class AgentPaletteViewTests: XCTestCase {
     roundedAppFont(size: AgentPaletteMetrics.resultsTitleFontSize, weight: .semibold)
   }
 
-  private func mediumTitle() -> NSFont {
-    roundedAppFont(size: AgentPaletteMetrics.resultsTitleFontSize, weight: .medium)
+  private func regularTitle() -> NSFont {
+    roundedAppFont(size: AgentPaletteMetrics.resultsTitleFontSize, weight: .regular)
   }
 
-  func testAReadRowHasNoDotAndAMediumTitle() {
+  func testAReadRowHasNoDotAndARegularTitle() {
     let row = laidOutRow(unread: false)
     XCTAssertFalse(row.showsUnreadDotForTesting)
-    XCTAssertTrue(row.titleFontForTesting.isEqual(mediumTitle()))
+    XCTAssertTrue(row.titleFontForTesting.isEqual(regularTitle()))
   }
 
   func testAnUnreadRowWearsADotAndASemiboldTitle() {
@@ -3397,7 +3397,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
     row.apply(item: unreadRowItem("fix login", id: id, unread: false))
     XCTAssertFalse(row.showsUnreadDotForTesting)
-    XCTAssertTrue(row.titleFontForTesting.isEqual(mediumTitle()))
+    XCTAssertTrue(row.titleFontForTesting.isEqual(regularTitle()))
   }
 
   func testInitialPromptIsOneCapsuleWithFolderPlanClipAndMicInside() {
@@ -4099,7 +4099,7 @@ extension AgentPaletteViewTests {
       "none ready yet: all of them, as the strip's tabs are")
   }
 
-  func testTheFacesOfLatestStandTogetherOnOneSquare() {
+  func testTheFacesOfLatestStandTogetherOnOneSquare() throws {
     let side: CGFloat = 40
     for count in 1...AgentHistoryTabView.clusterCapacity {
       let frames = AgentHistoryTabView.faceFrames(count: count, in: side)
@@ -4109,8 +4109,9 @@ extension AgentPaletteViewTests {
       XCTAssertGreaterThanOrEqual(group.minY, -0.5)
       XCTAssertLessThanOrEqual(group.maxX, side + 0.5)
       XCTAssertLessThanOrEqual(group.maxY, side + 0.5)
-      XCTAssertEqual(group.midX, side / 2, accuracy: 1, "\(count): centred")
-      XCTAssertEqual(group.midY, side / 2, accuracy: 1)
+      let middle = try XCTUnwrap(frames.last)
+      XCTAssertEqual(middle.midX, side / 2, accuracy: 1, "\(count): the last face stands in the middle")
+      XCTAssertEqual(middle.midY, side / 2, accuracy: 1)
       for (index, face) in frames.enumerated() {
         for other in frames.dropFirst(index + 1) {
           XCTAssertLessThan(
