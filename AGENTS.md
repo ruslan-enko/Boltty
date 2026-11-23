@@ -1657,14 +1657,20 @@ so in the orb ("No sound is reaching the microphone…",
   (`PaletteHelpBackdrop`). Density goes *over* the
   glass, never into its tint. The system's Tinted/Clear setting is respected.
   A glass host's corner must be set again whenever its size changes.
-- The shell casts two shadows: a tight contact one and a broad pool behind the
-  glass with the shell's shape cut out.
+- The shell casts two shadows: a tight contact one and a pool behind the
+  glass with the shell's shape cut out. Close and dense, not spread: at radius 50
+  the pool read as a haze.
 - **One corner for the shell's edge** (`PaletteCorner`): the glass host works it
   out (`PaletteGlassHost.renderedCorner`, radius and curve) and every layer on
   the edge takes it whole — ramp, rim shades, backdrop, content masks, listening
   words, voice glow, shadows. None works it out again from its own bounds. The
   curve is continuous at every size: the glass draws so even in a capsule, and
-  circular layers over it left a dark sliver where the arc begins.
+  circular layers over it left a dark sliver where the arc begins. **A change to
+  the edge is read off the pixels** before it is called done: over white and grey,
+  with the panel key (the glass lights its rim only then), clear and frosted, at
+  the foot's middle, where the arc begins and at 45°, and in the frames of the
+  drip. The moving shell is snapped to pixels (`drawSurface`): between them the
+  ramp covers half of the rim and it flashes.
   A layer inside the edge is concentric (`inset(by:)`). Clipping is a layer's
   corner, never a `CGPath`: a path has no continuous curve, so `path(in:)` is
   only for what is blurred or stands inside the edge. **No two antialiased
@@ -1724,7 +1730,8 @@ so in the orb ("No sound is reaching the microphone…",
 - Forbidden (the design linter fails): literal `layer.cornerRadius`,
   `NSVisualEffectView`, `CIGaussianBlur`, component colour constructors,
   `NSFont.systemFont(ofSize:)`. `scripts/lint-baseline.txt` may only shrink.
-- **Help tags** are drawn like a menu row inside the panel, above the control,
+- **Help tags** (a view that shows one keeps its `toolTip` from AppKit, as
+  `PaletteIconButton` does, or the system's shows too) are drawn like a menu row inside the panel, above the control,
   450 ms delay, instant when moving between controls. They stand on the
   system's glass with black density over it (`helpDensity`), as a Mac's
   popovers and menus are glass; a flat `#202020` read as a grey patch on the

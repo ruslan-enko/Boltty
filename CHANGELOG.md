@@ -6,7 +6,8 @@ What changed from release to release. The newest is at the top.
 
 **Panel**
 - The panel's glass has no black line round its edge, and its capsule is one
-  smooth curve; its shadow is softer.
+  smooth curve; its shadow is lighter and closer.
+- The face on the first screen has one help tag, not two.
 
 ## 0.12.4
 

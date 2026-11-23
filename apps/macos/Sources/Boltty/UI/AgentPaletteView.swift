@@ -5051,6 +5051,15 @@ private final class BolttyAIChromeView: NSView {
 }
 
 private final class BolttyAIMarkView: NSImageView {
+  private var helpText: String?
+  override var toolTip: String? {
+    get { helpText }
+    set {
+      helpText = newValue
+      super.toolTip = nil
+      setAccessibilityHelp(newValue)
+    }
+  }
   private var helpArea: NSTrackingArea?
   override func updateTrackingAreas() {
     super.updateTrackingAreas()

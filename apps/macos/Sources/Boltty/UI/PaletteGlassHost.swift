@@ -828,13 +828,13 @@ final class PaletteGlassHost: NSView {
     shadowCornerRadiusForTesting = effectiveCornerRadius
   }
 
-  static let floatingShadowOpacity: Float = 0.34
-  static let floatingShadowRadius: CGFloat = 16
+  static let floatingShadowOpacity: Float = 0.45
+  static let floatingShadowRadius: CGFloat = 10
   static let floatingShadowOffset = CGSize(width: 0, height: -4)
 
-  static let ambientShadowOpacity: Float = 0.4
-  static let ambientShadowRadius: CGFloat = 50
-  static let ambientShadowOffset = CGSize(width: 0, height: -20)
+  static let ambientShadowOpacity: Float = 0.45
+  static let ambientShadowRadius: CGFloat = 28
+  static let ambientShadowOffset = CGSize(width: 0, height: -14)
 
   nonisolated static let edgeHighlightAlpha: CGFloat = 0.20
 
