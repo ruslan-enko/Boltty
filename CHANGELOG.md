@@ -2,6 +2,17 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.7
+
+**First run**
+- A new intro: Boltty's own face up close, one large thing a scene, and every
+  agent in a row at the end. Its music and sounds are new.
+- No two faces in the intro share a colour.
+- In setup, an agent that is here but signed out says "Signed out", not "Not
+  installed", and "Start here" chooses who takes new chats.
+- Setup stands on the panel's glass and looks again at what is installed as you
+  come back to it.
+
 ## 0.12.6
 
 **Panel**
