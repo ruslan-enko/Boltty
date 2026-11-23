@@ -9,7 +9,7 @@
     {
       "appearance" : "light",
       "value" : {
-        "solid" : "display-p3:0.96880,0.97553,1.00000,1.00000"
+        "solid" : "display-p3:1.00000,1.00000,1.00000,1.00000"
       }
     }
   ],
@@ -31,12 +31,25 @@
               }
             }
           ],
+          "glass-specializations" : [
+            {
+              "value" : false
+            },
+            {
+              "appearance" : "dark",
+              "value" : true
+            },
+            {
+              "appearance" : "tinted",
+              "value" : true
+            }
+          ],
           "hidden" : false,
           "image-name" : "213 2.png",
           "name" : "213 2",
           "opacity" : 1,
           "position" : {
-            "scale" : 0.54,
+            "scale" : 0.5800000000000001,
             "translation-in-points" : [
               0,
               0
