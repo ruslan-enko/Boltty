@@ -81,7 +81,7 @@ reap_servers() {
   local ledger="$home_dir/Library/Application Support/Boltty/opencode-server.pid"
   [[ -f "$ledger" ]] || return 0
   local server owner
-  while read -r server owner; do
+  while read -r server owner || [[ -n "$server" ]]; do
     [[ "$server" == <-> ]] || continue
     [[ "$(ps -o comm= -p "$server" 2>/dev/null)" == *opencode* ]] || continue
     kill "$server" 2>/dev/null || true
