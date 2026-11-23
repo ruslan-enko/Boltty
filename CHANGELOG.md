@@ -2,6 +2,12 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.5
+
+**Panel**
+- The panel's glass has no black line round its edge, and its capsule is one
+  smooth curve; its shadow is softer.
+
 ## 0.12.4
 
 **Chats**
