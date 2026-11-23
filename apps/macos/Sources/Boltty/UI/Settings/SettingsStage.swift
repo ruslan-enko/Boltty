@@ -326,9 +326,9 @@ final class FinderSelectionSampleView: NSView {
   private static let lineHeight: CGFloat = 56
   private static let corner = lineHeight / 2
   private static let inset: CGFloat = 12
-  private static let side = AgentPaletteMetrics.attachmentCardSide
-  private static let band = inset + side
-  static let size = CGSize(width: 280, height: band + lineHeight)
+  private static var side: CGFloat { AgentPaletteMetrics.attachmentCardSide }
+  private static var band: CGFloat { inset + side }
+  static var size: CGSize { CGSize(width: 280, height: band + lineHeight) }
 
   private let host: PaletteGlassHost
   private let row = PromptSampleRow()

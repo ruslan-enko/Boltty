@@ -101,7 +101,7 @@ enum ModelMenu {
 final class ModelChipButton: PaletteIconButton {
   private let nameLabel = NSTextField(labelWithString: "")
   private let effortLabel = NSTextField(labelWithString: "")
-  private static let chipFont = roundedAppFont(size: AgentPaletteMetrics.folderChipFontSize(chat: true))
+  private static var chipFont: NSFont { roundedAppFont(size: AgentPaletteMetrics.folderChipFontSize(chat: true)) }
 
   var titleForTesting: String { nameLabel.stringValue + effortLabel.stringValue }
 

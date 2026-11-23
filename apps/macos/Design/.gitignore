@@ -1,0 +1,4 @@
+.derivedData/
+.build.log
+# Made by run.sh from project.yml.
+BolttyDesign.xcodeproj/

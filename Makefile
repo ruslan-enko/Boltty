@@ -7,11 +7,12 @@ XCODEBUILD := xcodebuild -project $(APP_DIR)/Boltty.xcodeproj -scheme Boltty \
 	-configuration Debug -destination 'platform=macOS' -derivedDataPath $(DERIVED)
 
 .DEFAULT_GOAL := help
-.PHONY: help build run install dmg test test-all lint clean
+.PHONY: help build run design install dmg test test-all lint clean
 
 help:
 	@echo "make build      Debug build"
 	@echo "make run        Debug build, then open it"
+	@echo "make design     Boltty Design: the elements, live (needs XcodeGen)"
 	@echo "make install    build what's on disk and put it in /Applications"
 	@echo "make dmg        release DMG of the last commit (publishes nothing)"
 	@echo "make test       tests covering your uncommitted changes"
@@ -24,6 +25,9 @@ build:
 
 run: build
 	open $(DERIVED)/Build/Products/Debug/Boltty.app
+
+design:
+	$(APP_DIR)/Design/run.sh
 
 install:
 	$(APP_DIR)/scripts/release.sh --local

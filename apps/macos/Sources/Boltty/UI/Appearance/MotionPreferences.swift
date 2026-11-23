@@ -52,8 +52,8 @@ struct SpringParameters {
 }
 
 enum Motion {
-  static let quick: TimeInterval = 0.12
-  static let standard: TimeInterval = 0.2
+  static var quick: TimeInterval { live(0.12) }
+  static var standard: TimeInterval { live(0.2) }
   static var emphasizedCurve: CAMediaTimingFunction {
     CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
   }
@@ -61,7 +61,11 @@ enum Motion {
     CAMediaTimingFunction(name: .easeOut)
   }
 
-  static let pressSpring = SpringParameters(duration: 0.24, bounce: 0)
+  static var pressSpring: SpringParameters {
+    SpringParameters(duration: pressSpringDuration, bounce: pressSpringBounce)
+  }
+  static var pressSpringDuration: TimeInterval { live(0.24) }
+  static var pressSpringBounce: CGFloat { live(0) }
 
   static func centredScale(_ scale: CGFloat, size: CGSize) -> CATransform3D {
     let offset = CATransform3DMakeTranslation(

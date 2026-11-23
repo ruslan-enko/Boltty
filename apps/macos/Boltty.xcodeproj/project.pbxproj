@@ -277,6 +277,7 @@
 		BD5D3A29EC272D56AAC43E3D /* AgentIcons in Resources */ = {isa = PBXBuildFile; fileRef = 24568FB2D3EA339880D65CBF /* AgentIcons */; };
 		BD7E16DB072A676A7B5C9350 /* JSONObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDDA6C284882C1CD41C2FB39 /* JSONObject.swift */; };
 		BEF802D2FAF799DACF31E973 /* NotchStatesOnScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFB62EE8A9522793CBBA19D /* NotchStatesOnScreen.swift */; };
+		BF51CDBA5DFD9E04BB1443DF /* LiveValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2440342FDEED9E86304E3EE2 /* LiveValue.swift */; };
 		C011BDA2CC5F1B8A83EEBB33 /* tap-3.wav in Resources */ = {isa = PBXBuildFile; fileRef = 756B35EB9FFF10AD9724B60E /* tap-3.wav */; };
 		C090D72B3C08408FC9421520 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989EB63073A800F9F34F9506 /* AppUpdater.swift */; };
 		C17BA2F80E0EA07EC2467D93 /* HotkeySuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCCF4252E4B67631A42284B /* HotkeySuggestions.swift */; };
@@ -429,6 +430,7 @@
 		200978181FDA086EE4DC3CD9 /* AgentHistoryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentHistoryViews.swift; sourceTree = "<group>"; };
 		20F72E108ECF64E2C1379FCD /* GrokQuestionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokQuestionTests.swift; sourceTree = "<group>"; };
 		2182E6F034C7F8C5842C3D45 /* PaletteActivityRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteActivityRowView.swift; sourceTree = "<group>"; };
+		2440342FDEED9E86304E3EE2 /* LiveValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveValue.swift; sourceTree = "<group>"; };
 		24568FB2D3EA339880D65CBF /* AgentIcons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AgentIcons; path = Resources/AgentIcons; sourceTree = SOURCE_ROOT; };
 		24861A2C50E4E42892F9C31C /* NotchMascotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMascotTests.swift; sourceTree = "<group>"; };
 		251F4713090134D888CDA0D9 /* AskBolttyDrawingLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskBolttyDrawingLayer.swift; sourceTree = "<group>"; };
@@ -1132,6 +1134,7 @@
 			children = (
 				F77EFE6B20808D485E22F2B8 /* BolttyBrand.swift */,
 				54017E79AFF01185941AF159 /* BolttyTypeface.swift */,
+				2440342FDEED9E86304E3EE2 /* LiveValue.swift */,
 				32B39312A8A7FA2039914B4A /* MotionPreferences.swift */,
 			);
 			path = Appearance;
@@ -1647,6 +1650,7 @@
 				2A645AC9EEB84BD087156F13 /* KeyablePanel.swift in Sources */,
 				F521C00188BF7A99EC8CE654 /* KeyboardShortcutCatalog.swift in Sources */,
 				889A827473E6962C286F5F5A /* ListeningWordsView.swift in Sources */,
+				BF51CDBA5DFD9E04BB1443DF /* LiveValue.swift in Sources */,
 				748D1A8F75D32A6C3C56C426 /* LocalModelStore.swift in Sources */,
 				9F531F022DC478665DCF18E7 /* LocalVoiceCatalog.swift in Sources */,
 				4FF1229C938A87F3B1302BED /* LocalVoiceModel.swift in Sources */,

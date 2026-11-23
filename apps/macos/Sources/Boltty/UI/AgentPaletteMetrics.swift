@@ -2,8 +2,8 @@ import AppKit
 import Foundation
 
 enum AgentPaletteMetrics {
-  static let surfaceResponse: CGFloat = 0.3
-  static let surfaceContentDuration: TimeInterval = Motion.standard
+  static var surfaceResponse: CGFloat { live(0.3) }
+  static var surfaceContentDuration: TimeInterval { Motion.standard }
 
   enum SurfaceShape {
     case pill
@@ -12,9 +12,9 @@ enum AgentPaletteMetrics {
     case list
   }
 
-  static let cardCornerRadius: CGFloat = chatComposerRestingCornerRadius + shellContentInset
+  static var cardCornerRadius: CGFloat { chatComposerRestingCornerRadius + shellContentInset }
 
-  static let shellContentInset: CGFloat = 12
+  static var shellContentInset: CGFloat { live(12) }
 
   /// The composer's corner: the mock's `rounded-[100px]`, i.e. a capsule.
   ///
@@ -22,8 +22,7 @@ enum AgentPaletteMetrics {
   /// so "more than can be drawn" is how a capsule is written at any height.
   static let chatComposerCornerRadius: CGFloat = fromMock(100)
 
-  static let chatComposerRestingCornerRadius: CGFloat =
-    (chatComposerBoxHeight / (2 * continuousCornerWallReach)).rounded(.down)
+  static var chatComposerRestingCornerRadius: CGFloat { (chatComposerBoxHeight / (2 * continuousCornerWallReach)).rounded(.down) }
 
   static let listCardCornerRadius: CGFloat =
     resultsRowCornerRadius + resultsRowHorizontalInset
@@ -46,7 +45,8 @@ enum AgentPaletteMetrics {
   static let workingFaceDiameter: CGFloat = fromMock(24)
 
   static let chatComposerHeight: CGFloat = 64
-  static let chatComposerBoxHeight: CGFloat = chatComposerPadding + chatComposerControlsPadding
+  static var chatComposerBoxHeight: CGFloat {
+    chatComposerPadding + chatComposerControlsPadding
     + chatComposerGap
     + ComposerControlGroup.glyph + {
       // `PromptTextView.textOnlyLineHeight(for: chatComposerFont)`, which is
@@ -54,25 +54,23 @@ enum AgentPaletteMetrics {
       let font = roundedAppFont(size: previewBodyFontSize)
       return ceil(font.ascender - font.descender + font.leading)
     }()
-  static let chatComposerInkInset: CGFloat = 16
-  static let chatComposerLeadingPadding: CGFloat = chatComposerInkInset - 1
-  static let chatComposerPadding: CGFloat = chatComposerInkInset - 3.5
-  static let chatComposerControlsPadding: CGFloat = chatComposerInkInset
-  static let chatComposerGap: CGFloat = 16
+  }
+  static var chatComposerInkInset: CGFloat { live(16) }
+  static var chatComposerLeadingPadding: CGFloat { chatComposerInkInset - 1 }
+  static var chatComposerPadding: CGFloat { chatComposerInkInset - 3.5 }
+  static var chatComposerControlsPadding: CGFloat { chatComposerInkInset }
+  static var chatComposerGap: CGFloat { live(16) }
   static let chatComposerGrownTextInset: CGFloat = 2.5
-  static let chatComposerGrownTextTop: CGFloat = chatComposerPadding - chatComposerGrownTextInset
-  static let chatComposerGrownControlsBand: CGFloat =
-    chatComposerGap - chatComposerGrownTextInset + ComposerControlGroup.glyph + chatComposerControlsPadding
-  static let chatComposerPlaceholderInk = ComposerControlGroup.restingInk
-  static let chatComposerControlDiameter: CGFloat = ComposerControlGroup.target
-  static let chatComposerTextLeading: CGFloat = chatComposerLeadingPadding
-  static let chatComposerControlsTrailingInset: CGFloat =
-    chatComposerControlsPadding - (ComposerControlGroup.target - ComposerControlGroup.glyph) / 2
-  static let chatComposerSendDiscInset: CGFloat =
-    chatComposerControlsPadding + ComposerControlGroup.glyph / 2 - ComposerControlGroup.sendDisc / 2
-  static let chatComposerTextControlsGap = onPixelGrid(
-    fromMock(10) - (chatComposerControlDiameter - 18) / 2
-  )
+  static var chatComposerGrownTextTop: CGFloat { chatComposerPadding - chatComposerGrownTextInset }
+  static var chatComposerGrownControlsBand: CGFloat { chatComposerGap - chatComposerGrownTextInset + ComposerControlGroup.glyph + chatComposerControlsPadding }
+  static var chatComposerPlaceholderInk: NSColor { ComposerControlGroup.restingInk }
+  static var chatComposerControlDiameter: CGFloat { ComposerControlGroup.target }
+  static var chatComposerTextLeading: CGFloat { chatComposerLeadingPadding }
+  static var chatComposerControlsTrailingInset: CGFloat { chatComposerControlsPadding - (ComposerControlGroup.target - ComposerControlGroup.glyph) / 2 }
+  static var chatComposerSendDiscInset: CGFloat { chatComposerControlsPadding + ComposerControlGroup.glyph / 2 - ComposerControlGroup.sendDisc / 2 }
+  static var chatComposerTextControlsGap: CGFloat {
+    onPixelGrid(fromMock(10) - (chatComposerControlDiameter - 18) / 2)
+  }
   static let chatComposerMicSpacing: CGFloat = fromMock(10)
 
   static let mockScale: CGFloat = 0.75
@@ -80,7 +78,7 @@ enum AgentPaletteMetrics {
   static func onPixelGrid(_ value: CGFloat) -> CGFloat { (value * 2).rounded() / 2 }
 
   static let promptSize = CGSize(width: 540, height: 92)
-  static let promptGrownWidth: CGFloat = 680
+  static var promptGrownWidth: CGFloat { live(680) }
   static let promptMockHeight: CGFloat = (fromMock(56) * 2).rounded() / 2
   static let promptPaddingGrowth: CGFloat = 1.15
   static let chatSurfaceSize = CGSize(width: 584, height: 680)
@@ -114,12 +112,12 @@ enum AgentPaletteMetrics {
     width: fromInitialPromptMock(30.75), height: fromInitialPromptMock(32.8)
   )
   static let restingControlsSpacing: CGFloat = 0
-  static let restingControlsTrailingInset = onPixelGrid(
-    restingControlsInkInset - ComposerControlGroup.gap(chat: false) / 2
-  )
+  static var restingControlsTrailingInset: CGFloat {
+    onPixelGrid(restingControlsInkInset - ComposerControlGroup.gap(chat: false) / 2)
+  }
   static let restingControlsInkInset = onPixelGrid(fromInitialPromptMock(40) * promptPaddingGrowth)
   static let iconSize: CGFloat = fromMock(25)
-  static let iconScale: CGFloat = 1.15
+  static var iconScale: CGFloat { live(1.15) }
   static func iconSide(_ size: CGFloat) -> CGFloat { (size * iconScale * 2).rounded() / 2 }
 
   static let mascotOversize: CGFloat = 1.15
@@ -133,13 +131,13 @@ enum AgentPaletteMetrics {
 
   // MARK: - Type ramp
 
-  static let typePrimary: CGFloat = 18
-  static let typeSecondary: CGFloat = 15
-  static let typeChat: CGFloat = 15
-  static let typeMeta: CGFloat = 13
+  static var typePrimary: CGFloat { live(18) }
+  static var typeSecondary: CGFloat { live(15) }
+  static var typeChat: CGFloat { live(15) }
+  static var typeMeta: CGFloat { live(13) }
   static let typeFootnote: CGFloat = NSFont.systemFontSize(for: .small)
 
-  static let promptFontSize: CGFloat = 20
+  static var promptFontSize: CGFloat { live(20) }
 
   // MARK: The caret (`PromptCaretView`)
 
@@ -175,7 +173,7 @@ enum AgentPaletteMetrics {
   static let regionHintUses = 3
   static let regionsDrawnKey = "boltty.selection.regionsDrawn"
   static let screenSelectionHintOffset = CGSize(width: 14, height: 24)
-  static let screenSelectionHintDelay: TimeInterval = helpTagDelay
+  static var screenSelectionHintDelay: TimeInterval { helpTagDelay }
   static let screenSelectionGlowWidth: CGFloat = 10
   static let screenSelectionInnerGlowDepth: CGFloat = 36
   static let screenSelectionInnerGlowStrength: CGFloat = 0.3
@@ -197,16 +195,16 @@ enum AgentPaletteMetrics {
 
   // MARK: What came with the words
 
-  static let attachmentCardSide: CGFloat = 100
-  static let attachmentCardGap: CGFloat = 8
-  static let attachmentCardInset: CGFloat = 11
+  static var attachmentCardSide: CGFloat { live(100) }
+  static var attachmentCardGap: CGFloat { live(8) }
+  static var attachmentCardInset: CGFloat { live(11) }
   static let attachmentCardLines = 3
   static let attachmentCardLineHeight: CGFloat = 16
   static let attachmentCardPressedScale: CGFloat = 0.97
-  static let attachmentThumbnailSide: CGFloat = attachmentCardSide * 2
-  static let attachmentTagHeight: CGFloat = 18
+  static var attachmentThumbnailSide: CGFloat { attachmentCardSide * 2 }
+  static var attachmentTagHeight: CGFloat { live(18) }
   static let attachmentTagPadding: CGFloat = 7
-  static let attachmentTagFill = PaletteInk.tertiaryFill
+  static var attachmentTagFill: NSColor { PaletteInk.tertiaryFill }
   static let attachmentCloseOverhang: CGFloat = 8
   static let attachmentCloseDiameter: CGFloat = 22
   static let attachmentCloseGlyph: CGFloat = 11
@@ -217,9 +215,10 @@ enum AgentPaletteMetrics {
 
   @MainActor static let attachmentStripOnFirstScreen = PromptAttachmentStrip.Placement(
     inset: 20, corner: cornerRadius - 20)
-  @MainActor static let attachmentStripInChat = PromptAttachmentStrip.Placement(
-    inset: chatComposerInkInset, corner: attachmentCardCornerInChat)
-  static let attachmentCardCornerInChat: CGFloat = chatComposerRestingCornerRadius - chatComposerInkInset
+  @MainActor static var attachmentStripInChat: PromptAttachmentStrip.Placement {
+    PromptAttachmentStrip.Placement(inset: chatComposerInkInset, corner: attachmentCardCornerInChat)
+  }
+  static var attachmentCardCornerInChat: CGFloat { chatComposerRestingCornerRadius - chatComposerInkInset }
 
   static func sentCardFrames(count: Int, width: CGFloat) -> [CGRect] {
     let side = attachmentCardSide
@@ -274,7 +273,7 @@ enum AgentPaletteMetrics {
   static let voiceControlsConfirmFillColor = NSColor.white
   static let voiceControlsConfirmGlyphColor = NSColor.black
   static let voiceControlsConfirmHoverFillColor = NSColor.white
-  static let voiceControlsCancelHoverFillColor = PaletteInk.fill
+  static var voiceControlsCancelHoverFillColor: NSColor { PaletteInk.fill }
   static let voiceControlsCancelHoverBlurRadius: CGFloat = 3
 
   static let voiceMeterSize = CGSize(width: fromMock(35.77), height: fromMock(16))
@@ -297,21 +296,19 @@ enum AgentPaletteMetrics {
 
   static let restingAttachGlyphPointSize: CGFloat = 15
 
-  static let previewCloseDiameter: CGFloat = 36
-  static let previewCloseGlyphPointSize: CGFloat = 18
+  static var previewCloseDiameter: CGFloat { live(36) }
+  static var previewCloseGlyphPointSize: CGFloat { live(18) }
   static let discArrowGlyphPointSize: CGFloat = 15.5
   static let previewCloseGlyphNudge: CGFloat = 1.5
-  static let previewCloseInset: CGFloat = {
+  static var previewCloseInset: CGFloat {
     let radius = previewCloseDiameter / 2
     let fromArcCentre = cardCornerRadius - shellContentInset - radius
     return onPixelGrid(cardCornerRadius - fromArcCentre / 2.squareRoot() - radius)
-  }()
-  static let historyFootDiscInset: CGFloat = 18
-  static let historyFootHeight: CGFloat =
-    historyFootDiscInset + previewCloseDiameter + previewContentVerticalPadding
+  }
+  static var historyFootDiscInset: CGFloat { live(18) }
+  static var historyFootHeight: CGFloat { historyFootDiscInset + previewCloseDiameter + previewContentVerticalPadding }
 
-  static let previewHeaderHeight: CGFloat =
-    previewCloseInset + previewCloseDiameter + previewContentVerticalPadding
+  static var previewHeaderHeight: CGFloat { previewCloseInset + previewCloseDiameter + previewContentVerticalPadding }
 
   static let voiceOrbGlyphColor = PaletteInk.primary
 
@@ -341,8 +338,8 @@ enum AgentPaletteMetrics {
 
   static let voiceSilenceSubmitDelay: TimeInterval = 2.4
 
-  static let listeningOrbDiameter: CGFloat = 84
-  static let listeningFaceSize: CGFloat = 48
+  static var listeningOrbDiameter: CGFloat { live(84) }
+  static var listeningFaceSize: CGFloat { live(48) }
   static let listeningFaceTopInset: CGFloat = 14
   static let listeningFaceWordsGap: CGFloat = 4
   static let listeningWordsBottomInset: CGFloat = 16
@@ -353,35 +350,35 @@ enum AgentPaletteMetrics {
       + CGFloat(max(1, lines)) * lineHeight + listeningWordsBottomInset
   }
   static let listeningFaceFlight: CFTimeInterval = 0.55
-  static let listeningWordsInset: CGFloat = 30
-  static let listeningWordsFontSize: CGFloat = typePrimary
-  static let listeningMaxWidth: CGFloat = 380
-  static let listeningWordArrival: CFTimeInterval = 1.1
+  static var listeningWordsInset: CGFloat { live(30) }
+  static var listeningWordsFontSize: CGFloat { typePrimary }
+  static var listeningMaxWidth: CGFloat { live(380) }
+  static var listeningWordArrival: CFTimeInterval { live(1.1) }
   static let listeningWordBlur: CGFloat = 9
   static let listeningWordRise: CGFloat = 4
   static let listeningWordStagger: CFTimeInterval = 0.09
   static let listeningWordGlide: CFTimeInterval = 0.14
 
-  static let controlPressedScale: CGFloat = 0.95
-  static let rowPressedScale: CGFloat = 0.985
-  static let hoverFadeDuration: TimeInterval = Motion.quick
-  static let helpTagDelay: TimeInterval = 0.45
+  static var controlPressedScale: CGFloat { live(0.95) }
+  static var rowPressedScale: CGFloat { live(0.985) }
+  static var hoverFadeDuration: TimeInterval { Motion.quick }
+  static var helpTagDelay: TimeInterval { live(0.45) }
   static let helpTagWarmWindow: TimeInterval = 0.5
 
   static let panelFadeOutDuration: TimeInterval = 0.10
-  static let lockedTopGap: CGFloat = 30
+  static var lockedTopGap: CGFloat { live(30) }
 
-  static let dripInPace: CGFloat = 0.65
-  static let dripInDuration = TimeInterval(0.6 * dripInPace)
+  static var dripInPace: CGFloat { live(0.65) }
+  static var dripInDuration: TimeInterval { TimeInterval(0.6 * dripInPace) }
   static let dripOutDuration: TimeInterval = 0.38
-  static let dripFallResponse: CGFloat = 0.26 * dripInPace
-  static let dripSpreadAfter = TimeInterval(0.11 * dripInPace)
-  static let dripSpreadResponse: CGFloat = 0.3 * dripInPace
+  static var dripFallResponse: CGFloat { 0.26 * dripInPace }
+  static var dripSpreadAfter: TimeInterval { TimeInterval(0.11 * dripInPace) }
+  static var dripSpreadResponse: CGFloat { 0.3 * dripInPace }
   static let dripShrinkResponse: CGFloat = 0.18
   static let dripRiseAfter: TimeInterval = 0.08
   static let dripRiseResponse: CGFloat = 0.2
-  static let dripContentInAfter = TimeInterval(0.12 * dripInPace)
-  static let dripContentInDuration = TimeInterval(0.24 * dripInPace)
+  static var dripContentInAfter: TimeInterval { TimeInterval(0.12 * dripInPace) }
+  static var dripContentInDuration: TimeInterval { TimeInterval(0.24 * dripInPace) }
   static let dripEdgeSliver: CGFloat = 8
   static let dripSeed: CGFloat = 0.5
   static let dripFallWidth: CGFloat = 0.8
@@ -400,8 +397,8 @@ enum AgentPaletteMetrics {
     return 2 * continuousCornerWallReach * capped <= shorterSide ? .continuous : .circular
   }
 
-  static let resultsMascotSize: CGFloat = resultsIconFrameSize
-  static let resultsIconFrameSize: CGFloat = 32
+  static var resultsMascotSize: CGFloat { resultsIconFrameSize }
+  static var resultsIconFrameSize: CGFloat { live(32) }
   static let resultsEmptyMascotSize: CGFloat = fromMock(48.4)
   static let resultsEmptyMascotTextSpacing: CGFloat = fromMock(15)
   static let resultsEmptyVerticalPadding: CGFloat = fromMock(24)
@@ -414,8 +411,8 @@ enum AgentPaletteMetrics {
     (resultsRowHeight - resultsRowInset * 2) / 2
   }
 
-  static let resultsTitleFontSize: CGFloat = typeSecondary
-  static let resultsSubtitleFontSize: CGFloat = typeMeta
+  static var resultsTitleFontSize: CGFloat { typeSecondary }
+  static var resultsSubtitleFontSize: CGFloat { typeMeta }
   static let resultsRowInset: CGFloat = 0
   static let resultsShimmerSweepDuration: CFTimeInterval = 1.4
   static let resultsShimmerRest: CFTimeInterval = 0.6
@@ -428,9 +425,9 @@ enum AgentPaletteMetrics {
   static let resultsRowIconTextSpacing: CGFloat = 10.5
   static let resultsRowTextLeading: CGFloat = fromHistoryMock(20)
   static let resultsRowTextTrailing: CGFloat = fromHistoryMock(12)
-  static let resultsUnreadDotDiameter: CGFloat = 8
+  static var resultsUnreadDotDiameter: CGFloat { live(8) }
   static let resultsUnreadDotGap: CGFloat = 8
-  static let resultsUnreadDotFill = OKLCH(0.624, 0.206, 255.5).color
+  static var resultsUnreadDotFill: NSColor { live(NSColor(oklch: 0.624, 0.206, 255.5)) }
   /// A face stands in the row's round end, concentric with it: as far from the
   /// side as from the top and foot.
   static var resultsRowFaceInset: CGFloat {
@@ -451,9 +448,9 @@ enum AgentPaletteMetrics {
   }
 
   static let historyHeaderHeight: CGFloat = fromHistoryMock(50)
-  static let historyHeaderFontSize: CGFloat = typeMeta
+  static var historyHeaderFontSize: CGFloat { typeMeta }
   static let historyHeaderTextColor = PaletteInk.secondary
-  static let historyHeaderBottomInset: CGFloat = 10
+  static var historyHeaderBottomInset: CGFloat { live(10) }
   static let historyHeaderSeparation: CGFloat = 8
   static func historyHeaderHeight(followsRows: Bool) -> CGFloat {
     historyHeaderHeight + (followsRows ? historyHeaderSeparation : 0)
@@ -462,16 +459,16 @@ enum AgentPaletteMetrics {
     resultsRowHorizontalInset + resultsRowTextLeading
   }
 
-  static let historyTabTopInset: CGFloat = shellContentInset
+  static var historyTabTopInset: CGFloat { shellContentInset }
   static let historyTabTrackPadding: CGFloat = 0
-  static let historyTabPadding: CGFloat = 10
+  static var historyTabPadding: CGFloat { live(10) }
   static let historyTabMascotSize: CGFloat = fromHistoryMock(40)
   static let historyTabMascotTextSpacing: CGFloat = fromHistoryMock(4)
   static let historyTabLatestMascotSize: CGFloat = fromHistoryMock(28)
   static let historyTabLatestTextSpacing: CGFloat = fromHistoryMock(6)
   static var historyTabClusterSide: CGFloat { 2 * historyTabLatestMascotSize }
-  static let historyTabSegmentInset: CGFloat = 6
-  static let historyTabFontSize: CGFloat = typeSecondary
+  static var historyTabSegmentInset: CGFloat { live(6) }
+  static var historyTabFontSize: CGFloat { typeSecondary }
   static var historyTabLabelHeight: CGFloat {
     let font = roundedAppFont(size: historyTabFontSize)
     return ceil(font.ascender - font.descender + font.leading)
@@ -487,60 +484,60 @@ enum AgentPaletteMetrics {
   static var historyTabStripHeight: CGFloat {
     historyTabTopInset + historyTabTrackHeight + historyTabListSpacing - resultsVerticalInset
   }
-  static let historyTabSlideResponse = CGFloat(Motion.standard)
-  static let historyTabHoverFill = PaletteInk.tertiaryFill
-  static let historyRowSelectedFill = NSColor.white.withAlphaComponent(0.14)
-  static let historyRowHoverFill = PaletteInk.secondaryFill
+  static var historyTabSlideResponse: CGFloat { CGFloat(Motion.standard) }
+  static var historyTabHoverFill: NSColor { PaletteInk.tertiaryFill }
+  static var historyRowSelectedFill: NSColor { live(NSColor.white.withAlphaComponent(0.14)) }
+  static var historyRowHoverFill: NSColor { PaletteInk.secondaryFill }
   static let historyTabActiveTextColor = PaletteInk.primary
   static let historyTabTextColor = PaletteInk.secondary
 
 
   static let targetSwapBlurRadius: CGFloat = 8
   static let targetSwapBlurDuration: TimeInterval = 0.18
-  static let targetSwapFadeDuration: TimeInterval = Motion.quick
+  static var targetSwapFadeDuration: TimeInterval { Motion.quick }
 
-  static let previewBodyFontSize: CGFloat = typeChat
-  static let previewBodyLineHeight: CGFloat = 18
-  static let previewAnswerLineHeight: CGFloat = 24
+  static var previewBodyFontSize: CGFloat { typeChat }
+  static var previewBodyLineHeight: CGFloat { live(18) }
+  static var previewAnswerLineHeight: CGFloat { live(24) }
 
-  static let answerHeading1FontSize: CGFloat = 21
+  static var answerHeading1FontSize: CGFloat { live(21) }
   static let answerHeading1LineHeight: CGFloat = 28
-  static let answerHeading2FontSize: CGFloat = typePrimary
+  static var answerHeading2FontSize: CGFloat { typePrimary }
   static let answerHeading2LineHeight: CGFloat = 24.5
-  static let answerHeading3FontSize: CGFloat = 16
+  static var answerHeading3FontSize: CGFloat { live(16) }
   static let answerHeading1SpacingAfter: CGFloat = 7
   static let answerHeading2SpacingAfter: CGFloat = 3.5
 
-  static let answerTableFontSize: CGFloat = typeMeta
+  static var answerTableFontSize: CGFloat { typeMeta }
   static let answerTableCellVerticalPadding: CGFloat = 8.5
   static let answerTableCellTrailingPadding: CGFloat = 21
   static let answerTableRuleWidth: CGFloat = 1
-  static let answerTableRule = PaletteInk.secondaryFill
-  static let answerParagraphSpacing: CGFloat = 16
+  static var answerTableRule: NSColor { PaletteInk.secondaryFill }
+  static var answerParagraphSpacing: CGFloat { live(16) }
   static let answerListMarkerIndent: CGFloat = 8
-  static let answerListHeadIndent: CGFloat = 21
+  static var answerListHeadIndent: CGFloat { live(21) }
   static let answerListNumberGap: CGFloat = 5
   static let answerListNestIndent: CGFloat = 22
   static let answerListItemSpacing: CGFloat = 0
-  static let answerCodeFontSize: CGFloat = typeMeta
-  static let answerInlineCodeFill = PaletteInk.fill
-  static let answerInlineCodeCornerRadius: CGFloat = 6
+  static var answerCodeFontSize: CGFloat { typeMeta }
+  static var answerInlineCodeFill: NSColor { PaletteInk.fill }
+  static var answerInlineCodeCornerRadius: CGFloat { live(6) }
   static let answerInlineCodeInset: CGFloat = 4
-  static let answerCodeBlockCornerRadius: CGFloat = 10
-  static let answerCodeBlockFill = PaletteInk.secondaryFill
-  static let answerCodeBlockVerticalPadding: CGFloat = 14
-  static let answerCodeBlockLeadingPadding: CGFloat = 16
+  static var answerCodeBlockCornerRadius: CGFloat { live(10) }
+  static var answerCodeBlockFill: NSColor { PaletteInk.secondaryFill }
+  static var answerCodeBlockVerticalPadding: CGFloat { live(14) }
+  static var answerCodeBlockLeadingPadding: CGFloat { live(16) }
   static let answerCodeBlockTrailingPadding: CGFloat = 40
   static let answerCodeBlockLineHeight: CGFloat = 19.5
   static let answerCodeBlockCopyInset: CGFloat = 8
   static let answerQuoteBarWidth: CGFloat = 3.5
-  static let answerQuoteBar = PaletteInk.selectedFill
+  static var answerQuoteBar: NSColor { PaletteInk.selectedFill }
   static let answerQuoteIndent: CGFloat = 21
   static let answerQuoteVerticalPadding: CGFloat = 7
   static let answerRuleSpacing: CGFloat = 24.5
   static let answerRuleSpacingAfter: CGFloat = 14
   static let previewContentVerticalPadding: CGFloat = fromMock(21)
-  static let previewContentHorizontalPadding: CGFloat = shellContentInset
+  static var previewContentHorizontalPadding: CGFloat { shellContentInset }
   static let previewTopSpacing: CGFloat = 8
 
   static let previewOptionCornerRadius: CGFloat = fromMock(16)
@@ -564,17 +561,17 @@ enum AgentPaletteMetrics {
     return rows + previewOptionSpacing * CGFloat(options.count - 1) + previewOptionsTopSpacing
   }
 
-  static let previewBubbleMaxWidthFraction: CGFloat = 0.78
+  static var previewBubbleMaxWidthFraction: CGFloat { live(0.78) }
   static func previewBubbleMaxWidth(in column: CGFloat) -> CGFloat {
     onPixelGrid(column * previewBubbleMaxWidthFraction)
   }
-  static let previewUserBubbleFill = NSColor.white.withAlphaComponent(0.94)
+  static var previewUserBubbleFill: NSColor { live(NSColor.white.withAlphaComponent(0.94)) }
   static let previewUserBubbleInk = NSColor.black
-  static let previewUserBubbleHorizontalPadding: CGFloat = 13
-  static let previewUserBubbleVerticalPadding: CGFloat = 5.5
-  static let previewUserBubbleCornerRadius: CGFloat = 18
+  static var previewUserBubbleHorizontalPadding: CGFloat { live(13) }
+  static var previewUserBubbleVerticalPadding: CGFloat { live(5.5) }
+  static var previewUserBubbleCornerRadius: CGFloat { live(18) }
   static let previewMessageSpacing: CGFloat = 25.5
-  static let previewQuestionAnswerSpacing: CGFloat = 28
+  static var previewQuestionAnswerSpacing: CGFloat { live(28) }
 
   static let lightboxDim: CGFloat = 0.7
   static let lightboxMargin: CGFloat = 48
@@ -582,50 +579,49 @@ enum AgentPaletteMetrics {
   static let lightboxDuration: TimeInterval = 0.32
   static let lightboxMaxPixels = 6000
   static let lightboxDocumentSize = CGSize(width: 820, height: 1000)
-  static let previewTurnSpacing: CGFloat = 40
-  static let previewAgentMessageSpacing: CGFloat = answerParagraphSpacing
+  static var previewTurnSpacing: CGFloat { live(40) }
+  static var previewAgentMessageSpacing: CGFloat { answerParagraphSpacing }
 
-  static let previewWorkPillHeight: CGFloat = 28
+  static var previewWorkPillHeight: CGFloat { live(28) }
   static let previewWorkPillChevronGap: CGFloat = 5
-  static let previewWorkPillChevronWidth: CGFloat = iconSide(12)
+  static var previewWorkPillChevronWidth: CGFloat { iconSide(12) }
   static let previewWorkPillChevronPointSize: CGFloat = 13
   static let previewWorkPillTextInset: CGFloat = 0
   static let previewWorkPillTrailingInset: CGFloat = 0
   static let previewWorkThreadX: CGFloat = 5
   static let previewWorkThreadWidth: CGFloat = 1.5
-  static let previewWorkThreadFill = PaletteInk.secondaryFill
+  static var previewWorkThreadFill: NSColor { PaletteInk.secondaryFill }
   static let previewWorkListInset: CGFloat = 18
-  static let previewWorkPillListTop: CGFloat = previewWorkPillHeight + 2
+  static var previewWorkPillListTop: CGFloat { previewWorkPillHeight + 2 }
   static let previewWorkPillListBottomInset: CGFloat = 4
   static let previewWorkPillSpacingAbove: CGFloat = 14
   static let previewWorkPillSpacingBelow: CGFloat = 10
 
-  static let previewFileRowHeight: CGFloat = 56
+  static var previewFileRowHeight: CGFloat { live(56) }
   static let previewFileRowSpacing: CGFloat = 6
   static let previewFileRowsTopMargin: CGFloat = 8
   static let previewSentFilesGap: CGFloat = 6
   static let previewFileCardWidth: CGFloat = 300
-  static let previewFileCardInset: CGFloat = 8
-  static let previewFileIconTileCornerRadius: CGFloat = 8
-  static let previewFileCardCornerRadius: CGFloat =
-    previewFileIconTileCornerRadius + previewFileCardInset
-  static let previewFileCardFill = PaletteInk.secondaryFill
-  static let previewFileCardHoverFill = PaletteInk.fill
-  static let previewFileIconTileSize: CGFloat = previewFileRowHeight - previewFileCardInset * 2
-  static let previewFileIconTileFill = PaletteInk.tertiaryFill
+  static var previewFileCardInset: CGFloat { live(8) }
+  static var previewFileIconTileCornerRadius: CGFloat { live(8) }
+  static var previewFileCardCornerRadius: CGFloat { previewFileIconTileCornerRadius + previewFileCardInset }
+  static var previewFileCardFill: NSColor { PaletteInk.secondaryFill }
+  static var previewFileCardHoverFill: NSColor { PaletteInk.fill }
+  static var previewFileIconTileSize: CGFloat { previewFileRowHeight - previewFileCardInset * 2 }
+  static var previewFileIconTileFill: NSColor { PaletteInk.tertiaryFill }
   static let previewFileIconSize: CGFloat = 28
   static let previewFileButtonSize: CGFloat = 24
   static let previewFileGlyphPointSize: CGFloat = 16
-  static let previewFileNameFontSize: CGFloat = typeMeta
+  static var previewFileNameFontSize: CGFloat { typeMeta }
   static let previewFileSizeFontSize: CGFloat = typeFootnote
 
-  static let previewActivityRowHeight: CGFloat = 22
+  static var previewActivityRowHeight: CGFloat { live(22) }
   static let previewActivityRowSpacing: CGFloat = 2
   static let previewActivityRowsTopMargin: CGFloat = 6
-  static let previewActivityGlyphSize: CGFloat = iconSide(14)
+  static var previewActivityGlyphSize: CGFloat { iconSide(14) }
   static let previewActivityGlyphPointSize: CGFloat = 14
   static let previewActivityChevronPointSize: CGFloat = 12
-  static let previewActivityNameFontSize: CGFloat = typeMeta
+  static var previewActivityNameFontSize: CGFloat { typeMeta }
   static let previewActivityDetailFontSize: CGFloat = typeFootnote
   /// Pinned: the measure ceils a bounding box while the label uses the font's
   /// leading, which clipped the last line of monospaced output.
@@ -633,18 +629,18 @@ enum AgentPaletteMetrics {
   static let previewActivityDetailTopMargin: CGFloat = 4
   static let previewActivityDetailWellInset: CGFloat = 8
   static let previewActivityDetailWellCornerRadius: CGFloat = 8
-  static let previewActivityDetailWellFill = PaletteInk.tertiaryFill
-  static let previewActivityDetailIndent: CGFloat = previewActivityGlyphSize + previewActivityRowSpacing * 2
+  static var previewActivityDetailWellFill: NSColor { PaletteInk.tertiaryFill }
+  static var previewActivityDetailIndent: CGFloat { previewActivityGlyphSize + previewActivityRowSpacing * 2 }
   static let previewActivityDetailLineCap = 40
 
-  static let previewTurnHeaderLabelHeight: CGFloat = previewActivityRowHeight
-  static let previewTurnHeaderHeight: CGFloat = previewTurnHeaderLabelHeight
+  static var previewTurnHeaderLabelHeight: CGFloat { previewActivityRowHeight }
+  static var previewTurnHeaderHeight: CGFloat { previewTurnHeaderLabelHeight }
   static let previewTurnHeaderSpacing: CGFloat = 6
 
   static let workingLineHeight: CGFloat = workingFaceDiameter
   static let workingLineLeadingInset: CGFloat = 2
-  static let workingLineFaceSize: CGFloat = 24
-  static let workingLineFaceGap: CGFloat = 10
+  static var workingLineFaceSize: CGFloat { live(24) }
+  static var workingLineFaceGap: CGFloat { live(10) }
   static let workingLineBreathDuration: CFTimeInterval = 1.3
   static let workingLineBreathLitLow: CGFloat = 0.15
   static let workingLineHaloBlur: CGFloat = 6
@@ -660,21 +656,21 @@ enum AgentPaletteMetrics {
   static let scrollEdgeBlurRadius: CGFloat = 8
   static var historyTabOverlap: CGFloat { onPixelGrid(historyTabHeight * 0.45) }
 
-  static let previewStreamingWordFade: TimeInterval = 0.32
-  static let previewStreamingWordSettle: TimeInterval = Motion.standard * 6
+  static var previewStreamingWordFade: TimeInterval { live(0.32) }
+  static var previewStreamingWordSettle: TimeInterval { Motion.standard * 6 }
   static let previewStreamingWordGap: TimeInterval = 0.03
   static let previewStreamingWordLag: TimeInterval = 0.35
 
-  static let previewRevealDuration: TimeInterval = Motion.standard
+  static var previewRevealDuration: TimeInterval { Motion.standard }
   static let previewRevealStagger: TimeInterval = 0.06
   static let previewRevealStaggerSteps = 4
 
-  static let previewSendFlightDuration: TimeInterval = 0.45
+  static var previewSendFlightDuration: TimeInterval { live(0.45) }
   static let sendWordsBubbleStartScale: CGFloat = 0.9
 
   // MARK: Shader effects (`PaletteEffects`)
 
-  static let revealDuration: TimeInterval = Motion.standard * 2
+  static var revealDuration: TimeInterval { Motion.standard * 2 }
   static let revealBlurFraction: CGFloat = 0.18
   static let revealAberrationFraction: CGFloat = 0.05
   static let revealZoom: CGFloat = 0.08
@@ -690,8 +686,7 @@ enum AgentPaletteMetrics {
 
   static let transcriptLatestPillSlack: CGFloat = 120
 
-  static let previewMinHeight: CGFloat =
-    previewHeaderHeight + previewContentVerticalPadding + previewBodyLineHeight
+  static var previewMinHeight: CGFloat { previewHeaderHeight + previewContentVerticalPadding + previewBodyLineHeight }
 
   static func previewCardHeight(bodyLineCount: Int) -> CGFloat {
     previewHeaderHeight + previewContentVerticalPadding
@@ -700,31 +695,31 @@ enum AgentPaletteMetrics {
 
   static let resultsShadowBleed: CGFloat = 32
 
-  static let promptNoteFontSize: CGFloat = typeMeta
+  static var promptNoteFontSize: CGFloat { typeMeta }
 
   static let previewFooterFontSize: CGFloat = typeFootnote
   static let previewFooterTextColor = PaletteInk.secondary
 
-  static let failureCardCornerRadius: CGFloat = 20
-  static let failureCardPadding: CGFloat = 16
-  static let failureDetailsCornerRadius: CGFloat = 12
+  static var failureCardCornerRadius: CGFloat { live(20) }
+  static var failureCardPadding: CGFloat { live(16) }
+  static var failureDetailsCornerRadius: CGFloat { live(12) }
   static let failureDetailsPadding: CGFloat = 12
   static let failureDetailsCopyInset: CGFloat = 6
   static let failureDetailsCopyGap: CGFloat = 8
-  static let failureCardFill = PaletteInk.secondaryFill
-  static let failureDetailsFill = NSColor.black.withAlphaComponent(0.22)
+  static var failureCardFill: NSColor { PaletteInk.secondaryFill }
+  static var failureDetailsFill: NSColor { live(NSColor.black.withAlphaComponent(0.22)) }
   static let failureCardAccent = NSColor.systemOrange
 
-  static let serviceEyebrowFontSize: CGFloat = typeMeta
+  static var serviceEyebrowFontSize: CGFloat { typeMeta }
   static let serviceEyebrowGap: CGFloat = 4
-  static let serviceContentGap: CGFloat = 12
+  static var serviceContentGap: CGFloat { live(12) }
   static let serviceCaptionGap: CGFloat = 8
-  static let serviceActionsGap: CGFloat = 16
-  static let serviceWellPadding: CGFloat = 12
+  static var serviceActionsGap: CGFloat { live(16) }
+  static var serviceWellPadding: CGFloat { live(12) }
   static let serviceWellLabelFontSize: CGFloat = typeFootnote
   static let serviceWellLabelGap: CGFloat = 4
   static let serviceWellLinkGap: CGFloat = 8
-  static let serviceWellCodeLineHeight: CGFloat = previewBodyLineHeight
+  static var serviceWellCodeLineHeight: CGFloat { previewBodyLineHeight }
 
   static func capTrim(_ font: NSFont, lineHeight: CGFloat? = nil) -> CGFloat {
     let descent = -font.descender
@@ -741,8 +736,8 @@ enum AgentPaletteMetrics {
   static func labelHeight(_ font: NSFont) -> CGFloat {
     ceil(font.ascender - font.descender + font.leading)
   }
-  static let helpDensity = NSColor.black.withAlphaComponent(0.55)
-  static let helpCornerRadius: CGFloat = 10
+  static var helpDensity: NSColor { live(NSColor.black.withAlphaComponent(0.55)) }
+  static var helpCornerRadius: CGFloat { live(10) }
 
   static let mentionWidth: CGFloat = 400
   static let mentionInset: CGFloat = 6
@@ -754,17 +749,17 @@ enum AgentPaletteMetrics {
   static let mentionIconGap: CGFloat = 8
   static let mentionPlaceGap: CGFloat = 12
   static let mentionGap: CGFloat = 8
-  static let helpHorizontalPadding: CGFloat = 10
-  static let helpVerticalPadding: CGFloat = 6
+  static var helpHorizontalPadding: CGFloat { live(10) }
+  static var helpVerticalPadding: CGFloat { live(6) }
   static let helpLineSpacing: CGFloat = 2
   static let helpTextMaxWidth: CGFloat = 280
   static let helpKeysGap: CGFloat = 16
-  static let helpKeycapSize: CGFloat = 18
+  static var helpKeycapSize: CGFloat { live(18) }
   static let helpKeycapCornerRadius: CGFloat = 4
   static let helpKeycapSpacing: CGFloat = 3
   static let helpKeyWordsGap: CGFloat = 6
   static let regionKeyHintsGap: CGFloat = 10
-  static let keyHintsProgressFill = NSColor.white.withAlphaComponent(0.16)
+  static var keyHintsProgressFill: NSColor { live(NSColor.white.withAlphaComponent(0.16)) }
   /// With nothing heard this long from a microphone that is listening, the orb says so.
   static let regionSilentMicrophone: TimeInterval = 5
   /// Below this a level is no sound at all (`VoiceDictationService.quietRoom` is a quiet room).
@@ -772,11 +767,11 @@ enum AgentPaletteMetrics {
   static let helpKeycapInset: CGFloat = 5
   static let helpActionSpacing: CGFloat = 8
   static let helpActionHeight: CGFloat = 26
-  static let planRingTrack = ComposerControlGroup.disabledInk
+  static var planRingTrack: NSColor { ComposerControlGroup.disabledInk }
   static let planRingWarningPercent = 80
-  static let planRingInk = ComposerControlGroup.restingInk
-  static let planRingDiameter: CGFloat = 20
-  static let planRingStroke: CGFloat = 2.5
+  static var planRingInk: NSColor { ComposerControlGroup.restingInk }
+  static var planRingDiameter: CGFloat { live(20) }
+  static var planRingStroke: CGFloat { live(2.5) }
   // The circle icon's ink (r 6.25, stroke 1.425 on 16), so the ring stands as large and as thin as the icons beside it.
   static let planRingStrokeRatio: CGFloat = 1.425 / 13.925
   static func planRingOuterDiameter(chat: Bool) -> CGFloat {
@@ -785,7 +780,7 @@ enum AgentPaletteMetrics {
 
   static let directoryChipHeight: CGFloat = fromMock(30)
   static let latestComposerSpacing: CGFloat = fromMock(6)
-  static let directoryChipFontSize: CGFloat = typeSecondary
+  static var directoryChipFontSize: CGFloat { typeSecondary }
   static let directoryChipGlyphPointSize: CGFloat = 10
   static let directoryChipTextColor = PaletteInk.primary
   static let directoryChipWarningTint = NSColor.systemOrange
@@ -796,22 +791,22 @@ enum AgentPaletteMetrics {
   static func folderChipIconGap(chat: Bool) -> CGFloat { chat ? 5 : 6 }
   static func folderChipCornerRadius(chat: Bool) -> CGFloat { chat ? 6.5 : 7 }
   static func folderChipFontSize(chat: Bool) -> CGFloat { chat ? 14.5 : typeSecondary }
-  static let modelChipPadding: CGFloat = 9
+  static var modelChipPadding: CGFloat { live(9) }
   static let modelChipMaxWidth: CGFloat = 260
   static let modelChipLeadingGap: CGFloat = 4
-  static let folderChipMaxNameWidth: CGFloat = 120
+  static var folderChipMaxNameWidth: CGFloat { live(120) }
   static let folderChipSlotMargin: CGFloat = 2
-  static let folderChipFill = PaletteInk.tertiaryFill
+  static var folderChipFill: NSColor { PaletteInk.tertiaryFill }
 
   static let errorTopSpacing: CGFloat = 6
-  static let noticeCornerRadius: CGFloat = 18
-  static let noticeHorizontalPadding: CGFloat = 14
-  static let noticeVerticalPadding: CGFloat = 10
+  static var noticeCornerRadius: CGFloat { live(18) }
+  static var noticeHorizontalPadding: CGFloat { live(14) }
+  static var noticeVerticalPadding: CGFloat { live(10) }
   static let noticeGlyphSpacing: CGFloat = 6
   static let noticeShellSpacing: CGFloat = 8
   static let noticeChatInset: CGFloat = 16
   static let errorMinimumHeight: CGFloat = 16
-  static let errorRevealDuration: TimeInterval = Motion.standard
+  static var errorRevealDuration: TimeInterval { Motion.standard }
   static let errorRiseOffset: CGFloat = 4
 
   static func resultsListHeight(itemCount: Int) -> CGFloat {
@@ -928,35 +923,35 @@ enum PaletteInk {
   static let secondary = NSColor.secondaryLabelColor
   static let tertiary = NSColor.tertiaryLabelColor
 
-  static let fill = NSColor.white.withAlphaComponent(0.10)
-  static let secondaryFill = NSColor.white.withAlphaComponent(0.08)
-  static let tertiaryFill = NSColor.white.withAlphaComponent(0.05)
-  static let selectedFill = NSColor.white.withAlphaComponent(0.20)
+  static var fill: NSColor { live(NSColor.white.withAlphaComponent(0.10)) }
+  static var secondaryFill: NSColor { live(NSColor.white.withAlphaComponent(0.08)) }
+  static var tertiaryFill: NSColor { live(NSColor.white.withAlphaComponent(0.05)) }
+  static var selectedFill: NSColor { live(NSColor.white.withAlphaComponent(0.20)) }
 }
 
 enum ComposerControlGroup {
-  static let glyph: CGFloat = 16
-  static let promptGlyph: CGFloat = 20
-  static let gap: CGFloat = 10
-  static let promptGap: CGFloat = 16
-  static let target: CGFloat = glyph + gap
+  static var glyph: CGFloat { live(16) }
+  static var promptGlyph: CGFloat { live(20) }
+  static var gap: CGFloat { live(10) }
+  static var promptGap: CGFloat { live(16) }
+  static var target: CGFloat { glyph + gap }
 
   static func glyph(chat: Bool) -> CGFloat { chat ? glyph : promptGlyph }
   static func gap(chat: Bool) -> CGFloat { chat ? gap : promptGap }
   static func target(chat: Bool) -> CGFloat { glyph(chat: chat) + gap(chat: chat) }
   static func iconSize(chat: Bool) -> CGFloat { glyph(chat: chat) + 1 }
-  static let restingInk = NSColor.white.withAlphaComponent(0.5)
-  static let hoverInk = NSColor.white
-  static let disabledInk = NSColor.white.withAlphaComponent(0.2)
+  static var restingInk: NSColor { live(NSColor.white.withAlphaComponent(0.5)) }
+  static var hoverInk: NSColor { live(NSColor.white) }
+  static var disabledInk: NSColor { live(NSColor.white.withAlphaComponent(0.2)) }
 
-  static let sendDisc: CGFloat = 28
-  static let sendGap: CGFloat = gap / 2
-  static let sendIconSize: CGFloat = 16
-  static let sendFill = NSColor.white
-  static let sendHoverFill = NSColor.white.withAlphaComponent(0.85)
-  static let sendInk = NSColor.black
-  static let sendDisabledFill = PaletteInk.fill
-  static let sendDisabledInk = NSColor.white.withAlphaComponent(0.35)
+  static var sendDisc: CGFloat { live(28) }
+  static var sendGap: CGFloat { gap / 2 }
+  static var sendIconSize: CGFloat { live(16) }
+  static var sendFill: NSColor { live(NSColor.white) }
+  static var sendHoverFill: NSColor { live(NSColor.white.withAlphaComponent(0.85)) }
+  static var sendInk: NSColor { live(NSColor.black) }
+  static var sendDisabledFill: NSColor { PaletteInk.fill }
+  static var sendDisabledInk: NSColor { live(NSColor.white.withAlphaComponent(0.35)) }
   static func sendIcon(_ icon: BolttyIcon, description: String) -> NSImage? {
     icon.image(size: AgentPaletteMetrics.iconSide(sendIconSize), description: description)
   }

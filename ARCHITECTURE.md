@@ -161,5 +161,6 @@ after the last answer unless you go on with them in the panel.
 | Settings | `UI/Settings/` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift` |
 | The mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal` |
+| Boltty Design, the design tool (its own app) | `apps/macos/Design/` |
 | Releases and updates | `scripts/release.sh`, `Services/AppUpdater.swift` |
 | Local voice models | `Services/LocalVoice/LocalModelStore.swift`, `scripts/pin-local-model.py` |

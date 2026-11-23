@@ -8,12 +8,12 @@ final class AskBolttyOverlayController {
   static let pointerOffset = CGVector(dx: 30, dy: -30)
   static let followTime: CFTimeInterval = 0.06
   static let edgeMargin: CGFloat = 8
-  static let bubbleGap: CGFloat = 6
-  static let bubbleMaxTextWidth: CGFloat = 340
+  static var bubbleGap: CGFloat { live(6) }
+  static var bubbleMaxTextWidth: CGFloat { live(340) }
   static let bubbleMaxLines = 5
   static let bubblePadding = CGSize(width: 14, height: 10)
-  static let bubbleCornerRadius: CGFloat = 18
-  static let bubbleShade = NSColor.black.withAlphaComponent(0.5)
+  static var bubbleCornerRadius: CGFloat { live(18) }
+  static var bubbleShade: NSColor { live(NSColor.black.withAlphaComponent(0.5)) }
 
   static let landingOffset = CGVector(dx: 30, dy: -30)
 
@@ -438,9 +438,10 @@ final class AskBolttyOverlayController {
   enum BubbleSide { case right, left }
 
   static var bubbleMaxWidth: CGFloat { bubbleMaxTextWidth + bubblePadding.width * 2 }
-  static let bubbleFirstLineHeight =
+  static var bubbleFirstLineHeight: CGFloat {
     ceil(AgentPaletteMetrics.listeningWordsFontSize * AgentPaletteMetrics.listeningWordsLineSpacing)
-    + bubblePadding.height * 2
+      + bubblePadding.height * 2
+  }
 
   static func bubbleSide(current: BubbleSide, beside face: CGRect, in screen: CGRect) -> BubbleSide {
     let fitsRight = face.maxX + bubbleGap + bubbleMaxWidth <= screen.maxX - edgeMargin
@@ -693,9 +694,9 @@ final class AskBolttyOverlayController {
 
   // MARK: - The bubble
 
-  static let bubbleFont = roundedAppFont(size: AgentPaletteMetrics.typePrimary, weight: .medium)
+  static var bubbleFont: NSFont { roundedAppFont(size: AgentPaletteMetrics.typePrimary, weight: .medium) }
 
-  static let restHintFont = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
+  static var restHintFont: NSFont { roundedAppFont(size: AgentPaletteMetrics.typeMeta) }
 
   private func setText(_ next: String, quiet: Bool, isHint: Bool = false) {
     wordsAreQuiet = quiet && !isHint

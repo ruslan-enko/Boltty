@@ -13,7 +13,7 @@ extension View {
 }
 
 enum SettingsMotion {
-  static let quick = Animation.easeOut(duration: Motion.quick)
+  static var quick: Animation { Animation.easeOut(duration: Motion.quick) }
 
   static var arrival: Animation? {
     MotionPreferences.reduceMotion ? nil : .easeOut(duration: Motion.standard)

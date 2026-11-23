@@ -101,6 +101,14 @@ enum PaletteAnswerText {
     ).height)
   }
 
+  #if BOLTTY_DESIGN
+  static func forgetMeasurements() {
+    setCache = [:]
+    heightCache = [:]
+    lastGrowing = nil
+  }
+  #endif
+
   static func streaming(_ text: String, color: NSColor) -> NSAttributedString {
     NSAttributedString(string: text, attributes: bodyAttributes(color: color, style: paragraphStyle()))
   }

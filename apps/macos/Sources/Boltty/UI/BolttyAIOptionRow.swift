@@ -753,6 +753,13 @@ final class BolttyAIApprovalBar: NSView {
     return width
   }
 
+  #if BOLTTY_DESIGN
+  @MainActor static func forgetMeasurements() {
+    measuredCopyWidth = nil
+    measuredWidths = nil
+  }
+  #endif
+
   @MainActor private static var measuredCopyWidth: CGFloat?
 
   static func buttonWidths(

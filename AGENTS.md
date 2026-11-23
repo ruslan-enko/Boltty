@@ -94,6 +94,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
 | Who takes a new chat | `Models/AgentRouting.swift` (`AgentRouting`, `AgentHandOver`), `ChatWorkspaceCoordinator.routingOrder` / `handOverIfDue` |
 | Settings | `UI/Settings/`; what a setting changes, shown live: `UI/Settings/SettingsStage.swift` |
+| Boltty Design, the design tool | `apps/macos/Design/` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyDrawingLayer.swift`; the region is the panel's (`AgentPaletteController.beginScreenAsk`) |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
@@ -1918,6 +1919,22 @@ so in the orb ("No sound is reaching the microphone…",
   checked-in Xcode 27 project except `LICENSE`'s `lastKnownFileType` (keep
   Xcode's line). It rewrites the shared scheme — restore it with `git checkout`.
   Xcode's recommended settings live in `project.yml`.
+- **Boltty Design** (`Design/`, `make design`) is an app of its own, with its own
+  project made by XcodeGen on each run: the product's sources but `main.swift`,
+  built with `BOLTTY_DESIGN`. Nothing of it is in Boltty's target or a release. It
+  shows foundations, elements and the panel in each state with the parts the
+  product draws with, over a chosen ground, starts none of the product and writes
+  none of its settings. Pick an Element (⌘E) names what is clicked by the property
+  that holds it, and Copy for Claude says where it is written and its values. A new
+  element, icon or panel state gets its sample there in the same change (icons,
+  faces and values list themselves). Its words are not localized.
+- A value written `{ live(12) }` (`LiveValue`) is the value itself in Boltty; Boltty
+  Design gives it a slider on the pages that read it, and Save writes its line of
+  Swift. The source is the truth, read at launch and as the window comes forward.
+  The line keeps that exact shape (a number, `NSColor(oklch:)`, or white or black
+  with an alpha), and what is worked out from one is a computed `static var`, never
+  a `static let`, which would keep the first value. A cache of measurements is
+  cleared as a page is made again (`forgetMeasurements`).
 - No Swift packages.
 - `scripts/run-isolated.sh` runs a build with a throwaway `HOME` and a re-stamped
   bundle id, reaping any OpenCode server it started (by `HOME`, never by name —

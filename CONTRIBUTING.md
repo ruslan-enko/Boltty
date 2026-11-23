@@ -28,6 +28,7 @@ Or with `make` from the repository root (`make` alone lists the targets):
 
 ```bash
 make run        # Debug build, then open it
+make design     # Boltty Design: every element, live, with sliders (needs XcodeGen)
 make install    # build what's on disk into /Applications
 make test       # tests for what you changed
 make lint       # both linters
