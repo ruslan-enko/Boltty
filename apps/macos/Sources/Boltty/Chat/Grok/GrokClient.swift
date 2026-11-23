@@ -11,6 +11,7 @@ struct ACPAgent: Sendable {
   var usage: (method: String, read: @Sendable (JSONObject) -> AgentUsage?)?
   var planMethod: String? = nil
   var askMethods: Set<String> = []
+  var elicitMethods: Set<String> = []
 
   static let grok = ACPAgent(
     provider: .grok,
@@ -28,7 +29,8 @@ struct ACPAgent: Sendable {
     recordedName: { GrokChatHistoryTranscript.recordedName(sessionID: $0) },
     usage: ("_x.ai/billing", { AgentUsage.grok($0) }),
     planMethod: "x.ai/exit_plan_mode",
-    askMethods: ["x.ai/ask_user_question", "_x.ai/ask_user_question"]
+    askMethods: ["x.ai/ask_user_question", "_x.ai/ask_user_question"],
+    elicitMethods: ["x.ai/mcp/elicit", "_x.ai/mcp/elicit"]
   )
 }
 
@@ -95,6 +97,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let sessionID: String
     let optionsByDecision: [PermissionDecision: String]
     let rejectOptionID: String?
+    var isElicitation = false
   }
 
   private struct PendingPlan {
@@ -454,6 +457,12 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     guard let waiting = lock.withLock({ permissions.removeValue(forKey: requestID) }) else {
       throw AgentClientError.requestGone
     }
+    if waiting.isElicitation {
+      respond(to: waiting.rpcID, result: Self.elicitationResult(decision))
+      emit(.interactionResolved(
+        sessionID: sessionID, requestID: requestID, resolution: .permission(decision)))
+      return
+    }
     guard let optionID = waiting.optionsByDecision[decision] ?? waiting.rejectOptionID else {
       throw AgentClientError.transport("\(agent.displayName) offered no option for that answer.")
     }
@@ -487,6 +496,10 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       requestID: requestID,
       resolution: .plan(decision)
     ))
+  }
+
+  static func elicitationResult(_ decision: PermissionDecision) -> [String: Any] {
+    decision == .reject ? ["outcome": "decline"] : ["outcome": "accept", "content": [String: Any]()]
   }
 
   static func planResult(_ decision: PlanDecision, feedback: String?) -> [String: Any] {
@@ -635,6 +648,9 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     if agent.askMethods.contains(method) {
       return handleAsk(id: id, params: params)
     }
+    if agent.elicitMethods.contains(method) {
+      return handleElicitation(id: id, params: params)
+    }
     guard method == "session/request_permission" else {
       // Answer -32601, never an empty result: the agent waits on it, and empty reads as success.
       respond(to: id, errorCode: -32601, message: "Boltty does not implement \(method).")
@@ -763,6 +779,24 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       conversationID: conversationID,
       remoteSessionID: sessionID,
       kind: .question(QuestionPrompt(items: items, toolCallID: params.string("toolCallId")))
+    )))
+  }
+
+  private func handleElicitation(id: Int, params: JSONObject) {
+    let toolCallID = params.string("toolCallId")
+    guard let sessionID = params.string("sessionId"),
+          let conversationID = lock.withLock({ conversationResolver })?(sessionID),
+          let prompt = PermissionPrompt.elicitation(
+            server: params.string("serverName") ?? "MCP", mode: params.string("mode"),
+            message: params.string("message"), schema: params.object("requestedSchema"), toolCallID: toolCallID)
+    else { return respond(to: id, result: ["outcome": "decline"]) }
+    let requestID = toolCallID ?? UUID().uuidString
+    lock.withLock {
+      permissions[requestID] = PendingPermission(
+        rpcID: id, sessionID: sessionID, optionsByDecision: [:], rejectOptionID: nil, isElicitation: true)
+    }
+    emit(.interactionAsked(PendingInteraction(
+      id: requestID, conversationID: conversationID, remoteSessionID: sessionID, kind: .permission(prompt)
     )))
   }
 

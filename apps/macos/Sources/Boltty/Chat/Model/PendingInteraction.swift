@@ -120,6 +120,20 @@ struct PermissionPrompt: Codable, Equatable, Sendable {
   var resources: [String]
   var savePatterns: [String]
   var toolCallID: String?
+  /// `false` where the CLI has no "always" for this ask. Absent is yes.
+  var offersAlways: Bool? = nil
+
+  /// What an MCP server asks, when yes or no answers it: `nil` for a form with
+  /// fields or a link.
+  static func elicitation(
+    server: String, mode: String?, message: String?, schema: JSONObject?, toolCallID: String?
+  ) -> PermissionPrompt? {
+    guard (mode ?? "form") == "form", schema?.object("properties")?.raw.isEmpty ?? true,
+          let message, !message.isEmpty
+    else { return nil }
+    return PermissionPrompt(
+      action: server, resources: [message], savePatterns: [], toolCallID: toolCallID, offersAlways: false)
+  }
 }
 
 enum PermissionDecision: String, Codable, Equatable, Sendable {

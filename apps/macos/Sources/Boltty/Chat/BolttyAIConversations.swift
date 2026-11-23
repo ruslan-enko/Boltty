@@ -614,7 +614,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
             detail: nil,
             value: PermissionDecision.reject.rawValue
           )
-        ],
+        ].filter { prompt.offersAlways != false || $0.value != PermissionDecision.always.rawValue },
         allowsMultiple: false,
         allowsCustom: false
       )

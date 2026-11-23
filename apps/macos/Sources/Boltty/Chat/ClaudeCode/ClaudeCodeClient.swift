@@ -331,6 +331,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
     var response: [String: Any]
     switch decision {
+    case _ where pending.elicitation != nil:
+      response = decision == .reject ? ["action": "decline"] : ["action": "accept", "content": [String: Any]()]
     case .once:
       response = ["behavior": "allow", "updatedInput": pending.input]
     case .always:
@@ -457,7 +459,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   static func prompt(for pending: LiveSession.PendingPermission, toolCallID: String?) -> PermissionPrompt {
-    PermissionPrompt(
+    if let elicitation = pending.elicitation { return elicitation }
+    return PermissionPrompt(
       action: pending.toolName,
       resources: resources(forTool: pending.toolName, input: JSONObject(pending.input)),
       savePatterns: savePatterns(of: pending.sessionRules),
@@ -827,8 +830,14 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
           let request = frame.object("request")
     else { return }
 
-    guard request.string("subtype") == "can_use_tool",
-          let toolName = request.string("tool_name")
+    let elicitation = request.string("subtype") == "elicitation"
+      ? PermissionPrompt.elicitation(
+        server: request.string("display_name") ?? request.string("mcp_server_name") ?? "MCP",
+        mode: request.string("mode"), message: request.string("message"),
+        schema: request.object("requested_schema"), toolCallID: nil)
+      : nil
+    let asksForTool = request.string("subtype") == "can_use_tool"
+    guard let toolName = asksForTool ? request.string("tool_name") : elicitation?.action
     else {
       let refusal: [String: Any] = [
         "type": "control_response",
@@ -846,11 +855,12 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       controlRequestID: requestID,
       toolName: toolName,
       input: (request["input"] as? [String: Any]) ?? [:],
-      suggestions: (request["permission_suggestions"] as? [[String: Any]]) ?? []
+      suggestions: (request["permission_suggestions"] as? [[String: Any]]) ?? [],
+      elicitation: elicitation
     )
     session.rememberPermission(pending)
     let conversationID = lock.withLock { conversationResolver }?(session.id) ?? UUID()
-    if toolName == Self.planTool {
+    if asksForTool, toolName == Self.planTool {
       session.executionState = .waiting
       let markdown = pending.input["plan"] as? String ?? ""
       emit(.interactionAsked(PendingInteraction(
@@ -967,7 +977,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
           id: toolID,
           name: "",
           state: failed ? .failed : .completed,
-          detail: block.rendered("content"),
+          detail: block.toolOutput("content"),
           endedAt: Date()
         ))
       ))

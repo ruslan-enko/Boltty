@@ -104,6 +104,21 @@ final class CodexSessionRecoveryTests: XCTestCase {
     XCTAssertEqual(refused.string("action"), "decline")
   }
 
+  func testAnMCPServersAskWithNoAlwaysOffersNone() throws {
+    let prompt = try XCTUnwrap(PermissionPrompt.elicitation(
+      server: "asker", mode: "form", message: "Allow?", schema: JSONObject(["properties": [String: Any]()]),
+      toolCallID: nil))
+    XCTAssertEqual(prompt.offersAlways, false)
+    XCTAssertNil(PermissionPrompt.elicitation(
+      server: "asker", mode: "url", message: "Open", schema: nil, toolCallID: nil))
+    let accepted = JSONObject(ACPClient.elicitationResult(.once))
+    XCTAssertEqual(accepted.string("outcome"), "accept")
+    let result = JSONObject(["result": ["content": [["type": "text", "text": "Seen"], ["type": "image", "data": "AAAA"]]]])
+    XCTAssertEqual(result.toolOutput("result"), "Seen\n[image]")
+    let granted = CodexClient.granted(JSONObject(["network": ["enabled": true], "fileSystem": NSNull()]))
+    XCTAssertEqual(Array(granted.keys), ["network"])
+  }
+
   func testMissingRolloutIsReportedAsSessionNotFound() async throws {
     do {
       try await send(to: "missing")

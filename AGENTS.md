@@ -287,6 +287,8 @@ implementation first. Versions say what was measured.
   destination set to `session` (`sessionRules`); with none, Bash gets a rule
   for that exact command. A rule of the tool's name alone allowed every
   command after the first.
+- An MCP server's ask is a control request `elicitation`, answered `{action,
+  content}`; an error cancels it (2.1.330). Its card offers no "Always Allow".
 - An `interrupt` cancels what was asking (`control_cancel_request`, or nothing
   at all): Stop takes every open permission card away.
 - Text arrives twice (`stream_event` deltas, then the whole `assistant` frame):
@@ -349,6 +351,8 @@ implementation first. Versions say what was measured.
   `mcp_elicitations` on (0.171; `approvals_reviewer = "auto_review"` did not take
   it). Shown as a permission when its schema has no fields, else declined.
   "Always Allow" sends `_meta.persist: session`, never `always`.
+- `item/permissions/requestApproval` is granted only by sending the asked
+  `permissions` back; an empty object grants nothing. The card shows them.
 - `item/tool/requestUserInput` is a real multiple-choice question; the answer
   maps question id to the option's `label`.
 - A turn is the message: one bubble per turn.
@@ -434,6 +438,8 @@ implementation first. Versions say what was measured.
   `approved` / `cancelled` (+ `feedback`) / `abandoned`. A plan is
   `PendingInteraction.Kind.plan`, drawn as the turn's text with Approve /
   Request Changes / Quit.
+- An MCP server's ask is `_x.ai/mcp/elicit`, answered `{outcome: accept|decline,
+  content}`; any other shape is a cancel (1.0.92).
 - `_x.ai/billing` gives the plan's `creditUsagePercent`.
 - Skills reach only a session: `available_commands_update` after `session/new`
   or a load lists them with `_meta.path` and `scope`, beside the CLI's own
@@ -597,6 +603,8 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
 - Auto Mode is Boltty answering `edit` asks, and `bash` asks whose every resource
   `AutoModeCommands` passes, "once"; a file outside the folder asks
   `external_directory` first.
+- An MCP server's ask with an empty schema OpenCode accepts itself: no form comes
+  (2.3.2).
 - The record keeps no title for a tool call (2.3.2): a `shell` call is named by its
   command line, and a file tool's (`read`, `write`, `edit`, `multiedit`, `patch`)
   file comes from its input (`filePath`, `path`, `file`). Another tool's path is

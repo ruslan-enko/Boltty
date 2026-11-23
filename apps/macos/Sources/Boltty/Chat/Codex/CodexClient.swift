@@ -90,6 +90,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     let threadID: String
     let server: JSONLineProcess
     var persistsForSession = false
+    var permissions: [String: Any] = [:]
   }
 
   // MARK: - Availability
@@ -551,7 +552,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       try answer(pending, result: Self.elicitationAnswer(
         for: decision, persistsForSession: pending.persistsForSession))
     default:
-      try answer(pending, result: ["permissions": [:], "scope": "turn"])
+      try answer(pending, result: [
+        "permissions": decision == .reject ? [:] : pending.permissions,
+        "scope": decision == .always ? "session" : "turn",
+      ])
     }
   }
 
@@ -577,24 +581,26 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return granular?["sandbox_approval"] as? Bool == false
   }
 
+  static func granted(_ asked: JSONObject?) -> [String: Any] {
+    (asked?.raw ?? [:]).filter { ["fileSystem", "network"].contains($0.key) && !($0.value is NSNull) }
+  }
+
   /// Only an ask that yes or no answers: `nil` for a form with fields or a link.
   static func elicitationPrompt(_ params: JSONObject) -> PermissionPrompt? {
-    guard params.string("mode") == "form",
-          let schema = params.object("requestedSchema"),
-          schema.object("properties")?.raw.isEmpty ?? true,
-          let message = params.string("message"), !message.isEmpty
-    else { return nil }
     let meta = params.object("_meta")
+    let message = params.string("message") ?? ""
+    guard var prompt = PermissionPrompt.elicitation(
+      server: meta?.string("connector_name") ?? params.string("serverName") ?? "MCP",
+      mode: params.string("mode") ?? "", message: message,
+      schema: params.object("requestedSchema"), toolCallID: meta?.string("callId"))
+    else { return nil }
     let subject = meta?.array("tool_params_display").compactMap { item -> String? in
       guard let value = item.string("value"), !message.contains(value) else { return nil }
       return "\(item.string("display_name") ?? item.string("name") ?? ""): \(value)"
     } ?? []
-    return PermissionPrompt(
-      action: meta?.string("connector_name") ?? params.string("serverName") ?? "MCP",
-      resources: [message] + [meta?.string("subtitle")].compactMap { $0 } + subject,
-      savePatterns: [],
-      toolCallID: meta?.string("callId")
-    )
+    prompt.resources += [meta?.string("subtitle")].compactMap { $0 } + subject
+    prompt.offersAlways = meta?.strings("persist").contains("session") ?? false
+    return prompt
   }
 
   static func elicitationAnswer(for decision: PermissionDecision, persistsForSession: Bool) -> [String: Any] {
@@ -927,7 +933,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     case "item/permissions/requestApproval":
       let interactionID = params.string("itemId") ?? "approval_\(rpcID)"
       rememberApproval(interactionID, PendingApproval(
-        rpcID: rpcID, method: method, threadID: threadID, server: server
+        rpcID: rpcID, method: method, threadID: threadID, server: server,
+        permissions: Self.granted(params.object("permissions"))
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,
@@ -935,7 +942,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         remoteSessionID: threadID,
         kind: .permission(PermissionPrompt(
           action: "permissions",
-          resources: [params.string("reason") ?? String(localized: "Extra access")],
+          resources: [params.string("reason") ?? String(localized: "Extra access")]
+            + [params.rendered("permissions")].compactMap { $0 },
           savePatterns: [],
           toolCallID: params.string("itemId")
         ))
@@ -949,7 +957,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       let interactionID = "elicitation_\(UUID().uuidString)"
       rememberApproval(interactionID, PendingApproval(
         rpcID: rpcID, method: method, threadID: threadID, server: server,
-        persistsForSession: params.object("_meta")?.strings("persist").contains("session") ?? false
+        persistsForSession: prompt.offersAlways == true
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,

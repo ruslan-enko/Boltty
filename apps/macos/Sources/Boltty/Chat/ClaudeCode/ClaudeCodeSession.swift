@@ -7,6 +7,7 @@ extension ClaudeCodeClient {
       let toolName: String
       let input: [String: Any]
       var suggestions: [[String: Any]] = []
+      var elicitation: PermissionPrompt?
       let askedAt = Date()
 
       var sessionRules: [[String: Any]] {
@@ -287,7 +288,7 @@ enum ClaudeCodeTranscript {
               id: toolID,
               name: "",
               state: (block.bool("is_error") ?? false) ? .failed : .completed,
-              detail: block.rendered("content"),
+              detail: block.toolOutput("content"),
               endedAt: timestamp
             )))
             byID[home] = existing
