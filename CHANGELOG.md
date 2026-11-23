@@ -2,6 +2,23 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.6
+
+**Panel**
+- Icons are drawn with a thinner line, and several are redrawn.
+- Every glass button is one size.
+- The folder chip has lost a warning no agent needs.
+
+**Ask Boltty**
+- The answer's bubble is rounder and lighter, and stands further from the face.
+
+**Boltty**
+- The app icon is white, flat and a little larger.
+
+**For contributors**
+- Boltty Design (`make design`): every element and panel state, live, with
+  sliders that write the Swift source. An app of its own, not in Boltty.
+
 ## 0.12.5
 
 **Panel**
