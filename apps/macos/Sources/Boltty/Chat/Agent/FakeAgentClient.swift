@@ -1,6 +1,20 @@
 import Foundation
 
 #if DEBUG
+/// Written on the engine's executors and read by a test's polling on its own.
+@propertyWrapper
+final class Locked<Value>: @unchecked Sendable {
+  private let lock = NSLock()
+  private var value: Value
+
+  init(wrappedValue: Value) { value = wrappedValue }
+
+  var wrappedValue: Value {
+    get { lock.withLock { value } }
+    set { lock.withLock { value = newValue } }
+  }
+}
+
 final class FakeAgentClient: AgentClient, @unchecked Sendable {
   var provider = AgentId.opencode
   var capabilities: AgentCapabilities = [
@@ -23,18 +37,18 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
   private var continuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var sequence = 0
 
-  private(set) var createdSessions: [RemoteSessionInfo] = []
-  private(set) var createdOptions: [AgentSessionOptions] = []
-  private(set) var autoApprovalChanges: [(sessionID: String, enabled: Bool)] = []
-  private(set) var sentMessages: [(id: String, text: String, sessionID: String)] = []
-  private(set) var stopped: [String] = []
-  private(set) var released: [String] = []
-  private(set) var loadedSessions: [String] = []
+  @Locked private(set) var createdSessions: [RemoteSessionInfo] = []
+  @Locked private(set) var createdOptions: [AgentSessionOptions] = []
+  @Locked private(set) var autoApprovalChanges: [(sessionID: String, enabled: Bool)] = []
+  @Locked private(set) var sentMessages: [(id: String, text: String, sessionID: String)] = []
+  @Locked private(set) var stopped: [String] = []
+  @Locked private(set) var released: [String] = []
+  @Locked private(set) var loadedSessions: [String] = []
   var isStreaming: Bool { lock.withLock { continuation != nil } }
-  private(set) var questionReplies: [(requestID: String, answers: [[String]])] = []
-  private(set) var permissionReplies: [(requestID: String, decision: PermissionDecision)] = []
-  private(set) var permissionMessages: [String?] = []
-  private(set) var planReplies: [(requestID: String, decision: PlanDecision, feedback: String?)] = []
+  @Locked private(set) var questionReplies: [(requestID: String, answers: [[String]])] = []
+  @Locked private(set) var permissionReplies: [(requestID: String, decision: PermissionDecision)] = []
+  @Locked private(set) var permissionMessages: [String?] = []
+  @Locked private(set) var planReplies: [(requestID: String, decision: PlanDecision, feedback: String?)] = []
 
   var availability: AgentAvailability = .available(version: "fake")
   var models: [AgentModelOption] = [
@@ -45,9 +59,9 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
   ]
   var usage: AgentUsage?
   var context: AgentContextUsage?
-  private(set) var compacted: [String] = []
+  @Locked private(set) var compacted: [String] = []
   var history: AgentActivityHistory?
-  private(set) var steered: [(id: String, text: String, sessionID: String)] = []
+  @Locked private(set) var steered: [(id: String, text: String, sessionID: String)] = []
   var steerError: AgentClientError?
   var createSessionError: AgentClientError?
   var sendError: AgentClientError?
@@ -67,7 +81,7 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
 
   func probe() async -> AgentAvailability { availability }
 
-  private(set) var preparedSessions: [(id: String, options: AgentSessionOptions)] = []
+  @Locked private(set) var preparedSessions: [(id: String, options: AgentSessionOptions)] = []
   var prepareError: AgentClientError?
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
     if let prepareError { throw prepareError }
@@ -169,7 +183,7 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
   }
 
   var chatTitleAnswer: String?
-  private(set) var chatTitleRequests: [ChatNaming.Material] = []
+  @Locked private(set) var chatTitleRequests: [ChatNaming.Material] = []
 
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     lock.withLock {
