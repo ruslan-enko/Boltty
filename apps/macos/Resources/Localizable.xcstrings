@@ -14551,54 +14551,54 @@
         }
       }
     },
-    "Codex works inside its workspace sandbox without asking." : {
+    "Codex works inside its workspace sandbox without asking; its plugins' own requests, such as controlling an app, still ask." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codex arbeitet in seiner Workspace-Sandbox, ohne zu fragen."
+            "value" : "Codex arbeitet in seiner Workspace-Sandbox, ohne zu fragen; Anfragen seiner Plugins, etwa zum Steuern einer App, werden weiterhin gestellt."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codex trabaja dentro de su espacio aislado sin preguntar."
+            "value" : "Codex trabaja dentro de su espacio aislado sin preguntar; las solicitudes de sus plugins, como controlar una app, se siguen consultando."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codex travaille dans son bac à sable sans demander."
+            "value" : "Codex travaille dans son bac à sable sans demander ; les demandes de ses plugins, comme contrôler une app, restent soumises à votre accord."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codexは確認せずにワークスペースのサンドボックス内で作業します。"
+            "value" : "Codexは確認せずにワークスペースのサンドボックス内で作業します。アプリの操作など、プラグインからの要求は引き続き確認します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codex는 묻지 않고 작업 공간 샌드박스 안에서 일합니다."
+            "value" : "Codex는 묻지 않고 작업 공간 샌드박스 안에서 일합니다. 앱 제어와 같은 플러그인의 요청은 계속 묻습니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O Codex trabalha dentro da sandbox do espaço de trabalho sem perguntar."
+            "value" : "O Codex trabalha dentro da sandbox do espaço de trabalho sem perguntar; os pedidos dos plugins, como controlar um app, ainda são perguntados."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codex працює у своїй пісочниці робочої теки, не питаючи."
+            "value" : "Codex працює у своїй пісочниці робочої теки, не питаючи; про запити його плагінів, як-от керування програмою, питає й далі."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Codex 在它的工作区沙盒中工作，无需询问。"
+            "value" : "Codex 在它的工作区沙盒中工作，无需询问；其插件自身的请求（例如控制某个 App）仍会询问。"
           }
         }
       }

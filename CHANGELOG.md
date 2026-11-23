@@ -14,6 +14,8 @@ What changed from release to release. The newest is at the top.
 - OpenCode: commands are named by their line; the ring shows the chat's
   context on the free models.
 - The Copy button under an answer is no longer cut off.
+- Codex: Computer Use asks for each app on a permission card, in Auto Mode too;
+  before, it was refused without asking.
 
 **Look**
 - A new app icon.

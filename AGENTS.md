@@ -183,7 +183,7 @@ no adapter; never offer a toggle for them.
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Elsewhere Boltty decides: edits in the folder, and commands `AutoModeCommands` reads as only reading, building, testing or changing files there (each part of a `&&`/`|` line, with `cd` followed); anything it cannot read asks. A path is judged both as written and as the file system follows it (`AutoModeCommands.followed`: links resolved, a link to nowhere refused), so a link in the folder does not reach out of it and `~/.ssh` linked into a dotfiles folder is still a secret; edits into `.git` ask (its hooks run). A script run by itself (`./x`, `sh x`, `python x.py`, `node x`, `bun x`), `ln`, `printenv` and `env`, and git that names a program (`grep -O`, `fetch --upload-pack`, `--ext-diff`, `--textconv`) ask; package scripts go through only by a build or test name (`npm run test:unit`). Builds and tests still run the folder's own code, which Settings says. Except Codex (its sandbox, no asking) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Elsewhere Boltty decides: edits in the folder, and commands `AutoModeCommands` reads as only reading, building, testing or changing files there (each part of a `&&`/`|` line, with `cd` followed); anything it cannot read asks. A path is judged both as written and as the file system follows it (`AutoModeCommands.followed`: links resolved, a link to nowhere refused), so a link in the folder does not reach out of it and `~/.ssh` linked into a dotfiles folder is still a secret; edits into `.git` ask (its hooks run). A script run by itself (`./x`, `sh x`, `python x.py`, `node x`, `bun x`), `ln`, `printenv` and `env`, and git that names a program (`grep -O`, `fetch --upload-pack`, `--ext-diff`, `--textconv`) ask; package scripts go through only by a build or test name (`npm run test:unit`). Builds and tests still run the folder's own code, which Settings says. Except Codex (its sandbox, no asking but for what its MCP servers ask) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -342,6 +342,13 @@ implementation first. Versions say what was measured.
 - Approval decisions are `accept` / `acceptForSession` / `decline` (and
   amendments, `cancel`). None carries words, so a refusal in words is decline,
   `turn/interrupt`, and the words as the next message.
+- An MCP server's ask is `mcpServer/elicitation/request`; Computer Use asks so
+  for each app ("Allow Computer Use to use "OrcaSlicer"?", `_meta.persist`
+  `session`/`always`). Answered `{}` it is refused, and under `approvalPolicy:
+  never` Codex refuses it without asking, so Auto Mode is `granular` with only
+  `mcp_elicitations` on (0.171; `approvals_reviewer = "auto_review"` did not take
+  it). Shown as a permission when its schema has no fields, else declined.
+  "Always Allow" sends `_meta.persist: session`, never `always`.
 - `item/tool/requestUserInput` is a real multiple-choice question; the answer
   maps question id to the option's `label`.
 - A turn is the message: one bubble per turn.

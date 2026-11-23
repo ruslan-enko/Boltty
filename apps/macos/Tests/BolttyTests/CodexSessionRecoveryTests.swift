@@ -67,7 +67,7 @@ final class CodexSessionRecoveryTests: XCTestCase {
     XCTAssertEqual(calls.filter { $0.string("method") == "thread/resume" }.count, 1)
     XCTAssertEqual(calls.last?.object("params")?.string("model"), "chosen-model")
     XCTAssertEqual(calls.last?.object("params")?.string("effort"), "high")
-    XCTAssertEqual(calls.last?.object("params")?.string("approvalPolicy"), "never")
+    XCTAssertTrue(CodexClient.isAutoApproved(calls.last?.object("params")?["approvalPolicy"]))
   }
 
   func testLoadedThreadDoesNotResumeOnEverySend() async throws {
@@ -81,7 +81,27 @@ final class CodexSessionRecoveryTests: XCTestCase {
   func testAutoApprovalChangeOnSavedThreadIsNotLost() async throws {
     try await client.setAutoApproval(true, sessionID: "saved")
     try await send()
-    XCTAssertEqual(try requests().last?.object("params")?.string("approvalPolicy"), "never")
+    XCTAssertTrue(CodexClient.isAutoApproved(try requests().last?.object("params")?["approvalPolicy"]))
+  }
+
+  func testComputerUseAsksAndAFormIsNotShown() throws {
+    XCTAssertFalse(CodexClient.isAutoApproved("on-request"))
+    XCTAssertTrue(CodexClient.isAutoApproved("never"))
+    let ask = #"{"serverName":"cua_repl","mode":"form","_meta":{"callId":"c1","connector_name":"Computer Use","persist":["session","always"],"tool_params_display":[{"display_name":"App","name":"app","value":"OrcaSlicer"}]},"message":"Allow Computer Use to use \"OrcaSlicer\"?","requestedSchema":{"type":"object","properties":{}}}"#
+    let prompt = try XCTUnwrap(CodexClient.elicitationPrompt(XCTUnwrap(JSONObject(line: ask))))
+    XCTAssertEqual(prompt.action, "Computer Use")
+    XCTAssertEqual(prompt.resources, ["Allow Computer Use to use \"OrcaSlicer\"?"])
+    XCTAssertEqual(prompt.toolCallID, "c1")
+    let form = #"{"serverName":"s","mode":"form","message":"Name?","requestedSchema":{"type":"object","properties":{"name":{"type":"string"}}}}"#
+    XCTAssertNil(CodexClient.elicitationPrompt(try XCTUnwrap(JSONObject(line: form))))
+
+    let once = JSONObject(CodexClient.elicitationAnswer(for: .once, persistsForSession: true))
+    XCTAssertEqual(once.string("action"), "accept")
+    XCTAssertNil(once.object("_meta"))
+    let always = JSONObject(CodexClient.elicitationAnswer(for: .always, persistsForSession: true))
+    XCTAssertEqual(always.object("_meta")?.string("persist"), "session")
+    let refused = JSONObject(CodexClient.elicitationAnswer(for: .reject, persistsForSession: true))
+    XCTAssertEqual(refused.string("action"), "decline")
   }
 
   func testMissingRolloutIsReportedAsSessionNotFound() async throws {

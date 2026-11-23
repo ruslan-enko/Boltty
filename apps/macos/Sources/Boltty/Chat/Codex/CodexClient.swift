@@ -89,6 +89,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     let method: String
     let threadID: String
     let server: JSONLineProcess
+    var persistsForSession = false
   }
 
   // MARK: - Availability
@@ -347,7 +348,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           directory: resumed.string("cwd") ?? NSHomeDirectory(),
           model: resumed.string("model").map { ModelSelection(providerID: provider.rawValue, modelID: $0) },
           effort: resumed.string("reasoningEffort"),
-          autoApprove: resumed.string("approvalPolicy") == "never"
+          autoApprove: Self.isAutoApproved(resumed["approvalPolicy"])
         )
       }
       threads[id]?.loadedOn = server
@@ -546,6 +547,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     case "item/commandExecution/requestApproval", "item/fileChange/requestApproval",
          "applyPatchApproval", "execCommandApproval":
       try answer(pending, result: ["decision": Self.decision(for: decision)])
+    case "mcpServer/elicitation/request":
+      try answer(pending, result: Self.elicitationAnswer(
+        for: decision, persistsForSession: pending.persistsForSession))
     default:
       try answer(pending, result: ["permissions": [:], "scope": "turn"])
     }
@@ -557,8 +561,47 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     lock.withLock { threads[sessionID]?.autoApprove = enabled }
   }
 
-  static func approvalPolicy(autoApprove: Bool) -> String {
-    autoApprove ? "never" : "on-request"
+  /// `never` also refuses an MCP server's own asks, Computer Use's among them,
+  /// without showing them.
+  static func approvalPolicy(autoApprove: Bool) -> Any {
+    guard autoApprove else { return "on-request" }
+    return ["granular": [
+      "sandbox_approval": false, "rules": false, "skill_approval": false,
+      "request_permissions": false, "mcp_elicitations": true,
+    ]]
+  }
+
+  static func isAutoApproved(_ policy: Any?) -> Bool {
+    if let name = policy as? String { return name == "never" }
+    let granular = (policy as? [String: Any])?["granular"] as? [String: Any]
+    return granular?["sandbox_approval"] as? Bool == false
+  }
+
+  /// Only an ask that yes or no answers: `nil` for a form with fields or a link.
+  static func elicitationPrompt(_ params: JSONObject) -> PermissionPrompt? {
+    guard params.string("mode") == "form",
+          let schema = params.object("requestedSchema"),
+          schema.object("properties")?.raw.isEmpty ?? true,
+          let message = params.string("message"), !message.isEmpty
+    else { return nil }
+    let meta = params.object("_meta")
+    let subject = meta?.array("tool_params_display").compactMap { item -> String? in
+      guard let value = item.string("value"), !message.contains(value) else { return nil }
+      return "\(item.string("display_name") ?? item.string("name") ?? ""): \(value)"
+    } ?? []
+    return PermissionPrompt(
+      action: meta?.string("connector_name") ?? params.string("serverName") ?? "MCP",
+      resources: [message] + [meta?.string("subtitle")].compactMap { $0 } + subject,
+      savePatterns: [],
+      toolCallID: meta?.string("callId")
+    )
+  }
+
+  static func elicitationAnswer(for decision: PermissionDecision, persistsForSession: Bool) -> [String: Any] {
+    guard decision != .reject else { return ["action": "decline"] }
+    var result: [String: Any] = ["action": "accept", "content": [String: Any]()]
+    if decision == .always, persistsForSession { result["_meta"] = ["persist": "session"] }
+    return result
   }
 
   static func decision(for decision: PermissionDecision) -> String {
@@ -796,6 +839,10 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       handleServerRequest(method: method, rpcID: id, params: params, server: server)
       return
     }
+    if method == "serverRequest/resolved" {
+      requestResolved(params, on: server)
+      return
+    }
     handleNotification(method: method, params: params)
   }
 
@@ -892,6 +939,23 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           savePatterns: [],
           toolCallID: params.string("itemId")
         ))
+      )))
+
+    case "mcpServer/elicitation/request":
+      guard let prompt = Self.elicitationPrompt(params) else {
+        respond(to: rpcID, result: ["action": "decline"], on: server)
+        return
+      }
+      let interactionID = "elicitation_\(UUID().uuidString)"
+      rememberApproval(interactionID, PendingApproval(
+        rpcID: rpcID, method: method, threadID: threadID, server: server,
+        persistsForSession: params.object("_meta")?.strings("persist").contains("session") ?? false
+      ))
+      emit(.interactionAsked(PendingInteraction(
+        id: interactionID,
+        conversationID: conversationID,
+        remoteSessionID: threadID,
+        kind: .permission(prompt)
       )))
 
     default:
@@ -1043,6 +1107,19 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       approvals[id] = approval
       threads[approval.threadID]?.executionState = .waiting
     }
+  }
+
+  /// Codex let go of an elicitation nobody answered here (a Stop, a time limit).
+  private func requestResolved(_ params: JSONObject, on server: JSONLineProcess) {
+    guard let rpcID = params.int("requestId"), let threadID = params.string("threadId") else { return }
+    let gone = lock.withLock {
+      approvals.first {
+        $0.value.rpcID == rpcID && $0.value.server === server
+          && $0.value.method == "mcpServer/elicitation/request"
+      }?.key
+    }
+    guard let gone, takeApproval(gone) != nil else { return }
+    emit(.interactionResolved(sessionID: threadID, requestID: gone, resolution: .expired))
   }
 
   private func takeApproval(_ id: String) -> PendingApproval? {

@@ -340,7 +340,7 @@ struct AgentsSettingsPage: View {
   static func autoModeReach(for agent: AgentId) -> String {
     switch agent {
     case .codex:
-      String(localized: "Codex works inside its workspace sandbox without asking.")
+      String(localized: "Codex works inside its workspace sandbox without asking; its plugins' own requests, such as controlling an app, still ask.")
     case .claude:
       String(localized: "Claude Code decides what is safe to run and asks only about the rest.")
     default:
