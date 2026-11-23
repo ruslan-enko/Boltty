@@ -888,22 +888,15 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       panelView.setWorkingDirectory(
         WorkingDirectoryChip.forConversation(
           conversation,
-          honoursWorkingDirectory: conversations.honoursWorkingDirectory(
-            providerID: conversation.providerID
-          ),
           canChange: conversations.canChangeWorkingDirectory(of: id)
         ).withBranch(GitRepository.read(at: conversation.workingDirectory)?.branch)
       )
       return
     }
-    let providerID = panelView.agentForNewPrompt?.rawValue ?? conversations.plannedProviderID()
     let path = currentWorkingDirectory()
     panelView.setWorkingDirectory(
-      WorkingDirectoryChip.forNewPrompt(
-        path: path,
-        honoursWorkingDirectory: providerID
-          .map(conversations.honoursWorkingDirectory) ?? true
-      ).withBranch(GitRepository.read(at: path)?.branch)
+      WorkingDirectoryChip.forNewPrompt(path: path)
+        .withBranch(GitRepository.read(at: path)?.branch)
     )
   }
 

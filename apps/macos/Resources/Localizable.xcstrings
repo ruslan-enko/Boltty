@@ -41919,58 +41919,6 @@
         }
       }
     },
-    "This chat doesn't work in the folder you choose — its agent keeps its own scratch directory, and files land there." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Chat arbeitet nicht in dem Ordner, den du wählst – sein Agent hat ein eigenes Arbeitsverzeichnis, und dort landen die Dateien."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este chat no trabaja en la carpeta que elijas: su agente tiene su propia carpeta de trabajo y los archivos acaban allí."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette discussion ne travaille pas dans le dossier que vous choisissez — son agent garde son propre dossier de travail, et les fichiers y atterrissent."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このチャットは選んだフォルダでは作業しません — エージェントが独自の作業フォルダを持ち、ファイルはそこに置かれます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 채팅은 고른 폴더에서 작업하지 않습니다 — 에이전트가 자체 작업 폴더를 쓰고 파일도 그곳에 저장됩니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este chat não trabalha na pasta que você escolher — o agente dele tem a própria pasta de trabalho, e os arquivos vão para lá."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Цей чат не працює у вибраній вами теці — його агент має власну робочу теку, і файли потрапляють туди."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这个聊天不会在你选的文件夹中工作 — 它的智能体有自己的工作目录，文件会放在那里。"
-          }
-        }
-      }
-    },
     "This chat is gone. Choose another one." : {
       "localizations" : {
         "de" : {

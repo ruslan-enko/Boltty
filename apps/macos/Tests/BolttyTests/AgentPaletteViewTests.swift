@@ -98,7 +98,7 @@ final class AgentPaletteViewTests: XCTestCase {
       let view = makeView()
       view.frame = CGRect(x: 0, y: 0, width: 1440, height: 1600)
       if withChip {
-        view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone", honoursWorkingDirectory: true))
+        view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone"))
       }
       view.enterAddressing(.init(id: UUID(), title: "Agent", agent: .opencode,
                                 state: .blocked, body: "Choose", question: reviewQuestion(count: 1)))
@@ -454,7 +454,7 @@ final class AgentPaletteViewTests: XCTestCase {
     let view = makeScreenSizedView()
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .claude,
       state: .finished, body: "Hello! What can I help you with today?"))
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     view.layoutSubtreeIfNeeded()
     let composer = view.promptCapsuleFrameForTesting
     let folder = view.convert(view.workingDirectoryChipForTesting.bounds,
@@ -757,7 +757,7 @@ final class AgentPaletteViewTests: XCTestCase {
   func testAnAgentThatReadsNoFilesMovesNothingOnTheRight() {
     func layout(attachments: Bool) -> (text: CGFloat, microphone: CGFloat) {
       let view = makeScreenSizedView()
-      view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
       view.setAcceptsAttachments(attachments)
       view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
                                  state: .finished, body: "A reply."))
@@ -1750,7 +1750,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testTheCaretFollowsTheWordsAsTheFolderChipNarrowsThem() throws {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
     let panel = makePanel(showing: view)
     defer { panel.orderOut(nil) }
     view.setChatDraft(PromptDraft(Self.wrappedDraft))
@@ -1758,7 +1758,7 @@ final class AgentPaletteViewTests: XCTestCase {
     try assertCaretStandsInTheWords(view, "home")
 
     for path in ["/Users/someone/Downloads", "/Users/someone/A much longer folder", NSHomeDirectory()] {
-      view.setWorkingDirectory(.forNewPrompt(path: path, honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: path))
       view.layoutSubtreeIfNeeded()
       try assertCaretStandsInTheWords(view, "at once, \(path)")
       settle(view)
@@ -1768,7 +1768,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testTheCaretStandsInTheWordsWhenThePanelReopens() throws {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
     let panel = makePanel(showing: view)
     defer { panel.orderOut(nil) }
     view.setChatDraft(PromptDraft(Self.wrappedDraft))
@@ -1779,7 +1779,7 @@ final class AgentPaletteViewTests: XCTestCase {
     settle(view, 0.1)
     view.cancelAllAnimationsAndSettle()
     view.setWorkingDirectory(.forNewPrompt(
-      path: "/Users/someone/Downloads", honoursWorkingDirectory: true))
+      path: "/Users/someone/Downloads"))
     view.prepareForPresentation()
     view.prepareCapsuleForEntrance()
     panel.makeKeyAndOrderFront(nil)
@@ -1793,7 +1793,7 @@ final class AgentPaletteViewTests: XCTestCase {
   func testTheCaretStandsInTheWordsOnEveryWayThereIs() throws {
     let view = makeScreenSizedView()
     view.setWorkingDirectory(.forNewPrompt(
-      path: "/Users/someone/Downloads", honoursWorkingDirectory: true))
+      path: "/Users/someone/Downloads"))
     let panel = makePanel(showing: view)
     defer { panel.orderOut(nil) }
     let field = view.field
@@ -2209,7 +2209,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testTabWalksTheFolderThenTheMicrophoneThenTheText() {
     let view = makeView(targets: [.claude, .codex])
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     view.field.insertPlainText("hi")
     let tab = #selector(NSResponder.insertTab(_:))
     let folder = view.workingDirectoryChipForTesting
@@ -2244,7 +2244,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testShiftTabChangesTheAgentAndLeavesTheIconWhereItIs() {
     let view = makeView(targets: [.claude, .codex, .grok])
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     view.field.insertPlainText("hi")
     XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertTab(_:))))
     XCTAssertTrue(view.workingDirectoryChipForTesting.isKeyboardTarget)
@@ -2258,7 +2258,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testSpacePressesTheChosenIconAndALetterReturnsToTheText() {
     let view = makeView(targets: [.claude])
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     var menus = 0
     var dictated = 0
     view.onWorkingDirectoryMenu = { menus += 1 }
@@ -2289,7 +2289,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testReturnStillSendsWhileAnIconIsChosen() {
     let view = makeView(targets: [.claude])
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     var submitted: PromptDraft?
     view.onSubmit = { submitted = $0 }
     view.field.setDraft(PromptDraft("review this"))
@@ -2677,7 +2677,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testStoppingDictationDoesNotReflowTheExpandedDraft() {
     let view = hostOffscreen(makeView())
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     view.setUsage(AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 45, resetsAt: nil)]),
                   agent: .codex)
     view.setVoiceListening(true)
@@ -3322,7 +3322,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testThePlanRingIsGoneWithoutAReading() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone"))
     view.setUsage(
       AgentUsage(windows: [
         AgentUsageWindow(kind: .session, usedPercent: 8, resetsAt: nil),
@@ -3387,7 +3387,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testChatControlsLiveInTheComposerAndLatestFloatsIndependently() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone"))
     view.setUsage(
       AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 25, resetsAt: nil)]),
       agent: .claude)
@@ -3433,7 +3433,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testTheContextPillIsNotOnTheFirstScreen() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone"))
     view.setContext(AgentContextUsage(usedTokens: 1, limitTokens: 2), canCompact: true)
     view.layoutSubtreeIfNeeded()
     XCTAssertTrue(view.planRingForTesting.detailForTesting.contains("after a chat starts"))
@@ -3443,7 +3443,7 @@ final class AgentPaletteViewTests: XCTestCase {
     let view = makeScreenSizedView()
     let target = ComposerControlGroup.target(chat: false)
     view.setWorkingDirectory(.forNewPrompt(
-      path: WorkingDirectoryResolver.homeDirectoryPath, honoursWorkingDirectory: true))
+      path: WorkingDirectoryResolver.homeDirectoryPath))
     view.layoutSubtreeIfNeeded()
     let folder = view.workingDirectoryChipForTesting
     XCTAssertEqual(folder.frame.width, target, accuracy: 0.5)
@@ -3452,7 +3452,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertFalse(folder.showsPillForTesting)
 
     let path = "/Users/someone/Documents/Projects/boltty"
-    view.setWorkingDirectory(.forNewPrompt(path: path, honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: path))
     view.layoutSubtreeIfNeeded()
     XCTAssertEqual(folder.nameForTesting, "boltty")
     XCTAssertTrue(folder.nameFitsForTesting, "a short name is drawn whole, not \"bol…\"")
@@ -3469,22 +3469,21 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(menus, 1, "a click opens the folder menu")
 
     view.setWorkingDirectory(.forNewPrompt(
-      path: "/Users/someone/" + String(repeating: "a-rather-long-folder-name-", count: 6),
-      honoursWorkingDirectory: true))
+      path: "/Users/someone/" + String(repeating: "a-rather-long-folder-name-", count: 6)))
     view.layoutSubtreeIfNeeded()
     XCTAssertLessThanOrEqual(
       folder.frame.width,
       AgentPaletteMetrics.folderChipMaxNameWidth + AgentPaletteMetrics.folderChipPadding(chat: false) * 2
         + folder.iconWidthForTesting + AgentPaletteMetrics.folderChipIconGap(chat: false) + 0.5)
 
-    view.setWorkingDirectory(.init(path: path, isEditable: false, isIgnoredByAgent: false))
+    view.setWorkingDirectory(.init(path: path, isEditable: false))
     XCTAssertTrue(folder.isEnabled)
     XCTAssertEqual(folder.nameForTesting, "boltty")
     XCTAssertTrue(folder.toolTip?.contains("new chat") == true)
     XCTAssertTrue(folder.accessibilityPerformPress())
     XCTAssertEqual(menus, 2)
 
-    view.setWorkingDirectory(WorkingDirectoryChip.forNewPrompt(path: path, honoursWorkingDirectory: true)
+    view.setWorkingDirectory(WorkingDirectoryChip.forNewPrompt(path: path)
       .withBranch("main"))
     XCTAssertEqual(folder.nameForTesting, "boltty · main")
   }
@@ -3492,7 +3491,7 @@ final class AgentPaletteViewTests: XCTestCase {
   func testTheWordsStopShortOfANamedFolder() {
     let view = makeScreenSizedView()
     view.setWorkingDirectory(.forNewPrompt(
-      path: "/Users/someone/Documents/Projects/a-rather-long-folder-name", honoursWorkingDirectory: true))
+      path: "/Users/someone/Documents/Projects/a-rather-long-folder-name"))
     view.field.setDraft(PromptDraft("Sort these clips"))
     view.layoutSubtreeIfNeeded()
     let folder = view.convert(view.workingDirectoryChipForTesting.bounds, from: view.workingDirectoryChipForTesting)
@@ -3571,7 +3570,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testInitialPromptIsOneCapsuleWithFolderPlanClipAndMicInside() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/Users/someone"))
     view.setAcceptsAttachments(true)
     view.layoutSubtreeIfNeeded()
     let shell = view.unifiedSurfaceFrameForTesting
@@ -3607,7 +3606,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testPromptChatAndReturnKeepOneFolderControlInsideTheField() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     view.layoutSubtreeIfNeeded()
     let folder = view.workingDirectoryChipForTesting
     let parent = folder.superview
@@ -3624,7 +3623,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testAChatSaysItsModelInTheComposerAndItsChipAsksForTheMenu() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     var menus = 0
     view.onModelMenu = { menus += 1 }
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .claude,
@@ -3670,7 +3669,7 @@ final class AgentPaletteViewTests: XCTestCase {
 
   func testGrownChatDraftUsesFullTextWidthWithControlsAlongTheBottom() {
     let view = makeScreenSizedView()
-    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo", honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
     view.setAcceptsAttachments(true)
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .codex,
       state: .finished, body: "Done."))
@@ -4543,7 +4542,7 @@ final class FolderChipContactSheet: XCTestCase {
       view.appearance = NSAppearance(named: .darkAqua)
       view.frame = CGRect(x: 0, y: 0, width: 1440, height: 900)
       view.prepareForPresentation()
-      view.setWorkingDirectory(.forNewPrompt(path: path, honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: path))
       view.setUsage(AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 20, resetsAt: nil)]),
                     agent: .claude)
       if chat {

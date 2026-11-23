@@ -18,7 +18,7 @@ bad = 0
 radii = {}
 for name in names:
     svg = open(os.path.join(folder, name)).read()
-    half = 1.425 / 2
+    half = 1.3 / 2
     box = [99, 99, -99, -99]
 
     def grow(x, y, m):
@@ -34,7 +34,7 @@ for name in names:
         grow(float(x), float(y), half)
         grow(float(x) + float(w), float(y) + float(h), half)
     for d, rest in re.findall(r'<path d="([^"]+)"([^>]*)>', svg):
-        half = 0 if 'stroke="none"' in rest else 1.425 / 2
+        half = 0 if 'stroke="none"' in rest else 1.3 / 2
         if re.search(r"[CcQqSsTtHhVv]|[a-z]", d):
             print(f"{name}: not lines and arcs: {d[:40]}")
             bad += 1

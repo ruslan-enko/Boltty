@@ -1400,28 +1400,6 @@ final class BolttyAIWorkingDirectoryTests: XCTestCase {
     XCTAssertEqual(panel.workingDirectoryChipForTesting.chip?.path, "/Users/someone/Elsewhere")
   }
 
-  func testAnAgentThatIgnoresTheFolderWarnsOnTheChip() throws {
-    let (controller, conversations) = makeController()
-    conversations.plannedProvider = AgentId.antigravity.rawValue
-    conversations.agentsIgnoringWorkingDirectory = [AgentId.antigravity.rawValue]
-    controller.show()
-    defer { controller.hide() }
-
-    let chip = try XCTUnwrap(try view(controller).workingDirectoryChipForTesting.chip)
-    XCTAssertNotNil(chip.warning)
-    XCTAssertTrue(try view(controller).workingDirectoryChipForTesting.showsWarningForTesting)
-  }
-
-  func testAnAgentThatHonoursTheFolderCarriesNoWarning() throws {
-    let (controller, conversations) = makeController()
-    conversations.plannedProvider = AgentId.claude.rawValue
-    controller.show()
-    defer { controller.hide() }
-
-    XCTAssertNil(try view(controller).workingDirectoryChipForTesting.chip?.warning)
-    XCTAssertFalse(try view(controller).workingDirectoryChipForTesting.showsWarningForTesting)
-  }
-
   func testTheChipLeavesWithTheComposer() throws {
     let (controller, conversations) = makeController()
     conversations.rows = [.row("A saved chat")]

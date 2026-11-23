@@ -3,7 +3,6 @@ import AppKit
 final class WorkingDirectoryChipView: PaletteIconButton {
   var onChoose: (() -> Void)?
   private(set) var chip: WorkingDirectoryChip?
-  private let warningIcon = NSImageView()
   private let icon = NSImageView()
   private let nameLabel = NSTextField(labelWithString: "")
 
@@ -25,7 +24,6 @@ final class WorkingDirectoryChipView: PaletteIconButton {
   var diameter: CGFloat = AgentPaletteMetrics.voiceOrbDiameter {
     didSet { if diameter != oldValue { syncSize() } }
   }
-  var showsWarningForTesting: Bool { !warningIcon.isHidden }
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
@@ -48,11 +46,6 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     nameLabel.isHidden = true
     addSubview(nameLabel)
 
-    warningIcon.image = BolttyIcon.warning.image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.directoryChipGlyphPointSize))
-    warningIcon.contentTintColor = AgentPaletteMetrics.directoryChipWarningTint
-    warningIcon.imageScaling = .scaleProportionallyUpOrDown
-    warningIcon.isHidden = true
-    addSubview(warningIcon)
     NSLayoutConstraint.activate([widthConstraint, heightConstraint])
     syncLook()
   }
@@ -64,7 +57,6 @@ final class WorkingDirectoryChipView: PaletteIconButton {
     guard self.chip != chip else { return }
     self.chip = chip
     isEnabled = true
-    warningIcon.isHidden = chip.warning == nil
     toolTip = chip.tooltip
     setAccessibilityLabel(chip.accessibilityLabel)
     syncLook()
@@ -169,11 +161,6 @@ final class WorkingDirectoryChipView: PaletteIconButton {
         x: (bounds.width - iconSize.width) / 2, y: (bounds.height - iconSize.height) / 2,
         width: iconSize.width, height: iconSize.height)
     }
-    let warning = AgentPaletteMetrics.directoryChipGlyphPointSize
-    warningIcon.frame = NSRect(
-      x: icon.frame.maxX - warning / 2,
-      y: isFlipped ? icon.frame.maxY - warning / 2 : icon.frame.minY - warning / 2,
-      width: warning, height: warning)
   }
 
   override func hitTest(_ point: NSPoint) -> NSView? {

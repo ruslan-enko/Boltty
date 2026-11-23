@@ -17,18 +17,15 @@ final class WorkingDirectoryChipTests: XCTestCase {
 
   func testANewPromptInheritsTheFolderAndCanStillChangeIt() {
     let chip = WorkingDirectoryChip.forNewPrompt(
-      path: "/Users/someone/Code/thing",
-      honoursWorkingDirectory: true
+      path: "/Users/someone/Code/thing"
     )
     XCTAssertEqual(chip.path, "/Users/someone/Code/thing")
     XCTAssertTrue(chip.isEditable)
-    XCTAssertNil(chip.warning)
   }
 
   func testTheFolderIsStillChangeableBeforeTheProviderHasASession() {
     let chip = WorkingDirectoryChip.forConversation(
-      conversation(),
-      honoursWorkingDirectory: true
+      conversation()
     )
     XCTAssertTrue(chip.isEditable, "no remote session yet — the store would accept a change")
     XCTAssertTrue(chip.tooltip.contains("Click to choose"))
@@ -36,8 +33,7 @@ final class WorkingDirectoryChipTests: XCTestCase {
 
   func testASessionFixesTheFolderAndTheChipSaysWhy() {
     let chip = WorkingDirectoryChip.forConversation(
-      conversation(remoteSessionID: "ses_abc"),
-      honoursWorkingDirectory: true
+      conversation(remoteSessionID: "ses_abc")
     )
     XCTAssertFalse(chip.isEditable, "setWorkingDirectory would refuse this silently")
     XCTAssertTrue(
@@ -48,35 +44,13 @@ final class WorkingDirectoryChipTests: XCTestCase {
     XCTAssertTrue(chip.accessibilityLabel.contains("fixed"))
   }
 
-  func testAnAgentThatIgnoresTheFolderIsSaidToIgnoreIt() throws {
-    let chip = WorkingDirectoryChip.forConversation(
-      conversation(providerID: AgentId.antigravity.rawValue),
-      honoursWorkingDirectory: false
-    )
-    let warning = try XCTUnwrap(chip.warning)
-    XCTAssertFalse(warning.contains(AgentId.antigravity.shortDisplayName), warning)
-    XCTAssertTrue(warning.lowercased().contains("land"), warning)
-    XCTAssertTrue(chip.tooltip.contains(warning), "the warning has to be readable: \(chip.tooltip)")
-  }
-
-  func testAnAgentThatHonoursTheFolderCarriesNoWarning() {
-    XCTAssertNil(
-      WorkingDirectoryChip.forConversation(
-        conversation(providerID: AgentId.claude.rawValue),
-        honoursWorkingDirectory: true
-      ).warning
-    )
-  }
-
   func testTheChipNamesTheFolderAndCallsTheDefaultHome() {
     let home = WorkingDirectoryResolver.homeDirectoryPath
     let homeChip = WorkingDirectoryChip.forNewPrompt(
-      path: home,
-      honoursWorkingDirectory: true
+      path: home
     )
     let moviesChip = WorkingDirectoryChip.forNewPrompt(
-      path: home + "/Movies",
-      honoursWorkingDirectory: true
+      path: home + "/Movies"
     )
     XCTAssertEqual(homeChip.displayPath, "Home")
     XCTAssertEqual(moviesChip.displayPath, "Movies")
@@ -85,11 +59,11 @@ final class WorkingDirectoryChipTests: XCTestCase {
 
   func testTheChipNamesAnyFolderButHome() {
     let home = WorkingDirectoryResolver.homeDirectoryPath
-    XCTAssertTrue(WorkingDirectoryChip.forNewPrompt(path: home, honoursWorkingDirectory: true).isHome)
-    XCTAssertNil(WorkingDirectoryChip.forNewPrompt(path: home, honoursWorkingDirectory: true).folderName)
-    XCTAssertNil(WorkingDirectoryChip.forNewPrompt(path: " ", honoursWorkingDirectory: true).folderName)
+    XCTAssertTrue(WorkingDirectoryChip.forNewPrompt(path: home).isHome)
+    XCTAssertNil(WorkingDirectoryChip.forNewPrompt(path: home).folderName)
+    XCTAssertNil(WorkingDirectoryChip.forNewPrompt(path: " ").folderName)
     XCTAssertEqual(
-      WorkingDirectoryChip.forNewPrompt(path: "/Users/someone/Code/boltty", honoursWorkingDirectory: true)
+      WorkingDirectoryChip.forNewPrompt(path: "/Users/someone/Code/boltty")
         .folderName, "boltty", "as it is on disk")
   }
 }

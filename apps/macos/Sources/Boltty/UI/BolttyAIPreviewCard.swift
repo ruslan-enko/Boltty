@@ -259,9 +259,6 @@ final class BolttyAIPreviewCard: NSView {
     cancelQueuedButton.button.action = #selector(cancelQueued(_:))
     cancelQueuedButton.setAccessibilityIdentifier("boltty.ask.chat.cancelQueued")
     cancelQueuedButton.button.setContentHuggingPriority(.required, for: .horizontal)
-    cancelQueuedButton.button.controlSize = .regular
-    cancelQueuedButton.button.titleFontSize = AgentPaletteMetrics.typeMeta
-    cancelQueuedButton.button.height = AgentPaletteMetrics.helpActionHeight
     let queuedNote = NSTextField(labelWithString: String(localized: "Sends after this turn finishes."))
     queuedNote.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
     queuedNote.textColor = PaletteInk.secondary
@@ -980,7 +977,7 @@ final class BolttyAIPreviewCard: NSView {
       : PaletteServiceStack.eyebrowTopInset + PaletteServiceStack.eyebrowHeight
         + AgentPaletteMetrics.serviceEyebrowGap
         + PaletteChatMessageView.textHeight(queuedLabel.stringValue, width: questionWidth)
-        + AgentPaletteMetrics.serviceActionsGap + AgentPaletteMetrics.directoryChipHeight
+        + AgentPaletteMetrics.serviceActionsGap + AgentPaletteMetrics.glassButtonHeight
         + AgentPaletteMetrics.failureCardPadding
     return max(
       AgentPaletteMetrics.previewMinHeight,

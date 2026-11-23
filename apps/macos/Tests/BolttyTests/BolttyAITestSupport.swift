@@ -19,7 +19,6 @@ final class FakeBolttyAIConversations: BolttyAIConversations {
   private(set) var startedDirectories: [String] = []
   private(set) var directoryChanges: [(id: UUID, path: String)] = []
   var inheritedDirectory = "/tmp"
-  var agentsIgnoringWorkingDirectory: Set<String> = []
   var plannedProvider: String? = AgentId.opencode.rawValue
   private(set) var queued: [UUID: String] = [:]
 
@@ -131,10 +130,6 @@ final class FakeBolttyAIConversations: BolttyAIConversations {
 
   func canChangeWorkingDirectory(of id: UUID) -> Bool {
     conversationsByID[id]?.canChangeWorkingDirectory ?? false
-  }
-
-  func honoursWorkingDirectory(providerID: String) -> Bool {
-    !agentsIgnoringWorkingDirectory.contains(providerID)
   }
 
   var agentsAcceptingAttachments: Set<String> = [AgentId.opencode.rawValue]

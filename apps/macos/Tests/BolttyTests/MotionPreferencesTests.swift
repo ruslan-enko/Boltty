@@ -121,7 +121,7 @@ final class PressFeedbackTests: XCTestCase {
 
   func testAPressedGlassPillShrinksAsOnePiece() throws {
     let pill = GlassPillButton.titled("Retry")
-    pill.frame = NSRect(x: 0, y: 0, width: 80, height: AgentPaletteMetrics.directoryChipHeight)
+    pill.frame = NSRect(x: 0, y: 0, width: 80, height: AgentPaletteMetrics.glassButtonHeight)
     pill.layoutSubtreeIfNeeded()
     XCTAssertTrue(pill.usesSystemGlassForTesting)
     XCTAssertTrue(pill.isCapsuleForTesting)

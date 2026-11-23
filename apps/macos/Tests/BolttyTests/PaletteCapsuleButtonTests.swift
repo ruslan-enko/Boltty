@@ -11,14 +11,14 @@ final class GlassPillButtonTests: XCTestCase {
     return button
   }
 
-  func testItWearsTheFolderChipsLanguage() {
+  func testItIsAsTallAsEveryCardButton() {
     let capsule = button()
 
     XCTAssertEqual(
       capsule.intrinsicContentSize.height,
-      AgentPaletteMetrics.directoryChipHeight,
+      AgentPaletteMetrics.glassButtonHeight,
       accuracy: 0.01,
-      "as tall as a chip, whatever the type would have made it"
+      "one height, whatever the type would have made it"
     )
     XCTAssertEqual(capsule.button.restingTint, AgentPaletteMetrics.directoryChipTextColor)
   }
@@ -37,7 +37,7 @@ final class GlassPillButtonTests: XCTestCase {
     XCTAssertEqual(capsule.button.attributedTitle.string, "Hide command")
     XCTAssertEqual(
       capsule.button.attributedTitle.attributes(at: 0, effectiveRange: nil)[.font] as? NSFont,
-      roundedAppFont(size: AgentPaletteMetrics.directoryChipFontSize)
+      roundedAppFont(size: AgentPaletteMetrics.glassButtonFontSize)
     )
   }
 }

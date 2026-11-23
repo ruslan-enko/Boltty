@@ -143,7 +143,7 @@ Settings uses the system's text styles in the rounded design
   Shadows belong to the panel's glass alone.
 - Glass is the system's, and density goes over it, never into its tint. Never tint
   glass with brand yellow as a surface: only a button's fill may be yellow.
-- Icons are Boltty's own (`BolttyIcon`): a 16 × 16 grid, 1.425 stroke, round ends, lines and
+- Icons are Boltty's own (`BolttyIcon`): a 16 × 16 grid, 1.3 stroke, round ends, lines and
   true arcs only, every corner evenly round and none sharp, one colour, outlines only, the ink nearly filling the box and broken where a small solid detail stands. Never SF Symbols.
 
 ## Voice

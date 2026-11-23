@@ -3,13 +3,11 @@ import Foundation
 struct WorkingDirectoryChip: Equatable, Sendable {
   let path: String
   let isEditable: Bool
-  let isIgnoredByAgent: Bool
   var branch: String?
 
-  init(path: String, isEditable: Bool, isIgnoredByAgent: Bool, branch: String? = nil) {
+  init(path: String, isEditable: Bool, branch: String? = nil) {
     self.path = path
     self.isEditable = isEditable
-    self.isIgnoredByAgent = isIgnoredByAgent
     self.branch = branch
   }
 
@@ -41,14 +39,8 @@ struct WorkingDirectoryChip: Equatable, Sendable {
     return "\(name) · \(branch)"
   }
 
-  var warning: String? {
-    guard isIgnoredByAgent else { return nil }
-    return String(localized: "This chat doesn't work in the folder you choose — its agent keeps its own scratch directory, and files land there.")
-  }
-
   var tooltip: String {
     var lines = [path]
-    if let warning { lines.append(warning) }
     if isEditable {
       lines.append(String(localized: "Click to choose the folder this chat works in."))
     } else {
@@ -65,25 +57,21 @@ struct WorkingDirectoryChip: Equatable, Sendable {
   }
 
   static func forNewPrompt(
-    path: String,
-    honoursWorkingDirectory: Bool
+    path: String
   ) -> WorkingDirectoryChip {
     WorkingDirectoryChip(
       path: path,
-      isEditable: true,
-      isIgnoredByAgent: !honoursWorkingDirectory
+      isEditable: true
     )
   }
 
   static func forConversation(
     _ conversation: Conversation,
-    honoursWorkingDirectory: Bool,
     canChange: Bool? = nil
   ) -> WorkingDirectoryChip {
     WorkingDirectoryChip(
       path: conversation.workingDirectory,
-      isEditable: canChange ?? conversation.canChangeWorkingDirectory,
-      isIgnoredByAgent: !honoursWorkingDirectory
+      isEditable: canChange ?? conversation.canChangeWorkingDirectory
     )
   }
 }

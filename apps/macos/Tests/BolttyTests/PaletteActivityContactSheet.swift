@@ -17,7 +17,7 @@ final class PaletteActivityContactSheet: XCTestCase {
       view.setAgentChoices([.claude], planned: .claude)
       view.prepareForPresentation()
       view.setAcceptsAttachments(true)
-      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
       if state == "history" {
         view.setSessions([.row("Review the interface", .claude), .row("Fix the layout", .codex)],
                          activeSessionID: nil)
@@ -137,7 +137,7 @@ final class PaletteActivityContactSheet: XCTestCase {
       view.setAgentChoices([.claude], planned: .claude)
       view.prepareForPresentation()
       view.setAcceptsAttachments(true)
-      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
       view.setUsage(
         AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 25, resetsAt: nil)]),
         agent: .claude)
@@ -227,7 +227,7 @@ final class PaletteActivityContactSheet: XCTestCase {
       view.setAgentChoices([.claude], planned: .claude)
       view.prepareForPresentation()
       view.setAcceptsAttachments(true)
-      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
       var preview = BolttyAISessionPreview(
         id: UUID(), title: "Chat", agent: .claude, state: nil, body: "")
       preview.messages = messages
@@ -290,7 +290,7 @@ final class PaletteActivityContactSheet: XCTestCase {
       view.setAgentChoices([.claude], planned: .claude)
       view.prepareForPresentation()
       view.setAcceptsAttachments(true)
-      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
       return view
     }
     func ground(for view: AgentPaletteView) -> NSView {
@@ -445,7 +445,7 @@ final class PaletteActivityContactSheet: XCTestCase {
       view.setAgentChoices([.claude], planned: .claude)
       view.prepareForPresentation()
       view.setAcceptsAttachments(true)
-      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
       var preview = BolttyAISessionPreview(id: UUID(), title: "Chat", agent: .claude, state: state, body: "")
       preview.messages = messages
       preview.canStop = state == .running
@@ -582,7 +582,7 @@ final class PaletteActivityContactSheet: XCTestCase {
       view.setAgentChoices([.claude, .codex], planned: .claude)
       view.prepareForPresentation()
       view.setAcceptsAttachments(true)
-      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+      view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
       view.setUsage(
         AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 40, resetsAt: nil)]),
         agent: .claude)

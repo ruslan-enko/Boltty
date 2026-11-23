@@ -540,7 +540,7 @@ enum AgentPaletteMetrics {
   static var previewContentHorizontalPadding: CGFloat { shellContentInset }
   static let previewTopSpacing: CGFloat = 8
 
-  static let previewOptionCornerRadius: CGFloat = fromMock(16)
+  static let previewOptionCornerRadius: CGFloat = 12
   static let previewOptionHorizontalPadding: CGFloat = fromMock(9)
   static let previewOptionVerticalPadding: CGFloat = fromMock(7.5)
   static let previewOptionMarkSize: CGFloat = fromMock(14)
@@ -772,18 +772,16 @@ enum AgentPaletteMetrics {
   static var planRingInk: NSColor { ComposerControlGroup.restingInk }
   static var planRingDiameter: CGFloat { live(20) }
   static var planRingStroke: CGFloat { live(2.5) }
-  // The circle icon's ink (r 6.25, stroke 1.425 on 16), so the ring stands as large and as thin as the icons beside it.
-  static let planRingStrokeRatio: CGFloat = 1.425 / 13.925
+  // The circle icon's ink (r 6.25, stroke 1.3 on 16), so the ring stands as large and as thin as the icons beside it.
+  static let planRingStrokeRatio: CGFloat = 1.3 / 13.8
   static func planRingOuterDiameter(chat: Bool) -> CGFloat {
     iconSide(ComposerControlGroup.iconSize(chat: chat)) * 13.925 / 16
   }
 
-  static let directoryChipHeight: CGFloat = fromMock(30)
+  static let glassButtonHeight: CGFloat = 32
   static let latestComposerSpacing: CGFloat = fromMock(6)
-  static var directoryChipFontSize: CGFloat { typeSecondary }
-  static let directoryChipGlyphPointSize: CGFloat = 10
+  static var glassButtonFontSize: CGFloat { typeMeta }
   static let directoryChipTextColor = PaletteInk.primary
-  static let directoryChipWarningTint = NSColor.systemOrange
 
   // MARK: The working-folder chip, naming its folder
   static func folderChipHeight(chat: Bool) -> CGFloat { chat ? 26 : 28 }

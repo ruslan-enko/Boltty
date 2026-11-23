@@ -491,7 +491,7 @@ final class BolttyAIWellLink: NSTextField {
 }
 
 final class BolttyAIApprovalBar: NSView {
-  static let buttonHeight: CGFloat = 32
+  static let buttonHeight = AgentPaletteMetrics.glassButtonHeight
   static let buttonSpacing: CGFloat = 8
   static var noteSpacing: CGFloat { AgentPaletteMetrics.serviceActionsGap }
 
@@ -575,8 +575,6 @@ final class BolttyAIApprovalBar: NSView {
     }
 
     if copyText != nil {
-      copyButton.titleFontSize = AgentPaletteMetrics.typeMeta
-      copyButton.height = Self.buttonHeight
       copyButton.title = Self.copyTitle
       copyButton.target = self
       copyButton.action = #selector(copyPressed)
@@ -685,10 +683,7 @@ final class BolttyAIApprovalBar: NSView {
   }
 
   private static func makeButton(at index: Int) -> NSButton {
-    let glass = GlassPillLabelButton(frame: .zero)
-    glass.titleFontSize = AgentPaletteMetrics.typeMeta
-    glass.height = buttonHeight
-    return glass
+    GlassPillLabelButton(frame: .zero)
   }
 
   private func refreshTitles() {
@@ -745,8 +740,6 @@ final class BolttyAIApprovalBar: NSView {
   @MainActor static var copyWidth: CGFloat {
     if let measuredCopyWidth { return measuredCopyWidth }
     let button = GlassPillLabelButton(frame: .zero)
-    button.titleFontSize = AgentPaletteMetrics.typeMeta
-    button.height = buttonHeight
     button.title = copiedTitle
     let width = ceil(button.intrinsicContentSize.width)
     measuredCopyWidth = width

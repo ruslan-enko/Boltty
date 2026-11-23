@@ -1628,7 +1628,7 @@ so in the orb ("No sound is reaching the microphone…",
 - **Icons are Boltty's own** (`BolttyIcon`, `Resources/Icons`;
   `BolttyIconView` in SwiftUI). Never an SF Symbol: the one left is the Apple
   mark in the first-run show's made-up menu bar, which is Apple's to draw, not
-  ours. A 16 × 16 grid, a 1.425 stroke with round ends, drawn only of lines and
+  ours. A 16 × 16 grid, a 1.3 stroke with round ends, drawn only of lines and
   true circular arcs, every turn a tangent arc (1.25 at a joint, 2 for a medium corner,
   3.25 for a box's; 0.75 only on a pointer's tips; a few shapes keep a
   size of their own, such as the Return arrow's 2.75). The one turn with no arc is a

@@ -13,7 +13,7 @@ import math, os, sys
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Resources", "Icons")
 os.makedirs(OUT, exist_ok=True)
 HEAD = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#000" '
-        'stroke-width="1.425" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">')
+        'stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">')
 
 # The only radii: J a joint, M a medium corner, B a container's corner; S small features only.
 S, J, M, B = 0.75, 1.25, 2.0, 3.25
@@ -134,7 +134,7 @@ w("chevron-down", P(poly(CHEV)))
 w("chevron-left", P(poly(rot(CHEV, 1))))
 w("chevron-up", P(poly(rot(CHEV, 2))))
 w("chevron-right", P(poly(rot(CHEV, 3))))
-w("chevrons-up-down", P(poly([(4.75, 6.25), (8, 3), (11.25, 6.25)]), poly([(4.75, 9.75), (8, 13), (11.25, 9.75)])))
+w("chevrons-up-down", P(poly([(5, 6.438), (8, 3.5), (11, 6.438)]), poly([(5, 9.562), (8, 12.5), (11, 9.562)])))
 
 # Arrows
 w("arrow-down", P(line((8, 2.25), (8, 13.5 - APEX)), poly([(3.25, 8.75), (8, 13.5), (12.75, 8.75)])))
@@ -157,9 +157,9 @@ def reload_head(a, r=6.25):
     return ax, ay, tx, ty
 
 
-SYNC_HEAD = [(12.79, 1.7), (12.79, 3.95), (10.54, 3.95)]
+SYNC_HEADS = [(12.386, 1.407), (13.081, 3.547), (10.942, 4.243)], [(3.704, 14.635), (2.875, 12.543), (4.967, 11.715)]
 w("sync", P(arc(8, 8, 6.25, 175, 315)), P(arc(8, 8, 6.25, -5, 135)),
-  P(poly(SYNC_HEAD)), P(poly(rot(SYNC_HEAD, 2))))
+  *[P(poly(h)) for h in SYNC_HEADS])
 
 # Containers
 w("code", BOX(), P(poly([(6.75, 5.5), (4.25, 8), (6.75, 10.5)]), poly([(9.25, 5.5), (11.75, 8), (9.25, 10.5)])))
@@ -168,7 +168,7 @@ w("film", BOX(), P(poly([(6.25, 5), (11.25, 8), (6.25, 11)], closed=True)))
 w("photo", BOX(), D(5.5, 5.5, 1.15), P(poly([(4.25, 11.5), (8.5, 7.25), (11.75, 10.5)])))
 w("keyboard", R(1.75, 3.25, 12.5, 9.5, B), D(5, 6.5, 0.85), D(8, 6.5, 0.85), D(11, 6.5, 0.85),
   P(line((5.75, 9.75), (10.25, 9.75))))
-w("copy", R(1.75, 5, 9.25, 9.25, 2.5), P(poly([(5, 3), (5, 1.75, J), (14.25, 1.75, 2.5), (14.25, 11, J), (13, 11)])))
+w("copy", R(1.75, 5, 9.25, 9.25, 2.5), P(arc(11.75, 8.75, 2.5, 90, 0), "L14.25 4.5A2.5 2.5 0 0 0 11.75 2L7.5 2A2.5 2.5 0 0 0 5 4.5"))
 w("folder", P(poly([(1.75, 2.5, M), (6.25, 2.5), (8.25, 4.75), (14.25, 4.75, B), (14.25, 13.5, B), (1.75, 13.5, B)], closed=True)))
 w("lock", R(2.75, 6.75, 10.5, 7.5, B), P(poly([(5, 6.75), (5, 1.75, 3), (11, 1.75, 3), (11, 6.75)])), D(8, 10.5, 1.1))
 
@@ -225,7 +225,7 @@ w("speaker", P(poly([(1.75, 5.75), (4.5, 5.75), (8.75, 2.25), (8.75, 13.75), (4.
 # People
 w("speaking-person", C(6, 5.25, 2.75), P(arc(6, 14.25, 4.25, 180, 360)),
   P(arc(8, 5.25, 3.25, -45, 45), arc(8, 5.25, 5.75, -45, 45)))
-w("people", C(5.75, 6.25, 2.25), P(arc(5.75, 14.25, 4, 180, 360)), C(11.25, 3.5, 1.75),
+w("people", C(5.75, 6.25, 2.25), P(arc(5.75, 14.25, 4, 180, 360)), C(10.75, 3.75, 1.75).replace("/>", ' stroke-width="1.2"/>'),
   P(arc(10.75, 12.25, 3.5, -70, 0)))
 
 # Link: two hooks facing each other and a bar between them, all on one diagonal

@@ -78,7 +78,7 @@ enum DesignElements {
   static func chips() -> [DesignSection] {
     func folder(_ path: String, branch: String? = nil) -> NSView {
       let view = WorkingDirectoryChipView(frame: .zero)
-      view.apply(WorkingDirectoryChip(path: path, isEditable: true, isIgnoredByAgent: false, branch: branch))
+      view.apply(WorkingDirectoryChip(path: path, isEditable: true, branch: branch))
       view.setChatSized(true)
       return view
     }

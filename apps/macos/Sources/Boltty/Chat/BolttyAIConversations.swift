@@ -28,7 +28,6 @@ protocol BolttyAIConversations: AnyObject {
 
   func recentWorkingDirectories() -> [String]
 
-  func honoursWorkingDirectory(providerID: String) -> Bool
 
   func acceptsAttachments(providerID: String) -> Bool
 
@@ -245,12 +244,6 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
         && isDirectory.boolValue
     }
-  }
-
-  func honoursWorkingDirectory(providerID: String) -> Bool {
-    let capabilities = engine.registry.capabilities(forProviderID: providerID)
-    guard !capabilities.isEmpty else { return true }
-    return capabilities.contains(.workingDirectory)
   }
 
   func acceptsAttachments(providerID: String) -> Bool {

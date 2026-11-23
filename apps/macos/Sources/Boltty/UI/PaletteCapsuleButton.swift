@@ -44,10 +44,10 @@ final class GlassPillLabelButton: PaletteIconButton {
     didSet { applyTint() }
   }
 
-  var titleFontSize: CGFloat = AgentPaletteMetrics.directoryChipFontSize {
+  var titleFontSize: CGFloat = AgentPaletteMetrics.glassButtonFontSize {
     didSet { applyTitle(); invalidateIntrinsicContentSize() }
   }
-  var height: CGFloat = AgentPaletteMetrics.directoryChipHeight {
+  var height: CGFloat = AgentPaletteMetrics.glassButtonHeight {
     didSet { invalidateIntrinsicContentSize() }
   }
 

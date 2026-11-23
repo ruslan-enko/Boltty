@@ -33,7 +33,7 @@ final class AgentPaletteMetricsTests: XCTestCase {
       AgentPaletteMetrics.previewBodyFontSize,
       AgentPaletteMetrics.resultsTitleFontSize, AgentPaletteMetrics.resultsSubtitleFontSize,
       AgentPaletteMetrics.historyHeaderFontSize, AgentPaletteMetrics.historyTabFontSize,
-      AgentPaletteMetrics.directoryChipFontSize,
+      AgentPaletteMetrics.glassButtonFontSize,
       AgentPaletteMetrics.previewFileNameFontSize,
       AgentPaletteMetrics.previewFileSizeFontSize, AgentPaletteMetrics.previewActivityNameFontSize,
       AgentPaletteMetrics.previewActivityDetailFontSize, AgentPaletteMetrics.previewFooterFontSize,

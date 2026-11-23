@@ -35,7 +35,7 @@ enum DesignPanelState: String, CaseIterable {
     view.setAgentChoices(AgentHistory.tabOrder, planned: .claude)
     view.prepareForPresentation()
     view.setAcceptsAttachments(true)
-    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory()))
     view.setUsage(
       AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 40, resetsAt: nil)]), agent: .claude)
     apply(to: view)
