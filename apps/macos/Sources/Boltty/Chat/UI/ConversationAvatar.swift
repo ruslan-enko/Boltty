@@ -143,6 +143,11 @@ final class MascotNSView: NSView {
 
   var lookAtWindowPoint: CGPoint?
 
+  /// A turn of its own over the living one, about x, y and z: the first-run show's.
+  var turn = SIMD3<Double>.zero {
+    didSet { if turn != oldValue { render() } }
+  }
+
   // MARK: Going to rest, and waking
 
   private(set) var awake = 1.0
@@ -432,7 +437,7 @@ extension MascotNSView {
       size: bounds.size,
       pixelSize: 1 / max(scale, 1),
       pose: MascotRenderer.Pose(
-        yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll,
+        yaw: pose.yaw + turn.y, pitch: pose.pitch + turn.x, roll: pose.roll + turn.z,
         sx: pose.sx, sy: pose.sy, lift: -pose.rise
       ),
       eyes: eyes,

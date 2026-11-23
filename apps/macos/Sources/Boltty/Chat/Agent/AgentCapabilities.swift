@@ -65,6 +65,10 @@ struct AgentInstallation: Identifiable, Equatable, Sendable {
 
   var id: AgentId { provider }
   var isReady: Bool { availability.isAvailable }
+  var needsLogin: Bool {
+    if case .needsLogin = availability { return true }
+    return false
+  }
 
   static func displayVersion(_ raw: String) -> String {
     guard let range = raw.range(of: #"\d+(\.\d+)+([-+][0-9A-Za-z.]+)?"#, options: .regularExpression)

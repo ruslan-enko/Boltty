@@ -7,11 +7,12 @@ import AppKit
 final class InterfaceSounds {
   static let sendVariantNames = ["send-1", "send-2", "send-3"]
   enum FaceSound: String, CaseIterable {
-    case hum, whoosh, run, tap
+    case hum, pop, bell, boom, run, tap
     static let variants = 5
     var names: [String] { (1...Self.variants).map { "\(rawValue)-\($0)" } }
   }
   static let musicName = "show-music"
+  static let endingName = "show-ending"
   static let doneName = "done"
   static let attentionName = "attention"
   static let fileExtension = "wav"
@@ -19,6 +20,7 @@ final class InterfaceSounds {
   private let isEnabled: () -> Bool
   private let bundle: Bundle
   private var music: AVAudioPlayer?
+  private var ending: AVAudioPlayer?
   private let sendSounds: [SystemSoundID]
   private let faceSounds: [FaceSound: [SystemSoundID]]
   private var lastSend: Int?
@@ -58,6 +60,28 @@ final class InterfaceSounds {
     player.volume = 0.8
     player.play()
     music = player
+  }
+
+  /// Seconds into the music, while it plays.
+  var musicTime: TimeInterval? { music.flatMap { $0.isPlaying ? $0.currentTime : nil } }
+
+  func playEnding() {
+    guard isEnabled(), let url = bundle.url(forResource: Self.endingName, withExtension: "m4a"),
+          let player = try? AVAudioPlayer(contentsOf: url)
+    else { return }
+    player.volume = 0.8
+    player.play()
+    ending = player
+  }
+
+  func stopEnding(fade: TimeInterval) {
+    guard let ending else { return }
+    ending.setVolume(0, fadeDuration: fade)
+    DispatchQueue.main.asyncAfter(deadline: .now() + fade) { [weak self] in
+      guard let self, self.ending === ending else { return }
+      ending.stop()
+      self.ending = nil
+    }
   }
 
   func stopMusic(fade: TimeInterval) {

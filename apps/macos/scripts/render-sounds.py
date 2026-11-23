@@ -31,7 +31,9 @@ SHIPPED = {
     "done": "glass-up",
     "attention": "glass-knock",
     "hum": "exclamation",
-    "whoosh": "breath",
+    "boom": "boom",
+    "bell": "bell",
+    "pop": "pop",
     "run": "run",
     "tap": "tap",
 }
@@ -44,6 +46,9 @@ SEND_VARIANTS = (-1.0, 0.0, 1.0)
 # exclamation a face (`EXCLAMATIONS`), at a pitch of its own in semitones.
 HUM_VARIANTS = (-2.0, 0.0, 1.0, 2.0, 3.0)
 HUM_LOUDNESS = -31.0
+
+# Semitones from E, so a hit or a bell sits in the music under it.
+VARIANT_SHIFTS = {"boom": (0, 3, 5, 7, 8), "bell": (0, 3, 7, 10, 12)}
 
 NOTIFICATION_LOUDNESS = -21.0
 SEND_LOUDNESS = -26.0
@@ -225,33 +230,6 @@ def hum(shift=0.0, which=0):
     return EXCLAMATIONS[which % len(EXCLAMATIONS)](transpose(shift))
 
 
-def air(shift=0.0, length=0.34, seed=11):
-    """Something passing close by, fast: soft noise through a resonance that
-    sweeps up and back down, swelling in the middle — a whoosh, no tone."""
-    k = transpose(shift)
-    out = []
-    y1 = y2 = 0.0
-    n = int(length * RATE)
-    for i in range(n):
-        u = i / max(n - 1, 1)
-        # Up quickly, down slower, as a thing nearing and leaving does.
-        centre = (500 + 2600 * math.sin(math.pi * min(1.0, u * 1.25)) ** 1.5) * k
-        r = 0.985
-        w = 2 * math.pi * centre / RATE
-        seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
-        x = seed / 0x3FFFFFFF - 1.0
-        y = (1 - r) * x + 2 * r * math.cos(w) * y1 - r * r * y2
-        y2, y1 = y1, y
-        envelope = math.sin(math.pi * u) ** 2.2
-        out.append(y * envelope * 30)
-    return tail(out)
-
-
-# What passes as a face or a window flies. A narrow resonance sweeping up to
-# 3 kHz, where the ear is keenest, whistles in the hiss and grates when heard
-# a dozen times in the show. These are broad and low: no resonance to whistle,
-# little above 1.5 kHz.
-
 def soft_noise(length, centre, envelope, damping=1.4, seed=11):
     """Noise through a gentle two-pole lowpass (a state-variable one) whose
     corner follows `centre(u)`, shaped by `envelope(u)`, u from 0 to 1.
@@ -273,77 +251,8 @@ def soft_noise(length, centre, envelope, damping=1.4, seed=11):
     return tail([v / peak for v in out])
 
 
-def rise_and_fall(u, at=0.4):
-    """Swells to its top at `at` and away after, smoothly at both ends."""
-    return math.sin(math.pi * u ** (math.log(0.5) / math.log(at))) ** 2
-
-
-def breath(shift=0.0, length=0.38, seed=11):
-    """A soft breath of air past the ear — a lowpass opening to 1.4 kHz and
-    closing again, swelling in its first half: "fff", no whistle."""
-    k = transpose(shift)
-    return soft_noise(length,
-                      lambda u: (260 + 1100 * math.sin(math.pi * u) ** 1.5) * k,
-                      lambda u: rise_and_fall(u, 0.4), seed=seed)
-
-
-def silk(shift=0.0, length=0.34, seed=13):
-    """A swish of cloth, as a plush toy makes going by: the lowpass with a
-    soft hump at its corner, sweeping 0.45 to 1.5 kHz and back — more
-    texture than `breath`, still no whistle."""
-    k = transpose(shift)
-    return soft_noise(length,
-                      lambda u: (450 + 1050 * math.sin(math.pi * u) ** 1.5) * k,
-                      lambda u: rise_and_fall(u, 0.4), damping=0.8, seed=seed)
-
-
-def puff(shift=0.0, seed=17):
-    """A short puff of air and a soft landing, as a cushion is set down:
-    lowpassed noise, and under its end a low thump falling 170 to 115 Hz."""
-    k = transpose(shift)
-    out = [0.8 * v for v in soft_noise(0.22,
-                                       lambda u: (380 + 750 * math.sin(math.pi * u)) * k,
-                                       lambda u: rise_and_fall(u, 0.3), seed=seed)]
-    mix(out, [0.45 * v for v in sweep(170 * k, 115 * k, 0.06, 0.045, 0.16, onset=0.006)], 0.12)
-    return tail(out)
-
-
-# The first run's music (after the feel of Dia's intro — its
-# shape measured, nothing of it copied): a chord that swells as the night
-# breaks, and a run of plucked notes up the F major pentatonic as each scene
-# arrives, each run a step higher than the last.
-
-PLUCK = ((1.0, 1.0, 0.55), (2.0, 0.32, 0.22), (3.0, 0.12, 0.11), (4.2, 0.05, 0.05))
-PENTATONIC = (0, 2, 5, 7, 9)  # from C: C D F G A, all in F major
-
-
 def midi(number):
     return 440.0 * 2 ** ((number - 69) / 12)
-
-
-def pentatonic_from(start, count):
-    """`count` notes of the F pentatonic, rising from MIDI `start`."""
-    notes = []
-    n = start
-    while len(notes) < count:
-        if n % 12 in PENTATONIC:
-            notes.append(n)
-        n += 1
-    return notes
-
-
-def mallet(number, gain=1.0, length=0.45):
-    """A soft mallet on a wooden bar: the note and a little of its octave,
-    gone in a fraction of a second — no inharmonic partials, nothing that
-    rings on."""
-    f = midi(number)
-    out = []
-    for i in range(int(length * RATE)):
-        t = i / RATE
-        value = (math.exp(-t / 0.12) * math.sin(2 * math.pi * f * t)
-                 + 0.14 * math.exp(-t / 0.05) * math.sin(4 * math.pi * f * t))
-        out.append(gain * value * attack(i, 0.004))
-    return tail(out)
 
 
 def tick_noise(seed=31):
@@ -358,22 +267,6 @@ def tick_noise(seed=31):
         out.append((x - previous) * 0.5 * math.exp(-i / (0.0025 * RATE)))
         previous = x
     return tail(out, 0.003)
-
-
-def run(shift=0.0, which=0):
-    """A run up the pentatonic on soft mallets — fourteen notes, even, from
-    low to three octaves up in a second, a second voice two steps over
-    the first, and a soft click on every note, as the reference's runs
-    are measured to go. `which` starts each a step higher."""
-    notes = pentatonic_from(54 + 2 * which, 16)
-    out = []
-    for index in range(14):
-        at = 0.1 * index * (1 - 0.012 * index)
-        swell = 0.55 + 0.45 * index / 13
-        mix(out, mallet(notes[index], swell), at)
-        mix(out, mallet(notes[index + 2], 0.3 * swell), at + 0.012)
-        mix(out, [0.5 * v for v in tick_noise(seed=31 + index)], at)
-    return tail(out, 0.05)
 
 
 def pad_voice(number, start, attack, release, end, gain, length):
@@ -402,125 +295,246 @@ def pad_voice(number, start, attack, release, end, gain, length):
     return out
 
 
-def dawn(shift=0.0, which=0):
-    """The night breaking: a held C swelling, opening at the sunrise into F
-    with its ninth, a shimmer of high notes over it, and a breath of air
-    rising into the moment it opens."""
-    length = 7.5
-    out = [0.0] * int(length * RATE)
-    def add(sound):
-        for i, v in enumerate(sound):
-            out[i] += v
-    for number, gain in ((48, 0.5), (60, 0.35), (46, 0.18)):
-        add(pad_voice(number, 0.0, 1.6, 1.9, 3.0, gain, length))
-    for number, gain in ((41, 0.45), (48, 0.4), (53, 0.42), (55, 0.28), (60, 0.3), (65, 0.25),
-                         (67, 0.18), (72, 0.14)):
-        add(pad_voice(number, 1.4, 0.7, 4.6, 7.4, gain, length))
-    for k, number in enumerate((77, 81, 84, 89)):
-        add(pad_voice(number, 1.9 + 0.25 * k, 0.5, 3.6 + 0.2 * k, 6.0, 0.05, length))
-    breath = air(0.0, length=1.2, seed=5)
-    mix(out, [0.35 * v for v in breath], 0.6)
-    return tail(out, 0.3)
-
-
-def tap(shift=0.0, seed=23):
-    """A key, typed: a few milliseconds of soft noise, a little darker for
-    a lower `shift` — a click with no note in it."""
-    k = transpose(shift)
-    out = []
-    smooth = 0.0
-    n = int(0.018 * RATE)
-    for i in range(n):
-        seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
-        x = seed / 0x3FFFFFFF - 1.0
-        smooth += (0.35 * k) * (x - smooth)
-        out.append(smooth * math.exp(-i / (0.004 * RATE)))
-    return tail(out, 0.004)
-
-
-# --- the first run's music ------------------------------------------------
+# --- the first run's sounds and music -------------------------------------
 #
-# Under the whole show, after the feel of a promo's track. Its feel was
-# measured off
-# that recording — about 138 beats a minute, bass, a steady beat, chords
-# held over it, fuller in its second half — and none of it taken: this is
-# its own groove, in F, so the dawn and the scenes' runs sit in it.
+# After the feel of a promo's track. What was measured off that recording:
+# about 115 beats a minute in groups of three, three and two eighths; a dark
+# pad, a rumble and one bell before the beat; a long sub boom a hit; a dry
+# click with its body at 860 and 2015 Hz; low chords held short; a note
+# sliding down; a ladder of ticks from 330 Hz to 2.1 kHz; stretches with no
+# bass. None of it is taken: the notes are these, in E minor.
 
-BPM = 138.0
+BPM = 115.0
 BEAT = 60.0 / BPM
 BAR = 4 * BEAT
-GROOVE_AT = 2 * BAR          # the beat comes in two bars after the night breaks
-MUSIC_LENGTH = 39.0
-# (bass, chord) a bar: Fmaj9, Dm9, B-flat maj9, C add9.
+DROP_AT = 14 * BEAT          # `FirstRunShowController.musicDrop`
+MUSIC_LENGTH = 54.0
+MINOR = (64, 67, 69, 71, 74, 76, 79, 81, 83, 86)     # E minor pentatonic
+# (sub, chord) a bar: Em9, Cmaj7, G6, Dsus.
 PROGRESSION = (
-    (41, (57, 60, 64, 67)),
-    (38, (57, 60, 64, 65)),
-    (46, (57, 62, 65, 72)),
-    (48, (55, 60, 62, 67)),
+    (28, (59, 62, 66, 67)),
+    (36, (59, 62, 64, 67)),
+    (31, (59, 62, 64, 69)),
+    (38, (57, 62, 64, 67)),
 )
 
 
-def noise_burst(length, decay, seed, bright=True):
+def noise(count, seed):
     out = []
-    previous = 0.0
-    for i in range(int(length * RATE)):
+    for _ in range(count):
         seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
-        x = seed / 0x3FFFFFFF - 1.0
-        out.append(((x - previous) if bright else x) * math.exp(-i / (decay * RATE)))
-        previous = x
+        out.append(seed / 0x3FFFFFFF - 1.0)
     return out
 
 
-def kick():
+def noise_burst(length, decay, seed):
+    out = []
+    previous = 0.0
+    for i, x in enumerate(noise(int(length * RATE), seed)):
+        out.append((x - previous) * 0.5 * math.exp(-i / (decay * RATE)))
+        previous = x
+    return tail(out, 0.005)
+
+
+def ring(frequency, decay, length, gain=1.0):
+    step = 2 * math.pi * frequency / RATE
+    return [gain * math.sin(step * i) * math.exp(-i / (decay * RATE)) for i in range(int(length * RATE))]
+
+
+def click(shift=0.0, seed=41):
+    """Dry: two short rings and a grain of noise."""
+    k = transpose(shift)
+    out = ring(860 * k, 0.010, 0.07)
+    mix(out, ring(2015 * k, 0.007, 0.05, 0.75), 0.0)
+    mix(out, ring(4800 * k, 0.003, 0.02, 0.3), 0.0)
+    grain = noise(int(0.012 * RATE), seed)
+    mix(out, [0.55 * v * math.exp(-i / (0.0018 * RATE)) for i, v in enumerate(grain)], 0.0)
+    return tail([v * attack(i, 0.0004) for i, v in enumerate(out)], 0.01)
+
+
+def snap(seed=43):
+    out = []
+    low = mid = 0.0
+    for i, x in enumerate(noise(int(0.2 * RATE), seed)):
+        f = 2 * math.sin(math.pi * 1900 / RATE)
+        low += f * mid
+        high = x - low - 0.5 * mid
+        mid += f * high
+        out.append(mid * math.exp(-i / (0.035 * RATE)) * attack(i, 0.001))
+    return tail(out)
+
+
+def boom(shift=0.0, which=0, number=28, length=1.5, decay=0.42):
+    """A hit and a long sub under it, driven so a laptop still says it."""
+    f = midi(number + shift)
     out = []
     phase = 0.0
-    for i in range(int(0.34 * RATE)):
+    for i in range(int(length * RATE)):
         t = i / RATE
-        f = 46 + 84 * math.exp(-t / 0.028)
+        phase += 2 * math.pi * (f + 92 * math.exp(-t / 0.032)) / RATE
+        body = math.sin(phase) * math.exp(-t / decay)
+        out.append(math.tanh(2.6 * body) * 0.9 * attack(i, 0.0015))
+    mix(out, [0.5 * v for v in click(-5)], 0.0)
+    return tail(out, 0.08)
+
+
+def glide(numbers, each, slide=0.045, length=None, decay=0.5):
+    """One note sliding from step to step, a little glassy."""
+    length = length or each * len(numbers) + 0.2
+    out = []
+    phase = 0.0
+    f = midi(numbers[0] + 1.5)
+    for i in range(int(length * RATE)):
+        t = i / RATE
+        index = min(int(t / each), len(numbers) - 1)
+        f += (midi(numbers[index]) - f) / (slide * RATE)
         phase += 2 * math.pi * f / RATE
-        out.append(math.sin(phase) * math.exp(-t / 0.16) * attack(i, 0.001))
-    return mix(out, [0.25 * v for v in noise_burst(0.004, 0.001, 3)], 0.0)
+        step = t - index * each
+        env = math.exp(-step / decay) * (attack(i, 0.004) if index == 0 else 1.0)
+        out.append(env * (math.sin(phase) + 0.28 * math.sin(2 * phase) + 0.12 * math.sin(3 * phase)))
+    return tail(out, 0.06)
 
 
-def clap(seed=7):
+def stab(numbers, length):
+    """A low chord, soft-edged, held short."""
+    out = [0.0] * int((length + 0.06) * RATE)
+    for number in numbers:
+        for detune in (0.997, 1.003):
+            step = 2 * math.pi * midi(number) * detune / RATE
+            for h in range(1, 6):
+                gain = math.exp(-(h - 1) / 1.2) / h
+                for i in range(len(out)):
+                    t = i / RATE
+                    fall = 1.0 if t < length else max(0.0, 1 - (t - length) / 0.06)
+                    out[i] += gain * fall * math.sin(step * h * i + number) * (0.55 + 0.45 * math.exp(-t / 0.08))
+    return [v * attack(i, 0.008) for i, v in enumerate(out)]
+
+
+def bell(shift=0.0, which=0):
+    """One soft bell that is left to ring."""
+    f = midi(76 + shift)
     out = []
-    for k, at in enumerate((0.0, 0.011, 0.022)):
-        mix(out, [0.6 * v for v in noise_burst(0.16 if k == 2 else 0.02, 0.05 if k == 2 else 0.006, seed + k)], at)
-    return tail(out, 0.01)
-
-
-def hat(open_=False, seed=11):
-    return [0.5 * v for v in noise_burst(0.14 if open_ else 0.03, 0.05 if open_ else 0.008, seed)]
-
-
-def bass(number, length):
-    f = midi(number)
-    out = []
-    for i in range(int(length * RATE)):
+    for i in range(int(2.6 * RATE)):
         t = i / RATE
-        env = math.exp(-t / 0.7) * attack(i, 0.006)
-        out.append(env * (math.sin(2 * math.pi * f * t) + 0.25 * math.sin(4 * math.pi * f * t)))
-    return tail(out, 0.03)
+        value = (math.exp(-t / 0.8) * math.sin(2 * math.pi * f * t)
+                 + 0.22 * math.exp(-t / 0.5) * math.sin(2 * math.pi * f * 2.003 * t)
+                 + 0.1 * math.exp(-t / 0.14) * math.sin(2 * math.pi * f * 5.4 * t))
+        out.append(value * attack(i, 0.006))
+    return tail(room(out, 0.3)[:len(out)], 0.3)
 
 
-def keys(number, length=1.5):
-    """An electric piano: a sine bent by its own frequency, the bend dying
-    fast — a soft bell on the attack, a round note after it."""
-    f = midi(number)
+def pop(shift=0.0, which=0):
+    """A face arriving: a blip that lands on its note."""
+    f = midi(MINOR[(which * 2 + 1) % len(MINOR)])
     out = []
-    w = 2 * math.pi * f / RATE
-    for i in range(int(length * RATE)):
+    phase = 0.0
+    for i in range(int(0.24 * RATE)):
         t = i / RATE
-        index = 1.4 * math.exp(-t / 0.22)
-        out.append(math.sin(w * i + index * math.sin(w * i)) * math.exp(-t / 0.85) * attack(i, 0.004))
+        phase += 2 * math.pi * f * (1 - 0.32 * math.exp(-t / 0.018)) / RATE
+        out.append((math.sin(phase) + 0.25 * math.sin(2 * phase)) * math.exp(-t / 0.055) * attack(i, 0.002))
+    mix(out, [0.2 * v for v in click(which - 2)], 0.0)
+    return tail(out)
+
+
+def run(shift=0.0, which=0):
+    """A ladder of ticks, climbing evenly in pitch, quickening a little."""
+    out = []
+    low, high, count = 330.0 * transpose(which), 2100.0 * transpose(which), 18
+    for index in range(count):
+        u = index / (count - 1)
+        f = low * (high / low) ** u
+        rung = ring(f, 0.020, 0.10)
+        mix(rung, ring(f * 2, 0.008, 0.05, 0.35), 0.0)
+        mix(rung, [0.25 * v for v in tick_noise(seed=51 + index)], 0.0)
+        level_ = 0.45 + 0.55 * u
+        mix(out, [level_ * v * attack(i, 0.0008) for i, v in enumerate(rung)], 1.15 * (u - 0.12 * u * u))
     return tail(out, 0.05)
+
+
+def tap(shift=0.0, seed=23):
+    """A key, typed: the groove's click, small and dry."""
+    out = click(shift, seed)
+    return tail([v * math.exp(-i / (0.012 * RATE)) for i, v in enumerate(out)][:int(0.045 * RATE)], 0.01)
+
+
+def room(samples, wet):
+    """Four combs and two all-passes: the space round the pad and the bell."""
+    total = [0.0] * len(samples)
+    for delay, feedback in ((1557, 0.84), (1617, 0.83), (1491, 0.85), (1422, 0.86)):
+        line = [0.0] * delay
+        at = 0
+        damp = 0.0
+        for i, x in enumerate(samples):
+            y = line[at]
+            damp = 0.6 * y + 0.4 * damp
+            line[at] = x + damp * feedback
+            at = (at + 1) % delay
+            total[i] += y * 0.25
+    for delay in (225, 556):
+        line = [0.0] * delay
+        at = 0
+        for i, x in enumerate(total):
+            y = line[at]
+            total[i] = y - x * 0.5
+            line[at] = x + total[i] * 0.5
+            at = (at + 1) % delay
+    return [x + wet * y for x, y in zip(samples, total)]
+
+
+def rumble(length, seed=61):
+    out = []
+    a = b = 0.0
+    for i, x in enumerate(noise(int(length * RATE), seed)):
+        a += 0.011 * (x - a)
+        b += 0.011 * (a - b)
+        out.append(b * 9 * (0.75 + 0.25 * math.sin(2 * math.pi * 0.23 * i / RATE)))
+    return out
+
+
+def opening(length):
+    """Before the beat: a dark pad opening, a rumble, one bell."""
+    out = [0.0] * int(length * RATE)
+    for number, gain in ((40, 0.05), (47, 0.07), (52, 0.09), (59, 0.14), (62, 0.13), (66, 0.12), (71, 0.11)):
+        mix(out, pad_voice(number, 0.15, 2.6, length - 0.9, length, gain, length), 0.0)
+    for k, number in enumerate((76, 78, 83)):
+        mix(out, pad_voice(number, 2.6 + 0.6 * k, 1.4, length - 1.0, length, 0.07, length), 0.0)
+    mix(out, [0.42 * v for v in bell()], 1.45)
+    out = room(out, 0.45)
+    air_ = soft_noise(length, lambda u: 900 + 2600 * u, lambda u: 0.3 + 0.7 * u, seed=67)
+    for i, v in enumerate(air_[:len(out)]):
+        out[i] += 0.035 * v
+    low = rumble(length)
+    n = len(low)
+    for i in range(n):
+        u = i / n
+        out[i] += 0.9 * low[i] * min(1, u * 4) * (0.55 + 0.45 * u)
+    return out[:n]
+
+
+def swell(length, seed=71):
+    """Air rising into a hit."""
+    sound = soft_noise(length, lambda u: 200 + 5200 * u ** 2, lambda u: u ** 2.2, damping=1.0, seed=seed)
+    return sound
+
+
+def ending(length=9.0):
+    """The sky again: the last hit, the pad, a bell over it."""
+    out = [0.0] * int(length * RATE)
+    for number, gain in ((40, 0.28), (47, 0.24), (55, 0.22), (59, 0.20), (62, 0.14), (67, 0.10), (74, 0.06)):
+        mix(out, pad_voice(number, 0.0, 0.35, 3.6, length, gain, length), 0.0)
+    mix(out, [0.5 * v for v in bell(3)], 0.0)
+    mix(out, [0.4 * v for v in bell(-2)], 1.5 * BEAT)
+    mix(out, [0.35 * v for v in bell(7)], 3 * BEAT)
+    out = room(out, 0.4)[:int(length * RATE)]
+    mix(out, [0.75 * v for v in boom(length=2.4, decay=0.8)], 0.0)
+    return tail(out[:int(length * RATE)], 2.5)
 
 
 def show_music():
     n = int(MUSIC_LENGTH * RATE)
-    drums = [0.0] * n
     tones = [0.0] * n
-    kicks = []
+    hits = [0.0] * n
+    subs = []
 
     def put(into, sound, at, gain=1.0):
         start = int(at * RATE)
@@ -529,66 +543,96 @@ def show_music():
                 break
             into[start + i] += gain * v
 
-    kick_sound, clap_sound = kick(), clap()
-    closed, opened = hat(), hat(True)
-    bars = int((MUSIC_LENGTH - GROOVE_AT) / BAR)
-    outro = bars - 2
-    for bar in range(bars):
-        at = GROOVE_AT + bar * BAR
-        root, chord = PROGRESSION[bar % len(PROGRESSION)]
-        fuller = bar >= 12
-        if bar < outro:
-            # Half time: the kick on one and the and of three, the clap on
-            # three once the middle comes; eighths of hat over it.
-            for beat in ((0.0, 2.5, 3.25) if fuller else (0.0, 2.5)):
-                put(drums, kick_sound, at + beat * BEAT, 0.9)
-                kicks.append(at + beat * BEAT)
-            if bar >= 6:
-                put(drums, clap_sound, at + 2 * BEAT, 0.45)
-            for eighth in range(8):
-                gain = 0.32 if eighth % 2 else 0.18
-                put(drums, opened if (fuller and eighth == 7) else closed, at + eighth * BEAT / 2, gain)
-            # The bass on one and the and of two.
-            put(tones, bass(root, BEAT * 1.4), at, 0.55)
-            put(tones, bass(root + 12 if bar % 2 else root, BEAT * 0.9), at + 1.5 * BEAT, 0.4)
-        # The chord on one and, held lighter, on the and of three.
-        for k, number in enumerate(chord):
-            put(tones, keys(number), at + 0.012 * k, 0.16)
-            if bar < outro:
-                put(tones, keys(number, 0.9), at + 2.5 * BEAT + 0.012 * k, 0.09)
-        # From the middle: a run of the chord's notes up high, sixteenths.
-        if 6 <= bar < outro:
-            notes = [chord[i % 4] + 12 * (1 + i // 4) for i in range(6)]
-            for k, number in enumerate(notes):
-                put(tones, mallet(number, 0.5, 0.3), at + (8 + k) * BEAT / 4, 0.12)
+    intro = opening(DROP_AT + 0.35)
+    put(hits, swell(2.2), DROP_AT - 2.2, 0.16)
 
-    # The chords and the bass give way to each kick, a little: the groove.
+    clicks = [click(s, 41 + i) for i, s in enumerate((-2, 0, 0, 3))]
+    snapped = snap()
+    hiss = [v * 1.4 for v in noise_burst(0.07, 0.016, 47)]
+    booms = {root: boom(number=root) for root, _ in PROGRESSION}
+    short = {root: boom(number=root, length=0.5, decay=0.13) for root, _ in PROGRESSION}
+    chords = {c: stab(c, BEAT * 0.72) for _, c in PROGRESSION}
+    lead = glide((78, 76, 74, 71), BEAT * 0.5, decay=0.4)
+    answer = glide((74, 71, 69), BEAT * 0.75, decay=0.55)
+    ping = [0.6 * v for v in bell(7)]
+    ladder = run()
+
+    bars = int((MUSIC_LENGTH - DROP_AT) / BAR)
+    for bar in range(bars):
+        at = DROP_AT + bar * BAR
+        root, chord = PROGRESSION[bar % 4]
+        sparse = bar < 2
+        bare = bar in (6, 7, 14, 15)
+        full = not sparse and not bare
+        eighth = BEAT / 2
+        for step in (0, 3, 6):
+            if sparse and step == 3:
+                continue
+            where = at + step * eighth
+            if bare:
+                if step == 0:
+                    put(hits, booms[root], where, 0.6)
+                    subs.append(where)
+                continue
+            put(hits, booms[root] if step == 0 else short[root], where, 0.72 if step == 0 else 0.55)
+            subs.append(where)
+        for step in range(16):
+            if step % 2 == 1 and not (full and step in (3, 7, 11, 13)):
+                continue
+            strong = step in (0, 6, 12)
+            put(hits, clicks[step % 4], at + step * BEAT / 4, (1.15 if strong else 0.65) * (0.8 if bare else 1.0))
+        if not sparse:
+            for step in range(16):
+                put(hits, hiss, at + step * BEAT / 4, 0.5 if step % 4 == 2 else 0.22)
+            for beat in (1, 3):
+                put(hits, snapped, at + beat * BEAT, 0.55 if bare else 1.0)
+        if not sparse:
+            for step in ((0, 3, 6) if full else (0, 6)):
+                put(tones, chords[chord], at + step * eighth, 0.15)
+        if bar % 2 == 0:
+            put(tones, ping, at, 0.26)
+        if full and bar % 4 == 2:
+            put(tones, lead, at + BEAT, 0.34)
+        if full and bar % 4 == 0 and bar > 2:
+            put(tones, answer, at + 2 * BEAT, 0.30)
+        if bar in (1, 7, 15):
+            put(tones, ladder, at + BAR - 1.1, 0.40)
+            put(hits, swell(1.6, 73 + bar), at + BAR - 1.6, 0.22)
+    tones = room(tones[int(DROP_AT * RATE):], 0.3)[:n - int(DROP_AT * RATE)]
+    head = [0.0] * n
+    put(head, intro, 0.0, 0.55)
+    out = head[:]
+    start = int(DROP_AT * RATE)
     duck = [1.0] * n
-    for k in kicks:
-        start = int(k * RATE)
-        for i in range(int(0.25 * RATE)):
-            if start + i >= n:
+    for k in subs:
+        first = int(k * RATE)
+        for i in range(int(0.3 * RATE)):
+            if first + i >= n:
                 break
-            duck[start + i] = min(duck[start + i], 1 - 0.35 * math.exp(-i / (0.09 * RATE)))
-    out = [d + t * u for d, t, u in zip(drums, tones, duck)]
-    # The night breaking, under its first bars.
-    put(out, dawn(), 0.0, 0.55)
-    # Out over the last three seconds.
+            duck[first + i] = min(duck[first + i], 1 - 0.5 * math.exp(-i / (0.10 * RATE)))
+    for i in range(n):
+        tone = tones[i - start] if i >= start else 0.0
+        out[i] = (out[i] if i < start else 0.0) + tone * duck[i] + hits[i]
+        out[i] = math.tanh(0.9 * out[i])
     fade = int(3.0 * RATE)
     for i in range(fade):
         out[n - fade + i] *= 1 - i / fade
     return out
 
 
-def write_music(folder):
-    """The music as AAC where `afconvert` is there (a tenth of the size),
-    otherwise as WAV."""
-    wav = os.path.join(folder, "show-music.wav")
-    write(wav, level(show_music(), -26.0))
+def encode(folder, name, samples, loudness):
+    """AAC where `afconvert` is there (a tenth of the size), otherwise WAV."""
+    wav = os.path.join(folder, f"{name}.wav")
+    write(wav, level(samples, loudness))
     if shutil.which("afconvert"):
-        m4a = os.path.join(folder, "show-music.m4a")
+        m4a = os.path.join(folder, f"{name}.m4a")
         subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "128000", wav, m4a], check=True)
         os.remove(wav)
+
+
+def write_music(folder):
+    encode(folder, "show-music", show_music(), -15.0)
+    encode(folder, "show-ending", ending(), -19.0)
 
 
 # --- the candidates -------------------------------------------------------
@@ -651,7 +695,9 @@ CANDIDATES = {
     "done": {"glass-up": glass_up, "glass-ring": glass_ring, "wood-up": wood_up},
     "attention": {"glass-knock": glass_knock, "glass-bell": glass_bell, "wood-knock": wood_knock},
     "hum": {"exclamation": hum},
-    "whoosh": {"breath": breath, "silk": silk, "puff": puff},
+    "boom": {"boom": boom},
+    "bell": {"bell": bell},
+    "pop": {"pop": pop},
     "run": {"run": run},
     "tap": {"tap": tap},
 }
@@ -690,7 +736,7 @@ def write(path, samples):
 def loudness_for(moment):
     return {
         "send": SEND_LOUDNESS, "hum": HUM_LOUDNESS,
-        "whoosh": -35.0, "run": -27.0, "tap": -38.0,
+        "boom": -20.0, "bell": -28.0, "pop": -27.0, "run": -29.0, "tap": -35.0,
     }.get(moment, NOTIFICATION_LOUDNESS)
 
 
@@ -718,11 +764,11 @@ def main():
         if args.only and moment != args.only:
             continue
         make = CANDIDATES[moment][name]
-        if moment == "run":
+        if moment in ("run", "pop", "boom", "bell"):
             # Five of each, each its own notes, each levelled alone.
             for index in range(5):
-                write(os.path.join(folder, f"{moment}-{index + 1}.wav"), level(make(0.0, index), loudness_for(moment)))
-        elif moment in ("send", "hum", "whoosh", "tap"):
+                write(os.path.join(folder, f"{moment}-{index + 1}.wav"), level(make(VARIANT_SHIFTS.get(moment, (0,) * 5)[index], index), loudness_for(moment)))
+        elif moment in ("send", "hum", "tap"):
             # One gain for every variant, taken from the middle one, so the
             # variants differ in pitch and not in level.
             middle = make(0.0)

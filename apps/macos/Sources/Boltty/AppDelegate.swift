@@ -409,10 +409,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
     show.onSound = { [weak self] sound, index in self?.sounds?.playFace(sound, index) }
     show.onSend = { [weak self] in self?.sounds?.playSend() }
-    show.makesBlips = model?.settings.playsSounds ?? true
     show.onMusic = { [weak self] playing in
-      if playing { self?.sounds?.startMusic() } else { self?.sounds?.stopMusic(fade: 2.5) }
+      if playing {
+        self?.sounds?.startMusic()
+      } else {
+        self?.sounds?.stopMusic(fade: 1.2)
+        self?.sounds?.stopEnding(fade: 4)
+      }
     }
+    show.onEnding = { [weak self] in
+      self?.sounds?.stopMusic(fade: 0.35)
+      self?.sounds?.playEnding()
+    }
+    show.musicTime = { [weak self] in self?.sounds?.musicTime }
     firstRunShow = show
     show.play(completion: then)
   }

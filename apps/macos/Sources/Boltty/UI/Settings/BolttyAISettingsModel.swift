@@ -295,6 +295,7 @@ final class BolttyAISettingsModel: ObservableObject {
         enabled: appModel.settings.isProviderEnabled(agent.rawValue),
         status: installation?.statusText ?? String(localized: "Not installed"),
         isReady: installation?.isReady == true,
+        needsLogin: installation?.needsLogin == true,
         offersModels: installation?.capabilities.contains(.modelSelection) == true,
         models: models,
         selectedModelID: selectedModelID,
@@ -633,6 +634,7 @@ struct AgentSettingsRow: Identifiable, Equatable {
   let enabled: Bool
   let status: String
   let isReady: Bool
+  let needsLogin: Bool
   let offersModels: Bool
   let models: [AgentModelOption]
   let selectedModelID: String?

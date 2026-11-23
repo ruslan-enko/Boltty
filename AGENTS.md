@@ -1347,20 +1347,29 @@ so in the orb ("No sound is reaching the microphone…",
   stand on; `ShowSpace` maps 1800 × 1169 slides to the screen; its own clock,
   `ShowClock`). One face is carried through every scene, and it is Boltty's
   own, the hexagon in Daybreak (`hero`): the one place Boltty has a face, since
-  no agent has been chosen yet. Its beats, each with a caption: the pile (that
-  face among the agents'), the panel under the notch, ⇧Tab walking the agents
-  and back to "Ask anything", a question answered in a chat whose composer has
-  its model and Send; ↓ to the chat list and its agent's tab, where the face is
-  that agent's; Ask Boltty in an app as one movement (the panel, a dragged
-  region, the orb on its corner with the words out of a blur, the face to the
-  pointer and on to what it names, drawing a loop and an arrow on the app
-  itself). A walk through Settings (a face, a backdrop, Usage, Voice) was there
-  and was removed. A feature's real gesture changing means this script changes
-  with it. The show's panel is the panel's glass (`ShowGlass` with `panel`:
-  clear glass under the black ramp) with no shadow: a light frosted glass with
-  a shadow was refused, and on the sky the panel's own shadows read as a thick
-  black border. The pile comes with no flash of light. Taps, hums and each scene's run are
-  heard; a whoosh on every move was removed. Then the setup card (agents, faces, keys, voice,
+  no agent has been chosen yet. Its beats: that face rising close, wider than
+  the screen, on the sky; the title, "This is Boltty" a word at a time, with the
+  agents' faces round it turning once like coins (`ShowFace.spin`,
+  `MascotNSView.turn`). Then the sky gives way to one flat pale colour a scene
+  (`SunsetView.field`, the face's own hue) with one thing on it, large, and before
+  each a line alone on white (`card`): the prompt, ⇧Tab walking the agents and the
+  field with them, the camera close on the words as they are typed, the capsule
+  growing into the question and its answer; the agents' faces overlapped in a row
+  with ⌄, opening into the chat list; Ask Boltty over a recording (a region
+  dragged round the whole of it, the orb on its corner, the voice as a wave, the words, the answer and a
+  loop drawn round the silence); the last line, every face in a row turning in
+  turn, gathered into Boltty's own beside its name, and the sky again. There the
+  panel is a plain black shape (`ShowSlab`), not glass: over a pale field the
+  ramp's thin foot read as grey. A made-up app window with a menu bar, the panel
+  at its own size under a caption, and a walk through Settings were there and were
+  removed. A feature's real gesture changing means this script changes with it.
+  The faces come with no flash of light. Its music (115 beats
+  a minute, `show-music`) comes in with the first line on white, each line and
+  scene after it waits for the next beat (`onBeat`), and the faces gathering is
+  `show-ending`; clicks, blips, the ladder of ticks, a bell and a sub hit are
+  one-shots in its key. After the feel of a promo's track, measured and not
+  copied. A whoosh on every move was removed. An agent that wears Boltty's own
+  face wears another here (`MascotRoster.looks(besides:)`). Then the setup card (agents, faces, keys, voice,
   permissions) on the panel's glass. The voice step offers Parakeet and
   Supertonic, both unticked; a ticked one is chosen and downloaded in the
   background once setup ends (`installSetupVoices`), Apple's engine standing
@@ -1626,9 +1635,7 @@ so in the orb ("No sound is reaching the microphone…",
 ## Design contract (AppKit)
 
 - **Icons are Boltty's own** (`BolttyIcon`, `Resources/Icons`;
-  `BolttyIconView` in SwiftUI). Never an SF Symbol: the one left is the Apple
-  mark in the first-run show's made-up menu bar, which is Apple's to draw, not
-  ours. A 16 × 16 grid, a 1.3 stroke with round ends, drawn only of lines and
+  `BolttyIconView` in SwiftUI). Never an SF Symbol. A 16 × 16 grid, a 1.3 stroke with round ends, drawn only of lines and
   true circular arcs, every turn a tangent arc (1.25 at a joint, 2 for a medium corner,
   3.25 for a box's; 0.75 only on a pointer's tips; a few shapes keep a
   size of their own, such as the Return arrow's 2.75). The one turn with no arc is a

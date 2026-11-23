@@ -19,6 +19,18 @@ final class MascotRosterTests: XCTestCase {
 
   // MARK: - What an agent wears when nobody chose
 
+  func testNobodyWearsTheShowsOwnFaceBesideIt() {
+    let hero = MascotLook(shape: .hex, palette: .standard)
+    let roster = MascotRoster(selections: [
+      "opencode": MascotSelection(hero), "grok": MascotSelection(shape: "orb", palette: "lagoon"),
+    ])
+    let looks = roster.looks(besides: hero)
+    XCTAssertEqual(roster.look(for: .opencode).faceID, hero.faceID)
+    XCTAssertFalse(looks.values.contains { $0.faceID == hero.faceID })
+    XCTAssertEqual(Set(looks.values.map(\.palette.id)).union([hero.palette.id]).count, looks.count + 1)
+    XCTAssertEqual(Set(looks.values.map(\.faceID)).count, looks.count)
+  }
+
   func testTheShapeCatalogMatchesTheSixReferenceOutlines() {
     XCTAssertEqual(
       MascotShape.allCases.map(\.rawValue),

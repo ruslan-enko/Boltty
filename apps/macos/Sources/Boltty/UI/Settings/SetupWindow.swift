@@ -35,6 +35,7 @@ struct SetupView: View {
   var onFinish: () -> Void
   @State private var step: SetupStep = Self.firstStep
   @State private var forward = true
+  @FocusState private var primaryFocused: Bool
 
   static let padding: CGFloat = 40
 
@@ -66,6 +67,13 @@ struct SetupView: View {
     .frame(width: SetupWindowController.contentSize.width, height: SetupWindowController.contentSize.height)
     .bolttyInterfaceTypography()
     .task { await model.refreshAgents() }
+    .onAppear { primaryFocused = true }
+    .onChange(of: step) { primaryFocused = true }
+    .onChange(of: access.hasSomethingToAsk) { DispatchQueue.main.async { primaryFocused = true } }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      guard step == .agents, model.adapterRows.contains(where: \.needsLogin) else { return }
+      Task { await model.refreshAgents() }
+    }
   }
 
   // MARK: The left: what this is, what next
@@ -104,12 +112,16 @@ struct SetupView: View {
           .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
+          .focused($primaryFocused)
+          .focusEffectDisabled()
           .accessibilityIdentifier("boltty.setup.continue")
       } else if access.hasSomethingToAsk {
         Button { access.allowAll() } label: { SetupButtonLabel(title: String(localized: "Allow All")) }
           .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
+          .focused($primaryFocused)
+          .focusEffectDisabled()
           .disabled(access.asking != nil)
         Button("Not Now", action: finish)
           .buttonStyle(.glass)
@@ -119,6 +131,8 @@ struct SetupView: View {
           .bolttyProminentButton()
           .controlSize(.extraLarge)
           .keyboardShortcut(.defaultAction)
+          .focused($primaryFocused)
+          .focusEffectDisabled()
           .accessibilityIdentifier("boltty.setup.finish")
       }
       if let previous = step.previous {
@@ -207,7 +221,8 @@ private struct SetupAgentTile: View {
   @State private var identity = UUID()
 
   private var isOn: Bool { row.enabled && row.isReady }
-  private var isDefault: Bool { isOn && model.defaultAgent == row.agent }
+  private var isDefault: Bool { isOn && offersDefault && !model.routesAutomatically && model.defaultAgent == row.agent }
+  private var offersDefault: Bool { model.adapterRows.filter { $0.enabled && $0.isReady }.count > 1 }
 
   var body: some View {
     SetupTile(isOn: isOn, isHovered: isHovered) {
@@ -244,17 +259,21 @@ private struct SetupAgentTile: View {
   @ViewBuilder
   private var footnote: some View {
     if !row.isReady {
-      Text("Not installed")
+      Text(row.needsLogin ? String(localized: "Signed out") : row.status)
         .font(.system(size: 12, design: .rounded))
         .foregroundStyle(.tertiary)
+        .lineLimit(1)
+        .padding(.horizontal, 10)
+        .help(row.status)
     } else if isDefault {
-      Text("Starts here")
+      Button("Starts here") { model.sendNewChats(to: nil) }
+        .buttonStyle(.plain)
         .font(.system(size: 11, weight: .semibold, design: .rounded))
         .padding(.horizontal, 9)
         .padding(.vertical, 3)
         .background(.white.opacity(0.2), in: Capsule())
-    } else if isOn && isHovered {
-      Button("Start here") { model.defaultAgent = row.agent }
+    } else if isOn && isHovered && offersDefault {
+      Button("Start here") { model.sendNewChats(to: row.agent) }
         .buttonStyle(.plain)
         .font(.system(size: 11, weight: .medium, design: .rounded))
         .foregroundStyle(.secondary)
@@ -532,7 +551,7 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
     container.layer?.cornerRadius = Self.cornerRadius
     container.layer?.cornerCurve = .continuous
     container.layer?.masksToBounds = true
-    let glass = PaletteGlassHost(content: hosting, cornerRadius: Self.cornerRadius, style: .bolttyAI)
+    let glass = PaletteGlassHost(content: hosting, cornerRadius: Self.cornerRadius, style: .bolttyAIPrompt)
     glass.translatesAutoresizingMaskIntoConstraints = true
     glass.frame = container.bounds
     glass.autoresizingMask = [.width, .height]
