@@ -2,6 +2,15 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.3
+
+**Chats**
+- Codex: Computer Use asks for each app on a permission card, in Auto Mode too;
+  before, it was refused without asking.
+- Claude Code and Grok: what an MCP server asks is a permission card; before, it
+  was cancelled without asking.
+- Codex: allowing extra access grants it.
+
 ## 0.12.2
 
 **Chats**
@@ -14,11 +23,6 @@ What changed from release to release. The newest is at the top.
 - OpenCode: commands are named by their line; the ring shows the chat's
   context on the free models.
 - The Copy button under an answer is no longer cut off.
-- Codex: Computer Use asks for each app on a permission card, in Auto Mode too;
-  before, it was refused without asking.
-- Claude Code and Grok: what an MCP server asks is a permission card; before, it
-  was cancelled without asking.
-- Codex: allowing extra access grants it.
 
 **Look**
 - A new app icon.
