@@ -2,6 +2,14 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.4
+
+**Chats**
+- The caret stands where the words are when the panel opens, wraps or takes a
+  draft, and ⌘Z over a draft put in place no longer fails.
+- The model chip always shows the effort; a long name gives way at its end.
+- Answers are no longer cut by rounded corners.
+
 ## 0.12.3
 
 **Chats**
