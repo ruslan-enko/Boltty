@@ -8,12 +8,12 @@ final class AskBolttyOverlayController {
   static let pointerOffset = CGVector(dx: 30, dy: -30)
   static let followTime: CFTimeInterval = 0.06
   static let edgeMargin: CGFloat = 8
-  static var bubbleGap: CGFloat { live(6) }
+  static var bubbleGap: CGFloat { live(14) }
   static var bubbleMaxTextWidth: CGFloat { live(340) }
   static let bubbleMaxLines = 5
   static let bubblePadding = CGSize(width: 14, height: 10)
-  static var bubbleCornerRadius: CGFloat { live(18) }
-  static var bubbleShade: NSColor { live(NSColor.black.withAlphaComponent(0.5)) }
+  static var bubbleCornerRadius: CGFloat { live(36) }
+  static var bubbleShade: NSColor { live(NSColor.black.withAlphaComponent(0.25)) }
 
   static let landingOffset = CGVector(dx: 30, dy: -30)
 
