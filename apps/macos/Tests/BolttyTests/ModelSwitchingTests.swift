@@ -163,7 +163,7 @@ final class ModelSwitchingTests: XCTestCase {
     message.failure = MessageFailure(name: "provider.no-route", message: "Model unavailable: strata/gone")
     let report = try XCTUnwrap(AgentFailureReport.make(from: BolttyAISessionPreview(
       id: UUID(), title: "t", agent: .opencode, state: .failed, body: "", messages: [message],
-      modelChip: BolttyAIModelChip(title: "gone", help: ""))))
+      modelChip: BolttyAIModelChip(name: "gone", help: ""))))
     XCTAssertEqual(report.sentence, AgentFailureReport.modelGoneSentence)
     XCTAssertTrue(report.offersModelChoice)
     XCTAssertTrue(report.details.contains("strata/gone"))
@@ -174,7 +174,7 @@ final class ModelSwitchingTests: XCTestCase {
     message.failure = MessageFailure(name: "APIError", message: "Overloaded")
     let report = try XCTUnwrap(AgentFailureReport.make(from: BolttyAISessionPreview(
       id: UUID(), title: "t", agent: .claude, state: .failed, body: "", messages: [message],
-      modelChip: BolttyAIModelChip(title: "Opus", help: ""))))
+      modelChip: BolttyAIModelChip(name: "Opus", help: ""))))
     XCTAssertEqual(report.sentence, AgentFailureReport.universalSentence)
     XCTAssertFalse(report.offersModelChoice)
   }

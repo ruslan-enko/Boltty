@@ -356,7 +356,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       : String(localized: "\(menu.agent.shortDisplayName) no longer offers this model. Choose another.")
     if menu.autoMode == true { help += "\n" + String(localized: "Auto Mode is on") }
     return BolttyAIModelChip(
-      title: [name, effort].compactMap { $0 }.joined(separator: " · "),
+      name: name,
+      effort: effort,
       isGone: menu.goneName != nil,
       help: help
     )

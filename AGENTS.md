@@ -739,7 +739,8 @@ The loop that must keep working:
 - **The model chip says what the chat runs on, in words** ("Opus · High"; a
   CLI that lists only ids gets them read as a name, `ModelSelection.readable`:
   `claude-opus-4-6-thinking` is "Claude Opus 4.6 Thinking"), in the
-  group's inks; a long name gives way in its middle. Its menu (`ModelMenu`) is the
+  group's inks; a long name gives way at its end, never the effort after it,
+  and the padding in its pill holds. Its menu (`ModelMenu`) is the
   models (under their providers when there are several, in submenus past 14), the
   chosen model's efforts, and Auto Mode with what it lets through for this agent.
   Auto was a word of its own here and read as not working, since on most agents
@@ -790,6 +791,13 @@ The loop that must keep working:
   automatic routing never hands a skill to another. The CLIs' own commands are
   never offered: they steer the CLI's session (Grok's `/always-approve` would
   undo Boltty's asking). A slash later in the words is a path, not a command.
+- **The caret is placed by frame, never by a constraint's constant**
+  (`PromptOverlayView`, over the scroll view, with the key hint): it moves inside
+  the layout pass that rewraps the words, where a new constant waits for the next
+  pass. The panel opens with it at the draft's end; every other return of focus
+  leaves it where the person did (`focusField(caretAtEnd:)`). A draft put in place
+  by code drops the whole undo stack: typing is registered on the text storage,
+  and undone over other words it throws.
 - **The agent reads the words, then the files** (`PromptDraft.separated`,
   `PromptExpansion`): a blank line, then the paths in the cards' order, with
   a space between. A draft stored while files stood in the sentence is read into

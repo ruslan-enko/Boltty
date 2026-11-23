@@ -96,19 +96,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   )
   private let attachRestSlot = NSView()
   private lazy var attachRestWidth = attachRestSlot.widthAnchor.constraint(equalToConstant: 0)
-  private let modelChipButton: PaletteIconButton = {
-    let button = PaletteIconButton()
-    button.translatesAutoresizingMaskIntoConstraints = false
-    button.isBordered = false
-    button.bezelStyle = .regularSquare
-    button.imagePosition = .noImage
-    button.font = AgentPaletteView.modelChipFont
-    (button.cell as? NSButtonCell)?.lineBreakMode = .byTruncatingMiddle
-    button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-    return button
-  }()
-  private static let modelChipFont = roundedAppFont(size: AgentPaletteMetrics.folderChipFontSize(chat: true))
-  private static let modelChipMaxWidth: CGFloat = 164
+  private let modelChipButton = ModelChipButton()
   private let modelChipSlot = NSView()
   private lazy var modelChipWidth: NSLayoutConstraint = {
     let width = modelChipSlot.widthAnchor.constraint(equalToConstant: 0)
@@ -994,15 +982,17 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   @discardableResult
-  func focusField() -> Bool {
+  func focusField(caretAtEnd: Bool = false) -> Bool {
     field.isEditable = true
     field.isSelectable = true
     guard window != nil else { return false }
 
     applyPromptForegroundAppearance()
     let accepted = window?.makeFirstResponder(field) == true
-    let end = field.textStorage?.length ?? 0
-    field.setSelectedRange(NSRange(location: end, length: 0))
+    if caretAtEnd {
+      field.setSelectedRange(NSRange(location: field.textStorage?.length ?? 0, length: 0))
+      field.scrollRangeToVisible(field.selectedRange())
+    }
     return accepted
   }
 
@@ -1158,16 +1148,16 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     let chip = composerIsUp && composerGlyphsAreChat ? addressedPreview?.modelChip : nil
     let hidden = chip == nil
     if modelChipButton.isHidden != hidden { modelChipButton.isHidden = hidden }
-    let width = chip.map {
-      let words = NSAttributedString(string: $0.title, attributes: [.font: Self.modelChipFont])
-      return min(ceil(words.size().width) + AgentPaletteMetrics.folderChipPadding(chat: true) * 2,
-                 Self.modelChipMaxWidth)
-    } ?? 0
+    let width = chip.map(ModelChipButton.width) ?? 0
     if modelChipWidth.constant != width {
       modelChipWidth.constant = width
       needsLayout = true
     }
     leadingControls.setCustomSpacing(hidden ? 0 : leadingControls.spacing, after: modelChipSlot)
+    if directorySlot.superview === leadingControls {
+      let gap = hidden ? leadingControls.spacing : AgentPaletteMetrics.modelChipLeadingGap
+      leadingControls.setCustomSpacing(directorySlotWidth.constant == 0 ? leadingControls.spacing : gap, after: directorySlot)
+    }
     guard chip != shownModelChip else { return }
     let wasShown = shownModelChip != nil
     shownModelChip = chip
@@ -1180,7 +1170,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       fade.timingFunction = Motion.standardCurve
       layer.add(fade, forKey: "modelChip")
     }
-    button.title = chip.title
+    button.show(chip)
     button.restingTint = chip.isGone ? AgentPaletteMetrics.failureCardAccent : ComposerControlGroup.restingInk
     button.toolTip = chip.help
     button.setAccessibilityLabel(String(localized: "Model"))
@@ -1198,7 +1188,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     menu.popUp(positioning: nil, at: below, in: modelChipButton)
   }
 
-  var modelChipButtonForTesting: PaletteIconButton { modelChipButton }
+  var modelChipButtonForTesting: ModelChipButton { modelChipButton }
   var isModelChipVisibleForTesting: Bool { !modelChipButton.isHidden }
   func pressModelChipForTesting() { modelChipPressed() }
 
@@ -2739,7 +2729,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
         equalTo: promptForeground.leadingAnchor,
         constant: AgentPaletteMetrics.chatComposerControlsTrailingInset),
       leadingControls.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
-      // The model chip gives way (truncating in its middle) before the foot's two groups meet.
+      // The model chip gives way (the model's name at its end) before the foot's two groups meet.
       leadingControls.trailingAnchor.constraint(
         lessThanOrEqualTo: trailingControls.leadingAnchor,
         constant: -ComposerControlGroup.gap),
@@ -2840,17 +2830,18 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       self.schedulePromptRemeasure()
     }
     promptScroll.contentView.postsBoundsChangedNotifications = true
-    viewObservers.keep(NotificationCenter.default.addObserver(
-      forName: NSView.boundsDidChangeNotification,
-      object: promptScroll.contentView,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor in
-        self?.refreshPromptEdgeFades()
-        self?.field.syncTrailingHintView()
-        self?.field.syncCaret()
-      }
-    })
+    promptScroll.contentView.postsFrameChangedNotifications = true
+    for name in [NSView.boundsDidChangeNotification, NSView.frameDidChangeNotification] {
+      viewObservers.keep(NotificationCenter.default.addObserver(
+        forName: name, object: promptScroll.contentView, queue: .main
+      ) { [weak self] _ in
+        MainActor.assumeIsolated {
+          self?.refreshPromptEdgeFades()
+          self?.field.syncTrailingHintView()
+          self?.field.syncCaret()
+        }
+      })
+    }
 
     resultsStack.edgeInsets = NSEdgeInsets(
       top: AgentPaletteMetrics.resultsVerticalInset,
@@ -4448,8 +4439,13 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private func schedulePromptRemeasure() {
     promptRemeasureWorkItem?.cancel()
     let work = DispatchWorkItem { [weak self] in
-      self?.syncPromptExpansion()
-      self?.syncPromptHeight()
+      guard let self else { return }
+      self.syncPromptExpansion()
+      self.syncPromptHeight()
+      self.layoutSubtreeIfNeeded()
+      self.field.scrollRangeToVisible(self.field.selectedRange())
+      self.field.syncTrailingHintView()
+      self.field.syncCaret()
     }
     promptRemeasureWorkItem = work
     DispatchQueue.main.async(execute: work)
@@ -4971,8 +4967,10 @@ extension AgentPaletteView: NSTextViewDelegate {
     let length = (field.string as NSString).length
     guard NSMaxRange(range) <= length else { return }
     let rest = (field.string as NSString).substring(from: NSMaxRange(range))
-    let spaced = rest.first?.isWhitespace == true ? command.invocation : command.invocation + " "
+    let spaced = rest.first == " " ? command.invocation : command.invocation + " "
     field.insertText(spaced, replacementRange: range)
+    let end = range.location + (command.invocation as NSString).length + 1
+    field.setSelectedRange(NSRange(location: end, length: 0))
     if addressedPreview == nil, let agent = commandList?.agent { holdAgent(agent) }
   }
 

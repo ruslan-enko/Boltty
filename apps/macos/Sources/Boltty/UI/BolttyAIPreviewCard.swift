@@ -1798,7 +1798,11 @@ final class PaletteChatMessageView: NSView {
     fileStack.alignment = .leading
     fileStack.spacing = AgentPaletteMetrics.previewFileRowSpacing
     if !user { bubble.addSubview(fileStack) }
-    if user { bubble.fill = AgentPaletteMetrics.previewUserBubbleFill }
+    if user {
+      bubble.fill = AgentPaletteMetrics.previewUserBubbleFill
+    } else {
+      bubble.radius = 0
+    }
     // The answer's Copy stands past the bubble's edge, by its corner.
     bubble.clipsToBounds = user
     let side = user ? AgentPaletteMetrics.previewUserBubbleHorizontalPadding : 0

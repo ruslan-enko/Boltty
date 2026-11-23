@@ -646,7 +646,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     coverActiveScreen()
 
     panelView.layoutForPresentation()
-    _ = panelView.focusField()
+    _ = panelView.focusField(caretAtEnd: true)
     if drips { dripIn(layer: layer, generation: generation) }
 
     DispatchQueue.main.async { [weak self] in

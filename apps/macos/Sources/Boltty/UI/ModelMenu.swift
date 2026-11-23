@@ -96,3 +96,76 @@ enum ModelMenu {
     return item
   }
 }
+
+/// The name gives way at its end; the effort after it always shows.
+final class ModelChipButton: PaletteIconButton {
+  private let nameLabel = NSTextField(labelWithString: "")
+  private let effortLabel = NSTextField(labelWithString: "")
+  private static let chipFont = roundedAppFont(size: AgentPaletteMetrics.folderChipFontSize(chat: true))
+
+  var titleForTesting: String { nameLabel.stringValue + effortLabel.stringValue }
+
+  override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect)
+    translatesAutoresizingMaskIntoConstraints = false
+    isBordered = false
+    bezelStyle = .regularSquare
+    imagePosition = .noImage
+    title = ""
+    setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    for label in [nameLabel, effortLabel] {
+      label.font = Self.chipFont
+      label.maximumNumberOfLines = 1
+      label.isSelectable = false
+      addSubview(label)
+    }
+    nameLabel.lineBreakMode = .byTruncatingTail
+    effortLabel.lineBreakMode = .byClipping
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  func show(_ chip: BolttyAIModelChip) {
+    nameLabel.stringValue = chip.name
+    effortLabel.stringValue = Self.effortWords(chip)
+    needsLayout = true
+  }
+
+  static func width(of chip: BolttyAIModelChip) -> CGFloat {
+    min(width(chip.name) + width(effortWords(chip)) + AgentPaletteMetrics.modelChipPadding * 2,
+        AgentPaletteMetrics.modelChipMaxWidth)
+  }
+
+  private static func effortWords(_ chip: BolttyAIModelChip) -> String {
+    chip.effort.map { " · " + $0 } ?? ""
+  }
+
+  private static func width(_ words: String) -> CGFloat {
+    ceil(NSAttributedString(string: words, attributes: [.font: chipFont]).size().width)
+  }
+
+  override func applyTint() {
+    super.applyTint()
+    nameLabel.textColor = contentTintColor
+    effortLabel.textColor = contentTintColor
+  }
+
+  override func layout() {
+    super.layout()
+    let padding = AgentPaletteMetrics.modelChipPadding
+    let room = max(0, bounds.width - padding * 2)
+    let effort = min(Self.width(effortLabel.stringValue), room)
+    let name = min(Self.width(nameLabel.stringValue), room - effort)
+    let height = ceil(nameLabel.fittingSize.height)
+    let y = (bounds.height - height) / 2
+    let inset = max(0, (ceil(nameLabel.fittingSize.width) - Self.width(nameLabel.stringValue)) / 2)
+    nameLabel.frame = NSRect(x: padding - inset, y: y, width: name + inset * 2, height: height)
+    effortLabel.frame = NSRect(x: padding + name - inset, y: y, width: effort + inset * 2, height: height)
+  }
+
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    guard !isHidden, frame.contains(point) else { return nil }
+    return self
+  }
+}

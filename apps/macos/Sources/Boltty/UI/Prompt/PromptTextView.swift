@@ -54,8 +54,6 @@ final class PromptTextView: NSTextView {
   }
   var trailingHintDelay = AgentPaletteMetrics.keyHintDelay
   private let trailingHintView = PromptKeyHintView()
-  private var trailingHintLeading: NSLayoutConstraint?
-  private var trailingHintTop: NSLayoutConstraint?
   private var trailingHintTimer: Timer?
   private var trailingHintIsDue = false
   private(set) var isTrailingHintShown = false
@@ -145,24 +143,15 @@ final class PromptTextView: NSTextView {
           visibleRect.minY <= fitted.frame.midY, fitted.frame.midY <= visibleRect.maxY
     else { return setTrailingHintShown(false, animated: animated) }
     let (keys, frame) = fitted
-    if trailingHintView.superview !== host {
-      trailingHintView.removeFromSuperview()
-      trailingHintView.translatesAutoresizingMaskIntoConstraints = false
+    placeOverlay(over: scroll, in: host)
+    if trailingHintView.superview !== overlay {
       trailingHintView.wantsLayer = true
       trailingHintView.alphaValue = 0
-      host.addSubview(trailingHintView, positioned: .above, relativeTo: scroll)
-      let leading = trailingHintView.leadingAnchor.constraint(equalTo: scroll.leadingAnchor)
-      let top = trailingHintView.topAnchor.constraint(equalTo: scroll.topAnchor)
-      NSLayoutConstraint.activate([leading, top])
-      (trailingHintLeading, trailingHintTop) = (leading, top)
+      overlay.addSubview(trailingHintView, positioned: .below, relativeTo: caretView)
     }
     trailingHintView.font = trailingHintFont
     trailingHintView.keys = keys
-    let inScroll = scroll.convert(frame, from: self)
-    trailingHintLeading?.constant = inScroll.minX - scroll.bounds.minX
-    trailingHintTop?.constant = scroll.isFlipped
-      ? inScroll.minY - scroll.bounds.minY
-      : scroll.bounds.maxY - inScroll.maxY
+    trailingHintView.frame = frameInOverlay(frame, of: scroll)
     setTrailingHintShown(true, animated: animated)
   }
 
@@ -189,10 +178,7 @@ final class PromptTextView: NSTextView {
   // MARK: - The caret
 
   private let caretView = PromptCaretView()
-  private var caretLeading: NSLayoutConstraint?
-  private var caretTop: NSLayoutConstraint?
-  private var caretWidth: NSLayoutConstraint?
-  private var caretHeight: NSLayoutConstraint?
+  private let overlay = PromptOverlayView()
   private var caretWindowObservers: [NSObjectProtocol] = []
   private(set) var isCaretShown = false
 
@@ -287,34 +273,48 @@ final class PromptTextView: NSTextView {
           let scroll = enclosingScrollView, let host = scroll.superview,
           visibleRect.minY <= bar.midY, bar.midY <= visibleRect.maxY
     else { return setCaretShown(false) }
-    if caretView.superview !== host {
-      caretView.removeFromSuperview()
-      caretView.translatesAutoresizingMaskIntoConstraints = false
+    placeOverlay(over: scroll, in: host)
+    if caretView.superview !== overlay {
       caretView.glowColors = Self.caretGlowColors(of: caretPalette)
-      host.addSubview(caretView, positioned: .above, relativeTo: scroll)
-      let leading = caretView.leadingAnchor.constraint(equalTo: scroll.leadingAnchor)
-      let top = caretView.topAnchor.constraint(equalTo: scroll.topAnchor)
-      let width = caretView.widthAnchor.constraint(equalToConstant: 0)
-      let height = caretView.heightAnchor.constraint(equalToConstant: 0)
-      NSLayoutConstraint.activate([leading, top, width, height])
-      (caretLeading, caretTop, caretWidth, caretHeight) = (leading, top, width, height)
+      overlay.addSubview(caretView)
     }
     caretView.apply(look)
-    let size = PromptCaretView.size(for: look)
-    let frame = bar.insetBy(dx: -look.glowMargin, dy: -look.glowMargin)
-    let inScroll = scroll.convert(frame, from: self)
-    caretLeading?.constant = inScroll.minX - scroll.bounds.minX
-    caretTop?.constant = scroll.isFlipped
-      ? inScroll.minY - scroll.bounds.minY
-      : scroll.bounds.maxY - inScroll.maxY
-    caretWidth?.constant = size.width
-    caretHeight?.constant = size.height
+    caretView.frame = NSRect(
+      origin: frameInOverlay(
+        bar.insetBy(dx: -look.glowMargin, dy: -look.glowMargin), of: scroll).origin,
+      size: PromptCaretView.size(for: look))
     let arriving = !isCaretShown
     setCaretShown(true)
     if arriving || restartBlink {
       caretView.restartBlink(
         delay: AgentPaletteMetrics.caretBlinkDelay, period: AgentPaletteMetrics.caretBlinkPeriod)
     }
+  }
+
+  /// The caret and the hint are placed by frame. Most often they move inside the
+  /// layout pass that rewraps the words, where a constraint's new constant is
+  /// only applied by the next pass, so the caret stood where the words had been.
+  private func placeOverlay(over scroll: NSScrollView, in host: NSView) {
+    guard overlay.superview !== host else { return }
+    overlay.removeFromSuperview()
+    overlay.translatesAutoresizingMaskIntoConstraints = false
+    host.addSubview(overlay, positioned: .above, relativeTo: scroll)
+    NSLayoutConstraint.activate([
+      overlay.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+      overlay.topAnchor.constraint(equalTo: scroll.topAnchor),
+      overlay.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+      overlay.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+    ])
+  }
+
+  private func frameInOverlay(_ rect: NSRect, of scroll: NSScrollView) -> NSRect {
+    let inScroll = scroll.convert(rect, from: self)
+    return backingAlignedRect(NSRect(
+      x: inScroll.minX - scroll.bounds.minX,
+      y: scroll.isFlipped
+        ? inScroll.minY - scroll.bounds.minY
+        : scroll.bounds.maxY - inScroll.maxY,
+      width: inScroll.width, height: inScroll.height), options: .alignAllEdgesNearest)
   }
 
   private func setCaretShown(_ shown: Bool) {
@@ -457,9 +457,10 @@ final class PromptTextView: NSTextView {
   override func setFrameSize(_ newSize: NSSize) {
     let widthMoved = abs(newSize.width - frame.width) > 0.5
     super.setFrameSize(newSize)
-    guard widthMoved else { return }
-    lastReportedContentHeight = clampedContentHeight
-    onWrapWidthChange?()
+    if widthMoved {
+      lastReportedContentHeight = clampedContentHeight
+      onWrapWidthChange?()
+    }
     syncTrailingHintView()
     syncCaret()
   }
@@ -612,12 +613,19 @@ final class PromptTextView: NSTextView {
     textStorage?.setAttributedString(NSAttributedString(string: words, attributes: defaultTypingAttributes))
     typingAttributes = defaultTypingAttributes
     setSelectedRange(NSRange(location: textStorage?.length ?? 0, length: 0))
-    undoManager?.removeAllActions(withTarget: self)
+    forgetUndo()
     if attachments != self.attachments {
       self.attachments = attachments
       onAttachmentsChange?(false)
     }
     didChangeText()
+  }
+
+  /// All of it: typing is registered on the text storage, not on this view, and
+  /// undone over words it was not written for it throws.
+  private func forgetUndo() {
+    breakUndoCoalescing()
+    undoManager?.removeAllActions()
   }
 
   func replaceTail(from location: Int, with text: String) {
@@ -629,6 +637,7 @@ final class PromptTextView: NSTextView {
     )
     typingAttributes = defaultTypingAttributes
     setSelectedRange(NSRange(location: textStorage.length, length: 0))
+    forgetUndo()
     didChangeText()
   }
 
@@ -636,7 +645,7 @@ final class PromptTextView: NSTextView {
     textStorage?.setAttributedString(NSAttributedString())
     typingAttributes = defaultTypingAttributes
     setSelectedRange(NSRange(location: 0, length: 0))
-    undoManager?.removeAllActions(withTarget: self)
+    forgetUndo()
     if !attachments.isEmpty {
       attachments = []
       onAttachmentsChange?(false)
@@ -797,6 +806,20 @@ final class PromptTextView: NSTextView {
     typingAttributes = defaultTypingAttributes
     setAccessibilityIdentifier("boltty.ask.input")
   }
+}
+
+private final class PromptOverlayView: NSView {
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    autoresizesSubviews = false
+    clipsToBounds = false
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override var isFlipped: Bool { true }
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 struct PromptKeyHint: Equatable {

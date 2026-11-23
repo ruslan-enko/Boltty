@@ -62,7 +62,7 @@ final class AgentPaletteControllerTests: XCTestCase {
       efforts: [AgentEffortOption(value: "high")], effort: "high", autoMode: true)
     conversations.previews[id] = BolttyAISessionPreview(
       id: id, title: chat.title, agent: .claude, state: .finished, body: "Done.", autoMode: true,
-      modelChip: BolttyAIModelChip(title: "Opus · High", help: ""))
+      modelChip: BolttyAIModelChip(name: "Opus", effort: "High", help: ""))
     controller.show()
     defer { controller.hide() }
     controller.addressConversation(id)

@@ -1102,7 +1102,7 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(hint.font.pointSize, AgentPaletteMetrics.promptFontSize)
     XCTAssertEqual(hint.drawnText, "\u{2014} Ask Claude")
     let scroll = try XCTUnwrap(view.field.enclosingScrollView)
-    XCTAssertTrue(hint.superview === scroll.superview, "beside the scroll view, never cut to it")
+    XCTAssertTrue(hint.superview?.superview === scroll.superview, "beside the scroll view, never cut to it")
 
     let expected = try XCTUnwrap(view.field.trailingHintFrame)
     let placed = view.field.convert(hint.frame, from: hint.superview)
@@ -1711,6 +1711,175 @@ final class AgentPaletteViewTests: XCTestCase {
     view.cancelAllAnimationsAndSettle()
     XCTAssertEqual(caret.color, AgentPaletteView.promptTypingTextColor)
     XCTAssertEqual(view.field.insertionPointColor, .clear)
+  }
+
+  // MARK: - Where the caret stands
+
+  private static let wrappedDraft =
+    "Так у мене є програма орка слайсер і я хочу щоб ти зробив декілька профайлів для пла і для петг"
+
+  private func makePanel(showing view: AgentPaletteView) -> KeyablePanel {
+    let panel = KeyablePanel(
+      contentRect: CGRect(x: 0, y: 0, width: 1440, height: 900),
+      styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+    panel.contentView = view
+    panel.makeKeyAndOrderFront(nil)
+    view.layoutForPresentation()
+    XCTAssertTrue(view.focusField())
+    return panel
+  }
+
+  private func assertCaretStandsInTheWords(
+    _ view: AgentPaletteView, _ label: String, file: StaticString = #filePath, line: UInt = #line
+  ) throws {
+    let field = view.field
+    let caret = field.caretViewForTesting
+    let bar = try XCTUnwrap(field.caretBarRect, label, file: file, line: line)
+    XCTAssertTrue(field.isCaretShown && !caret.isHidden, label, file: file, line: line)
+    XCTAssertNotNil(caret.superview, label, file: file, line: line)
+    let drawn = caret.convert(caret.bounds, to: view)
+    let words = field.convert(bar, to: view)
+    XCTAssertEqual(drawn.midX, words.midX, accuracy: 1, label, file: file, line: line)
+    XCTAssertEqual(drawn.midY, words.midY, accuracy: 1, label, file: file, line: line)
+  }
+
+  private func settle(_ view: AgentPaletteView, _ seconds: TimeInterval = 0.8) {
+    RunLoop.current.run(until: Date().addingTimeInterval(seconds))
+    view.window?.displayIfNeeded()
+  }
+
+  func testTheCaretFollowsTheWordsAsTheFolderChipNarrowsThem() throws {
+    let view = makeScreenSizedView()
+    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+    let panel = makePanel(showing: view)
+    defer { panel.orderOut(nil) }
+    view.setChatDraft(PromptDraft(Self.wrappedDraft))
+    settle(view)
+    try assertCaretStandsInTheWords(view, "home")
+
+    for path in ["/Users/someone/Downloads", "/Users/someone/A much longer folder", NSHomeDirectory()] {
+      view.setWorkingDirectory(.forNewPrompt(path: path, honoursWorkingDirectory: true))
+      view.layoutSubtreeIfNeeded()
+      try assertCaretStandsInTheWords(view, "at once, \(path)")
+      settle(view)
+      try assertCaretStandsInTheWords(view, path)
+    }
+  }
+
+  func testTheCaretStandsInTheWordsWhenThePanelReopens() throws {
+    let view = makeScreenSizedView()
+    view.setWorkingDirectory(.forNewPrompt(path: NSHomeDirectory(), honoursWorkingDirectory: true))
+    let panel = makePanel(showing: view)
+    defer { panel.orderOut(nil) }
+    view.setChatDraft(PromptDraft(Self.wrappedDraft))
+    settle(view)
+
+    view.cancelAllAnimationsAndSettle()
+    panel.orderOut(nil)
+    settle(view, 0.1)
+    view.cancelAllAnimationsAndSettle()
+    view.setWorkingDirectory(.forNewPrompt(
+      path: "/Users/someone/Downloads", honoursWorkingDirectory: true))
+    view.prepareForPresentation()
+    view.prepareCapsuleForEntrance()
+    panel.makeKeyAndOrderFront(nil)
+    view.layoutForPresentation()
+    _ = view.focusField()
+    try assertCaretStandsInTheWords(view, "first frame")
+    settle(view)
+    try assertCaretStandsInTheWords(view, "settled")
+  }
+
+  func testTheCaretStandsInTheWordsOnEveryWayThereIs() throws {
+    let view = makeScreenSizedView()
+    view.setWorkingDirectory(.forNewPrompt(
+      path: "/Users/someone/Downloads", honoursWorkingDirectory: true))
+    let panel = makePanel(showing: view)
+    defer { panel.orderOut(nil) }
+    let field = view.field
+    func check(_ label: String, atEnd: Bool = true) throws {
+      try assertCaretStandsInTheWords(view, label + ", at once")
+      settle(view, 0.6)
+      try assertCaretStandsInTheWords(view, label)
+      if atEnd { XCTAssertEqual(field.selectedRange().location, field.string.utf16.count, label) }
+    }
+
+    for word in Self.wrappedDraft.split(separator: " ") {
+      field.insertText(String(word) + " ", replacementRange: field.selectedRange())
+    }
+    try check("typed past one line")
+
+    field.insertPlainText(String(repeating: "ще декілька слів ", count: 40))
+    try check("pasted past five lines")
+
+    view.setChatDraft(PromptDraft(Self.wrappedDraft))
+    try check("a draft put back")
+
+    let card = PromptAttachment.file(URL(fileURLWithPath: "/tmp/notes.txt"))
+    field.insertAttachments([card])
+    try check("a card added")
+    field.setSelectedRange(NSRange(location: 0, length: 0))
+    let undo = try XCTUnwrap(field.undoManager)
+    while undo.groupingLevel > 0 { undo.endUndoGrouping() }
+    undo.beginUndoGrouping()
+    XCTAssertTrue(field.removeLastAttachmentFromFieldStart())
+    undo.endUndoGrouping()
+    try check("Backspace took the card", atEnd: false)
+    undo.undo()
+    try check("undo brought it back", atEnd: false)
+    XCTAssertEqual(field.attachments, [card])
+    field.setSelectedRange(NSRange(location: 5, length: 0))
+    _ = view.focusField()
+    XCTAssertEqual(field.selectedRange().location, 5, "left where the person put it")
+    try check("in the middle", atEnd: false)
+
+    let held = view.currentDraft
+    view.setChatDraft(PromptDraft())
+    settle(view, 0.2)
+    view.setChatDraft(held)
+    try check("out for a region and back")
+    view.setChatDraft(PromptDraft(Self.wrappedDraft))
+
+    view.showError("Not ready")
+    _ = view.focusField()
+    try check("a refusal keeps the words")
+
+    view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode, state: .finished, body: "Done"))
+    try check("into a chat")
+    view.setChatDraft(PromptDraft(Self.wrappedDraft + " " + Self.wrappedDraft))
+    try check("a long reply")
+    view.setVoiceListening(true)
+    view.applyVoiceTranscript(" і ще трохи слів")
+    view.setVoiceListening(false)
+    try check("dictated in a chat")
+
+    view.leaveAddressing(animated: true)
+    try check("back on the first screen")
+
+    view.setChatDraft(PromptDraft(Self.wrappedDraft))
+    view.setVoiceListening(true)
+    view.applyVoiceTranscript(" і ще трохи слів")
+    settle(view, 0.3)
+    view.setVoiceListening(false)
+    try check("dictated on the first screen")
+
+    view.openSwitcher()
+    settle(view, 0.4)
+    view.closeSwitcher()
+    try check("back from the list")
+  }
+
+  func testUndoAfterADraftIsPutBackDoesNotReachTheWordsBeforeIt() {
+    let view = makeScreenSizedView()
+    let panel = makePanel(showing: view)
+    defer { panel.orderOut(nil) }
+    view.field.insertPlainText(String(repeating: "many words ", count: 20))
+    view.setChatDraft(PromptDraft("short"))
+    XCTAssertEqual(view.field.undoManager?.canUndo, false)
+    view.field.insertPlainText(" typed again and again")
+    view.setVoiceListening(true)
+    view.applyVoiceTranscript(" spoken")
+    XCTAssertEqual(view.field.undoManager?.canUndo, false)
   }
 
   func testDismissalIncludesAllPartsOfTheUnifiedSurface() {
@@ -3460,11 +3629,11 @@ final class AgentPaletteViewTests: XCTestCase {
     view.onModelMenu = { menus += 1 }
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .claude,
       state: .finished, body: "Done.",
-      modelChip: BolttyAIModelChip(title: "Opus · High", help: "Model")))
+      modelChip: BolttyAIModelChip(name: "Opus", effort: "High", help: "Model")))
     view.layoutSubtreeIfNeeded()
     XCTAssertTrue(view.isModelChipVisibleForTesting)
     let button = view.modelChipButtonForTesting
-    XCTAssertEqual(button.title, "Opus · High")
+    XCTAssertEqual(button.titleForTesting, "Opus · High")
     XCTAssertEqual(button.restingTint, ComposerControlGroup.restingInk)
     XCTAssertEqual(button.helpShortcut, "⇧⌘M")
     let field = view.promptCapsuleFrameForTesting
@@ -3483,7 +3652,7 @@ final class AgentPaletteViewTests: XCTestCase {
     let view = makeScreenSizedView()
     view.enterAddressing(.init(id: UUID(), title: "Chat", agent: .opencode,
       state: .failed, body: "",
-      modelChip: BolttyAIModelChip(title: "qwen3.8-flash", isGone: true, help: "Gone")))
+      modelChip: BolttyAIModelChip(name: "qwen3.8-flash", isGone: true, help: "Gone")))
     view.layoutSubtreeIfNeeded()
     XCTAssertEqual(view.modelChipButtonForTesting.restingTint, AgentPaletteMetrics.failureCardAccent)
   }

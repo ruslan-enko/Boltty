@@ -796,6 +796,9 @@ enum AgentPaletteMetrics {
   static func folderChipIconGap(chat: Bool) -> CGFloat { chat ? 5 : 6 }
   static func folderChipCornerRadius(chat: Bool) -> CGFloat { chat ? 6.5 : 7 }
   static func folderChipFontSize(chat: Bool) -> CGFloat { chat ? 14.5 : typeSecondary }
+  static let modelChipPadding: CGFloat = 9
+  static let modelChipMaxWidth: CGFloat = 260
+  static let modelChipLeadingGap: CGFloat = 4
   static let folderChipMaxNameWidth: CGFloat = 120
   static let folderChipSlotMargin: CGFloat = 2
   static let folderChipFill = PaletteInk.tertiaryFill

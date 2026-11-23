@@ -53,9 +53,12 @@ enum BolttyAIFollowUp {
 }
 
 struct BolttyAIModelChip: Equatable, Sendable {
-  let title: String
+  let name: String
+  var effort: String? = nil
   var isGone = false
   var help: String
+
+  var title: String { [name, effort].compactMap { $0 }.joined(separator: " · ") }
 }
 
 struct BolttyAIModelMenu: Equatable, Sendable {
