@@ -946,6 +946,13 @@ final class AgentPaletteControllerTests: XCTestCase {
     RunLoop.main.run(until: Date().addingTimeInterval(0.25))
   }
 
+  private func settle(until isDone: () -> Bool) {
+    let deadline = Date().addingTimeInterval(5)
+    while !isDone(), Date() < deadline {
+      RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+    }
+  }
+
   func testComingFromFinderBringsTheSelectionAsAChip() throws {
     let (_, controller, _) = makeController()
     let file = finderFile()
@@ -957,7 +964,7 @@ final class AgentPaletteControllerTests: XCTestCase {
     defer { controller.hide() }
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
 
-    settle()
+    settle(until: { !view.currentDraft.attachments.isEmpty })
     XCTAssertEqual(view.currentDraft.attachments.count, 1)
   }
 
