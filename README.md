@@ -169,6 +169,16 @@ open Boltty.xcodeproj   # then ⌘R
 More in [CONTRIBUTING.md](CONTRIBUTING.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 
+## Support
+
+Boltty is free and open source, and I build it on my own. If it's useful to
+you, you can [buy me a coffee on Ko-fi](https://ko-fi.com/enkowork). It helps me
+keep working on it.
+
+<p>
+  <a href="https://ko-fi.com/enkowork"><img src="https://img.shields.io/badge/Ko--fi-Support%20Boltty-FF5E5B?logo=kofi&logoColor=white" alt="Support Boltty on Ko-fi"></a>
+</p>
+
 ## License
 
 MIT, see [LICENSE](LICENSE). Use it, change it, share it, keeping the
