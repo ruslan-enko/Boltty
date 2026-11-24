@@ -351,6 +351,7 @@ struct AgentsSettingsPage: View {
 
 extension AgentSettingsRow {
   var summary: String {
+    if let failure = install?.failure { return failure }
     guard isReady else { return status }
     guard enabled else { return String(localized: "Off") }
     var parts: [String] = []
@@ -459,7 +460,7 @@ private struct AgentSettingsListRow: View {
       .accessibilityHint("Opens its model, permissions and face")
       .accessibilityIdentifier("boltty.settings.agent.\(row.agent.rawValue).open")
 
-      AgentEnabledSwitch(model: model, row: row)
+      AgentPresence(model: model, row: row)
         .controlSize(.small)
 
       Button(action: open) {
@@ -480,6 +481,7 @@ private struct AgentSettingsListRow: View {
     .animation(SettingsMotion.quick, value: isHovered)
     .contextMenu {
       Button("Open \(row.agent.shortDisplayName) Settings", action: open)
+      if let install = row.install { CopyCommandButton(command: install.command) }
     }
   }
 }
@@ -534,7 +536,7 @@ private struct AgentSettingsDetail: View {
           .textSelection(.enabled)
       }
       Spacer(minLength: 12)
-      AgentEnabledSwitch(model: model, row: row)
+      AgentPresence(model: model, row: row)
     }
     .padding(.vertical, 4)
   }
@@ -611,6 +613,20 @@ private struct AgentSettingsDetail: View {
     }
     .pickerStyle(.menu)
     .accessibilityIdentifier("boltty.settings.permissions.\(row.agent.rawValue)")
+  }
+}
+
+/// An agent that is not here has nothing to switch: it is installed instead.
+private struct AgentPresence: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  let row: AgentSettingsRow
+
+  var body: some View {
+    if let install = row.install {
+      AgentInstallButton(model: model, agent: row.agent, install: install)
+    } else {
+      AgentEnabledSwitch(model: model, row: row)
+    }
   }
 }
 

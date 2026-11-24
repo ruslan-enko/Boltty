@@ -65,6 +65,8 @@ struct AgentInstallation: Identifiable, Equatable, Sendable {
 
   var id: AgentId { provider }
   var isReady: Bool { availability.isAvailable }
+  var isInstalled: Bool { availability.isInstalled }
+
   var needsLogin: Bool {
     if case .needsLogin = availability { return true }
     return false

@@ -89,6 +89,7 @@ protocol BolttyAIConversations: AnyObject {
   func answer(_ question: AgentQuestion, with values: [String]) async throws -> Bool
 
   var providerAvailability: AgentAvailability? { get }
+  var hasInstalledAgent: Bool { get }
 
   func saveDraft(_ draft: PromptDraft, for id: UUID)
   func stopConversation(id: UUID) async
@@ -159,6 +160,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     guard engine.hasProbed else { return nil }
     return automaticProviderID() == nil ? .notInstalled : .available(version: nil)
   }
+
+  var hasInstalledAgent: Bool { engine.registry.installations.contains(where: \.isInstalled) }
 
   func switcherItems() -> [BolttyAISessionItem] {
     BolttyAISessionList.items(

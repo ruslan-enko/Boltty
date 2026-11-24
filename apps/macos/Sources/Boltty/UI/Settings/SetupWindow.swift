@@ -24,8 +24,10 @@ enum SetupStep: Int, CaseIterable {
     }
   }
 
-  var next: SetupStep? { SetupStep(rawValue: rawValue + 1) }
-  var previous: SetupStep? { SetupStep(rawValue: rawValue - 1) }
+  /// With no agent there is no face to give.
+  static func steps(hasNoAgents: Bool) -> [SetupStep] {
+    hasNoAgents ? allCases.filter { $0 != .mascots } : allCases
+  }
 }
 
 struct SetupView: View {
@@ -45,6 +47,22 @@ struct SetupView: View {
     #else
     return .agents
     #endif
+  }
+
+  private var steps: [SetupStep] { SetupStep.steps(hasNoAgents: model.hasNoAgents) }
+  private var index: Int { steps.firstIndex(of: step) ?? 0 }
+  private var next: SetupStep? { steps.indices.contains(index + 1) ? steps[index + 1] : nil }
+  private var previous: SetupStep? { index > 0 ? steps[index - 1] : nil }
+  private var asksForAgent: Bool { step == .agents && model.hasNoAgents }
+  private var title: String {
+    asksForAgent ? String(localized: "Boltty needs an agent") : step.title
+  }
+  private var subtitle: [(String, Bool)] {
+    guard asksForAgent else { return step.subtitle }
+    return [
+      (String(localized: "None of these is on your Mac yet."), true),
+      (String(localized: "\nInstall one and sign in to it, and Boltty has someone to ask."), false),
+    ]
   }
 
   var body: some View {
@@ -71,7 +89,7 @@ struct SetupView: View {
     .onChange(of: step) { primaryFocused = true }
     .onChange(of: access.hasSomethingToAsk) { DispatchQueue.main.async { primaryFocused = true } }
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-      guard step == .agents, model.adapterRows.contains(where: \.needsLogin) else { return }
+      guard step == .agents, model.adapterRows.contains(where: { !$0.isReady }) else { return }
       Task { await model.refreshAgents() }
     }
   }
@@ -81,14 +99,14 @@ struct SetupView: View {
   private var words: some View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 14) {
-        Text("Step \(step.rawValue + 1) of \(SetupStep.allCases.count)")
+        Text("Step \(index + 1) of \(steps.count)")
           .font(.system(size: 13, weight: .medium, design: .rounded))
           .foregroundStyle(.secondary)
           .monospacedDigit()
           .padding(.bottom, -6)
-        Text(step.title)
+        Text(title)
           .font(.system(size: 32, weight: .semibold, design: .rounded))
-        step.subtitle.reduce(Text(verbatim: "")) { text, part in
+        subtitle.reduce(Text(verbatim: "")) { text, part in
           text + Text(part.0).foregroundStyle(part.1 ? .primary : .secondary)
         }
         .font(.system(size: 15, design: .rounded))
@@ -107,7 +125,12 @@ struct SetupView: View {
 
   private var buttons: some View {
     HStack(spacing: 10) {
-      if let next = step.next {
+      if asksForAgent, let next {
+        Button("Not Now") { go(to: next) }
+          .buttonStyle(.glass)
+          .controlSize(.extraLarge)
+          .accessibilityIdentifier("boltty.setup.continue")
+      } else if let next {
         Button { go(to: next) } label: { SetupButtonLabel(title: String(localized: "Continue")) }
           .bolttyProminentButton()
           .controlSize(.extraLarge)
@@ -135,7 +158,7 @@ struct SetupView: View {
           .focusEffectDisabled()
           .accessibilityIdentifier("boltty.setup.finish")
       }
-      if let previous = step.previous {
+      if let previous {
         Button("Back") { go(to: previous) }
           .buttonStyle(.glass)
           .controlSize(.extraLarge)
@@ -201,11 +224,47 @@ private struct SetupTile<Content: View>: View {
 private struct SetupAgentsVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
   let onFaceHover: (Int) -> Void
+  @State private var hovered: AgentId?
+
+  private var installable: [AgentSettingsRow] { model.adapterRows.filter { $0.install != nil } }
+
+  private var note: String {
+    let row = installable.first { $0.agent == hovered }
+      ?? installable.first { $0.install?.failure != nil }
+    if let failure = row?.install?.failure {
+      return String(localized: "\(row?.agent.displayName ?? "") was not installed: \(failure)")
+    }
+    return String(localized: "Install runs the agent’s own installer. You sign in to it afterwards.")
+  }
 
   var body: some View {
+    VStack(alignment: .leading, spacing: 14) {
+      grid
+      if !installable.isEmpty {
+        VStack(alignment: .leading, spacing: 4) {
+          Text(note)
+            .font(.system(size: 12, design: .rounded))
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+          if let install = installable.first(where: { $0.agent == hovered })?.install {
+            Text(verbatim: install.command)
+              .font(.system(size: 11, design: .monospaced))
+              .foregroundStyle(.tertiary)
+              .lineLimit(1)
+          }
+        }
+        .padding(.horizontal, 6)
+      }
+    }
+  }
+
+  private var grid: some View {
     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
       ForEach(Array(model.adapterRows.enumerated()), id: \.element.id) { index, row in
         SetupAgentTile(model: model, row: row, onHover: { onFaceHover(index) })
+          .onHover { inside in
+            if inside { hovered = row.agent } else if hovered == row.agent { hovered = nil }
+          }
           .frame(height: 140)
       }
     }
@@ -235,7 +294,7 @@ private struct SetupAgentTile: View {
         Text(row.agent.shortDisplayName)
           .font(.system(size: 15, weight: .semibold, design: .rounded))
           .foregroundStyle(isOn ? .primary : .secondary)
-        ZStack { footnote }.frame(height: 20)
+        ZStack { footnote }.frame(height: 22)
       }
     }
     .onTapGesture {
@@ -249,8 +308,11 @@ private struct SetupAgentTile: View {
       onHover()
     }
     .animation(SettingsMotion.quick, value: isOn)
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(.isButton)
+    .contextMenu {
+      if let install = row.install { CopyCommandButton(command: install.command) }
+    }
+    .accessibilityElement(children: row.install == nil ? .combine : .contain)
+    .accessibilityAddTraits(row.install == nil ? .isButton : [])
     .accessibilityLabel(row.agent.displayName)
     .accessibilityValue(isOn ? "On" : "Off")
     .accessibilityIdentifier("boltty.setup.agent.\(row.agent.rawValue)")
@@ -258,7 +320,12 @@ private struct SetupAgentTile: View {
 
   @ViewBuilder
   private var footnote: some View {
-    if !row.isReady {
+    if let install = row.install {
+      AgentInstallButton(model: model, agent: row.agent, install: install)
+        .buttonStyle(.glass)
+        .buttonBorderShape(.capsule)
+        .controlSize(.small)
+    } else if !row.isReady {
       Text(row.needsLogin ? String(localized: "Signed out") : row.status)
         .font(.system(size: 12, design: .rounded))
         .foregroundStyle(.tertiary)
@@ -292,7 +359,8 @@ private struct SetupMascotsVisual: View {
   let onFaceHover: (Int) -> Void
 
   private var agents: [AgentId] {
-    model.enabledAdapters.isEmpty ? AgentHistory.tabOrder : model.enabledAdapters
+    let here = model.adapterRows.filter { $0.enabled && $0.isInstalled }.map(\.agent)
+    return here.isEmpty ? AgentHistory.tabOrder : here
   }
 
   var body: some View {

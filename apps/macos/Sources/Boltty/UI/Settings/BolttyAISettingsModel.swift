@@ -81,6 +81,10 @@ final class BolttyAISettingsModel: ObservableObject {
     engine.objectWillChange
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
+    engine.installer.$states
+      .receive(on: RunLoop.main)
+      .sink { [weak self] _ in self?.objectWillChange.send() }
+      .store(in: &cancellables)
     engine.$modelsByProvider
       .receive(on: RunLoop.main)
       .sink { [weak self] models in self?.modelsByProvider = models }
@@ -296,6 +300,8 @@ final class BolttyAISettingsModel: ObservableObject {
         status: installation?.statusText ?? String(localized: "Not installed"),
         isReady: installation?.isReady == true,
         needsLogin: installation?.needsLogin == true,
+        isInstalled: installation?.isInstalled == true,
+        install: installState(of: agent, installation),
         offersModels: installation?.capabilities.contains(.modelSelection) == true,
         models: models,
         selectedModelID: selectedModelID,
@@ -304,6 +310,29 @@ final class BolttyAISettingsModel: ObservableObject {
         offersAutoApproval: installation?.capabilities.contains(.autoApproval) == true,
         autoApprove: appModel.settings.autoApproveProviderIDs.contains(agent.rawValue)
       )
+    }
+  }
+
+  var hasNoAgents: Bool {
+    engine.hasProbed && !adapterRows.contains(where: \.isInstalled)
+  }
+
+  private func installState(of agent: AgentId, _ installation: AgentInstallation?) -> AgentSettingsRow.Install? {
+    guard engine.hasProbed, installation?.isInstalled != true,
+          let recipe = AgentInstaller.recipe(for: agent)
+    else { return nil }
+    return .init(command: recipe.command, state: engine.installer.states[agent])
+  }
+
+  func install(_ agent: AgentId) {
+    Task { [engine, appModel] in
+      await engine.installer.install(agent) {
+        // A scan already under way may have looked before the installer ended.
+        if let agentsRefresh { await agentsRefresh.value }
+        await refreshAgents()
+        appModel.updateSettings { $0.setProvider(agent.rawValue, enabled: true) }
+        appModel.agentCatalog.scan()
+      }
     }
   }
 
@@ -635,6 +664,20 @@ struct AgentSettingsRow: Identifiable, Equatable {
   let status: String
   let isReady: Bool
   let needsLogin: Bool
+  let isInstalled: Bool
+  /// Only where the agent is not here and its installer can bring it.
+  let install: Install?
+
+  struct Install: Equatable {
+    let command: String
+    let state: AgentInstaller.State?
+
+    var isRunning: Bool { state == .installing }
+    var failure: String? {
+      if case let .failed(reason) = state { return reason }
+      return nil
+    }
+  }
   let offersModels: Bool
   let models: [AgentModelOption]
   let selectedModelID: String?

@@ -211,10 +211,10 @@ fi
 # OpenCode шукається тим самим `JSONLineProcess.locate`, що й решта.
 # `"-c"` сам по собі — ще не оболонка (`git branch -c`), тож шукаємо його поруч із `sh`.
 ran=$((ran + 1))
-ALLOWED="$SRC/Chat/Agent/JSONLineProcess.swift"
+ALLOWED="$SRC/Chat/Agent/JSONLineProcess.swift|$SRC/Services/AgentInstaller.swift"
 hits=$(code_only $(swift_files "$SRC") | grep -E '"-lc"|"(ba|z)?sh",[[:space:]]*"-c"|/bin/(ba|z)?sh"' | grep -vE "^($ALLOWED):" || true)
 [[ -n "$hits" ]] && report "новий виклик оболонки" \
-  "Промпти йдуть у stdin, не в sh. Один відомий виклик — пошук бінарника, і він на обліку." "$hits"
+  "Промпти йдуть у stdin, не в sh. Відомих два: пошук бінарника і встановлювач агента, скрипт якого йде в stdin." "$hits"
 
 # ── Підсумок ──────────────────────────────────────────────────────────────
 echo ""

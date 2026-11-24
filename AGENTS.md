@@ -80,6 +80,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Line-protocol plumbing | `Chat/Agent/JSONLineProcess.swift`, `OneShotCommand.swift`, `JSONObject.swift` |
 | Adapters | `Chat/OpenCode/`, `Chat/ClaudeCode/`, `Chat/Codex/`, `Chat/Grok/`, `Chat/Antigravity/` |
 | CLI records, transcript readers, usage stats | `Chat/Native/` |
+| Agents' installers | `Services/AgentInstaller.swift`, `UI/Settings/AgentInstallButton.swift` |
 | Panel ↔ conversations | `Chat/BolttyAIConversations.swift` (implemented by `ChatWorkspaceCoordinator`) |
 | Panel | `UI/AgentPalette*`, metrics in `UI/AgentPaletteMetrics.swift` |
 | What comes with the words | `UI/Prompt/PromptAttachmentStrip.swift`, `PromptAttachmentCard.swift`, `Models/PromptDraft.swift`, `Services/PasteboardIngest.swift` |
@@ -208,8 +209,9 @@ no adapter; never offer a toggle for them.
 - Resume only by stored id: `--resume <id>`; never `--last` or `--continue`.
 - No `bypassPermissions`. `--dangerously-skip-permissions` appears only in
   `AntigravityClient`, beside its gate.
-- The shell is called in one place: `JSONLineProcess.locate`'s `command -v`
-  fallback. Prompts go down stdin, never through `sh`.
+- The shell is called in two places: `JSONLineProcess.locate`'s `command -v`
+  fallback, and `AgentInstaller`, whose script goes down stdin. Prompts go down
+  stdin, never through `sh`.
 
 A check that could not run is not a check that passed: both linters fail when
 a directory they guard is missing or a rule's regex does not compile.
@@ -1370,7 +1372,8 @@ so in the orb ("No sound is reaching the microphone…",
   one-shots in its key. After the feel of a promo's track, measured and not
   copied. A whoosh on every move was removed. An agent that wears Boltty's own
   face wears another here (`MascotRoster.looks(besides:)`). Then the setup card (agents, faces, keys, voice,
-  permissions) on the panel's glass. The voice step offers Parakeet and
+  permissions) on the panel's glass. With no agent on the Mac the first
+  step says Boltty needs one, the face step is left out, and Not Now goes on. The voice step offers Parakeet and
   Supertonic, both unticked; a ticked one is chosen and downloaded in the
   background once setup ends (`installSetupVoices`), Apple's engine standing
   in until then. `-boltty.replayIntro YES`, `-boltty.skipShow YES`,
@@ -1440,6 +1443,14 @@ so in the orb ("No sound is reaching the microphone…",
   model, reasoning, permissions with the Auto Mode note once, and
   the face's shape, gradient and finish as rows. Never expand every agent on
   the list again. `-boltty.settings.agent claude` opens an agent's page.
+- **Installing an agent** (`AgentInstaller`): one not here has Install in place of
+  its switch (setup's first step, Settings › Agents). A press downloads the maker's
+  own script, the one its site gives for `curl | sh`, over HTTPS and runs it off
+  stdin, with no terminal, no `sudo`, 10 minutes at most; never without the press.
+  All five ran so in 13–25 s and put the CLI where `ExecutableLookup` looks
+  (2026-11). It runs on the person's own PATH, since the installers add their folder
+  to the shell's profile only when PATH lacks it. `opencode.ai/install` is
+  OpenCode 1; Boltty takes `/v2/install`. Signing in stays the person's, in a terminal.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar
   4 high and flat in the accent, `UsageMeter`; in black it read as no brand at

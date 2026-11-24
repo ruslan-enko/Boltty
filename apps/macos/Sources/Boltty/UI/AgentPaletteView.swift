@@ -578,6 +578,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   var mascotLookForTesting: MascotLook? { selectedAgentImage.mascotLook }
 
   private var showsNoAgentsState = false
+  private var noAgentsAreInstalled = false
   private var isShowingInstallHints = false
 
   var presentationLayer: CALayer? { layer }
@@ -1816,8 +1817,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private static let targetSwapBlurFilterName = "bolttyTargetSwapBlur"
   private static let targetSwapBlurKey = "targetSwapBlur"
 
-  func setInstallHints(_ agents: [AgentId]) {
+  func setInstallHints(_ agents: [AgentId], areInstalled: Bool = false) {
     showsNoAgentsState = !agents.isEmpty
+    noAgentsAreInstalled = areInstalled
   }
 
   func revealInstallHintsIfNeeded() {
@@ -1888,7 +1890,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     discardResultRows()
     resultItems = []
     selectedResultIndex = -1
-    let card = BolttyAINoAgentsView()
+    let card = BolttyAINoAgentsView(areInstalled: noAgentsAreInstalled)
     card.onOpenSettings = { [weak self] in self?.onOpenSettings?() }
     resultsStack.addArrangedSubview(card)
     return true
@@ -3909,7 +3911,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   private var acceptsScreenSelection: Bool {
-    onScreenSelectionBegan != nil && mode == .prompt
+    onScreenSelectionBegan != nil && mode == .prompt && !showsNoAgentsState
       && !isVoiceListening && !showsCompactListening
       && !isResultsExpanded
   }

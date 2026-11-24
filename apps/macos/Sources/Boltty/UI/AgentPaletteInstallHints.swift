@@ -17,7 +17,7 @@ final class BolttyAINoAgentsView: NSView {
   var buttonTitleForTesting: String { settingsButton.title }
   func pressOpenSettingsForTesting() { openSettings(settingsButton) }
 
-  init() {
+  init(areInstalled: Bool = false) {
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
 
@@ -36,13 +36,15 @@ final class BolttyAINoAgentsView: NSView {
       ])
     }
 
-    let title = NSTextField(labelWithString: String(localized: "No agents found"))
+    let title = NSTextField(labelWithString: areInstalled ? String(localized: "No agent is ready") : String(localized: "No agents found"))
     title.font = roundedAppFont(size: AgentPaletteMetrics.resultsTitleFontSize)
     title.textColor = .labelColor
 
     let subtitle = NSTextField(
       wrappingLabelWithString:
-        String(localized: "Boltty works with the CLI agents already installed on this Mac.")
+        areInstalled
+          ? String(localized: "Sign in to one, or switch one on in Settings.")
+          : String(localized: "Boltty works with the CLI agents on this Mac. Install one in Settings.")
     )
     subtitle.font = roundedAppFont(size: AgentPaletteMetrics.resultsSubtitleFontSize)
     subtitle.textColor = .secondaryLabelColor

@@ -2,6 +2,15 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.8
+
+**Agents**
+- An agent that is not on this Mac has an Install button, in setup and in
+  Settings › Agents. It runs the maker's own installer, with no terminal.
+- With no agent at all, setup says so, and the panel says whether one is missing
+  or only signed out or switched off.
+- Setup looks again at what is installed as you come back to it.
+
 ## 0.12.7
 
 **First run**
@@ -10,8 +19,7 @@ What changed from release to release. The newest is at the top.
 - No two faces in the intro share a colour.
 - In setup, an agent that is here but signed out says "Signed out", not "Not
   installed", and "Start here" chooses who takes new chats.
-- Setup stands on the panel's glass and looks again at what is installed as you
-  come back to it.
+- Setup stands on the panel's glass.
 
 ## 0.12.6
 

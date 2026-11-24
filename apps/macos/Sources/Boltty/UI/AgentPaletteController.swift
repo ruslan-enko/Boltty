@@ -460,7 +460,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     let enabledAdapters = AgentId.adapterCases.filter {
       model.settings.isProviderEnabled($0.rawValue)
     }
-    panelView.setInstallHints(showHints ? enabledAdapters : [])
+    panelView.setInstallHints(
+      showHints ? (enabledAdapters.isEmpty ? AgentHistory.tabOrder : enabledAdapters) : [],
+      areInstalled: conversations?.hasInstalledAgent ?? false)
     panelView.setCatalogScanning(catalog.isScanning && catalog.launchableAgents.isEmpty)
   }
 

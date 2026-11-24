@@ -6,6 +6,7 @@ import os
 final class ConversationEngine: ObservableObject {
   let store: ConversationStore
   let registry: AgentRegistry
+  let installer = AgentInstaller()
   private let log = Logger(subsystem: "com.boltty", category: "conversation-engine")
 
   @Published private(set) var notices: [UUID: EngineNotice] = [:]

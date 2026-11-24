@@ -27,6 +27,7 @@ final class FakeBolttyAIConversations: BolttyAIConversations {
   var previews: [UUID: BolttyAISessionPreview] = [:]
   var canStart = true
   var providerAvailability: AgentAvailability? = .available(version: "test")
+  var hasInstalledAgent = true
   var followUpResult = true
 
   private let changes = PassthroughSubject<Void, Never>()
