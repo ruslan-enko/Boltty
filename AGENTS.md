@@ -1869,7 +1869,8 @@ so in the orb ("No sound is reaching the microphone…",
 - The README's pictures (`.github/readme/`) are stills of the real panel and overlay
   over Boltty's own sunset, taken by `ReadmeShotsOnScreen`
   (`TEST_RUNNER_BOLTTY_README_SHOTS=<dir>`; it takes the screen for about 40 s, and
-  shows the Standard backdrop on clear glass whatever this Mac chose).
+  shows the Standard backdrop on clear glass whatever this Mac chose). The PNGs go in
+  as WebP: `cwebp -q 92 -m 6 -sharp_yuv -metadata icc`.
 - **Updates** (`AppUpdater`): `GET api.github.com/repos/ruslan-enko/boltty/releases/latest`
   at launch and hourly when a day has passed, switchable in Settings. A newer
   version turns *Check for Updates…* into *Install Boltty X…*; nothing is

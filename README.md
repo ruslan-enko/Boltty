@@ -24,7 +24,7 @@ It works with **Claude Code, Codex, OpenCode, Grok and Antigravity**. It has no
 model or account of its own, it just drives the ones already on your Mac.
 
 <p align="center">
-  <img src=".github/readme/prompt.png" width="100%" alt="The Boltty prompt, with a request typed in">
+  <img src=".github/readme/prompt.webp" width="100%" alt="The Boltty prompt, with a request typed in">
 </p>
 
 ## Why I built this
@@ -47,7 +47,7 @@ and pictures too. If you're in Finder, Boltty starts in the folder you have open
 brings along the files you've selected.
 
 <p align="center">
-  <img src=".github/readme/chat.png" width="100%" alt="A finished chat with Claude Code">
+  <img src=".github/readme/chat.webp" width="100%" alt="A finished chat with Claude Code">
 </p>
 
 ### Ask about your screen
@@ -60,11 +60,11 @@ It only looks and explains at first. Turn on **Can make changes** in Settings an
 can do things too: drag across a Finder window, say "organise this", and it will.
 
 <p align="center">
-  <img src=".github/readme/ask-listening.png" width="100%" alt="A heading selected on the screen, and a question about it said out loud">
+  <img src=".github/readme/ask-listening.webp" width="100%" alt="A heading selected on the screen, and a question about it said out loud">
 </p>
 
 <p align="center">
-  <img src=".github/readme/ask-boltty.png" width="100%" alt="The answer beside the agent's face, which points at the heading">
+  <img src=".github/readme/ask-boltty.webp" width="100%" alt="The answer beside the agent's face, which points at the heading">
 </p>
 
 ### Talk instead of typing
@@ -80,7 +80,7 @@ finishes or needs you, its face shows up by the notch. Your chats are still ther
 a restart, and Boltty shows how much of each plan you've used.
 
 <p align="center">
-  <img src=".github/readme/history.png" width="100%" alt="The chat list, with a tab and a face for each agent">
+  <img src=".github/readme/history.webp" width="100%" alt="The chat list, with a tab and a face for each agent">
 </p>
 
 ### You have the last word
@@ -89,7 +89,7 @@ Before an agent runs a command or edits a file, Boltty asks you. If you'd rather
 be asked every time, turn on Auto Mode for that agent or just for one chat.
 
 <p align="center">
-  <img src=".github/readme/permission.png" width="100%" alt="Codex asking before it runs a command">
+  <img src=".github/readme/permission.webp" width="100%" alt="Codex asking before it runs a command">
 </p>
 
 ## Install
