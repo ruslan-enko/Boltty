@@ -1866,12 +1866,10 @@ so in the orb ("No sound is reaching the microphone…",
   `com.boltty.app`, asset name `Boltty.dmg`, tag `v<MARKETING_VERSION>`.
   `scripts/bump-version.sh X.Y.Z` sets the version and bumps the build number.
 - `LICENSE` and `THIRD_PARTY_NOTICES.md` ship in every copy.
-- The README's pictures (`.github/readme/`) are the real panel and overlay over
-  Boltty's own sunset, taken by `ReadmeShotsOnScreen`
-  (`TEST_RUNNER_BOLTTY_README_SHOTS=<dir>`; it takes the screen for about a
-  minute, and shows the Standard backdrop whatever this Mac chose). The recordings
-  become animated WebP: frames at 15 fps from `ffmpeg`, then `img2webp -lossy -q 72`
-  (GIFs of the sunset run to 20 MB).
+- The README's pictures (`.github/readme/`) are stills of the real panel and overlay
+  over Boltty's own sunset, taken by `ReadmeShotsOnScreen`
+  (`TEST_RUNNER_BOLTTY_README_SHOTS=<dir>`; it takes the screen for about 40 s, and
+  shows the Standard backdrop on clear glass whatever this Mac chose).
 - **Updates** (`AppUpdater`): `GET api.github.com/repos/ruslan-enko/boltty/releases/latest`
   at launch and hourly when a day has passed, switchable in Settings. A newer
   version turns *Check for Updates…* into *Install Boltty X…*; nothing is

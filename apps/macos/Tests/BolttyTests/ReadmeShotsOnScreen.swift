@@ -24,6 +24,8 @@ final class ReadmeShotsOnScreen: XCTestCase {
     window.orderFrontRegardless()
     sunset.dawn()
     backdrop = window
+    // A pointer by the shell lights its corner grip.
+    CGWarpMouseCursorPosition(CGPoint(x: 2, y: screen.frame.height / 2))
     try await Task.sleep(for: .seconds(2.5))
   }
 
@@ -59,42 +61,14 @@ final class ReadmeShotsOnScreen: XCTestCase {
     try await Task.sleep(for: .seconds(1))
   }
 
-  func testRecordThePromptChangingFaces() async throws {
-    let (controller, _) = makePanel()
-    let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
-    controller.show()
-    try await Task.sleep(for: .seconds(2))
-    let window = try XCTUnwrap(view.window)
-    view.layoutSubtreeIfNeeded()
-    let surface = window.convertToScreen(view.convert(view.unifiedSurfaceFrameForTesting, to: nil))
-    let reel = try record(surface.insetBy(dx: -60, dy: -44), seconds: 9, to: "prompt-faces.mov")
-    try await Task.sleep(for: .seconds(1.2))
-    for _ in 0..<5 {
-      _ = view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:)))
-      try await Task.sleep(for: .seconds(1.5))
-    }
-    reel.waitUntilExit()
-    controller.hide()
-    try await Task.sleep(for: .seconds(1))
-  }
-
   func testPhotographTheHistory() async throws {
     let (controller, _) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
     controller.show()
     try await Task.sleep(for: .seconds(1))
-    view.expandResultsForTesting()
+    _ = view.textView(view.field, doCommandBy: #selector(NSResponder.moveDown(_:)))
     try await Task.sleep(for: .seconds(2))
     try photograph(view, to: "history.png")
-
-    let reel = try record(view, seconds: 9, to: "faces.mov")
-    try await Task.sleep(for: .seconds(1))
-    for agent in [AgentId.claude, .codex, .opencode, .grok, .antigravity] {
-      view.historyTabsForTesting.onSelect?(agent)
-      try await Task.sleep(for: .seconds(1.4))
-    }
-    view.historyTabsForTesting.onSelect?(nil)
-    reel.waitUntilExit()
     controller.hide()
     try await Task.sleep(for: .seconds(1))
   }
@@ -105,6 +79,11 @@ final class ReadmeShotsOnScreen: XCTestCase {
     conversations.plannedProvider = AgentId.claude.rawValue
     conversations.launchable = AgentId.adapterCases.map(\.rawValue)
     conversations.inheritedDirectory = NSHomeDirectory()
+    conversations.agentsAcceptingAttachments = Set(conversations.launchable)
+    conversations.usages = [
+      AgentId.claude.rawValue: AgentUsage(windows: [AgentUsageWindow(kind: .session, usedPercent: 38)]),
+      AgentId.codex.rawValue: AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: 24)]),
+    ]
     let hour: TimeInterval = 3600
     let rows: [(String, AgentId, TimeInterval, AgentReportedState?, Bool)] = [
       ("Rename the screenshots on my Desktop by date", .claude, 0.1, nil, false),
@@ -122,6 +101,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
         updatedAt: Date().addingTimeInterval(-ago * hour), state: state, hasUnread: unread)
     }
     let controller = AgentPaletteController(model: model, conversations: conversations)
+    (controller.window?.contentView as? AgentPaletteView)?.shellUsesClearGlass = true
     retained.append(conversations)
     return (controller, conversations)
   }
@@ -162,8 +142,13 @@ final class ReadmeShotsOnScreen: XCTestCase {
     conversations.conversationsByID[id] = Conversation(
       id: id, providerID: AgentId.claude.rawValue, title: question, workingDirectory: NSHomeDirectory())
     conversations.previews[id] = BolttyAISessionPreview(
-      id: id, title: "Rename the screenshots", agent: .claude, state: .finished, body: "", messages: messages)
+      id: id, title: "Rename the screenshots", agent: .claude, state: .finished, body: "", messages: messages,
+      modelChip: chip("Opus", "High"))
     return id
+  }
+
+  private func chip(_ name: String, _ effort: String) -> BolttyAIModelChip {
+    BolttyAIModelChip(name: name, effort: effort, help: "")
   }
 
   private func addPermission(to conversations: FakeBolttyAIConversations) -> UUID {
@@ -184,7 +169,8 @@ final class ReadmeShotsOnScreen: XCTestCase {
       question: permission,
       messages: [ConversationMessage(
         id: "u1", role: .user, createdAt: Date(),
-        parts: [.text(TextPart(id: "u1-text", kind: .text, text: request))])])
+        parts: [.text(TextPart(id: "u1-text", kind: .text, text: request))])],
+      modelChip: chip("GPT-5.5", "Medium"))
     return id
   }
 
@@ -197,7 +183,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let heading = CGPoint(x: note.frame.minX + 92, y: note.frame.maxY - 80)
 
     let area = CGRect(x: note.frame.minX - 140, y: note.frame.minY - 60,
-                      width: note.frame.width + 520, height: note.frame.height + 120)
+                      width: note.frame.width + 280, height: note.frame.height + 120)
     let region = CGRect(x: heading.x - 70, y: heading.y - 30, width: 300, height: 60)
     let (controller, _) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
@@ -211,7 +197,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     overlay.restHint = { AskBolttyController.restHint(launchKey: "⌥Space") }
     let top = NSScreen.screens.first?.frame.maxY ?? pointer.y
     CGWarpMouseCursorPosition(CGPoint(x: pointer.x, y: top - pointer.y))
-    let reel = try record(area, seconds: 20, to: "ask-boltty.mov")
     try await Task.sleep(for: .seconds(0.8))
     controller.askAgain(about: region, agent: .claude)
     try await Task.sleep(for: .seconds(1))
@@ -223,6 +208,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
       try await Task.sleep(for: .seconds(0.35))
     }
     try await Task.sleep(for: .seconds(1.2))
+    try photograph(area, to: "ask-listening.png")
 
     let closed = expectation(description: "the shell closed round the face")
     view.collapseToFace { closed.fulfill() }
@@ -238,11 +224,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     overlay.point(at: CGPoint(x: note.frame.minX + 152, y: heading.y))
     try await Task.sleep(for: .seconds(5))
     try photograph(area, to: "ask-boltty.png")
-    overlay.show(.idle, caption: "", agent: .claude)
-    // Asleep, not in `waitUntilExit`: its run loop would never drain the main
-    // queue, where the face's words are timed.
-    try await Task.sleep(for: .seconds(6.5))
-    reel.waitUntilExit()
     overlay.hide()
   }
 
@@ -307,14 +288,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
   private func photograph(_ area: CGRect, to name: String) throws {
     let shot = try screencapture(["-x", "-R", rect(area), "\(directory)/\(name)"])
     shot.waitUntilExit()
-  }
-
-  private func record(_ view: AgentPaletteView, seconds: Int, to name: String) throws -> Process {
-    try record(area(around: view), seconds: seconds, to: name)
-  }
-
-  private func record(_ area: CGRect, seconds: Int, to name: String) throws -> Process {
-    try screencapture(["-x", "-v", "-V", "\(seconds)", "-R", rect(area), "\(directory)/\(name)"])
   }
 
   private func rect(_ area: CGRect) -> String {

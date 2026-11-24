@@ -138,6 +138,9 @@ final class FakeBolttyAIConversations: BolttyAIConversations {
     agentsAcceptingAttachments.contains(providerID)
   }
 
+  var usages: [String: AgentUsage] = [:]
+  func usage(providerID: String) -> AgentUsage? { usages[providerID] }
+
   func plannedProviderID() -> String? { plannedProvider }
 
   var fallback: AgentRoutingFallback?

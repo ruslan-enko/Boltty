@@ -5,7 +5,7 @@
 <h1 align="center">Boltty</h1>
 
 <p align="center">
-  A Siri replacement for your Mac, on top of the AI agents you already use.
+  The AI agents you already use, one key away anywhere on your Mac.
 </p>
 
 <p align="center">
@@ -24,61 +24,73 @@ It works with **Claude Code, Codex, OpenCode, Grok and Antigravity**. It has no
 model or account of its own, it just drives the ones already on your Mac.
 
 <p align="center">
-  <img src=".github/readme/prompt-faces.webp" width="100%" alt="The prompt on ⌥Space; ⇧Tab turns its face into each agent's in turn">
+  <img src=".github/readme/prompt.png" width="100%" alt="The Boltty prompt, with a request typed in">
 </p>
 
 ## Why I built this
 
-Most of my day is doing and running things, and along the way I keep asking an
-AI for help. Siri is too weak for that. In the terminal, the same jobs are easy:
-the agent CLIs handle them without a fuss. But I'm not always in a terminal.
+I kept opening a terminal for small things: find a file, fix a script, clean up a
+folder. The agents there were good at it, but I had to stop what I was doing to ask.
 
-So I made a Siri replacement on top of the CLIs I already use, one key away
-from whatever I'm doing, for the simple tasks and the not-so-simple ones.
+Now I press ⌥Space, ask, and carry on.
 
 ## What it does
 
-**Boltty AI: ask from anywhere.** ⌥Space opens a small prompt over whatever
-you're doing.
-Return starts the chat in the background, and the same panel turns into the chat
-when you want to read the answer, follow up or approve something. ↓ shows your
-recent chats and ⇧Tab switches the agent. Paste or drop a file or a picture and it
-sits over your words as a card. Open it over Finder and the chat starts in that
-folder, with the selected files already in the prompt.
+### Ask from anywhere
 
-<p align="center">
-  <img src=".github/readme/prompt.png" width="100%" alt="The Boltty AI prompt, with a request typed in">
-</p>
+Press ⌥Space and a small prompt drops from the top of the screen. Ask for
+something and press Return. You can close it right away, and the agent keeps
+working. Open it again to read the answer or ask something else.
+
+Press ↓ for your recent chats, or ⇧Tab to pick another agent. You can drop in files
+and pictures too. If you're in Finder, Boltty starts in the folder you have open and
+brings along the files you've selected.
 
 <p align="center">
   <img src=".github/readme/chat.png" width="100%" alt="A finished chat with Claude Code">
 </p>
 
-**Ask Boltty: ask about what's on your screen.** Open the panel, drag across the
-part you mean and ask out loud. The agent's face answers right next to your cursor, and it
-can point at things or draw on the screen. Turn on **Can make changes** in
-Settings and it can also do the thing: drag across a Finder window, say "organise
-this", and it does.
+### Ask about your screen
+
+See something you don't understand? Open the panel, drag across it and ask out
+loud. The agent answers right next to your cursor, and can point at things or draw
+on the screen to show you what it means. This is called Ask Boltty.
+
+It only looks and explains at first. Turn on **Can make changes** in Settings and it
+can do things too: drag across a Finder window, say "organise this", and it will.
 
 <p align="center">
-  <img src=".github/readme/ask-boltty.webp" width="100%" alt="Ask Boltty: an area of the screen selected and asked about, the answer typed out beside the face">
+  <img src=".github/readme/ask-listening.png" width="100%" alt="A heading selected on the screen, and a question about it said out loud">
 </p>
-
-**Talk to it.** Dictation works on your Mac out of the box. If you want more,
-Boltty can download two open models that also run on your Mac: Parakeet for
-dictation (25 languages, Ukrainian and English in one sentence is fine) and
-Supertonic, which reads answers aloud (31 languages).
-
-**Keep an eye on things.** A face by the notch shows what's running, and every
-agent has a face of its own. Chats survive a restart, and Settings shows how much
-of each plan you've used.
 
 <p align="center">
-  <img src=".github/readme/faces.webp" width="100%" alt="The chat list, switching between each agent's tab">
+  <img src=".github/readme/ask-boltty.png" width="100%" alt="The answer beside the agent's face, which points at the heading">
 </p>
 
-**You stay in charge.** Boltty asks before an agent runs a command or edits a
-file. A menu or a button only shows up if that agent can really do it.
+### Talk instead of typing
+
+Dictation works out of the box. You can also download two open models that run on
+your Mac. Parakeet takes dictation in 25 languages, and you can mix Ukrainian and
+English in one sentence. Supertonic reads answers aloud in 31.
+
+### See what's going on
+
+Every agent has its own face, and you choose how it looks. When one is working,
+finishes or needs you, its face shows up by the notch. Your chats are still there after
+a restart, and Boltty shows how much of each plan you've used.
+
+<p align="center">
+  <img src=".github/readme/history.png" width="100%" alt="The chat list, with a tab and a face for each agent">
+</p>
+
+### You have the last word
+
+Before an agent runs a command or edits a file, Boltty asks you. If you'd rather not
+be asked every time, turn on Auto Mode for that agent or just for one chat.
+
+<p align="center">
+  <img src=".github/readme/permission.png" width="100%" alt="Codex asking before it runs a command">
+</p>
 
 ## Install
 
@@ -144,19 +156,6 @@ macOS asks for permissions only when something needs them:
 An agent started from Boltty can do whatever the same CLI can do from your
 terminal. Boltty isn't a sandbox. What it adds is the approval step and the folder
 you choose.
-
-## FAQ
-
-**Is this a terminal?** No, and it won't be. It talks to the agents directly.
-
-**Which agent should I use?** Whichever you already pay for. You can switch for
-each chat with ⇧Tab.
-
-**Can I see a chat I started in the terminal?** No, only the ones started in
-Boltty.
-
-**Why doesn't ⌘Q quit?** Because that would stop agents in the middle of their
-work. Quit Boltty in the menu bar really quits.
 
 ## Building from source
 
