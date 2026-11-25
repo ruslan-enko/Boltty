@@ -138,7 +138,7 @@ Boltty has no server and collects nothing. Your prompts go to the agent you
 picked, the same as from your terminal, and your chats stay on your Mac.
 
 When you ask about part of the screen, the agent gets that part up close, plus a
-picture of the screen where only the window under it and the menu bar can be
+picture of the screen where only the windows in it and the menu bar can be
 seen. The rest is hidden, unless you select the whole screen. These go to the
 agent like any prompt, and its CLI may keep them in its own history.
 
