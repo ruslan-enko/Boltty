@@ -40,11 +40,11 @@ final class ScreenRegionCaptureTests: XCTestCase {
   }
 
   func testReadTextIsCutAtACharacterWithinItsBytes() {
-    let cut = ScreenRegionCapture.truncated("Привіт, світ", toBytes: 10)
+    let cut = ScreenTextReader.truncated("Привіт, світ", toBytes: 10)
 
     XCTAssertLessThanOrEqual(cut.utf8.count, 10)
     XCTAssertEqual(cut, "При…")
-    XCTAssertEqual(ScreenRegionCapture.truncated("short", toBytes: 10), "short")
+    XCTAssertEqual(ScreenTextReader.truncated("short", toBytes: 10), "short")
   }
 
   func testASelectionIsCutFromTheFrozenScreen() throws {
@@ -60,14 +60,13 @@ final class ScreenRegionCaptureTests: XCTestCase {
         FrozenScreen.Window(frame: display, app: "Finder", title: nil),
       ])
 
-    let selection = try ScreenRegionCapture.selection(
-      CGRect(x: 10, y: 10, width: 20, height: 10), in: frozen, primaryScreenHeight: 50)
+    let selection = try ScreenRegionCapture.cut(
+      CGRect(x: 10, y: 10, width: 20, height: 10), in: frozen, primaryScreenHeight: 50).selection
 
     let region = try XCTUnwrap(NSBitmapImageRep(data: selection.region))
     XCTAssertEqual(region.pixelsWide, 40, "the picture's two pixels a point")
     XCTAssertEqual(region.pixelsHigh, 20)
     XCTAssertEqual(selection.context, "Notes — “Todo”", "the frontmost window under its centre")
-    XCTAssertNil(selection.recognizedText, "a flat colour has no text to read")
     XCTAssertEqual(selection.frame, CGRect(x: 10, y: 10, width: 20, height: 10))
   }
 

@@ -168,6 +168,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     askBoltty.onNeedsYou = { [weak self] id in self?.requirePalette()?.addressConversation(id) }
     askBoltty.launchKeyName = { [weak self] in self?.appliedHotkey?.displayName }
     self.askBoltty = askBoltty
+    if CGPreflightScreenCaptureAccess() {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 4) { ScreenTextReader.warmUp() }
+    }
     model?.$settings
       .sink { [weak askBoltty] in askBoltty?.apply($0) }
       .store(in: &cancellables)

@@ -61,6 +61,10 @@ final class SpeechOutput: ObservableObject {
 
   func canSpeak(_ language: String?) -> Bool { Self.canSpeak(language) }
 
+  var isReady: Bool { holdsPiecesForTesting || local.isLoaded }
+
+  func warm() { local.warm() }
+
   nonisolated static func language(of text: String) -> String? {
     let recognizer = NLLanguageRecognizer()
     recognizer.processString(text)
@@ -90,7 +94,10 @@ final class SpeechOutput: ObservableObject {
       speakingID = id
     }
     let code = language ?? Self.language(of: piece) ?? LanguageCode.of(Locale.current.identifier)
-    guard let token = enqueue(piece, language: code) else { return }
+    guard let token = enqueue(piece, language: code) else {
+      onStart?()
+      return
+    }
     if let onStart { starts[token] = onStart }
   }
 
@@ -122,7 +129,10 @@ final class SpeechOutput: ObservableObject {
     local.say(
       text, language: code, delivery: .init(voice: chosen.voice, rate: rate),
       onStart: { [weak self] in self?.started(token) },
-      onFinish: { [weak self] _ in self?.finished(token) })
+      onFinish: { [weak self] said in
+        if !said { self?.started(token) }
+        self?.finished(token)
+      })
     return token
   }
 

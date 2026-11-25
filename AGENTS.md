@@ -86,7 +86,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | What comes with the words | `UI/Prompt/PromptAttachmentStrip.swift`, `PromptAttachmentCard.swift`, `Models/PromptDraft.swift`, `Services/PasteboardIngest.swift` |
 | Notch face | `UI/NotchMascotController.swift` |
 | Mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal`; `Models/MascotShape.swift`, `MascotPalette.swift`, `MascotLook.swift` |
-| Screen selection | `Services/ScreenRegionCapture.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
+| Screen selection | `Services/ScreenRegionCapture.swift`, `ScreenTextReader.swift`, `RegionReading.swift`, `Models/ScreenSelection.swift`, `UI/ScreenSelectionOverlay.swift` |
 | Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons`, drawn by `scripts/render-icons.py` and judged by `scripts/check-icons.py` |
 | Brand colours | `UI/Appearance/BolttyBrand.swift`, [BRAND.md](BRAND.md) |
 | Shader effects | `UI/Effects/` |
@@ -1216,6 +1216,14 @@ so in the orb ("No sound is reaching the microphone…",
   (`AskBolttyPointerMark`, the face's colours under a white edge; a ring was
   tried and refused): its tip lands on the spot, its tail lies toward the face
   (`pointerTurn`), and it travels with the face.
+- **Nothing waits for the words.** A new build's first accurate Vision reading takes
+  about 70 s (macOS compiles the model for the Neural Engine; 0.2 s after, 27.2), and
+  the face waited on it. So the region is read from the moment it is drawn
+  (`RegionReading`, `ScreenTextReader`, threads of its own), a question sent waits 0.6 s
+  at most for the words (`regionWordsWait`) and goes with the pictures alone, a step's
+  look 2 s, and 4 s after launch a sample is read so the compiling is done
+  (`ScreenTextReader.warmUp`, with Screen Recording allowed). Never `await` Vision
+  without `Deadline`.
 - **Words, not pixels.** Vision reads the picture the agent is sent (hidden
   windows painted out) into lines and words with their boxes (`ScreenText`,
   `ScreenRegionCapture.labels`), listed in the prompt as `<screen-labels>`
@@ -1276,7 +1284,10 @@ so in the orb ("No sound is reaching the microphone…",
   Settings › Ask Boltty › "Say answers aloud" (`boltty.talk.speaksAloud`,
   off; until Supertonic is here its download stands in the switch's place),
   read into `AskBolttySession.speaksAloud` as a question is sent. Said aloud,
-  the words still type out, without blips over the voice.
+  the words still type out, without blips over the voice. A voice still loading
+  (a new build compiles Supertonic for 47 s) is not waited for: that answer is typed
+  (`AskBolttySpeaking.isReady`; a region drawn loads it), and a piece the voice could not
+  say is shown all the same.
 - **The face waits after the answer** (`AskBolttyOverlayController.rest`): its
   words go once said, key hints say what can be done (`restHints`, gone after 5 s, since a bubble riding with the pointer gets
   in the way), and it goes by itself after 12 s. It returns to the pointer unless
@@ -1326,7 +1337,7 @@ so in the orb ("No sound is reaching the microphone…",
   limit here (until the reset, else 15 minutes), and says so beside the face
   ("Claude Code's limit is used up · Codex answers"). A turn that fails before
   any word — a limit, a model gone, any failure — gives the same question to the
-  next agent, each once (`AskBolttySession.handOver`); with none left the face
+  next agent, each once (`AskBolttySession.handOver`), but not after an agent that can make changes ran anything; with none left the face
   says why, with the reset time for a limit. Spent agents are tried last, not
   never, since the usage read may be stale. No model is
   hunted for by name: an "Automatic" that meant Claude Code on Haiku was tried and

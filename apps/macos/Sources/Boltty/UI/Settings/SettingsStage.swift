@@ -461,7 +461,7 @@ struct DictationSample: NSViewRepresentable {
 }
 
 final class DictationSampleView: NSView {
-  static let size = CGSize(width: 268, height: 116)
+  static let size = CGSize(width: 320, height: 124)
   private static let faceSide: CGFloat = 30
 
   private let host: PaletteGlassHost
@@ -499,7 +499,7 @@ final class DictationSampleView: NSView {
     face.apply(look: look)
     words.configure(
       phrase: phrase, colors: VoiceEdgeGlowLayout.rayColors(from: look.palette),
-      centred: true, width: words.frame.width)
+      centred: true, width: words.frame.width - AgentPaletteMetrics.listeningWordBlur * 2)
   }
 }
 
@@ -527,34 +527,29 @@ struct AskAnswerSample: NSViewRepresentable {
 }
 
 final class AskAnswerSampleView: NSView {
-  static let size = CGSize(width: 312, height: 96)
-  private static let faceSide: CGFloat = 40
+  static let size = CGSize(width: 356, height: 120)
+  private static let faceSide = AskBolttyOverlayController.faceSide
+  private static let gap = AskBolttyOverlayController.bubbleGap
+  private static var textWidth: CGFloat {
+    size.width - faceSide - gap - AskBolttyOverlayController.bubblePadding.width * 2
+  }
 
   private let bubble: PaletteGlassHost
   private let face: MascotNSView
   private let words = ArrivingWordsSampleView()
+  private let measure = ListeningWordsView()
 
   init(look: MascotLook) {
     face = MascotNSView(conversationID: UUID(), look: look)
     face.reduceMotion = MotionPreferences.reduceMotion
-    let content = NSView()
-    content.wantsLayer = true
-    bubble = PaletteGlassHost(
-      content: content, cornerRadius: AskBolttyOverlayController.bubbleCorner(height: Self.size.height - 12),
-      style: .bolttyAIPrompt)
+    bubble = PaletteGlassHost(content: NSView(), cornerRadius: 0, style: .bolttyAIPrompt)
+    bubble.shadesRim = false
     super.init(frame: CGRect(origin: .zero, size: Self.size))
     appearance = NSAppearance(named: .darkAqua)
-    face.translatesAutoresizingMaskIntoConstraints = true
-    face.frame = CGRect(x: 4, y: ((Self.size.height - Self.faceSide) / 2).rounded(), width: Self.faceSide, height: Self.faceSide)
-    addSubview(face)
-    let bubbleX = face.frame.maxX + AskBolttyOverlayController.bubbleGap
-    bubble.translatesAutoresizingMaskIntoConstraints = true
-    bubble.frame = CGRect(x: bubbleX, y: 6, width: Self.size.width - bubbleX - 4, height: Self.size.height - 12)
-    addSubview(bubble)
-    let padding = AskBolttyOverlayController.bubblePadding
-    words.translatesAutoresizingMaskIntoConstraints = true
-    words.frame = bubble.frame.insetBy(dx: padding.width, dy: padding.height)
-    addSubview(words)
+    for view in [face, bubble, words] {
+      view.translatesAutoresizingMaskIntoConstraints = true
+      addSubview(view)
+    }
   }
 
   @available(*, unavailable)
@@ -565,9 +560,28 @@ final class AskAnswerSampleView: NSView {
   func show(canMakeChanges: Bool, look: MascotLook) {
     face.apply(look: look)
     let answer = canMakeChanges ? SampleText.didIt : SampleText.lookedAndAnswered
+    lay(answer)
     words.configure(
       phrase: answer, colors: VoiceEdgeGlowLayout.rayColors(from: look.palette),
-      centred: false, width: words.frame.width)
+      centred: false, width: Self.textWidth)
+  }
+
+  private func lay(_ answer: String) {
+    let measured = measure.measure(answer, width: Self.textWidth)
+    let size = AskBolttyOverlayController.bubbleSize(
+      lines: measured.lines, widest: measured.widest, lineHeight: measure.lineHeight)
+    let left = ((Self.size.width - Self.faceSide - Self.gap - size.width) / 2).rounded()
+    let top = ((Self.size.height + size.height) / 2).rounded()
+    face.frame = CGRect(
+      x: left, y: top - AskBolttyOverlayController.bubbleFirstLineHeight / 2 - Self.faceSide / 2,
+      width: Self.faceSide, height: Self.faceSide)
+    bubble.frame = CGRect(
+      x: face.frame.maxX + Self.gap, y: top - size.height, width: size.width, height: size.height)
+    bubble.cornerRadius = AskBolttyOverlayController.bubbleCorner(height: size.height)
+    let padding = AskBolttyOverlayController.bubblePadding
+    let blur = AgentPaletteMetrics.listeningWordBlur
+    words.frame = bubble.frame
+      .insetBy(dx: padding.width - blur, dy: padding.height - blur)
   }
 }
 

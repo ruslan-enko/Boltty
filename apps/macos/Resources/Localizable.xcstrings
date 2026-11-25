@@ -27847,54 +27847,54 @@
         }
       }
     },
-    "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the window under that area and the menu bar; the rest of the screen is hidden from it unless you select all of it." : {
+    "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the windows in that area and the menu bar; the rest of the screen is hidden from it unless you select all of it." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffne Boltty AI, zieh über das, was du meinst, und frag laut. Das Gesicht antwortet neben dem Zeiger in ein, zwei Sätzen. Es bekommt das Fenster unter dem Bereich und die Menüleiste; der Rest des Bildschirms bleibt verborgen, außer du wählst alles aus."
+            "value" : "Öffne Boltty AI, zieh über das, was du meinst, und frag laut. Das Gesicht antwortet neben dem Zeiger in ein, zwei Sätzen. Es bekommt die Fenster in dem Bereich und die Menüleiste; der Rest des Bildschirms bleibt verborgen, außer du wählst alles aus."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre Boltty AI, arrastra sobre lo que quieres decir y pregunta en voz alta. La cara responde junto al puntero en una o dos frases. Se le envía la ventana bajo esa zona y la barra de menús; el resto de la pantalla queda oculto salvo que lo selecciones todo."
+            "value" : "Abre Boltty AI, arrastra sobre lo que quieres decir y pregunta en voz alta. La cara responde junto al puntero en una o dos frases. Se le envía las ventanas de esa zona y la barra de menús; el resto de la pantalla queda oculto salvo que lo selecciones todo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez Boltty AI, glissez sur ce qui vous intéresse et posez votre question à voix haute. Le visage répond près du pointeur en une ou deux phrases. Il reçoit la fenêtre sous cette zone et la barre des menus ; le reste de l’écran lui est caché, sauf si vous sélectionnez tout."
+            "value" : "Ouvrez Boltty AI, glissez sur ce qui vous intéresse et posez votre question à voix haute. Le visage répond près du pointeur en une ou deux phrases. Il reçoit les fenêtres de cette zone et la barre des menus ; le reste de l’écran lui est caché, sauf si vous sélectionnez tout."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Boltty AIを開き、知りたい部分をドラッグして声で質問します。顔がポインタの横で1〜2文で答えます。送られるのはその範囲の下のウインドウとメニューバーで、画面の残りはすべてを選ばない限り隠されます。"
+            "value" : "Boltty AIを開き、知りたい部分をドラッグして声で質問します。顔がポインタの横で1〜2文で答えます。送られるのはその範囲にあるウインドウとメニューバーで、画面の残りはすべてを選ばない限り隠されます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Boltty AI를 열고 궁금한 부분을 드래그한 다음 소리 내어 물어보세요. 얼굴이 포인터 옆에서 한두 문장으로 답합니다. 그 영역 아래의 윈도우와 메뉴 막대만 전송되며, 전체를 선택하지 않는 한 화면의 나머지는 가려집니다."
+            "value" : "Boltty AI를 열고 궁금한 부분을 드래그한 다음 소리 내어 물어보세요. 얼굴이 포인터 옆에서 한두 문장으로 답합니다. 그 영역에 있는 윈도우와 메뉴 막대만 전송되며, 전체를 선택하지 않는 한 화면의 나머지는 가려집니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra o Boltty AI, arraste sobre o que você quer dizer e pergunte em voz alta. O rosto responde ao lado do ponteiro em uma ou duas frases. Ele recebe a janela sob essa área e a barra de menus; o resto da tela fica escondido, a menos que você selecione tudo."
+            "value" : "Abra o Boltty AI, arraste sobre o que você quer dizer e pergunte em voz alta. O rosto responde ao lado do ponteiro em uma ou duas frases. Ele recebe as janelas dessa área e a barra de menus; o resto da tela fica escondido, a menos que você selecione tudo."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відкрийте Boltty AI, проведіть по тому, про що йдеться, і спитайте вголос. Обличчя відповідає біля вказівника одним-двома реченнями. Йому надсилається вікно під цією областю й рядок меню; решту екрана від нього сховано, якщо не вибрати його весь."
+            "value" : "Відкрийте Boltty AI, проведіть по тому, про що йдеться, і спитайте вголос. Обличчя відповідає біля вказівника одним-двома реченнями. Йому надсилаються вікна в цій області й рядок меню; решту екрана від нього сховано, якщо не вибрати його весь."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 Boltty AI，拖过你想问的内容，然后大声提问。表情会在指针旁用一两句话回答。它会收到该区域下方的窗口和菜单栏；除非你全选，屏幕其余部分都对它隐藏。"
+            "value" : "打开 Boltty AI，拖过你想问的内容，然后大声提问。表情会在指针旁用一两句话回答。它会收到该区域内的窗口和菜单栏；除非你全选，屏幕其余部分都对它隐藏。"
           }
         }
       }

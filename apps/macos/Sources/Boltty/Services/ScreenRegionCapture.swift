@@ -1,7 +1,6 @@
 import AppKit
 import ScreenCaptureKit
 import UniformTypeIdentifiers
-import Vision
 
 enum ScreenRegionCapture {
   enum Failure: Error, Equatable {
@@ -15,7 +14,6 @@ enum ScreenRegionCapture {
   static let outlineWidth: CGFloat = 4
   static let outlineColor = OKLCH(0.654, 0.232, 28.7)
   static let hiddenColor = OKLCH(0.227, 0.004, 286.1)
-  static let recognizedTextByteLimit = PromptExpansion.inlineTextByteLimit
 
   @MainActor
   static func ensureAccess() -> Bool {
@@ -27,12 +25,9 @@ enum ScreenRegionCapture {
     return FrozenScreen(image: image, displayFrame: displayFrame, windows: windowList())
   }
 
-  static func selection(
-    _ frame: CGRect,
-    in frozen: FrozenScreen,
-    primaryScreenHeight: CGFloat,
-    readsLabels: Bool = false
-  ) throws -> ScreenSelection {
+  static func cut(
+    _ frame: CGRect, in frozen: FrozenScreen, primaryScreenHeight: CGFloat
+  ) throws -> ScreenCut {
     let region = flipped(frame, primaryScreenHeight: primaryScreenHeight)
     let image = frozen.image
     let pixels = pixelRect(
@@ -53,49 +48,22 @@ enum ScreenRegionCapture {
       let screenData = png(screenImage)
     else { throw Failure.failed }
 
-    return ScreenSelection(
-      region: regionData,
-      screen: screenData,
-      frame: frame,
-      context: frozen.context(at: CGPoint(x: region.midX, y: region.midY)),
-      recognizedText: recognizedText(in: crop),
-      finderSpot: frozen.finderSpot(at: CGPoint(x: region.midX, y: region.midY)),
-      labels: readsLabels ? labels(in: screenImage) : nil
-    )
-  }
-
-  static func labels(in image: CGImage) -> [ScreenText] {
-    let request = VNRecognizeTextRequest()
-    request.recognitionLevel = .accurate
-    request.automaticallyDetectsLanguage = true
-    request.usesLanguageCorrection = false
-    guard (try? VNImageRequestHandler(cgImage: image).perform([request])) != nil else { return [] }
-    func thousandths(_ box: CGRect) -> CGRect {
-      CGRect(x: box.minX * 1000, y: (1 - box.maxY) * 1000, width: box.width * 1000, height: box.height * 1000)
-    }
-    let lines = (request.results ?? []).prefix(labelLimit).compactMap { observation -> ScreenText? in
-      guard let candidate = observation.topCandidates(1).first else { return nil }
-      let string = candidate.string
-      let words = string.split(whereSeparator: \.isWhitespace).compactMap { word -> ScreenText.Word? in
-        guard let box = try? candidate.boundingBox(for: word.startIndex..<word.endIndex)?.boundingBox
-        else { return nil }
-        return ScreenText.Word(text: String(word), box: thousandths(box))
-      }
-      let text = string.trimmingCharacters(in: .whitespaces)
-      guard !text.isEmpty else { return nil }
-      return ScreenText(text: text, box: thousandths(observation.boundingBox), words: words)
-    }
-    return lines.sorted { ($0.box.minY, $0.box.minX) < ($1.box.minY, $1.box.minX) }
+    let middle = CGPoint(x: region.midX, y: region.midY)
+    return ScreenCut(
+      selection: ScreenSelection(
+        region: regionData, screen: screenData, frame: frame,
+        context: frozen.context(at: middle), finderSpot: frozen.finderSpot(at: middle)),
+      area: crop, screen: screenImage, isWholeScreen: isWholeScreen)
   }
 
   static func labels(onDisplay displayID: CGDirectDisplayID) async -> [ScreenText]? {
     guard let frozen = try? await freeze(displayID: displayID) else { return nil }
-    return await Task.detached(priority: .userInitiated) {
-      scaled(frozen.image, longEdge: screenLongEdge, outlining: nil).map(labels(in:))
+    let screen = await Task.detached(priority: .userInitiated) {
+      scaled(frozen.image, longEdge: screenLongEdge, outlining: nil)
     }.value
+    guard let screen else { return nil }
+    return await ScreenTextReader.labels(of: screen)
   }
-
-  static let labelLimit = 300
 
   static func flipped(_ rect: CGRect, primaryScreenHeight: CGFloat) -> CGRect {
     CGRect(
@@ -249,33 +217,13 @@ enum ScreenRegionCapture {
     guard CGImageDestinationFinalize(destination) else { return nil }
     return data as Data
   }
+}
 
-  private static func recognizedText(in image: CGImage) -> String? {
-    let request = VNRecognizeTextRequest()
-    request.recognitionLevel = .accurate
-    request.automaticallyDetectsLanguage = true
-    guard (try? VNImageRequestHandler(cgImage: image).perform([request])) != nil else { return nil }
-    let text = (request.results ?? [])
-      .compactMap { $0.topCandidates(1).first?.string }
-      .joined(separator: "\n")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !text.isEmpty else { return nil }
-    return truncated(text, toBytes: recognizedTextByteLimit)
-  }
-
-  static func truncated(_ text: String, toBytes limit: Int) -> String {
-    guard text.utf8.count > limit else { return text }
-    var cut = ""
-    var bytes = 0
-    let budget = limit - "…".utf8.count
-    for character in text {
-      let size = String(character).utf8.count
-      guard bytes + size <= budget else { break }
-      cut.append(character)
-      bytes += size
-    }
-    return cut + "…"
-  }
+struct ScreenCut: @unchecked Sendable {
+  var selection: ScreenSelection
+  var area: CGImage
+  var screen: CGImage
+  var isWholeScreen: Bool
 }
 
 struct ScreenLayer: Equatable, Sendable {

@@ -182,6 +182,8 @@ enum AgentPaletteMetrics {
   static let screenSelectionShellGap: CGFloat = 16
   static let regionSeedSide: CGFloat = 12
   static let regionMicrophoneWait: TimeInterval = 0.8
+  static let regionWordsWait: TimeInterval = 0.6
+  static let regionCardWordsWait: TimeInterval = 1.5
   static let regionMicrophoneRetry: TimeInterval = 0.6
   static let regionHandOverDuration: CFTimeInterval = 0.26
 

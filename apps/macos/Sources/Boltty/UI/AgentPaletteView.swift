@@ -53,6 +53,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   var onScreenSelectionBegan: (() -> Void)?
   var onScreenRegionReady: (() -> Void)?
   var onScreenRegionRedrawn: (() -> Void)?
+  var onScreenRegionEdited: (() -> Void)?
   var onScreenRegionSelected: ((CGRect) -> Void)?
   var onScreenSelectionCancelled: (() -> Void)?
   private let screenOutlines = ScreenSelectionOverlay()
@@ -3923,6 +3924,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       needsLayout = true
       if event.type == .leftMouseUp { break }
     }
+    onScreenRegionEdited?()
   }
 
   private func beginScreenDrawing() {

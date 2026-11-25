@@ -679,7 +679,7 @@ final class AskBolttyOverlayController {
   private func linger(_ delay: TimeInterval) {
     hideWork?.cancel()
     let work = DispatchWorkItem { [weak self] in
-      guard let self else { return }
+      guard let self, self.isVisible else { return }
       if self.phase == .idle, !self.resting {
         self.rest()
       } else if self.hasDrawings, self.phase == .idle {
@@ -744,7 +744,7 @@ final class AskBolttyOverlayController {
 
   private func revealWords() {
     let shown = text.index(text.startIndex, offsetBy: min(Int(typed), text.count))
-    let end = text[shown...].firstIndex(where: \.isWhitespace) ?? text.endIndex
+    let end = text[shown...].firstIndex { $0.isWhitespace || ListeningWordsView.standsAlone($0) } ?? text.endIndex
     let reached = String(text[..<end])
     guard reached != answerWords.text else { return }
     answerWords.setText(reached, animated: panel?.isVisible == true)

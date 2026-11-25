@@ -271,8 +271,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       self?.regionReady()
     }
     panelView.onScreenRegionRedrawn = { [weak self] in
+      self?.readRegionAhead()
       self?.listenForRegion()
     }
+    panelView.onScreenRegionEdited = { [weak self] in self?.readRegionAhead() }
     panelView.onSurfaceSizesChange = { sizes in
       sizes.save()
     }
@@ -961,6 +963,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
     frozenScreen = nil
     freezeTask?.cancel()
+    dropRegionAsk()
+    if panelView.addressedSessionID == nil { regionReading?.cancel() }
+    regionReading = nil
     let freeze = screenFreeze
     let primaryHeight = NSScreen.screens.first?.frame.height ?? screen.frame.height
     freezeTask = Task { [weak self] in
@@ -981,25 +986,38 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     }
   }
 
-  private func cutScreenSelection(_ region: CGRect, readsLabels: Bool = false) async -> ScreenSelection? {
-    guard let frozenScreen else { return nil }
-    let primaryHeight = NSScreen.screens.first?.frame.height ?? region.maxY
-    return await Task.detached(priority: .userInitiated) {
-      try? ScreenRegionCapture.selection(
-        region, in: frozenScreen, primaryScreenHeight: primaryHeight, readsLabels: readsLabels)
-    }.value
+  @discardableResult
+  private func read(_ region: CGRect, readsLabels: Bool) -> RegionReading {
+    if let regionReading, regionReading.frame == region { return regionReading }
+    regionReading?.cancel()
+    let freezing = freezeTask
+    let reading = RegionReading(
+      of: region, primaryScreenHeight: NSScreen.screens.first?.frame.height ?? region.maxY,
+      readsLabels: readsLabels
+    ) { [weak self] in
+      await freezing?.value
+      return self?.frozenScreen
+    }
+    regionReading = reading
+    return reading
+  }
+
+  private func readRegionAhead() {
+    guard panelView.addressedSessionID == nil, let region = panelView.screenSelectionFrame else { return }
+    read(region, readsLabels: true)
   }
 
   private func putScreenRegionInChat(_ region: CGRect) {
+    let reading = read(region, readsLabels: false)
     Task { [weak self] in
-      _ = await self?.freezeTask?.value
+      let selection = await reading.selection(waitingForWords: AgentPaletteMetrics.regionCardWordsWait)
       guard let self, self.isShowing else { return }
-      if let selection = await self.cutScreenSelection(region) {
-        guard self.isShowing else { return }
+      if let selection {
         self.panelView.insertScreenSelection(selection)
       } else {
         self.panelView.showError(String(localized: "Could not capture that part of the screen."))
       }
+      guard self.regionReading === reading else { return }
       self.panelView.endScreenSelection()
       self.finishScreenSelection()
     }
@@ -1009,6 +1027,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     freezeTask?.cancel()
     freezeTask = nil
     frozenScreen = nil
+    regionReading?.cancel()
+    regionReading = nil
+    dropRegionAsk()
     guard isShowing else { return }
     coverActiveScreen()
   }
@@ -1019,6 +1040,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   var attachmentStore: PromptAttachmentStoring = PromptAttachmentStore.shared
   private var freezeTask: Task<Void, Never>?
   private var frozenScreen: FrozenScreen?
+  private var regionReading: RegionReading?
+  private var regionAsk: Task<Void, Never>?
   var screenRecordingAccess: () -> Bool = { ScreenRegionCapture.ensureAccess() }
   var screenFreeze: (CGDirectDisplayID) async throws -> FrozenScreen = {
     try await ScreenRegionCapture.freeze(displayID: $0)
@@ -1358,6 +1381,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     silentMicrophoneCheck = nil
     regionLoudest = 0
     onRegionReady?(panelView.agentForNewPrompt)
+    readRegionAhead()
     regionMicrophoneRetried = false
     listenForRegion()
   }
@@ -1420,10 +1444,12 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     }
     isSubmitting = true
     panelView.setRegionAsking(true)
-    Task { [weak self] in
-      _ = await self?.freezeTask?.value
-      let selection = await self?.cutScreenSelection(region, readsLabels: true)
-      guard let self, !self.isHandingRegionOver else { return }
+    let reading = read(region, readsLabels: true)
+    regionAsk?.cancel()
+    regionAsk = Task { [weak self] in
+      let selection = await reading.selection(waitingForWords: AgentPaletteMetrics.regionWordsWait)
+      guard let self, !Task.isCancelled else { return }
+      self.regionAsk = nil
       self.isSubmitting = false
       guard self.isShowing, self.panelView.screenSelectionFrame == region else {
         self.panelView.releaseQuestionWords()
@@ -1470,8 +1496,17 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     if flies { onRegionFaceLeft?(face) }
   }
 
+  private func dropRegionAsk() {
+    guard let regionAsk else { return }
+    regionAsk.cancel()
+    self.regionAsk = nil
+    isSubmitting = false
+    panelView.releaseQuestionWords()
+  }
+
   private func letGoOfRegion() {
     guard isShowing, !isHandingRegionOver else { return }
+    dropRegionAsk()
     dropRegionWords()
     onRegionDropped?()
     isHandingRegionOver = true

@@ -7,6 +7,13 @@ protocol AskBolttySpeaking: AnyObject {
   func say(_ piece: String, id: String, language: String?, onStart: (() -> Void)?)
   func isSaying(_ id: String) -> Bool
   func stop()
+  var isReady: Bool { get }
+  func warm()
+}
+
+extension AskBolttySpeaking {
+  var isReady: Bool { true }
+  func warm() {}
 }
 
 extension SpeechOutput: AskBolttySpeaking {}
@@ -45,6 +52,7 @@ final class AskBolttySession: ObservableObject {
   private var answerFrame: CGRect?
   private var marks: [AskBolttyMark] = []
   private var isNewConversation = false
+  private var placedModel: ModelSelection?
   private var lastAnsweredAt: Date?
   private var baseline = 0
   private var turnBegan = false
@@ -72,6 +80,7 @@ final class AskBolttySession: ObservableObject {
   var look: (@MainActor (CGRect) async -> [ScreenText]?)?
   static let settleAfterClick: TimeInterval = 0.45
   static let lookAgainAfter: TimeInterval = 0.7
+  static let lookDeadline: TimeInterval = 2
   var findPlace: (@MainActor (FinderSpot) async -> FinderPlace?)?
   var onSpent: ((String, Date?) -> Void)?
 
@@ -92,7 +101,8 @@ final class AskBolttySession: ObservableObject {
 
   var speechID: String? { conversationID.map { "talk-\($0.uuidString)" } }
 
-  func warmUp(_ target: AskBolttyTarget) {
+  func warmUp(_ target: AskBolttyTarget, speaksAloud: Bool = false) {
+    if speaksAloud { speech.warm() }
     interruptAnswer()
     stopTurn()
     pointing = nil
@@ -159,6 +169,7 @@ final class AskBolttySession: ObservableObject {
        conversation.isAskBoltty,
        conversation.providerID == target.providerID,
        conversation.readOnly == target.readOnly,
+       placedModel == target.model,
        !conversation.lastKnownState.blocksSending,
        isNewConversation
         || lastAnsweredAt.map({ now().timeIntervalSince($0) < Self.followUpWindow }) == true {
@@ -172,6 +183,7 @@ final class AskBolttySession: ObservableObject {
       readOnly: target.readOnly)
     conversationID = conversation.id
     providerID = conversation.providerID
+    placedModel = target.model
     isNewConversation = true
   }
 
@@ -370,7 +382,7 @@ final class AskBolttySession: ObservableObject {
     } else {
       why = .failed
     }
-    guard let asked, !fallbacks.isEmpty else {
+    guard let asked, !fallbacks.isEmpty, !hasActed(conversation) else {
       switch why {
       case .spent:
         let reset = failure?.rateLimit?.resetsAt.flatMap { $0 > now() ? $0 : nil }
@@ -394,6 +406,23 @@ final class AskBolttySession: ObservableObject {
     sendTask = Task { [weak self] in
       await self?.send(asked.words, about: asked.selection, on: asked.displayFrame)
     }
+  }
+
+  /// What an agent that can make changes already did is not done again by the next one.
+  private func hasActed(_ conversation: Conversation) -> Bool {
+    !conversation.readOnly && coordinator.store.transcript(id: conversation.id).messages
+      .dropFirst(baseline)
+      .contains { message in
+        message.role == .agent && message.parts.contains { part in
+          if case .activity = part { true } else { false }
+        }
+      }
+  }
+
+  private func decideVoice(for text: String) {
+    guard !decidedVoice else { return }
+    decidedVoice = true
+    readsAloud = speaksAloud && speech.isReady && speech.canSpeak(language ?? SpeechOutput.language(of: text))
   }
 
   private func feed(_ delta: String, id: String) {
@@ -425,10 +454,7 @@ final class AskBolttySession: ObservableObject {
     }
     guard sentencesSaid < Self.answerSentences else { return }
     sentencesSaid += 1
-    if !decidedVoice {
-      decidedVoice = true
-      readsAloud = speaksAloud && speech.canSpeak(language ?? SpeechOutput.language(of: text))
-    }
+    decideVoice(for: text)
     voice.say(text, id: id, language: language) { [weak self] in
       guard let self, self.speechID == id else { return }
       self.captioned.append(text)
@@ -514,10 +540,7 @@ final class AskBolttySession: ObservableObject {
     restartGuideIdle()
     let step = steps[index]
     let numbered = "\(index + 1). \(step.words)"
-    if !decidedVoice {
-      decidedVoice = true
-      readsAloud = speaksAloud && speech.canSpeak(language ?? SpeechOutput.language(of: step.words))
-    }
+    decideVoice(for: step.words)
     phase = .speaking
     voice.say(step.words, id: speechID, language: language) { [weak self] in
       guard let self, self.speechID == speechID, self.shownStep == index else { return }

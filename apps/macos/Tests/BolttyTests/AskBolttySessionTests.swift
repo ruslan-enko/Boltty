@@ -10,6 +10,9 @@ final class AskBolttySessionTests: XCTestCase {
     var holds = false
     var held: [() -> Void] = []
     var speaks = true
+    var isReady = true
+    private(set) var warmed = 0
+    func warm() { warmed += 1 }
     func canSpeak(_ language: String?) -> Bool { speaks }
     func say(_ piece: String, id: String, language: String?, onStart: (() -> Void)?) {
       said.append(piece)
@@ -73,7 +76,7 @@ final class AskBolttySessionTests: XCTestCase {
   private func selection(whole: Bool = false) throws -> ScreenSelection {
     let frame = whole ? displayFrame
       : CGRect(x: displayFrame.minX, y: displayFrame.minY, width: 20, height: 20)
-    return try ScreenRegionCapture.selection(frame, in: Self.frozenScreen(), primaryScreenHeight: top)
+    return try ScreenRegionCapture.cut(frame, in: Self.frozenScreen(), primaryScreenHeight: top).selection
   }
 
   private func ask(_ words: String, whole: Bool = false) throws {
@@ -260,6 +263,37 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertFalse(askBoltty.readsAloud)
     XCTAssertEqual(askBoltty.caption, "Натисни її.", "it is read, a sentence at a time")
     XCTAssertNotNil(askBoltty.pointing, "it still points")
+  }
+
+  func testAVoiceStillLoadingDoesNotHoldTheAnswerBack() async throws {
+    voice.isReady = false
+    try ask("what is this?")
+    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
+    let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
+    client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
+    try await waitFor("the words") { self.askBoltty.caption == "A deltoid." }
+    XCTAssertTrue(voice.said.isEmpty)
+    XCTAssertFalse(askBoltty.readsAloud)
+  }
+
+  func testDrawingARegionLoadsTheVoiceOnlyWhenAnswersAreSaidAloud() {
+    askBoltty.warmUp(target)
+    XCTAssertEqual(voice.warmed, 0)
+    askBoltty.warmUp(target, speaksAloud: true)
+    XCTAssertEqual(voice.warmed, 1)
+  }
+
+  func testAnotherModelChosenInSettingsTakesTheNextQuestion() async throws {
+    try ask("what is this?")
+    try await waitFor("the question") { !self.client.sentMessages.isEmpty }
+    let first = try XCTUnwrap(askBoltty.conversationID)
+    let remote = try XCTUnwrap(client.sentMessages.first?.sessionID)
+    client.streamReply(sessionID: remote, messageID: "a1", chunks: ["A deltoid."])
+    try await waitFor("the answer") { self.store.conversation(id: first)?.lastKnownState == .idle }
+    var other = target
+    other.model = ModelSelection(providerID: "anthropic", modelID: "haiku")
+    askBoltty.warmUp(other)
+    XCTAssertNotEqual(askBoltty.conversationID, first)
   }
 
   func testAFinishedAskBolttyIsKeptAndItsSessionLetGoWhenTheNextOneBegins() async throws {

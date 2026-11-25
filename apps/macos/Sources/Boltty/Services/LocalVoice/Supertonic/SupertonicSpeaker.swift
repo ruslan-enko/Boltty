@@ -18,6 +18,7 @@ final class SupertonicSpeaker {
   }
 
   private(set) var failure: String?
+  var isLoaded: Bool { loaded.isReady }
 
   static let idleUnload: TimeInterval = 600
 
@@ -169,18 +170,23 @@ final class SupertonicSpeaker {
 }
 
 private final class Loaded: @unchecked Sendable {
+  private let ready = OSAllocatedUnfairLock(initialState: false)
   private var synthesizer: SupertonicSynthesizer?
   private var folder: URL?
+
+  var isReady: Bool { ready.withLock { $0 } }
 
   func synthesizer(in folder: URL) throws -> SupertonicSynthesizer {
     if let synthesizer, self.folder == folder { return synthesizer }
     let made = try SupertonicSynthesizer(folder: folder)
     synthesizer = made
     self.folder = folder
+    ready.withLock { $0 = true }
     return made
   }
 
   func drop() {
+    ready.withLock { $0 = false }
     synthesizer = nil
     folder = nil
   }

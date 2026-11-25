@@ -4,6 +4,18 @@ What changed from release to release. The newest is at the top.
 
 ## 0.12.10
 
+**Ask Boltty**
+- The face comes at once. The first question in each new version waited about a minute
+  for macOS to get its text recognition ready.
+- An answer said aloud no longer waits for a voice still loading, or is lost when the
+  voice fails.
+- Answers in Japanese and Chinese, and long links, break over lines instead of being cut.
+- Another model chosen in Settings takes the next question.
+- An agent that already changed something is not followed by another doing it again.
+
+**Settings**
+- The answer and dictation samples fit their words.
+
 **First run**
 - The intro is the launch film.
 - Faces in setup are drawn sharp.

@@ -66,7 +66,7 @@ enum AskBolttyPrompt {
     let screen = region.context.map { "\(what), in \($0)" } ?? what
     let area = region.isWholeScreen
       ? "They asked about the whole screen."
-      : "The red outline on it is the area they selected to ask about; the second picture is that area up close. Only the window under the area and the menu bar are shown: the rest is hidden on purpose, so do not guess at it."
+      : "The red outline on it is the area they selected to ask about; the second picture is that area up close. Only the windows in the area and the menu bar are shown: the rest is hidden on purpose, so do not guess at it."
     let pictures = region.isWholeScreen
       ? "Screenshot: \(region.screenPath)."
       : "Screenshots: \(region.screenPath) (the screen), \(region.areaPath) (the area)."

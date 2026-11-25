@@ -94,7 +94,7 @@ struct AskBolttySettingsSection: View {
     } header: {
       SettingsSectionHeader(String(localized: "Answers"))
     } footer: {
-      SettingsNote(String(localized: "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the window under that area and the menu bar; the rest of the screen is hidden from it unless you select all of it."))
+      SettingsNote(String(localized: "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the windows in that area and the menu bar; the rest of the screen is hidden from it unless you select all of it."))
     }
   }
 

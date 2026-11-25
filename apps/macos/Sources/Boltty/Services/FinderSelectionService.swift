@@ -1,5 +1,4 @@
 import AppKit
-import os
 
 struct FinderPlace: Equatable, Sendable {
   var folder: String
@@ -54,12 +53,12 @@ final class FinderSelectionService {
   func selection() async -> [URL] {
     if let readSelection { return await readSelection() }
     guard let deadline = deadline() else { return [] }
-    return await Self.answer(within: deadline) { Self.runSelectionScript(within: deadline) } ?? []
+    return await Deadline.answer(within: deadline) { Self.runSelectionScript(within: deadline) } ?? []
   }
 
   func place(of spot: FinderSpot) async -> FinderPlace? {
     guard let deadline = deadline() else { return nil }
-    return await Self.answer(within: deadline) {
+    return await Deadline.answer(within: deadline) {
       Self.parsePlace(Self.run(Self.placeScript, within: deadline), for: spot)
     }
   }
@@ -67,7 +66,7 @@ final class FinderSelectionService {
   func frontFolder() async -> String? {
     if let readFrontFolder { return await readFrontFolder() }
     guard let deadline = deadline() else { return nil }
-    return await Self.answer(within: deadline) {
+    return await Deadline.answer(within: deadline) {
       Self.run(Self.frontFolderScript, within: deadline).first.map { URL(fileURLWithPath: $0).path }
     }
   }
@@ -77,20 +76,6 @@ final class FinderSelectionService {
     case .authorized: Self.answerDeadline
     case .notDetermined: Self.consentDeadline
     case .denied: nil
-    }
-  }
-
-  nonisolated private static func answer<Value: Sendable>(
-    within deadline: TimeInterval, _ read: @escaping @Sendable () -> Value?
-  ) async -> Value? {
-    await withCheckedContinuation { (continuation: CheckedContinuation<Value?, Never>) in
-      let answered = OSAllocatedUnfairLock(initialState: false)
-      let finish: @Sendable (Value?) -> Void = { value in
-        guard answered.withLock({ was in defer { was = true }; return !was }) else { return }
-        continuation.resume(returning: value)
-      }
-      DispatchQueue.global(qos: .userInitiated).async { finish(read()) }
-      DispatchQueue.global().asyncAfter(deadline: .now() + deadline) { finish(nil) }
     }
   }
 

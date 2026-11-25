@@ -40,7 +40,8 @@ final class AskBolttyController {
       let middle = CGPoint(x: frame.midX, y: frame.midY)
       guard let display = NSScreen.screens.first(where: { $0.frame.contains(middle) })?.displayID
       else { return nil }
-      return await ScreenRegionCapture.labels(onDisplay: display)
+      let reading = Task { await ScreenRegionCapture.labels(onDisplay: display) }
+      return await Deadline.value(of: reading, within: AskBolttySession.lookDeadline) ?? nil
     }
     session.$isGuiding
       .removeDuplicates()
@@ -124,7 +125,7 @@ final class AskBolttyController {
   func warmUp(agent: AgentId?) {
     guard let target = target(for: agent) else { return }
     overlay.hide()
-    session.warmUp(target)
+    session.warmUp(target, speaksAloud: settings().askBolttySpeaksAloud)
   }
 
   var questionToContinue: (region: CGRect, agent: AgentId?)? {

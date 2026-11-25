@@ -6,6 +6,7 @@ final class ListeningWordsView: NSView {
   private struct Word {
     let string: NSAttributedString
     let width: CGFloat
+    let gap: CGFloat
     let born: CFTimeInterval
     var shown: CGPoint?
   }
@@ -38,16 +39,48 @@ final class ListeningWordsView: NSView {
     ceil(AgentPaletteMetrics.listeningWordsFontSize * AgentPaletteMetrics.listeningWordsLineSpacing)
   }
 
-  private func lines(at width: CGFloat) -> [[Int]] {
-    Self.broken(widths: words.map(\.width), space: spaceWidth, at: width)
+  /// Chinese and Japanese are written without spaces, and a link is one long word: both break
+  /// inside what stands between two spaces.
+  static func pieces(of text: String) -> [(text: String, isJoined: Bool)] {
+    text.split(whereSeparator: \.isWhitespace).flatMap { word -> [(text: String, isJoined: Bool)] in
+      guard word.count > longestPiece || word.contains(where: standsAlone) else { return [(String(word), false)] }
+      var pieces: [String] = []
+      for character in word {
+        if let last = pieces.last, let end = last.last, last.count < longestPiece,
+           closing.contains(character) || opening.contains(end)
+            || (!standsAlone(character) && !standsAlone(end)) {
+          pieces[pieces.count - 1].append(character)
+        } else {
+          pieces.append(String(character))
+        }
+      }
+      return pieces.enumerated().map { ($1, $0 > 0) }
+    }
   }
 
-  private static func broken(widths: [CGFloat], space: CGFloat, at width: CGFloat) -> [[Int]] {
+  static let longestPiece = 28
+  private static let closing = Set("、。，．・：；！？」』）】》〉…ー,.:;!?)]")
+  private static let opening = Set("「『（【《〈([")
+
+  static func standsAlone(_ character: Character) -> Bool {
+    character.unicodeScalars.first.map { scalar in
+      switch scalar.value {
+      case 0x2E80...0x9FFF, 0xF900...0xFAFF, 0xFF00...0xFFEF, 0x20000...0x3FFFF: true
+      default: false
+      }
+    } ?? false
+  }
+
+  private func lines(at width: CGFloat) -> [[Int]] {
+    Self.broken(widths: words.map(\.width), gaps: words.map(\.gap), at: width)
+  }
+
+  private static func broken(widths: [CGFloat], gaps: [CGFloat], at width: CGFloat) -> [[Int]] {
     guard !widths.isEmpty else { return [] }
     var lines: [[Int]] = [[]]
     var used: CGFloat = 0
     for (index, wordWidth) in widths.enumerated() {
-      let needed = lines[lines.count - 1].isEmpty ? wordWidth : used + space + wordWidth
+      let needed = lines[lines.count - 1].isEmpty ? wordWidth : used + gaps[index] + wordWidth
       if needed > width, !lines[lines.count - 1].isEmpty {
         lines.append([index])
         used = wordWidth
@@ -61,19 +94,19 @@ final class ListeningWordsView: NSView {
 
   func measure(_ text: String, width: CGFloat) -> (lines: Int, widest: CGFloat) {
     let attributes: [NSAttributedString.Key: Any] = [.font: font]
-    let widths = text.split(whereSeparator: \.isWhitespace).map {
-      ceil(NSAttributedString(string: String($0), attributes: attributes).size().width)
-    }
+    let pieces = Self.pieces(of: text)
+    let widths = pieces.map { ceil(NSAttributedString(string: $0.text, attributes: attributes).size().width) }
     let space = spaceWidth
-    let broken = Self.broken(widths: widths, space: space, at: width)
+    let gaps = pieces.map { $0.isJoined ? 0 : space }
+    let broken = Self.broken(widths: widths, gaps: gaps, at: width)
     let widest = broken.map { line in
-      line.reduce(0) { $0 + widths[$1] } + space * CGFloat(max(0, line.count - 1))
+      line.reduce(0) { $0 + widths[$1] } + line.dropFirst().reduce(0) { $0 + gaps[$1] }
     }.max() ?? 0
     return (min(broken.count, AgentPaletteMetrics.listeningMaxLines), ceil(widest))
   }
 
   private func lineWidth(_ line: [Int]) -> CGFloat {
-    line.reduce(0) { $0 + words[$1].width } + spaceWidth * CGFloat(max(0, line.count - 1))
+    line.reduce(0) { $0 + words[$1].width } + line.dropFirst().reduce(0) { $0 + words[$1].gap }
   }
 
   func measure(width: CGFloat) -> (lines: Int, widest: CGFloat) {
@@ -92,9 +125,10 @@ final class ListeningWordsView: NSView {
       let foot = bounds.height - headroom - pad - fromTop * lineHeight
         + (lineHeight - ceil(font.ascender - font.descender)) / 2
       var x = isCentred ? (bounds.midX - lineWidth(line) / 2).rounded() : pad
-      for index in line {
+      for (place, index) in line.enumerated() {
+        if place > 0 { x += words[index].gap }
         points[index] = CGPoint(x: x, y: foot.rounded())
-        x += words[index].width + spaceWidth
+        x += words[index].width
       }
     }
     return points
@@ -130,7 +164,8 @@ final class ListeningWordsView: NSView {
     }
     guard newText != text else { return }
     text = newText
-    let incoming = newText.split(whereSeparator: \.isWhitespace).map(String.init)
+    let incoming = Self.pieces(of: newText)
+    let space = spaceWidth
     let now = Motion.now
     let arrives = animated && !MotionPreferences.reduceMotion
     let stagger = AgentPaletteMetrics.listeningWordStagger
@@ -140,20 +175,23 @@ final class ListeningWordsView: NSView {
     ]
     let held = min(incoming.count, words.count)
     var revised = Array(words.prefix(held))
-    for index in revised.indices where revised[index].string.string != incoming[index] {
-      let string = NSAttributedString(string: incoming[index], attributes: attributes)
+    for index in revised.indices where revised[index].string.string != incoming[index].text
+      || (revised[index].gap == 0) != incoming[index].isJoined {
+      let string = NSAttributedString(string: incoming[index].text, attributes: attributes)
       revised[index] = Word(
         string: string,
         width: ceil(string.size().width),
+        gap: incoming[index].isJoined ? 0 : space,
         born: revised[index].born,
         shown: revised[index].shown
       )
     }
     words = revised + incoming.dropFirst(held).enumerated().map { index, word in
-      let string = NSAttributedString(string: word, attributes: attributes)
+      let string = NSAttributedString(string: word.text, attributes: attributes)
       return Word(
         string: string,
         width: ceil(string.size().width),
+        gap: word.isJoined ? 0 : space,
         born: arrives ? now + Double(index) * stagger : -.infinity
       )
     }
