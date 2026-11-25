@@ -18,7 +18,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     window.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue - 1)
     window.collectionBehavior = [.canJoinAllSpaces, .stationary]
     let sunset = SunsetView(frame: CGRect(origin: .zero, size: screen.frame.size))
-    sunset.ended()
     window.contentView = sunset
     window.setFrame(screen.frame, display: true)
     window.orderFrontRegardless()

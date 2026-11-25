@@ -147,25 +147,6 @@ struct MascotRoster: Equatable, Sendable {
     return result
   }
 
-  func looks(besides face: MascotLook) -> [AgentId: MascotLook] {
-    var result = looks()
-    var taken: Set<String> = [face.palette.id]
-    let worn = Set(result.values.map(\.palette.id))
-    for agent in AgentId.adapterCases {
-      guard let look = result[agent] else { continue }
-      if taken.insert(look.palette.id).inserted { continue }
-      let own = Self.defaultLook(for: agent)
-      let free = ([own?.palette].compactMap { $0 } + MascotPalette.catalog)
-        .first { !taken.contains($0.id) && !worn.contains($0.id) }
-        ?? MascotPalette.catalog.first { !taken.contains($0.id) }
-      let shape = look.shape == face.shape ? own?.shape ?? look.shape : look.shape
-      let palette = free ?? look.palette
-      taken.insert(palette.id)
-      result[agent] = MascotLook(shape: shape, palette: palette, finish: look.finish)
-    }
-    return result
-  }
-
   private static func nearestFree(to look: MascotLook, claimed: Set<String>) -> MascotLook {
     let shapes = MascotShape.allCases
     let palettes = MascotPalette.catalog

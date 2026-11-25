@@ -141,10 +141,6 @@ final class MascotNSView: NSView {
 
   var lookAtWindowPoint: CGPoint?
 
-  var turn = SIMD3<Double>.zero {
-    didSet { if turn != oldValue { render() } }
-  }
-
   private(set) var awake = 1.0
   private var swaysAboutRest = false
   private var swayTime = 0.0
@@ -428,7 +424,7 @@ extension MascotNSView {
       size: bounds.size,
       pixelSize: 1 / max(scale, 1),
       pose: MascotRenderer.Pose(
-        yaw: pose.yaw + turn.y, pitch: pose.pitch + turn.x, roll: pose.roll + turn.z,
+        yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll,
         sx: pose.sx, sy: pose.sy, lift: -pose.rise
       ),
       eyes: eyes,

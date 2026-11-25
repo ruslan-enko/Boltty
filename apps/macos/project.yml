@@ -37,6 +37,8 @@ targets:
       # Files, not a folder reference: banners look sounds up at the bundle's top level.
       - path: Resources/Sounds
         buildPhase: resources
+      - path: Resources/first-run.mp4
+        buildPhase: resources
       - path: ../../LICENSE
         buildPhase: resources
       - path: ../../THIRD_PARTY_NOTICES.md
@@ -45,8 +47,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boltty.app
         PRODUCT_NAME: Boltty
-        MARKETING_VERSION: "0.12.9"
-        CURRENT_PROJECT_VERSION: "35"
+        MARKETING_VERSION: "0.12.10"
+        CURRENT_PROJECT_VERSION: "36"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Boltty
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools

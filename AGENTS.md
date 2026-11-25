@@ -1363,39 +1363,14 @@ so in the orb ("No sound is reaching the microphone…",
   Settings…, re-read every 1.5 s. Allow All asks in order, Screen Recording
   last. Permission callbacks are never main-actor isolated (TCC calls them on
   its own queue).
-- **First run**: a show over a sky (`SunsetView` wearing a chat's Sky backdrop
-  in Daybreak, at the screen's size; the written gradient is what README's shots
-  stand on; `ShowSpace` maps 1800 × 1169 slides to the screen; its own clock,
-  `ShowClock`). Everything in it moves on one curve, slow, then a sharp peak, then a
-  long settle (`ShowClock.curve`), with no springs; a move begun in the middle of
-  another keeps its speed (`ShowGlide`). `pace` (the waits) and
-  `ShowClock.quick` (the moves) are how fast it runs; the music starts
-  `musicStart` in, so its beat still comes in with the first line on white. One face is carried through every scene, and it is Boltty's
-  own, the hexagon in Daybreak (`hero`): the one place Boltty has a face, since
-  no agent has been chosen yet. Its beats: that face rising close, wider than
-  the screen, on the sky; the title, "This is Boltty" a word at a time, with the
-  agents' faces round it turning once like coins (`ShowFace.spin`,
-  `MascotNSView.turn`). Then the sky gives way to one flat pale colour a scene
-  (`SunsetView.field`, the face's own hue) with one thing on it, large, and before
-  each a line alone on white (`card`): the prompt, ⇧Tab walking the agents and the
-  field with them, the camera close on the words as they are typed, the capsule
-  growing into the question and its answer; the agents' faces overlapped in a row
-  with ⌄, opening into the chat list; Ask Boltty over
-  somebody's window in bars (a region dragged round a part of it, the orb on its
-  corner opening large as the camera comes in, the words, the face flying to the
-  heading, a loop drawn round it and the answer in a bubble); the last line, every face in a row turning in
-  turn, gathered into Boltty's own beside its name, and the sky again. There the
-  panel is a plain black shape (`ShowSlab`), not glass: over a pale field the
-  ramp's thin foot read as grey. A made-up app window with a menu bar, the panel
-  at its own size under a caption, and a walk through Settings were there and were
-  removed. A feature's real gesture changing means this script changes with it.
-  The faces come with no flash of light. Its music (115 beats
-  a minute, `show-music`) comes in with the first line on white, each line and
-  scene after it waits for the next beat (`onBeat`), and the faces gathering is
-  `show-ending`; clicks, blips, the ladder of ticks, a bell and a sub hit are
-  one-shots in its key. After the feel of a promo's track, measured and not
-  copied. A whoosh on every move was removed. An agent that wears Boltty's own
-  face wears another here (`MascotRoster.looks(besides:)`). Then the setup card (agents, faces, keys, voice,
+- **First run**: the launch film (`Resources/first-run.mp4`, with its own sound and in
+  English), played once by `FirstRunShowController` over the whole screen, filling it.
+  It is drawn 1.54:1, a MacBook's shape, with nothing that matters in the 84 of 1248
+  at the top and foot, so a 16:9 screen loses only those. Skip Intro or Escape ends it; under Reduce Motion
+  it is left out; the Sounds switch mutes it. It fades into the Daybreak sky
+  (`AgentBackdropView`), which stands under the setup card. The film is made in
+  `.scratch/launch-film`, not in the app: a show drawn live by Boltty's own views
+  (1 900 lines) was there and was removed. Then the setup card (agents, faces, keys, voice,
   permissions) on the panel's glass. With no agent on the Mac the first
   step says Boltty needs one, the face step is left out, and Not Now goes on. The voice step offers Parakeet and
   Supertonic, both unticked; a ticked one is chosen and downloaded in the
@@ -1589,7 +1564,7 @@ so in the orb ("No sound is reaching the microphone…",
 - **Every agent wears its own face**, chosen on its page in Settings › Agents; no two alike
   (`MascotRoster`). Stored as names in `boltty.mascotByProvider`. Where no agent
   speaks, the preferred agent's face is used; Boltty has no face of its own,
-  but in the first-run show (the hexagon in Daybreak).
+  but in the first-run film (the hexagon in Daybreak).
 - One `MTKView` per face, one shared pipeline, drawn on demand from the shared
   60 Hz `MascotClock` timer (a display link measured worse). `currentDrawable`
   only inside `draw(in:)`. Nothing on the canvas may force an offscreen pass (no

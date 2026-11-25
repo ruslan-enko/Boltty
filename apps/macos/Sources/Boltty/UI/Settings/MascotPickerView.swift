@@ -28,6 +28,7 @@ struct MascotFace: NSViewRepresentable {
   func updateNSView(_ view: MascotNSView, context: Context) {
     let isNewLook = view.look != look
     view.apply(look: look)
+    if view.renderScale != renderScale { view.renderScale = renderScale }
     view.emotion = emotion
     if isNewLook || context.coordinator.pokes != pokes { view.poke() }
     context.coordinator.pokes = pokes

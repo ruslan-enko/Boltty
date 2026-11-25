@@ -1,4 +1,3 @@
-import AVFoundation
 import AudioToolbox
 import AppKit
 @preconcurrency import UserNotifications
@@ -6,36 +5,24 @@ import AppKit
 @MainActor
 final class InterfaceSounds {
   static let sendVariantNames = ["send-1", "send-2", "send-3"]
-  enum FaceSound: String, CaseIterable {
-    case hum, pop, bell, boom, run, tap
-    static let variants = 5
-    var names: [String] { (1...Self.variants).map { "\(rawValue)-\($0)" } }
-  }
-  static let musicName = "show-music"
-  static let endingName = "show-ending"
+  static let humNames = (1...5).map { "hum-\($0)" }
   static let doneName = "done"
   static let attentionName = "attention"
   static let fileExtension = "wav"
 
   private let isEnabled: () -> Bool
-  private let bundle: Bundle
-  private var music: AVAudioPlayer?
-  private var ending: AVAudioPlayer?
   private let sendSounds: [SystemSoundID]
-  private let faceSounds: [FaceSound: [SystemSoundID]]
+  private let humSounds: [SystemSoundID]
   private var lastSend: Int?
 
   init(bundle: Bundle = .main, isEnabled: @escaping () -> Bool) {
     self.isEnabled = isEnabled
-    self.bundle = bundle
     sendSounds = Self.systemSounds(Self.sendVariantNames, in: bundle)
-    faceSounds = Dictionary(uniqueKeysWithValues: FaceSound.allCases.map {
-      ($0, Self.systemSounds($0.names, in: bundle))
-    })
+    humSounds = Self.systemSounds(Self.humNames, in: bundle)
   }
 
   deinit {
-    (sendSounds + faceSounds.values.flatMap { $0 }).forEach { AudioServicesDisposeSystemSoundID($0) }
+    (sendSounds + humSounds).forEach { AudioServicesDisposeSystemSoundID($0) }
   }
 
   private static func systemSounds(_ names: [String], in bundle: Bundle) -> [SystemSoundID] {
@@ -52,51 +39,9 @@ final class InterfaceSounds {
     }
   }
 
-  func startMusic(at moment: TimeInterval = 0) {
-    guard isEnabled(), music == nil,
-          let url = bundle.url(forResource: Self.musicName, withExtension: "m4a"),
-          let player = try? AVAudioPlayer(contentsOf: url)
-    else { return }
-    player.volume = 0.8
-    player.currentTime = moment
-    player.play()
-    music = player
-  }
-
-  var musicTime: TimeInterval? { music.flatMap { $0.isPlaying ? $0.currentTime : nil } }
-
-  func playEnding() {
-    guard isEnabled(), let url = bundle.url(forResource: Self.endingName, withExtension: "m4a"),
-          let player = try? AVAudioPlayer(contentsOf: url)
-    else { return }
-    player.volume = 0.8
-    player.play()
-    ending = player
-  }
-
-  func stopEnding(fade: TimeInterval) {
-    guard let ending else { return }
-    ending.setVolume(0, fadeDuration: fade)
-    DispatchQueue.main.asyncAfter(deadline: .now() + fade) { [weak self] in
-      guard let self, self.ending === ending else { return }
-      ending.stop()
-      self.ending = nil
-    }
-  }
-
-  func stopMusic(fade: TimeInterval) {
-    guard let music else { return }
-    music.setVolume(0, fadeDuration: fade)
-    DispatchQueue.main.asyncAfter(deadline: .now() + fade) { [weak self] in
-      guard let self, self.music === music else { return }
-      music.stop()
-      self.music = nil
-    }
-  }
-
-  func playFace(_ sound: FaceSound, _ index: Int) {
-    guard isEnabled(), let sounds = faceSounds[sound], !sounds.isEmpty else { return }
-    AudioServicesPlaySystemSound(sounds[index % sounds.count])
+  func playHum(_ index: Int) {
+    guard isEnabled(), !humSounds.isEmpty else { return }
+    AudioServicesPlaySystemSound(humSounds[index % humSounds.count])
   }
 
   func playRefused() {

@@ -8501,110 +8501,6 @@
         }
       }
     },
-    "Ask any agent, from anywhere." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frag jeden Agenten, von überall."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pregunta a cualquier agente, desde cualquier sitio."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Demandez à n’importe quel agent, de n’importe où."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "どこからでも、どのエージェントにも質問。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "어디서든 어떤 에이전트에게나 물어보세요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pergunte a qualquer agente, de qualquer lugar."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Питайте будь-якого агента звідусіль."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "随时随地询问任何智能体。"
-          }
-        }
-      }
-    },
-    "Ask anything" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frag irgendwas"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pregunta lo que quieras"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Demandez ce que vous voulez"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "なんでも質問"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "무엇이든 물어보세요"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pergunte qualquer coisa"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Питайте будь-що"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "想问什么都行"
-          }
-        }
-      }
-    },
     "Ask more" : {
       "localizations" : {
         "de" : {
@@ -17054,58 +16950,6 @@
         }
       }
     },
-    "Done — launch.mp4 is 18 MB, down from 240. It’s right next to the original." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fertig – launch.mp4 hat jetzt 18 MB statt 240. Es liegt direkt neben dem Original."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Listo: launch.mp4 ocupa 18 MB en lugar de 240. Está justo al lado del original."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terminé — launch.mp4 fait 18 Mo au lieu de 240. Il est juste à côté de l’original."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "完了 — launch.mp4は240 MBから18 MBになりました。元のファイルのすぐ隣にあります。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "완료 — launch.mp4가 240MB에서 18MB가 되었습니다. 원본 바로 옆에 있습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pronto — launch.mp4 agora tem 18 MB em vez de 240. Está bem ao lado do original."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Готово — launch.mp4 тепер 18 МБ замість 240. Лежить поруч з оригіналом."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "完成 — launch.mp4 从 240 MB 变为 18 MB。就在原文件旁边。"
-          }
-        }
-      }
-    },
     "Download" : {
       "localizations" : {
         "de" : {
@@ -17362,58 +17206,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下载听写模型 %@ 失败。"
-          }
-        }
-      }
-    },
-    "Draft the launch post" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entwirf den Launch-Post"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Redacta el post del lanzamiento"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rédige le post de lancement"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ローンチ投稿の下書きを書いて"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "출시 게시물 초안을 써 줘"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escreva o post de lançamento"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Напиши допис про запуск"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "起草发布帖子"
           }
         }
       }
@@ -18462,58 +18254,6 @@
         }
       }
     },
-    "Every chat, by agent." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jeder Chat, nach Agent."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cada chat, por agente."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chaque discussion, par agent."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "すべてのチャットを、エージェント別に。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "모든 채팅을 에이전트별로."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cada chat, por agente."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Кожен чат — за агентом."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "每个聊天，按智能体归类。"
-          }
-        }
-      }
-    },
     "Every model thinks as little as it can, so answers come quickly." : {
       "localizations" : {
         "de" : {
@@ -19557,58 +19297,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "第一个或最后一个聊天"
-          }
-        }
-      }
-    },
-    "Fix the flaky sign-up test" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Behebe den wackligen Registrierungstest"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arregla el test de registro inestable"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Corrige le test d’inscription instable"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "不安定なサインアップのテストを直して"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "불안정한 회원가입 테스트를 고쳐 줘"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Corrija o teste de cadastro instável"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виправ нестабільний тест реєстрації"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "修复不稳定的注册测试"
           }
         }
       }
@@ -21429,58 +21117,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "热狗"
-          }
-        }
-      }
-    },
-    "How do I make this bigger?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wie mache ich das größer?"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Cómo hago esto más grande?"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comment agrandir ceci ?"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "これを大きくするには？"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이걸 어떻게 키우나요?"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Como deixo isto maior?"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Як зробити це більшим?"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "怎么把这个放大？"
           }
         }
       }
@@ -23359,58 +22995,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "低"
-          }
-        }
-      }
-    },
-    "Make this launch video small enough to email" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mach dieses Launch-Video klein genug für eine E-Mail"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Haz este vídeo de lanzamiento lo bastante pequeño para enviarlo por correo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rends cette vidéo de lancement assez légère pour l’envoyer par e-mail"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このローンチ動画をメールで送れるくらい小さくして"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 출시 영상을 이메일로 보낼 수 있을 만큼 작게 만들어 줘"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deixe este vídeo de lançamento pequeno o bastante para enviar por e-mail"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зменш це відео про запуск, щоб його можна було надіслати поштою"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "把这个发布视频压到能用电子邮件发送的大小"
           }
         }
       }
@@ -35519,110 +35103,6 @@
         }
       }
     },
-    "Select anything, and ask out loud." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähl irgendetwas aus und frag laut."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecciona cualquier cosa y pregunta en voz alta."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélectionnez n’importe quoi et posez votre question à voix haute."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "なんでも選んで、声で質問しましょう。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "무엇이든 선택하고 소리 내어 물어보세요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecione qualquer coisa e pergunte em voz alta."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виберіть будь-що й спитайте вголос."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选中任何内容，然后大声提问。"
-          }
-        }
-      }
-    },
-    "Select the heading, then press ⌘T." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle die Überschrift und drücke ⌘T."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecciona el título y pulsa ⌘T."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélectionnez le titre, puis appuyez sur ⌘T."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "見出しを選び、 ⌘Tを押します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "제목을 선택하고 ⌘T를 누르세요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecione o título e pressione ⌘T."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Виділи заголовок і натисни ⌘T."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选中标题， 然后按 ⌘T。"
-          }
-        }
-      }
-    },
     "Selected" : {
       "localizations" : {
         "de" : {
@@ -42393,58 +41873,6 @@
         }
       }
     },
-    "This is Boltty" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das ist Boltty"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto es Boltty"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voici Boltty"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "これがBoltty"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이것이 Boltty"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este é o Boltty"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Це Boltty"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这就是 Boltty"
-          }
-        }
-      }
-    },
     "This model isn't available any more. Choose another, then try again." : {
       "localizations" : {
         "de" : {
@@ -46818,58 +46246,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的版本是 %@。请从发布页面下载，从菜单栏退出 Boltty，并将新版本拖到“应用程序”。"
-          }
-        }
-      }
-    },
-    "Your agents, one key away." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Agenten, nur eine Taste entfernt."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tus agentes, a una tecla."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vos agents, à une touche près."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エージェントを、キーひとつで。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "키 하나로 만나는 에이전트."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seus agentes, a uma tecla."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ваші агенти за одну клавішу."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你的智能体，一键即达。"
           }
         }
       }

@@ -2,6 +2,12 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.10
+
+**First run**
+- The intro is the launch film.
+- Faces in setup are drawn sharp.
+
 ## 0.12.9
 
 **Ask Boltty**

@@ -265,6 +265,7 @@ private struct SetupAgentsVisual: View {
 }
 
 private struct SetupAgentTile: View {
+  @Environment(\.displayScale) private var displayScale
   @ObservedObject var model: BolttyAISettingsModel
   let row: AgentSettingsRow
   let onHover: () -> Void
@@ -280,7 +281,7 @@ private struct SetupAgentTile: View {
     SetupTile(isOn: isOn, isHovered: isHovered) {
       VStack(spacing: 8) {
         MascotFace(look: model.mascotLook(for: row.agent), identity: identity, ownsDisplayLink: true, pokes: pokes,
-                   renderScale: 1.5)
+                   renderScale: displayScale * AgentPaletteMetrics.promptMascotSupersampling)
           .frame(width: 62, height: 62)
           .saturation(isOn ? 1 : 0)
           .opacity(isOn ? 1 : 0.45)
@@ -349,6 +350,32 @@ private struct SetupMascotsVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
   let onFaceHover: (Int) -> Void
 
+  private static let pile: [(center: CGPoint, side: CGFloat, tilt: CGFloat)] = [
+    (CGPoint(x: 0.31, y: 0.64), 0.50, -9),
+    (CGPoint(x: 0.71, y: 0.58), 0.44, 11),
+    (CGPoint(x: 0.36, y: 0.24), 0.40, 7),
+    (CGPoint(x: 0.75, y: 0.20), 0.33, -13),
+    (CGPoint(x: 0.56, y: 0.90), 0.27, 5),
+  ]
+
+  private static func pileFrames(count: Int, center: CGPoint, side: CGFloat) -> [(frame: CGRect, tilt: CGFloat)] {
+    let spots = Array(pile.prefix(max(0, min(count, pile.count))))
+    guard !spots.isEmpty else { return [] }
+    let rects = spots.map { spot in
+      CGRect(x: spot.center.x - spot.side / 2, y: spot.center.y - spot.side / 2,
+             width: spot.side, height: spot.side)
+    }
+    let bounds = rects.dropFirst().reduce(rects[0]) { $0.union($1) }
+    return zip(rects, spots).map { rect, spot in
+      let frame = CGRect(
+        x: center.x + (rect.minX - bounds.midX) * side,
+        y: center.y + (rect.minY - bounds.midY) * side,
+        width: rect.width * side, height: rect.height * side
+      )
+      return (frame, spot.tilt * .pi / 180)
+    }
+  }
+
   private var agents: [AgentId] {
     let here = model.adapterRows.filter { $0.enabled && $0.isInstalled }.map(\.agent)
     return here.isEmpty ? AgentHistory.tabOrder : here
@@ -357,7 +384,7 @@ private struct SetupMascotsVisual: View {
   var body: some View {
     GeometryReader { proxy in
       let side = min(proxy.size.width, proxy.size.height)
-      let spots = FirstRunShowController.pileFrames(
+      let spots = Self.pileFrames(
         count: agents.count, center: CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2),
         side: side * 0.82
       )
@@ -376,6 +403,7 @@ private struct SetupMascotsVisual: View {
 }
 
 private struct SetupMascotFace: View {
+  @Environment(\.displayScale) private var displayScale
   @ObservedObject var model: BolttyAISettingsModel
   let agent: AgentId
   let side: CGFloat
@@ -389,7 +417,8 @@ private struct SetupMascotFace: View {
     let look = model.mascotLook(for: agent)
     Button { isOpen.toggle() } label: {
       VStack(spacing: 4) {
-        MascotFace(look: look, identity: identity, ownsDisplayLink: true, pokes: pokes, renderScale: 1.25)
+        MascotFace(look: look, identity: identity, ownsDisplayLink: true, pokes: pokes,
+                   renderScale: displayScale * AgentPaletteMetrics.promptMascotSupersampling)
           .frame(width: side, height: side)
           .scaleEffect(isHovered || isOpen ? 1.06 : 1)
         Text(agent.shortDisplayName)

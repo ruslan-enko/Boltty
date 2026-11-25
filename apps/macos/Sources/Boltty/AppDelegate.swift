@@ -388,38 +388,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
   }
 
-  private var firstRunAgents: [AgentId] {
-    let launchable = chat?.launchableProviderIDs().compactMap(AgentId.init(rawValue:)) ?? []
-    let ready = AgentHistory.tabOrder.filter(launchable.contains)
-    return ready.isEmpty ? AgentHistory.tabOrder : ready
-  }
-
-  private func playFirstRunShow(then: @escaping () -> Void) {
+  private func playFirstRunShow(then: @escaping @MainActor () -> Void) {
     guard let screen = firstRunScreen, !MotionPreferences.reduceMotion else { return then() }
     #if DEBUG
     if UserDefaults.standard.bool(forKey: "boltty.skipShow") { return then() }
     #endif
-    let show = FirstRunShowController(
-      agents: firstRunAgents,
-      planned: UserDefaults.standard.string(forKey: AppSettings.agentPresetKey).flatMap(AgentId.init(rawValue:))
-        ?? chat?.plannedProviderID().flatMap(AgentId.init(rawValue:)),
-      on: screen
-    )
-    show.onSound = { [weak self] sound, index in self?.sounds?.playFace(sound, index) }
-    show.onSend = { [weak self] in self?.sounds?.playSend() }
-    show.onMusic = { [weak self] playing in
-      if playing {
-        self?.sounds?.startMusic(at: FirstRunShowController.musicStart)
-      } else {
-        self?.sounds?.stopMusic(fade: 1.2)
-        self?.sounds?.stopEnding(fade: 4)
-      }
-    }
-    show.onEnding = { [weak self] in
-      self?.sounds?.stopMusic(fade: 0.35)
-      self?.sounds?.playEnding()
-    }
-    show.musicTime = { [weak self] in self?.sounds?.musicTime }
+    let show = FirstRunShowController(on: screen, playsSound: model?.settings.playsSounds ?? true)
     firstRunShow = show
     show.play(completion: then)
   }
@@ -435,7 +409,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       model: settings, access: AccessPermissionsModel(probe: .live)
     )
     setupWindowController = setup
-    setup.onFaceHover = { [weak self] index in self?.sounds?.playFace(.hum, index) }
+    setup.onFaceHover = { [weak self] index in self?.sounds?.playHum(index) }
     UserDefaults.standard.set(true, forKey: AccessPermissionsWindowController.shownKey)
     setup.onClose = { [weak self] in
       self?.setupWindowController = nil
