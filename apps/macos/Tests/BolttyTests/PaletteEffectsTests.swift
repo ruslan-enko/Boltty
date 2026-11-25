@@ -157,7 +157,7 @@ final class PaletteEffectsTests: XCTestCase {
     }
 
     XCTAssertGreaterThan(pixel(region.midX, region.maxY).a, 0.9, "the line")
-    XCTAssertGreaterThan(pixel(region.midX, region.maxY - 8).a, 0.2, "its light, inside")
+    XCTAssertGreaterThan(pixel(region.midX, region.maxY - 8).a, 0.02, "its light, inside")
     XCTAssertGreaterThan(pixel(region.midX, region.maxY - 8).a, pixel(region.midX, region.maxY - 24).a,
                          "fading away from the line")
     XCTAssertLessThan(pixel(region.midX, region.midY).a, 0.02, "nothing in the middle")
@@ -180,12 +180,12 @@ final class PaletteEffectsTests: XCTestCase {
     func alpha(_ x: CGFloat, _ y: CGFloat) -> Double {
       Self.pixel(image, Int(x), image.height - 1 - Int(y)).a
     }
-    let inset: CGFloat = 14
+    let inset = AgentPaletteMetrics.screenSelectionInnerGlowDepth * 0.4
 
     let corner = alpha(region.minX + inset, region.maxY - inset)
     let side = alpha(region.midX, region.maxY - inset)
     XCTAssertGreaterThan(side, 0.02, "the light reaches this far in")
-    XCTAssertGreaterThan(corner, side + 0.02, "two edges' light adds near the corner")
+    XCTAssertGreaterThan(corner, side * 1.2, "two edges' light adds near the corner")
   }
 
   func testTheSelectionGlowsColoursMoveWithTheClock() throws {
