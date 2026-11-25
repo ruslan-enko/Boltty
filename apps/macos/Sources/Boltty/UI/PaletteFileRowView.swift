@@ -256,8 +256,6 @@ final class PaletteFileRowView: NSView {
     return kind.isEmpty ? nil : kind
   }
 
-  // MARK: Hover and press
-
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
     if let trackingArea { removeTrackingArea(trackingArea) }
@@ -335,9 +333,8 @@ final class FileQuickLookStore: NSObject, QLPreviewPanelDataSource {
   nonisolated(unsafe) static let shared = FileQuickLookStore()
   nonisolated(unsafe) private var url: URL?
 
-  /// Over the panel it was pressed in (`LightboxHosting`), else Quick Look's panel.
   @MainActor
-  func show(url: URL, from source: NSView? = nil, crop: CGRect? = nil) {
+  func show(url: URL, from source: NSView? = nil, crop: CGRect? = nil, grows: Bool = true) {
     if let source, let host = source.window?.contentView as? LightboxHosting {
       guard FileManager.default.fileExists(atPath: url.path) else { return NSSound.beep() }
       let content: PaletteLightboxView.Content
@@ -347,7 +344,7 @@ final class FileQuickLookStore: NSObject, QLPreviewPanelDataSource {
       } else {
         content = .document(url)
       }
-      if host.showLightbox(content, named: url.lastPathComponent, from: source, crop: crop) { return }
+      if host.showLightbox(content, named: url.lastPathComponent, from: grows ? source : NSView(), crop: crop) { return }
     }
     self.url = url
     guard let panel = QLPreviewPanel.shared() else { return }
@@ -415,14 +412,11 @@ final class FileThumbnails {
 
 @MainActor
 protocol LightboxHosting: AnyObject {
-  /// `crop` is the part of the picture `source` shows, top left at 0 0 in
-  /// fractions of it: the picture opens out of that part and closes back into it.
   func showLightbox(
     _ content: PaletteLightboxView.Content, named name: String, from source: NSView, crop: CGRect?
   ) -> Bool
 }
 
-/// A window of its own over the panel's, so nothing under it is lit, hovered or pressed.
 final class PaletteLightboxView: NSView {
   enum Content {
     case picture(CGImage)
@@ -439,8 +433,6 @@ final class PaletteLightboxView: NSView {
   private(set) var isClosing = false
   var onClosed: (() -> Void)?
 
-  /// Read as the file means it to stand (EXIF orientation), no larger than a
-  /// screen needs.
   static func picture(at url: URL) -> CGImage? {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
     let options: [CFString: Any] = [
@@ -507,8 +499,6 @@ final class PaletteLightboxView: NSView {
     return self
   }
 
-  /// A document's own size where it has one (a PDF's page, a video's frame),
-  /// else a page's shape.
   private static func documentSize(of url: URL) -> CGSize {
     let type = UTType(filenameExtension: url.pathExtension)
     if type?.conforms(to: .pdf) == true,
@@ -554,7 +544,6 @@ final class PaletteLightboxView: NSView {
                   width: size.width, height: size.height)
   }
 
-  /// Where the picture stands in what was pressed, as long as that is still seen.
   private var sourceFrame: CGRect? {
     guard let source, let from = source.window, from.isVisible, let to = window,
           !source.isHiddenOrHasHiddenAncestor, !source.visibleRect.isEmpty else { return nil }
@@ -607,8 +596,6 @@ final class PaletteLightboxView: NSView {
 
   private static let whole = CGRect(x: 0, y: 0, width: 1, height: 1)
 
-  /// A picture grows out of what was pressed; a document, whose thumbnail is
-  /// another shape and whose view redraws as it is resized, fades in where it stands.
   private var zooms: Bool { document == nil && !MotionPreferences.reduceMotion }
 
   private func uncrop(from: CGRect, to: CGRect, duration: TimeInterval) {

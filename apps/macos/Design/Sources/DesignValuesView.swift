@@ -1,6 +1,5 @@
 import AppKit
 
-/// Every design value the source writes, with a filter. A double click opens its file.
 final class DesignValuesView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
   private static let columns: [(id: String, title: String, width: CGFloat)] = [
     ("name", "Name", 260), ("value", "Value", 300), ("owner", "Owner", 190), ("uses", "Mentions", 70),

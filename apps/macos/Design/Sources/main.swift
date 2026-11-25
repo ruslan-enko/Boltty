@@ -1,6 +1,5 @@
 import AppKit
 
-// The product's main.swift is left out, and this with it.
 enum LaunchTrace {
   static func mark(_ label: String) {}
 }

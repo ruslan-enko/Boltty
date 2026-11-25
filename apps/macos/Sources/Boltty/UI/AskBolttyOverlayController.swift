@@ -2,30 +2,31 @@ import AppKit
 
 @MainActor
 final class AskBolttyOverlayController {
-  // MARK: Geometry, in points
-
   static let faceSide: CGFloat = 40
   static let pointerOffset = CGVector(dx: 30, dy: -30)
   static let followTime: CFTimeInterval = 0.06
   static let edgeMargin: CGFloat = 8
   static var bubbleGap: CGFloat { live(14) }
   static var bubbleMaxTextWidth: CGFloat { live(340) }
-  static let bubbleMaxLines = 5
-  static let bubblePadding = CGSize(width: 14, height: 10)
-  static var bubbleCornerRadius: CGFloat { live(36) }
-  static var bubbleShade: NSColor { live(NSColor.black.withAlphaComponent(0.25)) }
+  static var bubblePadding: CGSize {
+    CGSize(width: AgentPaletteMetrics.listeningWordsInset, height: AgentPaletteMetrics.listeningWordsBottomInset)
+  }
+  static var bubbleCornerShare: CGFloat {
+    AgentPaletteMetrics.cornerRadius / AgentPaletteMetrics.listeningWordedHeight(
+      lines: 1, lineHeight: bubbleFirstLineHeight - bubblePadding.height * 2)
+  }
+  static func bubbleCorner(height: CGFloat) -> CGFloat {
+    min(AgentPaletteMetrics.cornerRadius, height * bubbleCornerShare)
+  }
 
   static let landingOffset = CGVector(dx: 30, dy: -30)
 
   static let lingerAfterAnswer: TimeInterval = 1
   static let lingerAfterPointing: TimeInterval = 2
   static let lingerAfterProblem: TimeInterval = 4
-  static let boardSide: CGFloat = 320
-  static let boardInset: CGFloat = 24
-  static let boardCornerRadius: CGFloat = 28
-  static let boardGap: CGFloat = 12
-
-  // MARK: State
+  static let boardSide: CGFloat = 300
+  static let boardInset: CGFloat = 12
+  static let boardGap: CGFloat = 16
 
   private enum Mode: Equatable {
     case following
@@ -41,14 +42,13 @@ final class AskBolttyOverlayController {
   private let marker = AskBolttyPointerMark()
   private var markerReach: CGVector?
   private let drawing = AskBolttyDrawingLayer()
-  private var board: PaletteGlassHost?
+  private var board: NSView?
   private let boardDrawing = AskBolttyDrawingLayer()
   private var drawnCount = 0
   private var settled = false
   private var dismissMonitor: Any?
   private var face: MascotNSView?
   private var bubble: PaletteGlassHost?
-  private let label = NSTextField(wrappingLabelWithString: "")
   private let answerWords = ListeningWordsView(frame: .zero)
   private let keyHints = PaletteKeyHints()
   private var wantedKeyHints: [PaletteKeyHints.Hint] = []
@@ -65,9 +65,10 @@ final class AskBolttyOverlayController {
   private var hideWork: DispatchWorkItem?
   private var restHintWork: DispatchWorkItem?
   private var text = ""
-  private var shade: NSView?
   private var typed: Double = 0
   private var typesOut = false
+  private var wasTyped = false
+  private var shownInk = PaletteInk.primary
   private var shownBubbleSize: CGSize = .zero
   static let bubbleGrowthTime: CFTimeInterval = 0.09
   private var wholeBubbleSize: CGSize = .zero
@@ -80,7 +81,17 @@ final class AskBolttyOverlayController {
   var isSaidAloud = false
   var onVisibleChange: (() -> Void)?
   private var resting = false
-  var restHint: (() -> String?)?
+  var restHints: (() -> [PaletteKeyHints.Hint])?
+  private var shownRestHints: [PaletteKeyHints.Hint] = []
+  var usesClearGlass = true {
+    didSet {
+      guard usesClearGlass != oldValue else { return }
+      bubble?.apply(surfaceStyle: glassStyle)
+    }
+  }
+  private var glassStyle: PaletteSurfaceStyle { .bolttyAIPrompt(clearGlass: usesClearGlass) }
+  var region: CGRect?
+  private var drawnFrames: [CGRect] = []
   static let restHintTime: TimeInterval = 5
   private var holdsForArrival = false
   private var arrival: CGPoint?
@@ -99,12 +110,11 @@ final class AskBolttyOverlayController {
 
   var isVisible: Bool { panel?.isVisible == true }
   var isFaceUp: Bool { isVisible && !settled && panel?.alphaValue == 1 }
-  var textForTesting: String { typesOut ? answerWords.text : label.stringValue }
+  var textForTesting: String { answerWords.text }
+  var keyHintsForTesting: [PaletteKeyHints.Hint] { keyHints.isHidden ? [] : keyHints.hints }
   var bubbleForTesting: (isHidden: Bool, alpha: CGFloat, wordsAlpha: CGFloat, frame: CGRect) {
-    (bubble?.isHidden ?? true, bubble?.alphaValue ?? 0, label.alphaValue, bubble?.frame ?? .zero)
+    (bubble?.isHidden ?? true, bubble?.alphaValue ?? 0, answerWords.alphaValue, bubble?.frame ?? .zero)
   }
-
-  // MARK: - What Ask Boltty says
 
   func show(_ phase: AskBolttySession.Phase, caption: String, agent: AgentId?, step: String? = nil) {
     if phase == .idle, resting { return }
@@ -169,8 +179,6 @@ final class AskBolttyOverlayController {
     startTicking()
   }
 
-  // MARK: - What the answer draws
-
   private var hasDrawings: Bool { drawnCount > 0 }
 
   func draw(_ strokes: [AskBolttyStroke]) {
@@ -182,7 +190,11 @@ final class AskBolttyOverlayController {
            let screen = Self.screen(containing: CGPoint(x: frame.midX, y: frame.midY)) {
           place(on: screen)
         }
-        drawing.draw(stroke.shape, in: frame.offsetBy(dx: -screenFrame.minX, dy: -screenFrame.minY))
+        let space = frame.offsetBy(dx: -screenFrame.minX, dy: -screenFrame.minY)
+        drawing.draw(stroke.shape, in: space)
+        if let path = AskBolttyDrawingLayer.path(of: stroke.shape, in: space) {
+          drawnFrames.append(path.boundingBoxOfPath)
+        }
       } else {
         guard let board = showBoard() else { continue }
         boardDrawing.draw(stroke.shape, in: board.bounds.insetBy(dx: Self.boardInset, dy: Self.boardInset))
@@ -195,25 +207,22 @@ final class AskBolttyOverlayController {
     drawing.clear()
     boardDrawing.clear()
     drawnCount = 0
+    drawnFrames = []
     board?.isHidden = true
     unsettle()
     stopDismissMonitor()
   }
 
-  private func showBoard() -> PaletteGlassHost? {
+  private func showBoard() -> NSView? {
     if let board, !board.isHidden { return board }
-    let host: PaletteGlassHost
+    let host: NSView
     if let board {
       host = board
     } else {
-      let content = NSView()
-      content.wantsLayer = true
-      content.layer?.backgroundColor = Self.bubbleShade.cgColor
-      content.layer?.cornerRadius = Self.boardCornerRadius
-      content.layer?.cornerCurve = .continuous
-      content.layer?.addSublayer(boardDrawing)
-      host = PaletteGlassHost(content: content, cornerRadius: Self.boardCornerRadius, style: .bolttyAI)
-      host.translatesAutoresizingMaskIntoConstraints = true
+      host = NSView()
+      host.wantsLayer = true
+      host.layer?.masksToBounds = false
+      host.layer?.addSublayer(boardDrawing)
       root.addSubview(host, positioned: .below, relativeTo: face)
       board = host
     }
@@ -231,19 +240,11 @@ final class AskBolttyOverlayController {
       y: min(max(y, Self.edgeMargin), space.maxY - Self.edgeMargin - side),
       width: side, height: side)
     host.frame = CGRect(x: snap(frame.minX), y: snap(frame.minY), width: side, height: side)
-    host.cornerRadius = Self.boardCornerRadius
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     boardDrawing.frame = CGRect(origin: .zero, size: frame.size)
     CATransaction.commit()
     host.isHidden = false
-    if !MotionPreferences.reduceMotion {
-      host.alphaValue = 0
-      NSAnimationContext.runAnimationGroup { context in
-        context.duration = Motion.standard
-        host.animator().alphaValue = 1
-      }
-    }
     return host
   }
 
@@ -291,16 +292,13 @@ final class AskBolttyOverlayController {
   }
 
   private func showRestHint() {
-    guard resting, let hint = restHint?() else { return }
-    setText(hint, quiet: true, isHint: true)
-    if !MotionPreferences.reduceMotion { popBubble() }
+    guard resting, let hints = restHints?(), !hints.isEmpty else { return }
+    shownRestHints = hints
+    layoutKeyHints()
     let work = DispatchWorkItem { [weak self] in
       guard let self, self.resting else { return }
-      if MotionPreferences.reduceMotion {
-        self.setText("", quiet: false)
-      } else {
-        self.retractBubble()
-      }
+      self.shownRestHints = []
+      self.layoutKeyHints()
     }
     restHintWork = work
     DispatchQueue.main.asyncAfter(deadline: .now() + Self.restHintTime, execute: work)
@@ -314,7 +312,7 @@ final class AskBolttyOverlayController {
     NSAnimationContext.runAnimationGroup { context in
       context.duration = duration
       context.timingFunction = Motion.standardCurve
-      for part in [bubble, answerWords, label].compactMap({ $0 as NSView? }) {
+      for part in [bubble, answerWords].compactMap({ $0 as NSView? }) {
         part.animator().alphaValue = 0
       }
     }
@@ -333,7 +331,8 @@ final class AskBolttyOverlayController {
     retractWork = nil
     restHintWork?.cancel()
     restHintWork = nil
-    for part in [bubble, answerWords, label].compactMap({ $0 as NSView? }) {
+    shownRestHints = []
+    for part in [bubble, answerWords].compactMap({ $0 as NSView? }) {
       part.layer?.removeAllAnimations()
       part.alphaValue = 1
     }
@@ -415,8 +414,6 @@ final class AskBolttyOverlayController {
     appear()
   }
 
-  // MARK: - Pure geometry
-
   static func followGoal(for pointer: CGPoint, in screen: CGRect) -> CGPoint {
     let reach = faceSide / 2 + edgeMargin
     var x = pointer.x + pointerOffset.dx
@@ -443,9 +440,23 @@ final class AskBolttyOverlayController {
       + bubblePadding.height * 2
   }
 
-  static func bubbleSide(current: BubbleSide, beside face: CGRect, in screen: CGRect) -> BubbleSide {
+  static func bubbleSide(
+    current: BubbleSide, beside face: CGRect, in screen: CGRect,
+    clear: [CGRect] = [], height: CGFloat = 0
+  ) -> BubbleSide {
     let fitsRight = face.maxX + bubbleGap + bubbleMaxWidth <= screen.maxX - edgeMargin
     let fitsLeft = face.minX - bubbleGap - bubbleMaxWidth >= screen.minX + edgeMargin
+    if fitsRight, fitsLeft, !clear.isEmpty {
+      let top = face.midY + bubbleFirstLineHeight / 2
+      func covers(_ side: BubbleSide) -> Bool {
+        let width = bubbleGap + bubbleMaxWidth
+        let room = CGRect(
+          x: side == .right ? face.maxX : face.minX - width, y: top - height, width: width, height: height)
+        return clear.contains { $0.intersects(room) }
+      }
+      let other: BubbleSide = current == .right ? .left : .right
+      if covers(current), !covers(other) { return other }
+    }
     switch current {
     case .right: return fitsRight || !fitsLeft ? .right : .left
     case .left: return fitsLeft || !fitsRight ? .left : .right
@@ -502,8 +513,6 @@ final class AskBolttyOverlayController {
     NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? NSScreen.main
   }
 
-  // MARK: - Building
-
   private func build(agent: AgentId?) {
     let look = MascotLook.face(for: agent)
     if panel != nil {
@@ -520,42 +529,29 @@ final class AskBolttyOverlayController {
     self.agent = agent
     drawing.colours = Self.lightColours(of: look)
     boardDrawing.colours = drawing.colours
-    root.layer?.addSublayer(drawing)
-
     root.wantsLayer = true
+    root.layer?.addSublayer(drawing)
     root.layer?.masksToBounds = false
     root.layer?.addSublayer(marker)
 
     let content = NSView()
     content.wantsLayer = true
-    content.layer?.backgroundColor = Self.bubbleShade.cgColor
-    content.layer?.cornerCurve = .continuous
-    shade = content
-    label.font = Self.bubbleFont
-    label.textColor = PaletteInk.primary
-    label.cell?.truncatesLastVisibleLine = true
-    label.isSelectable = false
-    label.translatesAutoresizingMaskIntoConstraints = false
-    content.addSubview(label)
     answerWords.translatesAutoresizingMaskIntoConstraints = true
     answerWords.isCentred = false
     answerWords.wrapWidth = Self.bubbleMaxTextWidth
     answerWords.colors = VoiceEdgeGlowLayout.rayColors(from: look.palette)
-    answerWords.isHidden = true
     content.addSubview(answerWords)
     shimmer.mask = shimmerWords
     shimmer.isHidden = true
     shimmerBand.startPoint = CGPoint(x: 0, y: 0.5)
     shimmerBand.endPoint = CGPoint(x: 1, y: 0.5)
     shimmer.addSublayer(shimmerBand)
-    content.layer?.addSublayer(shimmer)
+    answerWords.wantsLayer = true
+    answerWords.layer?.addSublayer(shimmer)
     paintShimmer(look)
-    NSLayoutConstraint.activate([
-      label.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: Self.bubblePadding.width),
-      label.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -Self.bubblePadding.width),
-      label.centerYAnchor.constraint(equalTo: content.centerYAnchor),
-    ])
-    let bubble = PaletteGlassHost(content: content, cornerRadius: Self.bubbleCornerRadius, style: .bolttyAI)
+    let bubble = PaletteGlassHost(content: content, cornerRadius: Self.bubbleCorner(height: Self.bubbleFirstLineHeight), style: glassStyle)
+    bubble.shadesRim = false
+    keyHints.shadesRim = false
     bubble.translatesAutoresizingMaskIntoConstraints = true
     root.addSubview(bubble)
 
@@ -645,6 +641,10 @@ final class AskBolttyOverlayController {
     let seed = Self.bubbleFirstLineHeight
     shownBubbleSize = CGSize(width: seed, height: seed)
     shownBubbleLead = Self.bubbleLead(on: bubbleSide, wholeWidth: seed)
+    if !typesOut {
+      answerWords.setText("", animated: false, ink: shownInk)
+      answerWords.setText(text, animated: true, ink: shownInk)
+    }
     bubble.isHidden = false
     bubble.alphaValue = 0
     NSAnimationContext.runAnimationGroup { context in
@@ -692,59 +692,47 @@ final class AskBolttyOverlayController {
     DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
   }
 
-  // MARK: - The bubble
-
-  static var bubbleFont: NSFont { roundedAppFont(size: AgentPaletteMetrics.typePrimary, weight: .medium) }
-
-  static var restHintFont: NSFont { roundedAppFont(size: AgentPaletteMetrics.typeMeta) }
-
-  private func setText(_ next: String, quiet: Bool, isHint: Bool = false) {
-    wordsAreQuiet = quiet && !isHint
-    let lines = Self.bubbleMaxLines
-    label.font = isHint ? Self.restHintFont : Self.bubbleFont
-    label.textColor = quiet && !isHint ? PaletteInk.secondary : PaletteInk.primary
-    let wasTyping = !answerWords.isHidden
-    label.isHidden = typesOut
-    answerWords.isHidden = !typesOut
-    guard next != text || wasTyping != typesOut || label.maximumNumberOfLines != lines else { return }
-    let isNewSentence = !next.hasPrefix(text) || !wasTyping
-    if typesOut {
-      typed = Double(Self.carried(from: text, into: next))
-      lastBlip = Int(typed)
-      if isNewSentence { answerWords.setText("", animated: false) }
-    } else {
-      typed = Double(next.count)
-      answerWords.setText("", animated: false)
-    }
+  private func setText(_ next: String, quiet: Bool) {
+    wordsAreQuiet = quiet
+    let ink = quiet ? PaletteInk.secondary : PaletteInk.primary
+    guard next != text || wasTyped != typesOut || ink != shownInk else { return }
+    let isNewSentence = !next.hasPrefix(text) || !wasTyped
+    let animates = next != text && panel?.isVisible == true
+    let carried = typesOut && wasTyped ? Self.carried(from: text, into: next) : 0
+    wasTyped = typesOut
+    shownInk = ink
     text = next
+    typed = Double(typesOut ? carried : next.count)
+    lastBlip = Int(typed)
+    if isNewSentence || !typesOut { answerWords.setText("", animated: false, ink: ink) }
     if !quiet, !next.isEmpty { Self.announce(next) }
     if next.isEmpty {
       shownBubbleSize = .zero
       wholeBubbleSize = .zero
       shownBubbleLead = nil
       bubbleSide = .right
-    }
-    if typesOut {
-      label.stringValue = ""
+    } else {
       let whole = answerWords.measure(next, width: Self.bubbleMaxTextWidth)
-      wholeBubbleSize = CGSize(
-        width: whole.widest + Self.bubblePadding.width * 2,
-        height: CGFloat(max(1, whole.lines)) * answerWords.lineHeight + Self.bubblePadding.height * 2)
-      revealWords()
+      wholeBubbleSize = Self.bubbleSize(lines: whole.lines, widest: whole.widest, lineHeight: answerWords.lineHeight)
+      if typesOut {
+        revealWords()
+      } else {
+        answerWords.setText(next, animated: animates, ink: ink)
+        bubbleSize = wholeBubbleSize
+      }
       if isNewSentence, bubbleSide == .left {
         shownBubbleSize = bubbleGoal
         shownBubbleLead = nil
       }
-    } else {
-      label.maximumNumberOfLines = lines
-      label.lineBreakMode = .byWordWrapping
-      label.stringValue = next
-      bubbleSize = Self.bubbleSize(for: next, lines: lines, font: label.font ?? Self.bubbleFont)
-      wholeBubbleSize = bubbleSize
-      label.preferredMaxLayoutWidth = max(1, bubbleSize.width - Self.bubblePadding.width * 2)
     }
     layoutFace()
-    syncShimmer(wordsAreQuiet)
+    syncShimmer(quiet)
+  }
+
+  static func bubbleSize(lines: Int, widest: CGFloat, lineHeight: CGFloat) -> CGSize {
+    CGSize(
+      width: widest + bubblePadding.width * 2,
+      height: CGFloat(max(1, lines)) * lineHeight + bubblePadding.height * 2)
   }
 
   private static func announce(_ words: String) {
@@ -761,9 +749,7 @@ final class AskBolttyOverlayController {
     guard reached != answerWords.text else { return }
     answerWords.setText(reached, animated: panel?.isVisible == true)
     let measured = answerWords.measure(width: Self.bubbleMaxTextWidth)
-    bubbleSize = CGSize(
-      width: measured.widest + Self.bubblePadding.width * 2,
-      height: CGFloat(max(1, measured.lines)) * answerWords.lineHeight + Self.bubblePadding.height * 2)
+    bubbleSize = Self.bubbleSize(lines: measured.lines, widest: measured.widest, lineHeight: answerWords.lineHeight)
     if shownBubbleSize == .zero { shownBubbleSize = bubbleSize }
   }
 
@@ -790,26 +776,28 @@ final class AskBolttyOverlayController {
     shownBubbleLead = step(lead, leadGoal, time: Self.bubbleSideTime)
   }
 
-  // MARK: - The shimmer
-
   private func syncShimmer(_ quiet: Bool) {
-    guard quiet, !MotionPreferences.reduceMotion, let shade else {
+    guard quiet, !text.isEmpty, !MotionPreferences.reduceMotion else {
       shimmer.isHidden = true
       shimmerBand.removeAnimation(forKey: "sweep")
       return
     }
-    shade.layoutSubtreeIfNeeded()
-    let frame = label.frame
-    let words = min(frame.width, ceil(label.attributedStringValue.size().width) + 4)
+    let pad = AgentPaletteMetrics.listeningWordBlur
+    let words = answerWords.measure(width: Self.bubbleMaxTextWidth).widest
     let band = max(
       AgentPaletteMetrics.resultsShimmerMinimumBand, words * AgentPaletteMetrics.resultsShimmerBandShare)
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    shimmer.frame = frame
+    shimmer.frame = answerWords.bounds
     shimmerWords.frame = shimmer.bounds
-    shimmerBand.frame = CGRect(x: -band, y: 0, width: band, height: frame.height)
+    shimmerBand.frame = CGRect(x: pad - band, y: 0, width: band, height: shimmer.bounds.height)
+    if shimmerCut != text {
+      shimmerWords.contents = answerWords.settledWords(scale: backingScale)
+      shimmerWords.contentsScale = backingScale
+      shimmerCut = text
+      shimmerBand.removeAnimation(forKey: "sweep")
+    }
     CATransaction.commit()
-    cutShimmerWords()
     shimmer.isHidden = false
     guard shimmerBand.animation(forKey: "sweep") == nil else { return }
     let sweep = CABasicAnimation(keyPath: "transform.translation.x")
@@ -822,6 +810,7 @@ final class AskBolttyOverlayController {
     cycle.animations = [sweep]
     cycle.duration = sweep.duration + AgentPaletteMetrics.resultsShimmerRest
     cycle.repeatCount = .infinity
+    cycle.beginTime = CACurrentMediaTime() + AgentPaletteMetrics.listeningWordArrival * 0.7
     shimmerBand.add(cycle, forKey: "sweep")
   }
 
@@ -836,23 +825,6 @@ final class AskBolttyOverlayController {
     shimmerBand.locations = OklabGradient.numbers([0] + light.indices.map {
       inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
     } + [1])
-  }
-
-  private func cutShimmerWords() {
-    let text = label.stringValue
-    guard shimmerCut != text, label.bounds.width > 0, label.bounds.height > 0,
-          let rep = label.bitmapImageRepForCachingDisplay(in: label.bounds)
-    else { return }
-    let ink = label.textColor
-    label.textColor = .white
-    label.cacheDisplay(in: label.bounds, to: rep)
-    label.textColor = ink
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    shimmerWords.contents = rep.cgImage
-    shimmerWords.contentsScale = backingScale
-    CATransaction.commit()
-    shimmerCut = text
   }
 
   static func carried(from old: String, into new: String) -> Int {
@@ -871,29 +843,6 @@ final class AskBolttyOverlayController {
     let seed = (agent?.rawValue ?? "boltty").unicodeScalars.reduce(0) { $0 &* 31 &+ Int($1.value) }
     return 420 + Double(abs(seed) % 220)
   }
-
-  static func bubbleSize(for text: String, lines: Int, font: NSFont = bubbleFont) -> CGSize {
-    guard !text.isEmpty else { return .zero }
-    let cell = NSTextFieldCell(textCell: text)
-    cell.font = font
-    cell.wraps = lines > 1
-    cell.isScrollable = false
-    cell.truncatesLastVisibleLine = true
-    cell.lineBreakMode = lines > 1 ? .byWordWrapping : .byTruncatingHead
-    let measured = cell.cellSize(forBounds: NSRect(
-      x: 0, y: 0, width: bubbleMaxTextWidth, height: .greatestFiniteMagnitude))
-    let height = min(ceil(measured.height), bubbleLineHeight * CGFloat(lines))
-    return CGSize(width: min(ceil(measured.width), bubbleMaxTextWidth) + bubblePadding.width * 2,
-                  height: max(height, bubbleLineHeight) + bubblePadding.height * 2)
-  }
-
-  static let bubbleLineHeight: CGFloat = {
-    let cell = NSTextFieldCell(textCell: "Ag")
-    cell.font = bubbleFont
-    return ceil(cell.cellSize.height)
-  }()
-
-  // MARK: - The clock
 
   private func startTicking() {
     guard link == nil else { return }
@@ -984,7 +933,10 @@ final class AskBolttyOverlayController {
     defer { layoutKeyHints() }
     guard !text.isEmpty else { return }
     let space = CGRect(origin: .zero, size: screenFrame.size)
-    bubbleSide = Self.bubbleSide(current: bubbleSide, beside: resting, in: space)
+    let asked = region.map { $0.offsetBy(dx: -screenFrame.minX, dy: -screenFrame.minY) }
+    bubbleSide = Self.bubbleSide(
+      current: bubbleSide, beside: resting, in: space,
+      clear: drawnFrames + [asked].compactMap { $0 }, height: wholeBubbleSize.height)
     var bubbleFrame = Self.bubbleFrame(
       size: shownBubbleSize == .zero ? bubbleGoal : shownBubbleSize,
       whole: wholeBubbleSize,
@@ -997,32 +949,36 @@ final class AskBolttyOverlayController {
     let resized = bubble.frame.size != bubbleFrame.size
     bubble.frame = bubbleFrame
     if resized {
-      let corner = min(Self.bubbleCornerRadius, bubbleFrame.height / 2)
-      bubble.cornerRadius = corner
-      shade?.layer?.cornerRadius = corner
+      bubble.cornerRadius = Self.bubbleCorner(height: bubbleFrame.height)
     }
   }
 
-  /// What Escape and a click do now, under the face and its words.
   func setKeyHints(_ hints: [PaletteKeyHints.Hint]) {
     wantedKeyHints = hints
-    if !hints.isEmpty { keyHints.setHints(hints) }
     layoutKeyHints()
   }
 
   private func layoutKeyHints() {
-    guard !wantedKeyHints.isEmpty, !isArriving, !resting, !settled, let face, let bubble,
+    let wanted = resting ? shownRestHints : wantedKeyHints
+    guard !wanted.isEmpty, !isArriving, !settled, let face, let bubble,
           panel?.isVisible == true
     else {
       keyHints.hide()
       return
     }
+    keyHints.setHints(wanted)
     let above = bubble.isHidden ? face.frame : face.frame.union(bubble.frame)
     let size = keyHints.size
     let space = CGRect(origin: .zero, size: screenFrame.size)
     var origin = CGPoint(
       x: bubble.isHidden ? face.frame.midX - size.width / 2 : bubble.frame.minX,
       y: above.minY - Self.keyHintsGap - size.height)
+    if resting {
+      let right = face.frame.maxX + Self.bubbleGap
+      let fits = right + size.width <= space.maxX - Self.edgeMargin
+      origin = CGPoint(
+        x: fits ? right : face.frame.minX - Self.bubbleGap - size.width, y: face.frame.midY - size.height / 2)
+    }
     if origin.y < space.minY + Self.edgeMargin { origin.y = above.maxY + Self.keyHintsGap }
     origin.x = min(max(origin.x, Self.edgeMargin), space.maxX - Self.edgeMargin - size.width)
     let frame = CGRect(x: snap(origin.x), y: snap(origin.y), width: size.width, height: size.height)
@@ -1031,7 +987,6 @@ final class AskBolttyOverlayController {
   }
 
   private func layoutAnswerWords(in size: CGSize) {
-    guard !answerWords.isHidden else { return }
     let blur = AgentPaletteMetrics.listeningWordBlur
     let height = CGFloat(AgentPaletteMetrics.listeningMaxLines) * answerWords.lineHeight + blur * 2
     let frame = CGRect(
@@ -1045,8 +1000,6 @@ final class AskBolttyOverlayController {
   private func snap(_ value: CGFloat) -> CGFloat {
     (value * backingScale).rounded() / backingScale
   }
-
-  // MARK: - The pointer mark
 
   static func pointerTurn(reach: CGVector) -> CGFloat {
     atan2(reach.dy, reach.dx) - AskBolttyPointerMark.restingAngle

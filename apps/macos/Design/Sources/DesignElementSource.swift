@@ -1,7 +1,5 @@
 import Foundation
 
-/// Where a view class is written, and which `live(…)` values a piece of it uses,
-/// straight or through values worked out from them.
 final class DesignElementSource: @unchecked Sendable {
   struct Place: Equatable {
     let file: URL
@@ -76,7 +74,6 @@ final class DesignElementSource: @unchecked Sendable {
 
   func place(of type: String) -> Place? { classes[type]?.place }
 
-  /// The line that declares `property` in `type`, else the class's own.
   func place(of type: String, property: String?) -> Place? {
     guard let body = classes[type], let property,
           let lines = try? String(contentsOf: body.place.file, encoding: .utf8).components(separatedBy: "\n"),
@@ -87,8 +84,6 @@ final class DesignElementSource: @unchecked Sendable {
     return Place(file: body.place.file, line: line + 1)
   }
 
-  /// The keys of the live values in the lines of `type` about `property`; with
-  /// none there, or no property, in all of `type`.
   func values(of type: String, property: String? = nil) -> Set<String> {
     let cache = "\(type).\(property ?? "")"
     if let known = used[cache] { return known }
@@ -96,7 +91,6 @@ final class DesignElementSource: @unchecked Sendable {
     var found: Set<String> = []
     if let property {
       for index in body.lines.indices where Self.mentions(body.lines[index], property) {
-        // A call is often broken over the lines after it.
         let end = min(body.lines.count, index + (body.lines[index].hasSuffix("(") || body.lines[index].hasSuffix("=") ? 4 : 1))
         found.formUnion(keys(in: body.lines[index..<end].joined(separator: "\n"), owner: type))
       }
@@ -140,7 +134,6 @@ final class DesignElementSource: @unchecked Sendable {
     return found
   }
 
-  /// `Owner.name` for each dotted name, and `owner.name` for each bare one.
   static func names(in text: String, owner: String) -> Set<String> {
     var found: Set<String> = []
     var word = "", previous = ""

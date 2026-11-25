@@ -1,8 +1,6 @@
 import AppKit
 import CoreImage
 
-// MARK: - Icon button
-
 class PaletteIconButton: NSButton {
   var helpShortcut: String?
   private var helpText: String?
@@ -57,8 +55,6 @@ class PaletteIconButton: NSButton {
     }
   }
 
-  /// Tab's stop: a flat fill of its own, since the composer's controls show
-  /// hover by their ink alone and a brighter icon was all Tab left to see.
   var isKeyboardTarget = false {
     didSet {
       guard isKeyboardTarget != oldValue else { return }
@@ -505,7 +501,7 @@ private final class PaletteHelpTag: NSView {
     titleRow.spacing = AgentPaletteMetrics.helpKeysGap
     titleRow.setViews([title], in: .leading)
     if let shortcut, !shortcut.isEmpty {
-      let caps = PaletteHelpPresenter.keys(of: shortcut).map(PaletteKeycapView.init(key:))
+      let caps = PaletteHelpPresenter.keys(of: shortcut).map { PaletteKeycapView(key: $0) }
       let keys = NSStackView(views: caps)
       keys.orientation = .horizontal
       keys.spacing = AgentPaletteMetrics.helpKeycapSpacing
@@ -575,12 +571,21 @@ private final class PaletteHelpTag: NSView {
 private final class PaletteKeycapView: NSView {
   private let glass = NSGlassEffectView()
 
-  init(key: String) {
+  private let isRound: Bool
+
+  init(key: String, isRound: Bool = false, isOnLight: Bool = false) {
+    self.isRound = isRound
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
     glass.style = .regular
     glass.contentView = NSView()
-    addSubview(glass)
+    if isOnLight {
+      wantsLayer = true
+      layer?.backgroundColor = AgentPaletteMetrics.keyHintsFilledCap.cgColor
+    } else {
+      addSubview(glass)
+    }
+    let inkColour = isOnLight ? AgentPaletteMetrics.keyHintsFilledInk : PaletteInk.secondary
     let font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote)
     let size = AgentPaletteMetrics.helpKeycapSize
     var constraints = [
@@ -594,7 +599,7 @@ private final class PaletteKeycapView: NSView {
     ]
     if let image = Self.icons[key]?.image(size: font.pointSize + 2, description: key) {
       let mark = NSImageView(image: image)
-      mark.contentTintColor = PaletteInk.secondary
+      mark.contentTintColor = inkColour
       mark.translatesAutoresizingMaskIntoConstraints = false
       addSubview(mark)
       constraints += [
@@ -602,7 +607,7 @@ private final class PaletteKeycapView: NSView {
         mark.centerYAnchor.constraint(equalTo: centerYAnchor),
       ]
     } else {
-      let mark = PaletteKeyLettersView(key: key, font: font)
+      let mark = PaletteKeyLettersView(key: key, font: font, colour: inkColour)
       mark.translatesAutoresizingMaskIntoConstraints = false
       addSubview(mark)
       constraints += [
@@ -621,7 +626,9 @@ private final class PaletteKeycapView: NSView {
   override func layout() {
     super.layout()
     glass.frame = bounds
-    glass.cornerRadius = AgentPaletteMetrics.helpKeycapCornerRadius
+    let corner = isRound ? bounds.height / 2 : AgentPaletteMetrics.helpKeycapCornerRadius
+    glass.cornerRadius = corner
+    layer?.applyPaletteCorner(radius: corner)
   }
 
   private static let icons: [String: BolttyIcon] = [
@@ -638,7 +645,10 @@ private final class PaletteKeyLettersView: NSView {
   private let ink: CGRect
   var inkWidth: CGFloat { ink.width }
 
-  init(key: String, font: NSFont) {
+  private let colour: NSColor
+
+  init(key: String, font: NSFont, colour: NSColor) {
+    self.colour = colour
     line = CTLineCreateWithAttributedString(NSAttributedString(string: key, attributes: [
       .font: font,
       NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true,
@@ -650,7 +660,7 @@ private final class PaletteKeyLettersView: NSView {
   override func draw(_ dirtyRect: NSRect) {
     guard let context = NSGraphicsContext.current?.cgContext else { return }
     let scale = window?.backingScaleFactor ?? 2
-    PaletteInk.secondary.setFill()
+    colour.setFill()
     context.textMatrix = .identity
     context.textPosition = CGPoint(
       x: ((bounds.midX - ink.midX) * scale).rounded() / scale,
@@ -664,7 +674,6 @@ private final class PaletteKeyLettersView: NSView {
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
-/// What the keys do right now, as one help tag: each key's caps, then its words.
 final class PaletteKeyHints: NSView {
   struct Hint: Equatable {
     var key: String?
@@ -672,30 +681,63 @@ final class PaletteKeyHints: NSView {
   }
 
   private let row = NSStackView()
-  private let fill = NSView()
+  private let filledRow = NSStackView()
+  private let glass = PaletteGlassHost(
+    content: NSView(), cornerRadius: 0, style: .bolttyAIPrompt(clearGlass: false))
+  private let clip = NSView()
+  private let fill = CAGradientLayer()
+  private let front = CAGradientLayer()
+  private var leadings: [NSLayoutConstraint] = []
+  private var link: CADisplayLink?
+  private var shownProgress: CGFloat = 0
+  private var lastTick: CFTimeInterval = 0
+  var shadesRim: Bool {
+    get { glass.shadesRim }
+    set { glass.shadesRim = newValue }
+  }
+  var colours: [NSColor] = [] {
+    didSet { if colours != oldValue { paintFill() } }
+  }
   private(set) var hints: [Hint] = []
-  /// A fill growing across the tag: what it says is about to happen by itself.
   var progress: CGFloat = 0 {
-    didSet { if progress != oldValue { needsLayout = true } }
+    didSet { if progress != oldValue { follow() } }
   }
 
   override init(frame: NSRect) {
     super.init(frame: frame)
     wantsLayer = true
-    PaletteHelpBackdrop.install(in: self)
-    fill.wantsLayer = true
-    fill.layer?.backgroundColor = AgentPaletteMetrics.keyHintsProgressFill.cgColor
-    addSubview(fill)
-    row.orientation = .horizontal
-    row.alignment = .centerY
-    row.spacing = AgentPaletteMetrics.helpKeysGap
-    row.translatesAutoresizingMaskIntoConstraints = false
+    glass.translatesAutoresizingMaskIntoConstraints = true
+    addSubview(glass)
     addSubview(row)
-    NSLayoutConstraint.activate([
-      row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AgentPaletteMetrics.helpHorizontalPadding),
-      row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AgentPaletteMetrics.helpHorizontalPadding),
-      row.topAnchor.constraint(equalTo: topAnchor, constant: AgentPaletteMetrics.helpVerticalPadding),
-      row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AgentPaletteMetrics.helpVerticalPadding),
+    clip.wantsLayer = true
+    clip.layer?.masksToBounds = true
+    for layer in [fill, front] {
+      layer.startPoint = CGPoint(x: 0, y: 0.5)
+      layer.endPoint = CGPoint(x: 1, y: 0.5)
+    }
+    front.colors = [NSColor.black, .black, .clear].map(\.cgColor)
+    clip.layer?.mask = front
+    clip.layer?.addSublayer(fill)
+    clip.addSubview(filledRow)
+    clip.isHidden = true
+    addSubview(clip)
+    paintFill()
+    for stack in [row, filledRow] {
+      stack.orientation = .horizontal
+      stack.alignment = .centerY
+      stack.spacing = AgentPaletteMetrics.helpKeysGap
+      stack.translatesAutoresizingMaskIntoConstraints = false
+    }
+    leadings = [
+      row.leadingAnchor.constraint(equalTo: leadingAnchor),
+      filledRow.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
+    ]
+    NSLayoutConstraint.activate(leadings + [
+      row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AgentPaletteMetrics.keyHintsWordsInset),
+      row.topAnchor.constraint(equalTo: topAnchor, constant: AgentPaletteMetrics.keyHintsCapInset),
+      row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AgentPaletteMetrics.keyHintsCapInset),
+      row.heightAnchor.constraint(greaterThanOrEqualToConstant: AgentPaletteMetrics.helpKeycapSize),
+      filledRow.centerYAnchor.constraint(equalTo: clip.centerYAnchor),
     ])
     setAccessibilityElement(false)
     alphaValue = 0
@@ -709,17 +751,90 @@ final class PaletteKeyHints: NSView {
 
   override func layout() {
     super.layout()
-    let shown = min(1, max(0, progress))
-    fill.isHidden = shown <= 0
-    let height = bounds.height
-    fill.frame = CGRect(x: 0, y: 0, width: max(height, bounds.width * shown), height: height)
-    fill.layer?.applyPaletteCorner(radius: AgentPaletteMetrics.helpCornerRadius)
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    glass.frame = bounds
+    glass.cornerRadius = bounds.height / 2
+    clip.frame = bounds
+    clip.layer?.applyPaletteCorner(radius: bounds.height / 2)
+    fill.frame = clip.bounds
+    CATransaction.commit()
+    drawProgress()
+  }
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    if window == nil { stopFollowing() }
+  }
+
+  private var goal: CGFloat {
+    let ignored = AgentPaletteMetrics.keyHintsIgnoredPause
+    return min(1, max(0, (progress - ignored) / (1 - ignored)))
+  }
+
+  private func follow() {
+    guard window != nil, !isHidden, !MotionPreferences.reduceMotion else {
+      shownProgress = goal
+      drawProgress()
+      return
+    }
+    guard link == nil, shownProgress != goal else { return }
+    lastTick = Motion.now
+    let link = displayLink(target: self, selector: #selector(tick))
+    link.preferredFrameRateRange = MotionPreferences.highFrameRateRange
+    link.add(to: .main, forMode: .common)
+    self.link = link
+  }
+
+  private func stopFollowing() {
+    link?.invalidate()
+    link = nil
+  }
+
+  @objc private func tick() {
+    let now = Motion.now
+    let elapsed = min(0.05, max(0, now - lastTick))
+    lastTick = now
+    let goal = goal
+    let time = goal > shownProgress
+      ? AgentPaletteMetrics.keyHintsFillTime : AgentPaletteMetrics.keyHintsDrainTime
+    shownProgress += (goal - shownProgress) * CGFloat(1 - exp(-elapsed / time))
+    if abs(goal - shownProgress) < 0.01 {
+      shownProgress = goal
+      stopFollowing()
+    }
+    drawProgress()
+  }
+
+  private func drawProgress() {
+    let shown = shownProgress
+    clip.isHidden = shown <= 0
+    guard shown > 0 else { return }
+    let soft = AgentPaletteMetrics.keyHintsFillSoftness
+    let reach = (bounds.width + soft) * shown
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    front.frame = CGRect(x: 0, y: 0, width: max(1, reach), height: bounds.height)
+    front.locations = [0, NSNumber(value: reach > soft ? Double(1 - soft / reach) : 0), 1]
+    CATransaction.commit()
+  }
+
+  private func paintFill() {
+    let light = colours.isEmpty ? [NSColor.white] : colours
+    fill.colors = OklabGradient.cgColors(light.count > 1 ? light : light + light)
   }
 
   func setHints(_ next: [Hint]) {
     guard next != hints else { return }
     hints = next
-    row.setViews(next.map(Self.item), in: .leading)
+    stopFollowing()
+    shownProgress = 0
+    drawProgress()
+    row.setViews(next.map { Self.item($0, isOnLight: false) }, in: .leading)
+    filledRow.setViews(next.map { Self.item($0, isOnLight: true) }, in: .leading)
+    let inset = next.first?.key == nil
+      ? AgentPaletteMetrics.keyHintsWordsInset : AgentPaletteMetrics.keyHintsCapInset
+    leadings.forEach { $0.constant = inset }
     layoutSubtreeIfNeeded()
   }
 
@@ -741,14 +856,19 @@ final class PaletteKeyHints: NSView {
     guard !isHidden else { return }
     alphaValue = 0
     isHidden = true
+    stopFollowing()
+    shownProgress = 0
+    drawProgress()
   }
 
-  private static func item(_ hint: Hint) -> NSView {
+  private static func item(_ hint: Hint, isOnLight: Bool) -> NSView {
     let words = NSTextField(labelWithString: hint.words)
     words.font = roundedAppFont(size: AgentPaletteMetrics.typeMeta)
-    words.textColor = PaletteInk.primary
+    words.textColor = isOnLight ? AgentPaletteMetrics.keyHintsFilledInk : PaletteInk.primary
     words.isSelectable = false
-    let caps = hint.key.map(PaletteHelpPresenter.keys(of:))?.map(PaletteKeycapView.init(key:)) ?? []
+    let caps = hint.key.map(PaletteHelpPresenter.keys(of:))?.map {
+      PaletteKeycapView(key: $0, isRound: true, isOnLight: isOnLight)
+    } ?? []
     let item = NSStackView(views: caps + [words])
     item.orientation = .horizontal
     item.alignment = .centerY

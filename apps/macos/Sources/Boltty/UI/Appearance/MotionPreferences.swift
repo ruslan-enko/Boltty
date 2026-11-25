@@ -75,8 +75,6 @@ enum Motion {
   }
 }
 
-// MARK: - Slow motion
-
 extension Motion {
   static let timeScale: Double = {
     #if DEBUG

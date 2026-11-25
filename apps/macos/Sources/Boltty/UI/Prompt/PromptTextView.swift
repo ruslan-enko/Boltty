@@ -84,8 +84,6 @@ final class PromptTextView: NSTextView {
 
   var searchQuery: String { string }
 
-  // MARK: - The keys after the text
-
   var trailingHintFrame: NSRect? { fittedTrailingHint?.frame }
 
   private var fittedTrailingHint: (keys: [PromptKeyHint], frame: NSRect)? {
@@ -175,8 +173,6 @@ final class PromptTextView: NSTextView {
   var isTrailingHintPendingForTesting: Bool { trailingHintTimer != nil }
   var trailingHintViewForTesting: PromptKeyHintView { trailingHintView }
 
-  // MARK: - The caret
-
   private let caretView = PromptCaretView()
   private let overlay = PromptOverlayView()
   private var caretWindowObservers: [NSObjectProtocol] = []
@@ -197,8 +193,6 @@ final class PromptTextView: NSTextView {
   /// The sentence's face, never `font`, which answers with the first character's.
   private var caretFont: NSFont { isChatComposer ? Self.chatComposerFont : Self.promptFont }
 
-  /// Where the words stand, in the window, and a picture of them: what flies up
-  /// into the bubble as they are sent.
   func wordsSnapshot() -> (frameInWindow: NSRect, image: NSImage)? {
     guard let layoutManager, let textContainer, (textStorage?.length ?? 0) > 0, window != nil
     else { return nil }
@@ -291,9 +285,6 @@ final class PromptTextView: NSTextView {
     }
   }
 
-  /// The caret and the hint are placed by frame. Most often they move inside the
-  /// layout pass that rewraps the words, where a constraint's new constant is
-  /// only applied by the next pass, so the caret stood where the words had been.
   private func placeOverlay(over scroll: NSScrollView, in host: NSView) {
     guard overlay.superview !== host else { return }
     overlay.removeFromSuperview()
@@ -606,8 +597,6 @@ final class PromptTextView: NSTextView {
     ]
   }
 
-  // MARK: - Editing
-
   func setDraft(_ draft: PromptDraft) {
     let (words, attachments) = draft.separated
     textStorage?.setAttributedString(NSAttributedString(string: words, attributes: defaultTypingAttributes))
@@ -690,16 +679,12 @@ final class PromptTextView: NSTextView {
     typingAttributes = defaultTypingAttributes
   }
 
-  // MARK: - Pointer
-
   override func mouseDown(with event: NSEvent) {
     onMouseDown?()
     super.mouseDown(with: event)
   }
 
   override var acceptableDragTypes: [NSPasteboard.PasteboardType] { [] }
-
-  // MARK: - Paste
 
   override func paste(_ sender: Any?) {
     onPaste?(false)
@@ -740,8 +725,6 @@ final class PromptTextView: NSTextView {
     }
     return super.performKeyEquivalent(with: event)
   }
-
-  // MARK: - Configuration
 
   static func makeInScrollView() -> (scrollView: NSScrollView, textView: PromptTextView) {
     let scrollView = NSScrollView()

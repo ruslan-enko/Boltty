@@ -35,16 +35,13 @@ protocol BolttyAIConversations: AnyObject {
 
   func plannedProviderID() -> String?
 
-  /// The agent's skills and commands for `/` in this folder; none where it lists none.
   func commands(providerID: String, folder: String) async -> [AgentCommand]
 
   func setPlanMode(_ enabled: Bool, for id: UUID)
 
-  /// A new chat going on from the end of the turn holding `messageID` (all of it when nil).
   func canFork(_ id: UUID) -> Bool
   func fork(_ id: UUID, after messageID: String?) -> UUID?
 
-  /// The agent's changes to files put back to before a question.
   func previewUndo(_ id: UUID, from questionID: String) async -> Result<FileUndo, Error>
   func undoChanges(_ id: UUID, from questionID: String) async -> String?
 
@@ -395,7 +392,6 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     )
   }
 
-  /// Each asked region carries the answer that followed it, for its drawings.
   static func withAnswers(_ messages: [ConversationMessage]) -> [ConversationMessage] {
     var messages = messages
     for (index, message) in messages.enumerated() where message.role == .user {
@@ -508,7 +504,6 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         in: conversationID,
         answers: answers
       )
-      // The ask was gone when the answer reached it: the answer is not.
       if !delivered,
          store.transcript(id: conversationID).interactions
            .first(where: { $0.id == question.requestID })?.isLate == true {

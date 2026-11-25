@@ -27,8 +27,6 @@ struct StatusBarSnapshot: Equatable, Sendable {
   )
 }
 
-// MARK: - Boltty AI session switcher
-
 struct BolttyAISessionItem: Equatable, Identifiable, Sendable {
   let id: UUID
   let title: String
@@ -39,7 +37,6 @@ struct BolttyAISessionItem: Equatable, Identifiable, Sendable {
   var state: AgentReportedState? = nil
   var hasUnread: Bool = false
   var isAskBoltty = false
-  /// The region its latest question was about, for a picture on its row.
   var askedRegionPath: String? = nil
 }
 
@@ -219,8 +216,6 @@ extension ConversationExecutionState {
   }
 }
 
-// MARK: - A chat's title, as a row shows it
-
 enum ChatTitle {
   static func forRow(_ conversation: Conversation, transcript: ConversationTranscript) -> String {
     let files = conversation.sentFiles
@@ -330,8 +325,6 @@ enum ChatTitle {
       compile(#""(?:~|/)[^"\n]*$"#),
     ]
     static let quotedPath = compile(#""((?:~|/)[^"\n]+)""#)
-    /// A path with a folder in it, starting a word — never the `//` of an
-    /// address or the `/` of "and/or".
     static let barePath = compile(#"(?<![\w/:."])((?:~/|/)(?:[^\s/"]+/)+[^\s/"]+)"#)
 
     private static func compile(_ pattern: String) -> NSRegularExpression {

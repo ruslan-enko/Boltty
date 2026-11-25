@@ -12,7 +12,6 @@ struct BolttyAISettingsView: View {
     } detail: {
       page
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        // Scrolled up, a page ran under the clear title bar, behind Back and the title.
         .clipped()
         .background(Color(nsColor: SettingsSurfacePalette.background).ignoresSafeArea())
         .navigationTitle(navigation.title)
@@ -40,7 +39,6 @@ struct BolttyAISettingsView: View {
     }
     .scrollIndicators(.never)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    // The system's sidebar glass takes the wallpaper's tint; the page beside it is grey.
     .background(Color(nsColor: SettingsSurfacePalette.background).ignoresSafeArea())
     .focusable()
     .focused($sidebarHasFocus)
@@ -112,8 +110,6 @@ struct BolttyAISettingsView: View {
   }
 }
 
-// MARK: - Pages
-
 extension View {
   func settingsGroupedPage() -> some View {
     formStyle(.grouped)
@@ -128,7 +124,6 @@ private struct SettingsSidebarRow: View {
   @State private var isHovered = false
 
   private static let tile: CGFloat = 24
-  /// The same on every side, so the selection's corner is concentric with the tile's.
   private static let inset: CGFloat = 4
 
   var body: some View {
@@ -156,7 +151,6 @@ private struct SettingsSidebarRow: View {
   }
 }
 
-/// A page's own tile (`Resources/Icons/Settings`), drawn square and given its corner here.
 struct SettingsPageTile: View {
   let page: SettingsPage
   var side: CGFloat = 24
@@ -189,7 +183,7 @@ struct SettingsPageTile: View {
     .clipShape(RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous)
-        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+        .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
     )
     .accessibilityHidden(true)
   }
@@ -266,9 +260,6 @@ struct SettingsAgentTitle: View {
   }
 }
 
-/// A segmented control as macOS 26 draws one outside a toolbar: a dark capsule
-/// with one glass thumb that stretches toward the segment chosen, its far
-/// edge leading and the near one following, and swells while pressed.
 struct GlassSegments<Value: Hashable>: View {
   let title: String
   let options: [(value: Value, title: String)]

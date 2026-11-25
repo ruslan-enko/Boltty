@@ -24,10 +24,7 @@ import sys
 from ds_store import DSStore
 from mac_alias import Alias
 
-# The background is 660 × 400. WindowBounds is the whole window, title bar
-# included (32 pt on macOS 27), so the window is that much taller. Finder may
-# still add a status bar from the person's own settings; it covers the
-# background's foot, which is why the caption stands 58 pt up.
+# WindowBounds includes the title bar, 32 pt on macOS 27.
 WINDOW = (660, 400 + 32)
 ICONS = {"Boltty.app": (170, 190), "Applications": (490, 190)}
 

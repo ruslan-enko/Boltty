@@ -66,11 +66,9 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     if onScreen, !isHidden { startClock() } else { stopClock() }
   }
 
-  /// How much faster than the scene's own seconds the sky drifts.
   static let pace: CGFloat = 1.6
   static let paletteBlend: CFTimeInterval = 0.6
 
-  /// A `nil` palette is the neutral sky, worn where no one face is shown.
   func show(_ backdrop: ChatBackdrop, palette: MascotPalette?) {
     let target: CGFloat = backdrop == .standard ? 0 : 1
     if backdrop != .standard {
@@ -154,10 +152,6 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
     if !isHidden { draw() }
   }
 
-  /// While the shell morphs, the sky drawn at the size it is going to is shown
-  /// 1:1 from its top; where the shell is still wider or taller than that, it is
-  /// scaled up just enough to cover, so no edge goes bare. The scale reaches 1 as
-  /// the shell arrives, and the live sky takes over on the same frame.
   private func cover(_ shown: CGSize, with destination: CGSize) {
     guard let layer, destination.width > 0, destination.height > 0 else { return }
     layer.contentsGravity = .resize
@@ -256,7 +250,6 @@ final class AgentBackdropRenderer {
   private static let shared = AgentBackdropRenderer(pixelFormat: .bgra8Unorm)
   private static var stills: [String: CGImage] = [:]
 
-  /// The backdrop as a picture of a `scene` points across, at `scale` pixels a point.
   static func still(
     of backdrop: ChatBackdrop, palette: MascotPalette, scene: CGSize, scale: CGFloat
   ) -> CGImage? {
@@ -362,18 +355,15 @@ final class AgentBackdropRenderer {
 enum AgentBackdropSky {
   typealias Tone = Oklab
 
-  /// A `nil` palette is the neutral sky.
   static func slots(for palette: MascotPalette?) -> [Tone] {
     palette.map(ramp(for:)) ?? neutral.map(\.oklab)
   }
 
-  /// Greys, faintly cool, for the list's All tab: every face is there, so none colours it.
   private static let neutral = [
     OKLCH(0.205, 0.008, 258), OKLCH(0.43, 0.017, 258), OKLCH(0.93, 0.007, 258),
     OKLCH(0.28, 0.013, 258), OKLCH(0.31, 0.014, 258), OKLCH(0.57, 0.018, 258)
   ]
 
-  /// Zenith, horizon, cloud light, cloud shade, middle, glow.
   static func ramp(for palette: MascotPalette) -> [Tone] {
     if let preset = presets[palette.id] { return preset.map(\.oklab) }
     let stops = palette.colors.map(Tone.init)
@@ -386,7 +376,6 @@ enum AgentBackdropSky {
     ]
   }
 
-  /// Lightness alone goes down, so a dark sky keeps its colour.
   private static func darker(_ tone: Tone, _ scale: Double) -> Tone {
     Tone(l: tone.l * scale, a: tone.a, b: tone.b)
   }
@@ -396,7 +385,6 @@ enum AgentBackdropSky {
   }
 
   private static let presets: [String: [OKLCH]] = [
-    // Blue and orange mix through grey, so violet stands between them and the cloud light is rose.
     "daybreak": [
       OKLCH(0.412, 0.176, 262.8), OKLCH(0.686, 0.171, 36.2), OKLCH(0.796, 0.117, 29.5),
       OKLCH(0.473, 0.159, 283.7), OKLCH(0.545, 0.183, 285.2), OKLCH(0.755, 0.158, 46.6)

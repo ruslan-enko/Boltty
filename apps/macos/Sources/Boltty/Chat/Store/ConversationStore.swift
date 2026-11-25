@@ -32,9 +32,6 @@ final class ConversationStore: ObservableObject {
     transcripts = loaded.transcripts
     selectedConversationID = loaded.selectedConversationID
     damagedConversationIDs = Set(loaded.damaged)
-    // Waiting is mid-turn too: what asked may be gone, so no card may hold the
-    // chat. A question stays answerable; if its ask did survive (a crash, with
-    // OpenCode's service still up), the next read of the session reopens it.
     for index in conversations.indices where conversations[index].lastKnownState.blocksSending {
       conversations[index].lastKnownState = .interrupted
       let id = conversations[index].id
@@ -46,8 +43,6 @@ final class ConversationStore: ObservableObject {
       transcripts[id] = transcript
     }
   }
-
-  // MARK: - Reading
 
   func conversation(id: UUID) -> Conversation? {
     conversations.first { $0.id == id }
@@ -91,8 +86,6 @@ final class ConversationStore: ObservableObject {
       damaged: damagedConversationIDs.contains(id)
     )
   }
-
-  // MARK: - Conversation lifecycle
 
   @discardableResult
   func createConversation(
@@ -199,8 +192,6 @@ final class ConversationStore: ObservableObject {
     return cleared.count
   }
 
-  /// Chats untouched since `cutoff` go to the Trash together; one at work,
-  /// waiting on the person, or open in the panel stays.
   @discardableResult
   func trashChats(untouchedSince cutoff: Date) -> Int {
     guard persistence.isPrimary else { return 0 }
@@ -221,8 +212,6 @@ final class ConversationStore: ObservableObject {
     return old.count
   }
 
-  /// Every file a stored chat still shows: what was sent with it and what waits
-  /// in its draft.
   var filesInUse: Set<String> {
     Set(conversations.flatMap { conversation in
       conversation.sentFiles.map(\.path) + conversation.sentFiles.compactMap(\.asked?.screenPath)
@@ -287,8 +276,6 @@ final class ConversationStore: ObservableObject {
     }
   }
 
-  /// A chat whose first turn another agent takes over: the dead session and
-  /// what it left go, the chat, its name and its sent files stay.
   func moveToProvider(
     _ providerID: String, model: ModelSelection?, effort: String?, autoApprove: Bool, for id: UUID
   ) {
@@ -380,8 +367,6 @@ final class ConversationStore: ObservableObject {
     guard conversation(id: id)?.lastKnownState != state else { return }
     update(id) { $0.lastKnownState = state }
   }
-
-  // MARK: - Messages
 
   func appendUserMessage(
     id messageID: String,
@@ -484,8 +469,6 @@ final class ConversationStore: ObservableObject {
     saveTranscriptNow(conversationID)
   }
 
-  // MARK: - Interactions
-
   func recordInteraction(_ interaction: PendingInteraction) {
     var transcript = transcript(id: interaction.conversationID)
     if let index = transcript.interactions.firstIndex(where: { $0.id == interaction.id }) {
@@ -495,7 +478,6 @@ final class ConversationStore: ObservableObject {
       transcript.interactions.append(interaction)
     }
     transcripts[interaction.conversationID] = transcript
-    // A plan that ended its turn holds nothing up: the chat sends as usual.
     if case let .plan(plan) = interaction.kind, plan.isAnsweredByMessage {
       flagUnread(interaction.conversationID)
       saveTranscriptNow(interaction.conversationID)
@@ -550,7 +532,6 @@ final class ConversationStore: ObservableObject {
     saveTranscriptNow(conversationID)
   }
 
-  /// Open questions whose ask is gone, or is about to be, become late ones.
   func markQuestionsGone(in conversationID: UUID, except kept: Set<String> = []) {
     var transcript = transcript(id: conversationID)
     for index in transcript.interactions.indices
@@ -563,7 +544,6 @@ final class ConversationStore: ObservableObject {
     saveTranscriptNow(conversationID)
   }
 
-  /// False if it was answered already, so a second press sends nothing.
   func answerLateQuestion(
     id interactionID: String,
     in conversationID: UUID,
@@ -579,14 +559,11 @@ final class ConversationStore: ObservableObject {
     return true
   }
 
-  /// The person has moved on, by another message or by stopping the turn.
   func letGoOfQuestions(in conversationID: UUID, includingOpen: Bool = false) {
     var transcript = transcript(id: conversationID)
     var changed = false
     for index in transcript.interactions.indices {
       let asked = transcript.interactions[index]
-      // A plan that ended its turn is let go of as a late question is: the
-      // person went on with something else.
       if case let .plan(plan) = asked.kind, plan.isAnsweredByMessage, asked.isOpen, !asked.isSubmitting {
         transcript.interactions[index].resolution = .expired
         changed = true
@@ -610,8 +587,6 @@ final class ConversationStore: ObservableObject {
     transcript.interactions[index].isSubmitting = false
     transcripts[conversationID] = transcript
   }
-
-  // MARK: - Event application
 
   @discardableResult
   func apply(_ envelope: AgentEventEnvelope) -> Bool {
@@ -701,7 +676,6 @@ final class ConversationStore: ObservableObject {
 
     case .sessionDeleted:
       var transcript = transcript(id: id)
-      // Late questions too: a new session would not know what was asked.
       for index in transcript.interactions.indices
       where transcript.interactions[index].isOpen || transcript.interactions[index].isLate {
         transcript.interactions[index].resolution = .expired
@@ -751,8 +725,6 @@ final class ConversationStore: ObservableObject {
     }
   }
 
-  // MARK: - Mutation helpers
-
   private func update(_ id: UUID, _ body: (inout Conversation) -> Void) {
     guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
     body(&conversations[index])
@@ -783,8 +755,6 @@ final class ConversationStore: ObservableObject {
     updateWithoutTouching(id) { $0.hasUnread = true }
     scheduleIndexSave()
   }
-
-  // MARK: - Persistence scheduling
 
   private var indexSavePending = false
 

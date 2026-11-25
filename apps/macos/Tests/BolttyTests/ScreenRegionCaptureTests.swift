@@ -71,8 +71,6 @@ final class ScreenRegionCaptureTests: XCTestCase {
     XCTAssertEqual(selection.frame, CGRect(x: 10, y: 10, width: 20, height: 10))
   }
 
-  // MARK: - What of the screen goes
-
   private func frozen(_ windows: [FrozenScreen.Window]) throws -> FrozenScreen {
     let context = try XCTUnwrap(CGContext(
       data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 0,

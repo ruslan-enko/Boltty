@@ -62,7 +62,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     var initWaiter: CheckedContinuation<String, Error>?
     var initialized = false
     var granted: Set<String> = []
-    /// `--mode plan`; the plan it writes this turn, read into the card as it ends.
     var planning = false
     var planFile: String?
 
@@ -74,8 +73,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       self.autoApprove = autoApprove
     }
   }
-
-  // MARK: - Availability
 
   func probe() async -> AgentAvailability {
     guard let executable = locate() else { return .notInstalled }
@@ -145,14 +142,8 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   static let usageDeadline: TimeInterval = 20
 
-  // MARK: - Skills
-
   static let skillListLifetime: TimeInterval = 300
 
-  /// `-p=/skills` lists the skills for the folder it runs in, the folder's own
-  /// `.agents/skills` among them, with no model call (~7 s, 1.5.11). A request
-  /// opening with `/name` runs the skill in print mode; the record keeps `/name …`
-  /// as the person's words.
   func commands(folder: String) async -> [AgentCommand] {
     if let cached = lock.withLock({ skillsByFolder[folder] }),
        Date().timeIntervalSince(cached.read) < Self.skillListLifetime {
@@ -180,8 +171,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       return AgentCommand(name: name, summary: skill.string("description") ?? "", argumentHint: nil)
     }
   }
-
-  // MARK: - Sessions
 
   func createSession(id: String, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
     guard let executable = locate() else { throw AgentClientError.notInstalled }
@@ -379,8 +368,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     return arguments
   }
 
-  // MARK: - Reading
-
   private func read(_ process: JSONLineProcess, session: LiveSession) async {
     var reply: ConversationMessage?
 
@@ -491,12 +478,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     emit(.executionStateChanged(sessionID: sessionID, state: .failed))
   }
 
-  // MARK: - Plans
-
-  /// In `--mode plan` agy writes its plan as markdown to `brain/<conversation>/`
-  /// (named `implementation_plan.md` once, `plan.md` the next time) and ends the
-  /// turn saying so (1.5.11): the last such file is the plan, and the card's
-  /// answer goes as the next message.
   static func isPlanFile(_ path: String) -> Bool {
     (path as NSString).pathExtension.lowercased() == "md"
       && (path as NSString).standardizingPath.hasPrefix(AntigravityToolPolicy.brain + "/")
@@ -543,8 +524,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     )
   }
 
-  // MARK: - Control
-
   func stop(sessionID: String) async throws {
     let process = lock.withLock { () -> JSONLineProcess? in
       guard let session = sessions[sessionID], session.pendingMessageID != nil else { return nil }
@@ -587,15 +566,11 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     emit(.executionStateChanged(sessionID: ask.sessionID, state: .working))
   }
 
-  /// The hook's `reason` reaches the model as "tool call denied by pre-tool
-  /// hook: <reason>" (measured), so the person's words go as theirs.
   static func denialReason(_ message: String?) -> String {
     guard let words = message?.trimmingCharacters(in: .whitespacesAndNewlines), !words.isEmpty
     else { return "The user refused this." }
     return "The user refused this and said: \(words)"
   }
-
-  // MARK: - The gate
 
   private func preparedGate() -> AntigravityPermissionGate? {
     lock.lock()
@@ -701,8 +676,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     process.terminate()
   }
 
-  // MARK: - A chat's name
-
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     guard let executable = locate(),
           let models = try? await availableModels(),
@@ -754,8 +727,6 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       process.terminate()
     }
   }
-
-  // MARK: - Plumbing
 
   private func emit(_ event: AgentEvent) {
     let continuation = lock.withLock { eventContinuation }

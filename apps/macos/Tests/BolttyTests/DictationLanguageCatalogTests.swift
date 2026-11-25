@@ -55,8 +55,6 @@ final class DictationLanguageCatalogTests: XCTestCase {
     )
   }
 
-  // MARK: - Resolving the setting
-
   func testFollowSystemUsesTheSystemLocale() {
     let languages = catalog()
     let resolved = DictationLanguageCatalog.resolve(

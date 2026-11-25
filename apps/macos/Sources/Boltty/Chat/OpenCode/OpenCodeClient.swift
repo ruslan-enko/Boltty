@@ -71,8 +71,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  // MARK: - Availability
-
   func probe() async -> AgentAvailability {
     guard await server.locateExecutable() != nil else { return .notInstalled }
     guard let version = await server.version() else {
@@ -177,8 +175,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  // MARK: - Sessions
-
   func createSession(
     id: String,
     options: AgentSessionOptions
@@ -246,8 +242,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       throw AgentClientError.transport(detail)
     }
   }
-
-  // MARK: - Which server runs a session
 
   static func isPrivacyProtected(_ directory: String, home: String = NSHomeDirectory()) -> Bool {
     let path = (directory as NSString).standardizingPath
@@ -403,8 +397,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return lock.withLock { freeModels.contains(key) }
   }
 
-  // MARK: - Sending
-
   func send(
     messageID: String,
     text: String,
@@ -428,12 +420,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     try await postIgnoringResponse("/api/session/\(sessionID)/prompt", body: body)
   }
 
-  // MARK: - Undoing its changes
-
-  /// `revert/stage {messageID, files: true}` puts the files back at once (and
-  /// says how, file by file); `revert/commit` then takes that question and all
-  /// after it out of the session (2.3.2). There is no look without the change,
-  /// so the preview names no files.
   func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
     FileUndo(cutsHistory: true)
   }
@@ -451,10 +437,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return FileUndo(files: files, cutsHistory: true)
   }
 
-  // MARK: - Forks
-
-  /// `POST /api/session/{id}/fork {before}` copies the session up to, not
-  /// including, `before` (2.3.2): the question after the chosen turn, or none.
   private func branch(from fork: ForkPoint, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
     var before: String?
     if let message = fork.messageID {
@@ -482,10 +464,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     return info(from: response.data, fallbackDirectory: options.directory)
   }
 
-  // MARK: - Plans
-
-  /// Plan mode is OpenCode's read-only `plan` agent (2.3.2); `build` is the
-  /// default. Its plan is its reply, with no ask to approve it.
   static let planAgent = "plan"
   static let buildAgent = "build"
 
@@ -499,14 +477,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  // MARK: - Skills
-
   static let skillListLifetime: TimeInterval = 300
 
-  /// A request opening with a skill's `/id` sends the skill beside the words
-  /// (`skills: [{id}]`, 2.3.2), as OpenCode's own composer does. Its commands
-  /// (`/api/command`: init, review, goal) are not offered: the record keeps only
-  /// the template they expand to, so the chat would show that as the person's words.
   private func skillLeading(_ text: String, in sessionID: String) async -> (words: String, skill: String?) {
     guard let (name, rest) = AgentCommand.leading(in: text),
           let folder = lock.withLock({ sessionFolders[sessionID] }),
@@ -582,8 +554,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       if enabled { autoApproved.insert(sessionID) } else { autoApproved.remove(sessionID) }
     }
   }
-
-  // MARK: - Interactions
 
   static func answering(_ reply: () async throws -> Void) async throws {
     do {
@@ -701,8 +671,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       }
     }
   }
-
-  // MARK: - Events
 
   func events() -> AsyncStream<AgentEventEnvelope> {
     AsyncStream { continuation in
@@ -1046,8 +1014,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
          "session.next.prompt.admitted", "session.next.prompted":
       guard let id = data["inboxID"]?.stringValue ?? data["messageID"]?.stringValue
       else { return [] }
-      // A finished background shell comes in as a `synthetic` item (2.3.2), and
-      // `delivered` carries no item at all: neither is the person's message.
       let itemType = data["item"]?["type"]?.stringValue
       guard itemType == "user" || (itemType == nil && data["prompt"] != nil) else {
         return [.executionStateChanged(sessionID: sessionID, state: .working)]
@@ -1203,9 +1169,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     case "session.retried", "session.execution.started":
       return [.executionStateChanged(sessionID: sessionID, state: .working)]
 
-    // How a turn ends with no step to fail: a model that has gone says
-    // `provider.no-route` here and nowhere else (2.2.5), and unread, the chat
-    // stood at Working until the person pressed Stop.
     case "session.execution.failed":
       return [
         .sessionFailed(
@@ -1249,8 +1212,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     await server.stop()
     await ownServer.stop()
   }
-
-  // MARK: - HTTP
 
   private struct EmptyBody: Encodable {}
 

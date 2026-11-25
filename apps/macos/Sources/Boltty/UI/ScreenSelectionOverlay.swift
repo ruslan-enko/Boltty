@@ -17,6 +17,26 @@ final class ScreenSelectionOverlay: NSView {
       }
     }
 
+    var isCorner: Bool {
+      switch self {
+      case .minXminY, .maxXminY, .maxXmaxY, .minXmaxY: true
+      case .midXminY, .maxXmidY, .midXmaxY, .minXmidY: false
+      }
+    }
+
+    func isShown(on rect: CGRect) -> Bool {
+      isCorner || min(rect.width, rect.height) >= AgentPaletteMetrics.screenSelectionMidHandleSide
+    }
+
+    func drawnPoint(on rect: CGRect) -> CGPoint {
+      let spot = point(on: rect)
+      guard isCorner else { return spot }
+      let corner = min(AgentPaletteMetrics.screenSelectionCornerRadius, rect.width / 2, rect.height / 2)
+      let inset = corner * (1 - 1 / 2.squareRoot())
+      return CGPoint(
+        x: spot.x + (spot.x < rect.midX ? inset : -inset), y: spot.y + (spot.y < rect.midY ? inset : -inset))
+    }
+
     var resizePosition: NSCursor.FrameResizePosition {
       switch self {
       case .minXminY: .bottomLeft
@@ -120,8 +140,6 @@ final class ScreenSelectionOverlay: NSView {
     glows.map { $0.region.offsetBy(dx: $0.frame.minX, dy: $0.frame.minY) }
   }
 
-  // MARK: - Drawing
-
   private func redrawFrozen() {
     frozenView.layer?.contents = frozen?.image
     frozenView.frame = frozen?.frame ?? .zero
@@ -171,7 +189,9 @@ final class ScreenSelectionOverlay: NSView {
     }
     borders.forEach { fallbackView.layer?.addSublayer($0) }
 
-    let handles = showsHandles ? selection.map { rect in Handle.allCases.map { $0.point(on: rect) } } ?? [] : []
+    let handles = showsHandles ? selection.map { rect in
+      Handle.allCases.filter { $0.isShown(on: rect) }.map { $0.drawnPoint(on: rect) }
+    } ?? [] : []
     while handleLayers.count < Handle.allCases.count {
       let dot = Self.makeHandle()
       handlesView.layer?.addSublayer(dot)

@@ -575,8 +575,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertTrue(view.isResultsExpandedForTesting)
   }
 
-  // MARK: - Keys on the reply card
-
   func testDownArrowDoesNotOpenTheSwitcherUnderTheCard() {
     let view = makeScreenSizedView()
     view.setSessions([.row("claude", .claude)], activeSessionID: nil)
@@ -1713,8 +1711,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(view.field.insertionPointColor, .clear)
   }
 
-  // MARK: - Where the caret stands
-
   private static let wrappedDraft =
     "Так у мене є програма орка слайсер і я хочу щоб ти зробив декілька профайлів для пла і для петг"
 
@@ -1956,8 +1952,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(icon.alphaValue, 1, accuracy: 0.001)
     XCTAssertEqual(icon.contentTintColor, AgentPaletteView.promptIconTintColor)
   }
-
-  // MARK: - Prompt vs search
 
   func testALeadingSlashIsJustText() {
     let view = makeView()
@@ -2205,8 +2199,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertFalse(view.isResultsExpandedForTesting)
   }
 
-  // MARK: - Tab switching
-
   func testTabWalksTheFolderThenTheMicrophoneThenTheText() {
     let view = makeView(targets: [.claude, .codex])
     view.setWorkingDirectory(.forNewPrompt(path: "/tmp/repo"))
@@ -2352,8 +2344,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(view.field.string, "")
   }
 
-  // MARK: - Prompt typography
-
   func testPlaceholderSharesTheBaselineOfTypedText() throws {
     let view = makeScreenSizedView()
     view.layoutSubtreeIfNeeded()
@@ -2373,8 +2363,6 @@ final class AgentPaletteViewTests: XCTestCase {
 
     XCTAssertEqual(opticalCentre, PromptTextView.lineHeight / 2, accuracy: 0.6)
   }
-
-  // MARK: - Cards over the words
 
   private func fileCard(_ name: String = "a.mov") -> PromptAttachment {
     PromptAttachment.file(URL(fileURLWithPath: "/tmp/\(name)"))
@@ -2439,8 +2427,6 @@ final class AgentPaletteViewTests: XCTestCase {
   private static func descendants(of view: NSView) -> [NSView] {
     view.subviews.flatMap { [$0] + descendants(of: $0) }
   }
-
-  // MARK: - Keyboard selection in the switcher
 
   func testTheCardWearsTheCornerItsHeightCanHold() {
     let view = makeScreenSizedView()
@@ -2577,8 +2563,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(rows[0].highlightFillAlphaForTesting, 0, accuracy: 0.02)
     XCTAssertGreaterThan(rows[1].highlightFillAlphaForTesting, 0.05)
   }
-
-  // MARK: - Recording controls
 
   private func makeDictatingView() -> AgentPaletteView {
     let view = hostOffscreen(makeView())
@@ -2788,8 +2772,6 @@ final class AgentPaletteViewTests: XCTestCase {
     }
   }
 
-  // MARK: - Row lifecycle
-
   private var rowStamps: [UUID: Date] = [:]
 
   private func stamp(for id: UUID) -> Date {
@@ -2989,8 +2971,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(view.resultItemsForTesting.map(\.id), [billed.id])
   }
 
-  // MARK: - Hover and keyboard selection
-
   func testHoveringARowMakesItTheSelection() {
     let view = makeView()
     view.pointerLocationForTesting = NSPoint(x: 100, y: 100)
@@ -3061,8 +3041,6 @@ final class AgentPaletteViewTests: XCTestCase {
     row.syncHover(pointerInWindow: NSPoint(x: 50, y: 130))
     XCTAssertFalse(row.isHoveredForTesting, "a hidden row is under nothing")
   }
-
-  // MARK: - Preview measurement
 
   func testTheCornerGripResizesTheChatAboutItsCentre() {
     let view = makeScreenSizedView()
@@ -3265,8 +3243,6 @@ final class AgentPaletteViewTests: XCTestCase {
     )
     XCTAssertEqual(view.previewCardHeightForTesting, atFloor, accuracy: 0.5)
   }
-
-  // MARK: - Composer controls
 
   func testRestingClipAndMicKeepTheirHitTargetsWithoutGlass() {
     let view = makeScreenSizedView()
@@ -3498,8 +3474,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertLessThanOrEqual(view.promptTextFrameForTesting.maxX, folder.minX + 0.5)
   }
 
-  // MARK: - Unread rows
-
   private func unreadRowItem(_ title: String, id: UUID, unread: Bool) -> BolttyAISessionItem {
     BolttyAISessionItem(
       id: id,
@@ -3693,8 +3667,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(view.promptTextFrameForTesting, text, "processing keeps that same width")
     XCTAssertEqual(view.promptCapsuleFrameForTesting.height, field.height, accuracy: 0.5)
   }
-
-  // MARK: - ScreenAgents
 
   private func openHistory(_ view: AgentPaletteView) {
     XCTAssertTrue(
@@ -3932,8 +3904,6 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertGreaterThan(view.errorFrameForTesting.width, 300)
   }
 }
-
-// MARK: - ScreenAgents: the tab strip from the reference
 
 extension AgentPaletteViewTests {
   private func press(_ selector: Selector, in view: AgentPaletteView) -> Bool {
@@ -4219,8 +4189,6 @@ extension AgentPaletteViewTests {
   }
 }
 
-// MARK: - One mascot per agent
-
 extension AgentPaletteViewTests {
   func testEveryTabWearsItsFacesAndLatestWearsEveryAgentThatCanTakeAPrompt() throws {
     let view = makeScreenSizedView(targets: AgentHistory.tabOrder)
@@ -4423,8 +4391,6 @@ extension AgentPaletteViewTests {
   }
 }
 
-// MARK: - The keys after the prompt, rendered
-
 extension AgentPaletteViewTests {
   func testRenderTheTrailingHint() throws {
     guard let dir = ProcessInfo.processInfo.environment["BOLTTY_CONTACT_SHEET"] else {
@@ -4446,8 +4412,6 @@ extension AgentPaletteViewTests {
       .write(to: URL(fileURLWithPath: dir).appendingPathComponent("prompt-trailing-hint.png"))
   }
 }
-
-// MARK: - The history, rendered
 
 extension AgentPaletteViewTests {
   func testRenderTheHistory() throws {

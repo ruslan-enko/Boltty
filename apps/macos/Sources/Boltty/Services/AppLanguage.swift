@@ -1,8 +1,5 @@
 import AppKit
 
-/// Boltty's own language: the `AppleLanguages` macOS keeps for this app alone,
-/// the value System Settings › Language & Region › Applications writes too, so
-/// the two never disagree. Read at launch, so a change shows after a relaunch.
 @MainActor
 final class AppLanguage: ObservableObject {
   static let key = "AppleLanguages"
@@ -37,7 +34,6 @@ final class AppLanguage: ObservableObject {
     chosen = code
   }
 
-  /// Each language named in itself, as macOS lists them.
   static func name(of code: String) -> String {
     let locale = Locale(identifier: code)
     guard let name = locale.localizedString(forIdentifier: code) else { return code }

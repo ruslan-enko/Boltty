@@ -2,8 +2,6 @@ import XCTest
 @testable import Boltty
 
 final class SupertonicTextTests: XCTestCase {
-  // MARK: - Scripts
-
   func testLatinWordsInAUkrainianSentenceAreReadAsEnglish() {
     let runs = SupertonicText.runs("Я оновив файл README і запустив тести у Codex.", language: "uk")
     XCTAssertEqual(runs, [
@@ -26,8 +24,6 @@ final class SupertonicTextTests: XCTestCase {
     XCTAssertEqual(SupertonicText.runs("Привіт.", language: "uk"), [.init(text: "Привіт.", language: "uk")])
   }
 
-  // MARK: - Tags
-
   func testTheLastRunEndsOnAStopAndTheOthersOnAComma() {
     XCTAssertEqual(SupertonicText.tagged("Я оновив файл ", language: "uk", last: false), "<uk>Я оновив файл,</uk>")
     XCTAssertEqual(SupertonicText.tagged("README", language: "en", last: true), "<en>README.</en>")
@@ -41,8 +37,6 @@ final class SupertonicTextTests: XCTestCase {
     XCTAssertEqual(SupertonicText.clean("“quoted”  text 🙂"), "\"quoted\" text")
     XCTAssertEqual(SupertonicText.clean("done , then"), "done, then")
   }
-
-  // MARK: - Passes
 
   func testAShortPieceIsOnePass() {
     XCTAssertEqual(SupertonicText.passes("Готово.", limit: 70), ["Готово."])
@@ -69,8 +63,6 @@ final class SupertonicTextTests: XCTestCase {
     XCTAssertEqual(SupertonicText.passLength(for: "ja"), 57)
   }
 
-  // MARK: - Encoding
-
   func testEncodingPadsToTheWindowAndMarksUnknownScalars() {
     let indexer: [Int32] = (0..<128).map { Int32($0) }
     let (ids, mask) = SupertonicText.encode("<en>Hi.</en>я", indexer: indexer)
@@ -80,8 +72,6 @@ final class SupertonicTextTests: XCTestCase {
     XCTAssertEqual(ids[12], -1, "я is past the indexer")
     XCTAssertEqual(mask.reduce(0, +), 13)
   }
-
-  // MARK: - Sound
 
   func testAJointKeepsABreathOfItsQuietEdge() {
     let rate = SupertonicSynthesizer.sampleRate

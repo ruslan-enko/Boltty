@@ -3,8 +3,6 @@ import XCTest
 
 final class MascotPaletteTests: XCTestCase {
 
-  // MARK: - Catalog hygiene
-
   func testCatalogIDsAreUnique() {
     let ids = MascotPalette.catalog.map(\.id)
     XCTAssertEqual(Set(ids).count, ids.count, "two palettes share an id")
@@ -127,8 +125,6 @@ final class MascotPaletteTests: XCTestCase {
     XCTAssertFalse(pool.isEmpty, "a chat with no colour to wear falls back to Boltty's own")
   }
 
-  // MARK: - Boltty's own face
-
   func testTheStandardMascotIsTheBlueSunriseAndIsPinnedByID() throws {
     XCTAssertEqual(MascotPalette.standard.id, "daybreak")
     XCTAssertEqual(
@@ -148,8 +144,6 @@ final class MascotPaletteTests: XCTestCase {
       "a failed lookup lands on the same face Boltty wears deliberately"
     )
   }
-
-  // MARK: - forConversation
 
   func testAConversationsColourIsStableAndDerivedFromItsID() {
     let id = UUID()

@@ -213,16 +213,12 @@ enum PromptExpansion {
   }
 }
 
-/// What an Ask Boltty question was about, kept so its chat can show it.
 struct AskedRegion: Codable, Equatable, Hashable, Sendable {
   var screenPath: String
-  /// The region in thousandths of the screen picture, top left at 0 0, as the
-  /// answer's tags are; nil when the whole screen was asked about.
   var area: [Double]?
   var width: Double
   var height: Double
   var place: String?
-  /// The answer that followed, for its drawings: filled in as the chat is read.
   var answer: String? = nil
 
   private enum CodingKeys: String, CodingKey { case screenPath, area, width, height, place }

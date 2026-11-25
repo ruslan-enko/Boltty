@@ -16,8 +16,6 @@ final class AntigravityPermissionGateTests: XCTestCase {
   private var hooksFile: URL { root.appendingPathComponent("config/hooks.json") }
   private var scriptFile: URL { root.appendingPathComponent("gate.sh") }
 
-  // MARK: - Installing
-
   func testInstallingKeepsThePersonsOwnHooks() throws {
     try FileManager.default.createDirectory(
       at: hooksFile.deletingLastPathComponent(), withIntermediateDirectories: true
@@ -53,8 +51,6 @@ final class AntigravityPermissionGateTests: XCTestCase {
     )
     XCTAssertEqual(try String(contentsOf: hooksFile, encoding: .utf8), commented)
   }
-
-  // MARK: - The script
 
   func testOutsideBolttyTheHookHasNoOpinion() throws {
     try AntigravityPermissionGate.install(hooksFile: hooksFile, scriptFile: scriptFile)
@@ -94,8 +90,6 @@ final class AntigravityPermissionGateTests: XCTestCase {
     XCTAssertEqual(seen.value?.workspace, "/w")
   }
 
-  /// With Boltty gone the folder goes, and the hook fails — which blocks the
-  /// call (measured: a failed hook is a refusal; only empty exit 0 lets through).
   func testTheScriptFailsWhenBolttyIsGone() async throws {
     try AntigravityPermissionGate.install(hooksFile: hooksFile, scriptFile: scriptFile)
     let folder = root.appendingPathComponent("gone")
@@ -111,8 +105,6 @@ final class AntigravityPermissionGateTests: XCTestCase {
     XCTAssertNotEqual(result.status, 0)
     XCTAssertTrue(result.output.isEmpty)
   }
-
-  // MARK: - What asks
 
   func testReadsInsideTheFolderGoQuietlyAndTheRestAsks() {
     func verdict(
@@ -152,8 +144,6 @@ final class AntigravityPermissionGateTests: XCTestCase {
       "what Boltty does not know asks"
     )
   }
-
-  // MARK: - Helpers
 
   private final class Box<Value>: @unchecked Sendable { var value: Value? }
 

@@ -6,7 +6,6 @@ struct AppSettings: Equatable, Sendable {
   var bolttyAIHotkeyIsChosen: Bool
   var bolttyAIHotkeyEnabled: Bool
   var agentPreset: AgentId?
-  /// New chats go to whoever has the most of their plan left; off, always to `agentPreset`.
   var routesAutomatically: Bool
   var enabledProviderIDs: Set<String>
   var defaultModelByProvider: [String: String]
@@ -24,7 +23,6 @@ struct AppSettings: Equatable, Sendable {
   var askBolttyReadOnly: Bool
   var askBolttySpeaksAloud: Bool
   var playsSounds: Bool
-  /// Days a chat is kept after it last changed; 0 keeps every chat.
   var keepsChatsDays: Int
   var attachesFinderSelection: Bool
   var checksForUpdates: Bool
@@ -271,7 +269,6 @@ struct AppSettings: Equatable, Sendable {
   }
 }
 
-/// How long chats are kept: a chat untouched for longer goes to the Trash.
 enum HistoryRetention {
   static let choices = [0, 7, 14, 30, 182, 365]
 
@@ -287,7 +284,6 @@ enum HistoryRetention {
     }
   }
 
-  /// The same span inside a sentence ("older than 1 week").
   static func span(_ days: Int) -> String {
     switch days {
     case 7: String(localized: "1 week")

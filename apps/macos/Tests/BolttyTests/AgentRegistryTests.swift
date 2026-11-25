@@ -153,8 +153,6 @@ final class AgentRegistryTests: XCTestCase {
     XCTAssertEqual(engine.models(for: onClaude).map(\.selection.modelID), ["sonnet"])
   }
 
-  // MARK: - Models that come and go
-
   private func model(_ id: String) -> AgentModelOption {
     AgentModelOption(selection: ModelSelection(providerID: "claude", modelID: id), isDefault: true)
   }
@@ -215,8 +213,6 @@ final class AgentRegistryTests: XCTestCase {
     XCTAssertEqual(openCode.processRestarts, 0, "and only that agent's")
   }
 
-  // MARK: - The model scan
-
   func testAnAgentThatNeverListsItsModelsEndsTheScanAtTheDeadline() async {
     engine = ConversationEngine(
       store: store,
@@ -250,8 +246,6 @@ final class AgentRegistryTests: XCTestCase {
       engine.modelsByProvider[AgentId.claude.rawValue]?.map(\.selection.modelID), ["sonnet"]
     )
   }
-
-  // MARK: - Reasoning effort
 
   private func withEffort() async -> UUID {
     claude.capabilities.insert(.reasoningEffort)

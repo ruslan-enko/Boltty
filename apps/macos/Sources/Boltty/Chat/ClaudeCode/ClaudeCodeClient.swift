@@ -32,12 +32,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     lock.withLock { conversationResolver = resolve }
   }
 
-  // MARK: - Availability
-
   func probe() async -> AgentAvailability {
     guard locate() != nil else { return .notInstalled }
-    // A probe is a re-read: a sign-in made in the terminal since the last one
-    // must show up without restarting Boltty.
     lock.withLock {
       cachedHandshake = nil
       cachedCommands = [:]
@@ -51,9 +47,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return .available(version: await version())
   }
 
-  /// An expired login still answers `initialize` with an `account`, as
-  /// `{"tokenSource": "none", "apiProvider": "firstParty"}` and no email
-  /// (2.1.296, `claude auth status`: "Login: Expired").
   static func isSignedIn(_ account: JSONObject?) -> Bool {
     guard let account else { return false }
     if account.string("email") != nil { return true }
@@ -87,8 +80,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard let effort, !effort.isEmpty else { return [] }
     return ["--effort", effort]
   }
-
-  // MARK: - Sessions
 
   func makeSessionID() -> String { AgentSessionID.uuid() }
 
@@ -131,7 +122,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       wantedOptions[sessionID]?.autoApprove = enabled
       return sessions[sessionID].map { ($0, wantedOptions[sessionID]) }
     }) else { return }
-    // A chat still planning stays in plan mode; Auto takes over once it is approved.
     guard options?.planMode != true else { return }
     _ = try await session.sendControl(
       ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: enabled)],
@@ -149,7 +139,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "--input-format", "stream-json",
       "--verbose",
       "--include-partial-messages",
-      // Without this the CLI never asks for permission.
       "--permission-prompt-tool", "stdio",
       "--permission-mode", permissionMode(for: options)
     ]
@@ -168,9 +157,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     autoApprove ? "auto" : "default"
   }
 
-  /// A branch is `--resume <source> --fork-session --session-id <new>`, cut after
-  /// the record `--resume-session-at` names (2.1.325; not in `--help`). Nothing
-  /// is written until the first message.
   static func forkArguments(_ arguments: [String], id: String, from source: String, at anchor: String?) -> [String] {
     var kept = arguments
     if let index = kept.firstIndex(of: "--session-id"), index + 1 < kept.count {
@@ -215,8 +201,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       openInteractions: live?.openInteractions ?? []
     )
   }
-
-  // MARK: - Sending
 
   func send(
     messageID: String,
@@ -309,8 +293,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     emit(.executionStateChanged(sessionID: sessionID, state: .idle))
   }
 
-  // MARK: - Interactions
-
   func answerQuestion(requestID: String, sessionID: String, answers: [[String]]) async throws {
     throw AgentClientError.transport(String(localized: "Claude Code does not ask multiple-choice questions."))
   }
@@ -359,13 +341,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     try session.process.writeLine(line)
   }
 
-  /// In plan mode the CLI asks to leave it through this tool, its plan in
-  /// `input.plan` (2.1.325).
   static let planTool = "ExitPlanMode"
 
-  /// Approved, the turn goes on in the chat's own mode: allowing the tool with a
-  /// `setMode` switches the session out of plan mode before it acts. Asked for
-  /// changes, the CLI plans again. Quit, the turn stops.
   func answerPlan(
     requestID: String,
     sessionID: String,
@@ -410,9 +387,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     if decision == .abandoned { try await stop(sessionID: sessionID) }
   }
 
-  /// What "Always Allow" adds: the CLI's own suggestions, kept to this session
-  /// (a suggestion may name the project's settings). A bare tool name would
-  /// allow every command once one was allowed.
   static func sessionRules(
     suggestions: [[String: Any]],
     tool: String,
@@ -475,8 +449,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return "The user did not allow this. To tell you how to proceed, the user said:\n\(words)"
   }
 
-  // MARK: - Events
-
   func events() -> AsyncStream<AgentEventEnvelope> {
     AsyncStream { continuation in
       lock.withLock { self.eventContinuation = continuation }
@@ -505,8 +477,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     session.process.terminate()
   }
 
-  // MARK: - A chat's name
-
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
     guard let executable = locate() else { return nil }
     let models = (try? await availableModels()) ?? []
@@ -529,8 +499,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard let answer, answer.exitCode == 0 else { return nil }
     return answer.output
   }
-
-  // MARK: - Process lifecycle
 
   private func locate() -> String? {
     executableOverride ?? JSONLineProcess.locate(provider.program)
@@ -629,7 +597,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return AgentUsage.claudeCode(response)
   }
 
-  /// A probe must not start the person's MCP servers or hooks.
   static let throwawayArguments = [
     "--print", "--output-format", "stream-json", "--input-format", "stream-json", "--verbose",
     "--strict-mcp-config", "--settings", #"{"disableAllHooks":true}"#,
@@ -642,12 +609,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return response
   }
 
-  // MARK: - Commands
-
   static let commandListLifetime: TimeInterval = 300
 
-  /// A folder's own `.claude/skills` and commands join the person's, so a
-  /// folder other than home is asked in that folder.
   func commands(folder: String) async -> [AgentCommand] {
     if folder == NSHomeDirectory() { return Self.commands(in: await handshake()) }
     if let cached = lock.withLock({ cachedCommands[folder] }),
@@ -662,9 +625,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return found
   }
 
-  /// `initialize` lists skills, plugin and the person's commands beside the
-  /// CLI's own (`builtin`): those steer the CLI's session and its screen, and
-  /// would argue with Boltty's model chip, so they are left out.
   static func commands(in handshake: JSONObject?) -> [AgentCommand] {
     guard let handshake else { return [] }
     var seen = Set<String>()
@@ -680,7 +640,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// The CLI marks where a command comes from in its words: "(figma) …", "… (user)".
   static func summary(_ description: String) -> String {
     var text = description.trimmingCharacters(in: .whitespacesAndNewlines)
     if text.hasPrefix("("), let close = text.firstIndex(of: ")") {
@@ -740,12 +699,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return nil
   }
 
-  // MARK: - Undoing its changes
-
-  /// `rewind_files {user_message_id, dry_run}` puts files back as they were
-  /// before that question, from the CLI's own snapshots (2.1.325); the chat
-  /// stays. A chat with no process running gets one resumed for the call, which
-  /// writes nothing to its record.
   func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
     try await rewind(sessionID: sessionID, question: question, directory: directory, dryRun: true)
   }
@@ -774,8 +727,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       insertions: response.int("insertions"),
       deletions: response.int("deletions"))
   }
-
-  // MARK: - Reading the stream
 
   private func handle(line: String, in session: LiveSession) {
     guard let frame = JSONObject(line: line) else { return }
@@ -1051,8 +1002,6 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     let continuation = lock.withLock { eventContinuation }
     continuation?.yield(AgentEventEnvelope(providerID: provider.rawValue, event: event))
   }
-
-  // MARK: - Rendering a tool for a card
 
   static func resources(forTool tool: String, input: JSONObject) -> [String] {
     switch tool {

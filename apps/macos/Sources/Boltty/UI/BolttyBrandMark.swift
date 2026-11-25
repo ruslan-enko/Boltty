@@ -123,8 +123,6 @@ protocol BrandMarkPathBuilder {
   mutating func close()
 }
 
-// MARK: - AppKit
-
 extension NSBezierPath {
   static func bolttyBrandOutline(in rect: CGRect) -> NSBezierPath {
     var builder = AppKitBrandMarkBuilder()

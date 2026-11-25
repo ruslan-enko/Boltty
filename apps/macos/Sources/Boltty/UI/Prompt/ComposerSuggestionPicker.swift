@@ -1,26 +1,18 @@
 import AppKit
 
-/// A row of the list that opens over the composer.
 struct ComposerSuggestion: Equatable {
   let icon: BolttyIcon
   let title: String
   let detail: String
-  /// The detail follows the title (a command's description) rather than
-  /// standing at the row's end (a file's folder).
   var detailLeads = false
 }
 
-/// What `@` and `/` open in the composer. It reads its sign's word at the caret,
-/// keeps the keys the composer would give a list, and hands the chosen item back
-/// with the range of that word, which goes with it.
 @MainActor
 final class ComposerSuggestionPicker<Item> {
   typealias Search = (_ query: String, _ deliver: @escaping @MainActor ([Item]) -> Void) -> Void
 
   var onPick: ((Item, NSRange) -> Void)?
-  /// The list came up or went away.
   var onOpenChange: (() -> Void)?
-  /// The shell in the host's coordinates, for the list to stand clear of it.
   var shellFrame: (() -> NSRect)?
 
   private let findToken: (String, Int) -> ComposerToken?
@@ -35,7 +27,6 @@ final class ComposerSuggestionPicker<Item> {
   private var token: ComposerToken?
   private var context: String?
   private var search: Search?
-  /// The sign Escape let go of: it stays shut until another is typed.
   private var dismissedAt: Int?
   private var debounce: Timer?
   private var generation = 0
@@ -54,9 +45,6 @@ final class ComposerSuggestionPicker<Item> {
 
   var isOpen: Bool { list != nil }
 
-  /// Read the field again, on every change of its words or caret. `context`
-  /// names what the results depend on besides the query (the folder, the agent):
-  /// a new one searches again.
   func update(allowed: Bool, context: String, search: @escaping Search) {
     guard allowed, let field, field.selectedRange().length == 0,
           let found = findToken(field.string, field.selectedRange().location)
@@ -91,7 +79,6 @@ final class ComposerSuggestionPicker<Item> {
     }
   }
 
-  /// The composer's keys while the list is up; true when the list took it.
   func handle(_ selector: Selector) -> Bool {
     guard let list else { return false }
     switch selector {
@@ -121,7 +108,6 @@ final class ComposerSuggestionPicker<Item> {
     items = []
   }
 
-  /// Escape's mark goes with the words it was on.
   func reset() {
     dismissedAt = nil
     close()
@@ -154,8 +140,6 @@ final class ComposerSuggestionPicker<Item> {
     view.frame = frame(for: view.fittingSize, in: host, field: field, at: token.range.location)
   }
 
-  /// Left-aligned at the sign: above the line when the room is there (a chat's
-  /// composer at the foot), else under the shell (the first screen under the notch).
   private func frame(for size: NSSize, in host: NSView, field: PromptTextView, at location: Int) -> NSRect {
     let room = PaletteHelpPresenter.room(in: host)
     var anchor = field.caretBarRect ?? field.bounds
@@ -171,8 +155,6 @@ final class ComposerSuggestionPicker<Item> {
     let gap = AgentPaletteMetrics.mentionGap
     let flipped = host.isFlipped
     let roomAbove = flipped ? line.minY - room.minY : room.maxY - line.maxY
-    // Above the line only within the shell: on the first screen the line is
-    // near its top, and a short list fitted there stood over the shell's edge.
     let staysInShell = flipped
       ? line.minY - gap - size.height >= shell.minY
       : line.maxY + gap + size.height <= shell.maxY
@@ -200,8 +182,6 @@ final class ComposerSuggestionList: NSView {
 
   init(label: String) {
     super.init(frame: .zero)
-    // Frosted, as Limits is: it opens over any window, and clear glass let that
-    // window's words read through.
     let glass = PaletteGlassHost(
       content: content, cornerRadius: AgentPaletteMetrics.mentionCornerRadius,
       style: .bolttyAIPrompt(clearGlass: false))
@@ -336,7 +316,6 @@ private final class ComposerSuggestionRowView: NSView {
     let textY = ((bounds.height - textHeight) / 2).rounded()
     let nameX = icon.frame.maxX + AgentPaletteMetrics.mentionIconGap
     let available = bounds.width - nameX - padding
-    // The title has the row; the detail only what is left, giving way first.
     let gap = AgentPaletteMetrics.mentionPlaceGap
     let room = max(0, available - Self.width(of: name) - gap)
     if detailLeads {
@@ -384,9 +363,6 @@ private final class ComposerSuggestionRowView: NSView {
 }
 
 enum SuggestionPlace {
-  /// Where a file is, cut at whole folders from the front ("…/Screenshots"):
-  /// cut inside a name ("…shots") it said nothing. Empty when not even the
-  /// nearest folder fits, since the name has the row.
   static func folders(of path: String, fitting room: CGFloat, width: (String) -> CGFloat) -> String {
     guard !path.isEmpty, width(path) > room else { return path }
     var parts = path.split(separator: "/").map(String.init)

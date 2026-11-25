@@ -17,8 +17,6 @@ final class MascotRosterTests: XCTestCase {
     return defaults
   }
 
-  // MARK: - What an agent wears when nobody chose
-
   func testNobodyWearsTheShowsOwnFaceBesideIt() {
     let hero = MascotLook(shape: .hex, palette: .standard)
     let roster = MascotRoster(selections: [
@@ -104,8 +102,6 @@ final class MascotRosterTests: XCTestCase {
     XCTAssertNotEqual(MascotLook.face(for: .opencode, defaults: defaults).palette.id, "daybreak")
   }
 
-  // MARK: - What was chosen
-
   func testAChoiceIsWhatTheAgentWears() {
     var roster = MascotRoster()
     let look = MascotLook(shape: .triangle, palette: palette("aurora"))
@@ -156,8 +152,6 @@ final class MascotRosterTests: XCTestCase {
     }
   }
 
-  // MARK: - Two locks
-
   func testAFaceAnotherAgentWearsIsRefused() {
     var roster = MascotRoster()
     let claudes = roster.look(for: .claude)
@@ -204,8 +198,6 @@ final class MascotRosterTests: XCTestCase {
     XCTAssertEqual(Set(looks).count, looks.count)
   }
 
-  // MARK: - From the old picker
-
   func testTheOldPerAgentColoursBecomeChoices() {
     let old = defaults(legacy: ["opencode": "citrus", "claude": "ember", "grok": "abyss", "codex": "slate"])
     let roster = MascotRoster.load(defaults: old)
@@ -239,8 +231,6 @@ final class MascotRosterTests: XCTestCase {
     )
     XCTAssertEqual(MascotLook.face(for: .grok, defaults: stored).shape, .capsule)
   }
-
-  // MARK: - Finish
 
   func testAChoiceStoredWithoutAFinishIsVelvet() throws {
     let json = Data(#"{"claude":{"shape":"hex","palette":"citrus"}}"#.utf8)
@@ -277,8 +267,6 @@ final class MascotRosterTests: XCTestCase {
     XCTAssertNotEqual(codex.faceID, roster.look(for: .claude).faceID)
     XCTAssertEqual(codex.finish, .fur)
   }
-
-  // MARK: - Agents that are not adapters
 
   func testAnAgentWithNoAdapterStillWearsSomethingSteady() {
     let roster = MascotRoster()

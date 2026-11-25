@@ -2,8 +2,6 @@ import AppKit
 import Security
 import os
 
-/// Nothing is trusted for being on GitHub: the new copy must carry the running
-/// copy's designated requirement, or it is not installed.
 enum UpdateInstaller {
   enum Failure: Error, LocalizedError, Equatable {
     case download(String)
@@ -89,10 +87,8 @@ enum UpdateInstaller {
     }
   }
 
-  /// `openApplication` answers only once the new copy has checked in with
-  /// LaunchServices, and a copy waiting for this one may not have yet: awaiting it
-  /// deadlocked the hand-over. So a refusal is heard for `launchGrace`, then this
-  /// copy goes regardless.
+  /// `openApplication` answers once the new copy checks in, and it may wait for this one: awaiting
+  /// deadlocks.
   static func relaunch(_ bundle: URL) async throws {
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.createsNewApplicationInstance = true
@@ -113,10 +109,7 @@ enum UpdateInstaller {
 
   static let launchGrace: TimeInterval = 2
 
-  /// Called first thing at launch: a copy started by `relaunch` waits here
-  /// for the one it replaced to quit. One that is still there at the deadline
-  /// is stuck (0.2.7 and older hang in their own quit) and is ended, or this
-  /// copy would run beside it read-only.
+  /// 0.2.7 and older hang in their own quit, so one still here at the deadline is ended.
   static func waitForReplacedCopy(arguments: [String] = CommandLine.arguments) {
     guard let index = arguments.firstIndex(of: waitArgument), index + 1 < arguments.count,
           let pid = pid_t(arguments[index + 1]), pid > 0
@@ -145,8 +138,6 @@ enum UpdateInstaller {
     guard proc_name(pid, &buffer, UInt32(buffer.count)) > 0 else { return nil }
     return String(cString: buffer)
   }
-
-  // MARK: - Steps
 
   private static func download(_ url: URL, to destination: URL) async throws {
     do {

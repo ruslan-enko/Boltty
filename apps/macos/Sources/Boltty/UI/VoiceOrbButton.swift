@@ -117,8 +117,6 @@ final class GlassCircleVoiceButton: PaletteIconButton {
     applyBarColors()
   }
 
-  // MARK: - Bars
-
   private func buildBars() {
     bars = (0..<AgentPaletteMetrics.voiceOrbBarCount).map { _ in
       let bar = CALayer()
@@ -169,6 +167,4 @@ final class GlassCircleVoiceButton: PaletteIconButton {
     bars.forEach { $0.backgroundColor = resolved.cgColor }
     CATransaction.commit()
   }
-
-  // MARK: - Colour wheel
 }

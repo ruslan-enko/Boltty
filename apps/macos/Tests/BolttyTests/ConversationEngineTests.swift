@@ -284,8 +284,6 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertNotNil(store.conversation(id: id)?.remoteSessionID, "a read that failed forgets nothing")
   }
 
-  // MARK: - Quitting
-
   private func runningChats(_ count: Int) async throws -> [String] {
     var remotes: [String] = []
     for index in 0..<count {
@@ -318,8 +316,6 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertLessThan(Date().timeIntervalSince(started), 2, "a stop that never answers cannot hold the quit")
     XCTAssertEqual(client.stopped, [remotes[0]])
   }
-
-  // MARK: - A second copy
 
   func testASecondCopyStartsNoWork() async throws {
     let second = ConversationStore(persistence: ConversationPersistence(
@@ -489,8 +485,6 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertTrue(retried)
     XCTAssertNil(engine.notices[id], "a successful retry clears the delivery error")
   }
-
-  // MARK: - An ask that is already gone
 
   func testAReplyToAnAskThatIsGonePutsTheCardAwayWithoutANotice() async throws {
     let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
@@ -755,8 +749,6 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertTrue(client.permissionReplies.isEmpty)
   }
 
-  // MARK: - Read-only chats
-
   func testAReadOnlyChatStartsItsSessionReadOnly() async throws {
     let id = store.createConversation(title: "t", workingDirectory: "/tmp", readOnly: true).id
     await engine.send(text: "look", in: id)
@@ -786,8 +778,6 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertEqual(client.createdSessions.count, 1)
   }
 
-  // MARK: - A refusal in words
-
   private func askedPermission(
     _ coordinator: ChatWorkspaceCoordinator
   ) async throws -> (id: UUID, remote: String, question: AgentQuestion) {
@@ -804,8 +794,6 @@ final class ConversationEngineTests: XCTestCase {
     let question = try XCTUnwrap(coordinator.preview(for: id)?.question)
     return (id, remote, question)
   }
-
-  // MARK: - A plan
 
   private static let plan = "# Rename the tray\n\n1. Rename it."
 
@@ -1069,7 +1057,6 @@ final class ConversationEngineTests: XCTestCase {
       openInteractions: []
     )
   }
-  // MARK: - Listening
 
   func testAMissingAgentIsNotListenedTo() async throws {
     let missing = FakeAgentClient()
@@ -1095,8 +1082,6 @@ final class ConversationEngineTests: XCTestCase {
       self.store.connectionState(forProviderID: AgentId.claude.rawValue) == .connected
     }
   }
-
-  // MARK: - A turn that ends leaves nothing half-written
 
   func testAReplyIsFinishedWhenItsTurnEndsEvenIfNobodySaysSo() async throws {
     let (engine, id, remote) = try await attachedConversation(client)
@@ -1159,8 +1144,6 @@ final class ConversationEngineTests: XCTestCase {
 
     XCTAssertEqual(store.transcript(id: id).messages, before)
   }
-
-  // MARK: - What a reconnect costs
 
   private func attachedConversation(
     _ client: FakeAgentClient
@@ -1303,8 +1286,6 @@ final class ConversationEngineTests: XCTestCase {
       try await Task.sleep(nanoseconds: 5_000_000)
     }
   }
-
-  // MARK: - Adopting a CLI's own session
 
   func testAnAdapterThatCannotReReadASessionDoesNotLoseItsBinding() async throws {
     let conversation = newConversation()

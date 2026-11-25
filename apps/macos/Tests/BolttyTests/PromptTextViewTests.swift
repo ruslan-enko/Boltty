@@ -16,8 +16,6 @@ final class PromptTextViewTests: XCTestCase {
     PromptAttachment.file(URL(fileURLWithPath: path))
   }
 
-  // MARK: - The caret
-
   func testTheCaretStandsCentredOnTheCapitals() throws {
     let field = makeField()
     let font = try XCTUnwrap(field.font)
@@ -52,8 +50,6 @@ final class PromptTextViewTests: XCTestCase {
     field.setSelectedRange(NSRange(location: 2, length: 3))
     XCTAssertNil(field.caretBarRect, "a selection is a highlight, not a caret")
   }
-
-  // MARK: - Links
 
   func testALinkInTheDraftIsTextDrawnAsALink() throws {
     let field = makeField()
@@ -104,8 +100,6 @@ final class PromptTextViewTests: XCTestCase {
     XCTAssertEqual(field.insertionPointColor, .clear)
     XCTAssertEqual(field.caretViewForTesting.color, .systemRed)
   }
-
-  // MARK: - Round trip
 
   func testExpandingPreservesSelectionAndTheDraft() {
     let field = makeField()
@@ -230,8 +224,6 @@ final class PromptTextViewTests: XCTestCase {
     XCTAssertFalse(field.isWhollyEmpty)
     XCTAssertFalse(field.draft.isEffectivelyEmpty, "and there is something to send")
   }
-
-  // MARK: - Paste
 
   private func commandV(
     characters: String,

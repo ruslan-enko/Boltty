@@ -83,8 +83,6 @@ final class BolttyAIFollowUpTests: XCTestCase {
   }
 }
 
-// MARK: - What the permission card says
-
 final class PermissionCardTextTests: XCTestCase {
   private func question(kind: AgentQuestion.Kind, multiple: Bool) -> AgentQuestion {
     AgentQuestion(
@@ -182,8 +180,6 @@ final class PermissionCardTextTests: XCTestCase {
   }
 }
 
-// MARK: - Enter during a running turn
-
 final class QueuedFollowUpTests: XCTestCase {
   func testTheFirstOneQueuesAndTheNextReplacesIt() {
     XCTAssertEqual(
@@ -209,8 +205,6 @@ final class QueuedFollowUpTests: XCTestCase {
     XCTAssertFalse(preview.withholdsAnswer)
   }
 }
-
-// MARK: - Ending a turn
 
 final class TurnTerminationCapabilityTests: XCTestCase {
   func testAnInterruptIsNotAbrupt() {

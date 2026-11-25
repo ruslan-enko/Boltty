@@ -237,8 +237,6 @@ final class MascotRendererTests: XCTestCase {
     XCTAssertTrue(stillFace().canvasAvoidsOffscreenPassForTesting)
   }
 
-  // MARK: - Outlines
-
   func testEveryShapeIsNamedOnceAndReachesTheShaderUnderItsOwnID() {
     XCTAssertEqual(MascotShape.allCases.count, 6)
     XCTAssertEqual(Set(MascotShape.allCases.map(\.rawValue)).count, 6)
@@ -336,8 +334,6 @@ final class MascotRendererTests: XCTestCase {
     XCTAssertEqual(after.phase, before.phase)
     XCTAssertEqual(after.palette, before.palette)
   }
-
-  // MARK: - Gradients
 
   func testASunriseIsTheSameAcrossARowAndChangesDownIt() throws {
     let pixels = try Pixels(XCTUnwrap(stillFace(shape: .orb).snapshot()))

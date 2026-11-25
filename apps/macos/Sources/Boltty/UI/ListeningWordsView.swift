@@ -215,6 +215,25 @@ final class ListeningWordsView: NSView {
     if layer?.mask !== fadeLayer { layer?.mask = fadeLayer }
   }
 
+  func settledWords(scale: CGFloat) -> CGImage? {
+    let pixels = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+    guard pixels.width >= 1, pixels.height >= 1, let context = CGContext(
+      data: nil, width: Int(pixels.width), height: Int(pixels.height), bitsPerComponent: 8, bytesPerRow: 0,
+      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return nil }
+    context.scaleBy(x: scale, y: scale)
+    let previous = NSGraphicsContext.current
+    NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+    defer { NSGraphicsContext.current = previous }
+    for (word, point) in zip(words, targets()) {
+      let white = NSMutableAttributedString(attributedString: word.string)
+      white.addAttribute(
+        .foregroundColor, value: NSColor.white, range: NSRange(location: 0, length: white.length))
+      white.draw(at: point)
+    }
+    return context.makeImage()
+  }
+
   override func draw(_ dirtyRect: NSRect) {
     guard let context = NSGraphicsContext.current?.cgContext, !words.isEmpty else { return }
     updateFade()

@@ -16,10 +16,6 @@ enum AgentPaletteMetrics {
 
   static var shellContentInset: CGFloat { live(12) }
 
-  /// The composer's corner: the mock's `rounded-[100px]`, i.e. a capsule.
-  ///
-  /// Over-large on purpose — `PaletteGlassHost` clamps to half the shorter side,
-  /// so "more than can be drawn" is how a capsule is written at any height.
   static let chatComposerCornerRadius: CGFloat = fromMock(100)
 
   static var chatComposerRestingCornerRadius: CGFloat { (chatComposerBoxHeight / (2 * continuousCornerWallReach)).rounded(.down) }
@@ -123,13 +119,12 @@ enum AgentPaletteMetrics {
   static let mascotOversize: CGFloat = 1.15
   static let promptMascotScale: CGFloat = 1.15 * 1.10
   static let promptMascotSize: CGFloat = iconSize * mascotOversize * promptMascotScale
+  static let promptMascotSupersampling: CGFloat = 2
   static var promptMascotOverhang: CGFloat { (promptMascotSize - iconSize) / 2 }
   static let promptMarkHitSize: CGFloat = max(44, promptMascotSize.rounded(.up))
   static let cornerRadius: CGFloat = promptSize.height / 2
   static let safeAreaX: CGFloat = 50
   static let safeAreaY: CGFloat = 50
-
-  // MARK: - Type ramp
 
   static var typePrimary: CGFloat { live(18) }
   static var typeSecondary: CGFloat { live(15) }
@@ -138,8 +133,6 @@ enum AgentPaletteMetrics {
   static let typeFootnote: CGFloat = NSFont.systemFontSize(for: .small)
 
   static var promptFontSize: CGFloat { live(20) }
-
-  // MARK: The caret (`PromptCaretView`)
 
   static let caretWidthPerPoint: CGFloat = 0.09
   static let caretReachPerPoint: CGFloat = 0.227
@@ -175,14 +168,15 @@ enum AgentPaletteMetrics {
   static let screenSelectionHintOffset = CGSize(width: 14, height: 24)
   static var screenSelectionHintDelay: TimeInterval { helpTagDelay }
   static let screenSelectionGlowWidth: CGFloat = 10
-  static let screenSelectionInnerGlowDepth: CGFloat = 36
-  static let screenSelectionInnerGlowStrength: CGFloat = 0.3
+  static let screenSelectionInnerGlowDepth: CGFloat = 20
+  static let screenSelectionInnerGlowStrength: CGFloat = 0.14
   static let screenSelectionHaloReach: CGFloat = 10
   static let screenSelectionHaloStrength: CGFloat = 0.3
   static let screenSelectionWaveAmplitude: CGFloat = 0.26
   static let screenSelectionDriftAmplitude: CGFloat = 0.2
   static let screenSelectionLightness: Double = 0.72
   static let screenSelectionHandleDiameter: CGFloat = 9
+  static let screenSelectionMidHandleSide: CGFloat = 120
   static let screenSelectionHandleReach: CGFloat = 12
   static let screenSelectionDim: CGFloat = 0.4
   static let screenSelectionShellGap: CGFloat = 16
@@ -192,8 +186,6 @@ enum AgentPaletteMetrics {
   static let regionHandOverDuration: CFTimeInterval = 0.26
 
   static let keyHintDelay: TimeInterval = 1
-
-  // MARK: What came with the words
 
   static var attachmentCardSide: CGFloat { live(100) }
   static var attachmentCardGap: CGFloat { live(8) }
@@ -428,8 +420,6 @@ enum AgentPaletteMetrics {
   static var resultsUnreadDotDiameter: CGFloat { live(8) }
   static let resultsUnreadDotGap: CGFloat = 8
   static var resultsUnreadDotFill: NSColor { live(NSColor(oklch: 0.624, 0.206, 255.5)) }
-  /// A face stands in the row's round end, concentric with it: as far from the
-  /// side as from the top and foot.
   static var resultsRowFaceInset: CGFloat {
     onPixelGrid((resultsRowHeight - resultsRowInset * 2 - resultsMascotSize) / 2)
   }
@@ -437,10 +427,6 @@ enum AgentPaletteMetrics {
     resultsRowFaceInset + resultsMascotSize + resultsRowIconTextSpacing
   }
 
-  // MARK: - History
-
-  /// Every number of the history card goes through this, not `fromMock`; type sizes
-  /// are the ramp's.
   static let historyMockCardWidth: CGFloat = 582.67
   static let historyMockScaleWidth: CGFloat = 520
   static func fromHistoryMock(_ value: CGFloat) -> CGFloat {
@@ -668,8 +654,6 @@ enum AgentPaletteMetrics {
   static var previewSendFlightDuration: TimeInterval { live(0.45) }
   static let sendWordsBubbleStartScale: CGFloat = 0.9
 
-  // MARK: Shader effects (`PaletteEffects`)
-
   static var revealDuration: TimeInterval { Motion.standard * 2 }
   static let revealBlurFraction: CGFloat = 0.18
   static let revealAberrationFraction: CGFloat = 0.05
@@ -759,10 +743,15 @@ enum AgentPaletteMetrics {
   static let helpKeycapSpacing: CGFloat = 3
   static let helpKeyWordsGap: CGFloat = 6
   static let regionKeyHintsGap: CGFloat = 10
-  static var keyHintsProgressFill: NSColor { live(NSColor.white.withAlphaComponent(0.16)) }
-  /// With nothing heard this long from a microphone that is listening, the orb says so.
+  static var keyHintsCapInset: CGFloat { live(6) }
+  static var keyHintsWordsInset: CGFloat { live(14) }
+  static let keyHintsFillSoftness: CGFloat = 16
+  static let keyHintsIgnoredPause: CGFloat = 0.2
+  static let keyHintsFillTime: CFTimeInterval = 0.16
+  static let keyHintsDrainTime: CFTimeInterval = 0.22
+  static let keyHintsFilledInk = NSColor.black
+  static let keyHintsFilledCap = NSColor.black.withAlphaComponent(0.14)
   static let regionSilentMicrophone: TimeInterval = 5
-  /// Below this a level is no sound at all (`VoiceDictationService.quietRoom` is a quiet room).
   static let regionSoundFloor: CGFloat = 0.00005
   static let helpKeycapInset: CGFloat = 5
   static let helpActionSpacing: CGFloat = 8
@@ -772,7 +761,6 @@ enum AgentPaletteMetrics {
   static var planRingInk: NSColor { ComposerControlGroup.restingInk }
   static var planRingDiameter: CGFloat { live(20) }
   static var planRingStroke: CGFloat { live(2.5) }
-  // The circle icon's ink (r 6.25, stroke 1.3 on 16), so the ring stands as large and as thin as the icons beside it.
   static let planRingStrokeRatio: CGFloat = 1.3 / 13.8
   static func planRingOuterDiameter(chat: Bool) -> CGFloat {
     iconSide(ComposerControlGroup.iconSize(chat: chat)) * 13.925 / 16
@@ -783,7 +771,6 @@ enum AgentPaletteMetrics {
   static var glassButtonFontSize: CGFloat { typeMeta }
   static let directoryChipTextColor = PaletteInk.primary
 
-  // MARK: The working-folder chip, naming its folder
   static func folderChipHeight(chat: Bool) -> CGFloat { chat ? 26 : 28 }
   static func folderChipPadding(chat: Bool) -> CGFloat { chat ? 6 : 7 }
   static func folderChipIconGap(chat: Bool) -> CGFloat { chat ? 5 : 6 }
@@ -877,27 +864,19 @@ struct BolttyAISurfaceSizes: Equatable, Sendable {
   }
 }
 
-/// A shell's corner as its glass draws it. Read once off the glass host and
-/// handed whole to every layer on the shell's edge; none works it out again
-/// from its own bounds.
 struct PaletteCorner: Equatable {
   var radius: CGFloat
   var curve: CALayerCornerCurve
 
-  /// Concentric, `inset` inside the edge.
   func inset(by inset: CGFloat) -> PaletteCorner {
     PaletteCorner(radius: max(0, radius - inset), curve: curve)
   }
 
-  /// A path has no continuous curve, so it is only for what is blurred (a
-  /// shadow) or stands at least `edgeOverlap` inside the edge (a hole).
   func path(in rect: CGRect) -> CGPath {
     let r = min(radius, rect.width / 2, rect.height / 2)
     return CGPath(roundedRect: rect, cornerWidth: r, cornerHeight: r, transform: nil)
   }
 
-  /// What lies under the glass's edge (a shadow's hole) runs this far under it,
-  /// so two antialiased edges never share a pixel and leave the desktop showing.
   static let edgeOverlap: CGFloat = 2
 }
 

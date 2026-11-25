@@ -54,8 +54,6 @@ struct CodexSessionStore: NativeSessionStore {
     }
   }
 
-  // MARK: - Walking
-
   private struct Rollout {
     let url: URL
     let id: String
@@ -87,8 +85,6 @@ struct CodexSessionStore: NativeSessionStore {
     }
     return found
   }
-
-  // MARK: - One session
 
   private func session(from rollout: Rollout, titles: [String: String]) throws -> NativeSession {
     var directory = ""
@@ -144,8 +140,6 @@ struct CodexSessionStore: NativeSessionStore {
     let name = (directory as NSString).lastPathComponent
     return name.isEmpty ? "Codex session" : name
   }
-
-  // MARK: - The index, used only for its titles
 
   func indexedTitles() -> [String: String] {
     let index = root.appendingPathComponent("session_index.jsonl")

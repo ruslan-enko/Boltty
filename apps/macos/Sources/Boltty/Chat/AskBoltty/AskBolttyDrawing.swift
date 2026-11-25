@@ -66,8 +66,6 @@ struct AskBolttyShape: Equatable, Sendable {
     return AskBolttyShape(kind: kind, label: trimmed?.isEmpty == false ? trimmed : nil)
   }
 
-  // MARK: - Reading a tag
-
   static func tagName(_ tag: String) -> String? {
     guard let range = tag.range(of: #"^<\s*([a-zA-Z]+)"#, options: .regularExpression) else { return nil }
     return tag[range].dropFirst().trimmingCharacters(in: .whitespaces).lowercased()

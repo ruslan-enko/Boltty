@@ -82,8 +82,6 @@ final class MascotRenderer {
     self.fieldPipeline = fieldPipeline
   }
 
-  // MARK: - The frame, as numbers
-
   static let largeFaceSide: CGFloat = 48
 
   static func rays(for frame: Frame) -> Int {
@@ -176,8 +174,6 @@ final class MascotRenderer {
     return aboutZ * aboutY * aboutX
   }
 
-  // MARK: - Palette
-
   private static var stopCache: [String: [simd_float4]] = [:]
 
   static func oklabStops(for palette: MascotPalette) -> [simd_float4] {
@@ -211,8 +207,6 @@ final class MascotRenderer {
   ) {
     if index == 0 { pair.0 = value } else if index == 1 { pair.1 = value }
   }
-
-  // MARK: - The frame, on the GPU
 
   func draw(_ uniforms: MascotUniforms, in view: MTKView) {
     guard let drawable = view.currentDrawable,

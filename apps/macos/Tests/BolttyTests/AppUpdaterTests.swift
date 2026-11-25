@@ -29,8 +29,6 @@ final class AppUpdaterTests: XCTestCase {
     return updater
   }
 
-  // MARK: - What GitHub says
-
   func testALatestReleaseIsReadWithoutItsV() {
     let release = AppUpdater.release(from: releaseJSON(tag: "v0.2.0"))
     XCTAssertEqual(release?.version, "0.2.0")
@@ -83,8 +81,6 @@ final class AppUpdaterTests: XCTestCase {
     XCTAssertFalse(AppUpdater.isNewer("0.1.0", than: "0.2.0"))
   }
 
-  // MARK: - A check
-
   func testANewerReleaseIsHeldAndOffered() async {
     let updater = makeUpdater(body: releaseJSON(tag: "v0.2.0"))
     let result = await updater.check()
@@ -133,8 +129,6 @@ final class AppUpdaterTests: XCTestCase {
     XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), "Boltty/0.1.0")
   }
 
-  // MARK: - Once a day, and only when switched on
-
   func testACheckIsDueOnceADay() async {
     let updater = makeUpdater(body: releaseJSON(tag: "v0.1.0"))
     XCTAssertTrue(updater.isDue(), "never checked")
@@ -160,8 +154,6 @@ final class AppUpdaterTests: XCTestCase {
     XCTAssertNotNil(second.lastUpdateCheckDate)
     XCTAssertFalse(second.isDue())
   }
-
-  // MARK: - Asked from the menu
 
   func testAFoundReleaseOpensItsPage() async throws {
     let updater = makeUpdater(body: releaseJSON(tag: "v0.2.0"))

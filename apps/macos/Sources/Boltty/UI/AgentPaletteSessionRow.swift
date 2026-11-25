@@ -1,7 +1,5 @@
 import AppKit
 
-// MARK: - Session row
-
 final class GradientFillView: NSView {
   override func makeBackingLayer() -> CALayer { CAGradientLayer() }
   var gradientLayer: CAGradientLayer? { layer as? CAGradientLayer }
@@ -201,8 +199,6 @@ final class BolttyAISessionRowView: NSView {
     setAccessibilityLabel(accessibilityText(for: item))
     needsLayout = true
   }
-
-  // MARK: Working
 
   private let shimmer = CALayer()
   private let shimmerWords = CALayer()

@@ -138,8 +138,6 @@ final class NativeTranscriptSweep: XCTestCase {
     return "plain: " + String(text.prefix(40)).replacingOccurrences(of: "\n", with: "⏎")
   }
 
-  // MARK: - The second reader
-
   private func stores() -> [(String, NativeSessionStore, (String) -> Truth)] {
     let home = URL(fileURLWithPath: NSHomeDirectory())
     return [

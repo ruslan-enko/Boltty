@@ -1,7 +1,6 @@
 import Foundation
 
 #if DEBUG
-/// Written on the engine's executors and read by a test's polling on its own.
 @propertyWrapper
 final class Locked<Value>: @unchecked Sendable {
   private let lock = NSLock()
@@ -234,8 +233,6 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
   func shutdown() async {
     lock.withLock { continuation?.finish() }
   }
-
-  // MARK: - Driving it from a test
 
   func emit(_ event: AgentEvent, id: String? = nil, sequence explicit: Int? = nil) {
     let envelope = lock.withLock { () -> AgentEventEnvelope in

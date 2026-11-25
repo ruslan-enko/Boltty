@@ -97,7 +97,6 @@ enum ModelMenu {
   }
 }
 
-/// The name gives way at its end; the effort after it always shows.
 final class ModelChipButton: PaletteIconButton {
   private let nameLabel = NSTextField(labelWithString: "")
   private let effortLabel = NSTextField(labelWithString: "")

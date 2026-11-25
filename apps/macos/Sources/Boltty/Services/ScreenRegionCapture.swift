@@ -64,8 +64,6 @@ enum ScreenRegionCapture {
     )
   }
 
-  /// What is written on the screen, read off the picture as the agent sees it
-  /// (hidden windows painted out), so a tag can name words instead of guessing pixels.
   static func labels(in image: CGImage) -> [ScreenText] {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
@@ -90,7 +88,6 @@ enum ScreenRegionCapture {
     return lines.sorted { ($0.box.minY, $0.box.minX) < ($1.box.minY, $1.box.minX) }
   }
 
-  /// A fresh look at a whole display, read at the agent's picture size.
   static func labels(onDisplay displayID: CGDirectDisplayID) async -> [ScreenText]? {
     guard let frozen = try? await freeze(displayID: displayID) else { return nil }
     return await Task.detached(priority: .userInitiated) {
@@ -99,8 +96,6 @@ enum ScreenRegionCapture {
   }
 
   static let labelLimit = 300
-
-  // MARK: - Geometry
 
   static func flipped(_ rect: CGRect, primaryScreenHeight: CGFloat) -> CGRect {
     CGRect(
@@ -134,8 +129,6 @@ enum ScreenRegionCapture {
     case (nil, nil): return nil
     }
   }
-
-  // MARK: - Capture
 
   private static func captureDisplay(_ displayID: CGDirectDisplayID) async throws -> (CGImage, CGRect) {
     let content: SCShareableContent
@@ -186,8 +179,6 @@ enum ScreenRegionCapture {
         layer: window[kCGWindowLayer as String] as? Int ?? 0)
     }
   }
-
-  // MARK: - Pictures
 
   private static func scaled(
     _ image: CGImage, longEdge: CGFloat, outlining: CGRect?, showing layers: [ScreenLayer]? = nil

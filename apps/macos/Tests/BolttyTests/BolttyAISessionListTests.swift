@@ -277,8 +277,6 @@ final class BolttyAISessionListTests: XCTestCase {
     XCTAssertEqual(BolttyAISessionList.plainPreview("a\n***\nb\n___\nc"), "a b c")
   }
 
-  // MARK: The row's title
-
   private func sent(_ text: String) -> ConversationTranscript {
     transcript(textMessage("u1", text, role: .user), textMessage("a1", "ok"))
   }

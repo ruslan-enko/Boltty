@@ -1,8 +1,6 @@
 import Foundation
 
 enum OpenCodeDTO {
-  // MARK: - Envelopes
-
   struct DataEnvelope<T: Decodable>: Decodable {
     let data: T
   }
@@ -21,8 +19,6 @@ enum OpenCodeDTO {
     let data: [EventFrame]
     var hasMore: Bool?
   }
-
-  // MARK: - Sessions
 
   struct LocationRef: Codable, Equatable {
     var directory: String
@@ -94,8 +90,6 @@ enum OpenCodeDTO {
     }
   }
 
-  // MARK: - Messages
-
   struct Message: Decodable {
     let id: String
     let type: String
@@ -149,8 +143,6 @@ enum OpenCodeDTO {
     }
   }
 
-  // MARK: - Event projections
-
   struct EventMessage: Decodable {
     let id: String
     let sessionID: String
@@ -203,8 +195,6 @@ enum OpenCodeDTO {
       }
     }
   }
-
-  // MARK: - Questions and permissions
 
   struct FormRequest: Decodable {
     let id: String
@@ -307,15 +297,11 @@ enum OpenCodeDTO {
     var message: String?
   }
 
-  // MARK: - Models
-
   struct ModelInfo: Decodable {
     let id: String
     let providerID: String
     var name: String?
   }
-
-  // MARK: - Events
 
   struct EventFrame: Decodable {
     let id: String?

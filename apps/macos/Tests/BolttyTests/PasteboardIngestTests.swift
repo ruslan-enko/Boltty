@@ -17,8 +17,6 @@ final class PasteboardIngestTests: XCTestCase {
     super.tearDown()
   }
 
-  // MARK: - Files
-
   func testCopyingSeveralFilesYieldsOneChipEach() {
     pasteboard.writeObjects([
       URL(fileURLWithPath: "/x/clip.mov") as NSURL,
@@ -66,8 +64,6 @@ final class PasteboardIngestTests: XCTestCase {
     XCTAssertEqual(chips.first?.label, "image1")
   }
 
-  // MARK: - Images with no file
-
   func testAScreenshotBecomesOneImageChip() {
     pasteboard.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png)
 
@@ -90,8 +86,6 @@ final class PasteboardIngestTests: XCTestCase {
     XCTAssertEqual(chips[0].label, "image2")
   }
 
-  // MARK: - Text (D7)
-
   func testAShortWordIsTypedNotChipped() {
     pasteboard.setString("mp4", forType: .string)
     XCTAssertEqual(PasteboardIngest.read(pasteboard, into: PromptDraft()), .plainText("mp4"))
@@ -112,8 +106,6 @@ final class PasteboardIngestTests: XCTestCase {
     XCTAssertEqual(chips[0].displayLabel(), "text1")
     XCTAssertEqual(chips[0].payload, .text("line one\nline two"))
   }
-
-  // MARK: - Links
 
   func testAURLIsWordsNotAChip() {
     pasteboard.setString("https://example.com", forType: .string)
@@ -143,8 +135,6 @@ final class PasteboardIngestTests: XCTestCase {
     )
   }
 
-  // MARK: - ⌘⇧V
-
   func testForcePlainTextSkipsEveryRule() {
     pasteboard.setString("line one\nline two", forType: .string)
     XCTAssertEqual(
@@ -162,8 +152,6 @@ final class PasteboardIngestTests: XCTestCase {
     ) else { return XCTFail("expected plain text") }
     XCTAssertTrue(text.contains("clip.mov"))
   }
-
-  // MARK: - Nothing
 
   func testAnEmptyPasteboardProducesNothing() {
     XCTAssertEqual(PasteboardIngest.read(pasteboard, into: PromptDraft()), .nothing)

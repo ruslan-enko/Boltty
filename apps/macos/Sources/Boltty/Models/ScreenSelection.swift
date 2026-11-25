@@ -16,8 +16,6 @@ struct ScreenSelection: Sendable, Equatable, Codable {
   var labels: [ScreenText]? = nil
 }
 
-/// A line read off the picture of the screen the agent is sent, its boxes in
-/// thousandths of that picture from its top left, as the agent's tags are.
 struct ScreenText: Codable, Equatable, Sendable {
   struct Word: Codable, Equatable, Sendable {
     var text: String
@@ -28,8 +26,6 @@ struct ScreenText: Codable, Equatable, Sendable {
   var box: CGRect
   var words: [Word]
 
-  /// The box of `words` as they stand together in one line; of several, the
-  /// one nearest `near`, and none farther than `reach` from it.
   static func find(
     _ words: String, near: CGPoint?, in lines: [ScreenText], reach: CGFloat? = nil
   ) -> CGRect? {
@@ -69,12 +65,8 @@ struct ScreenText: Codable, Equatable, Sendable {
     text.split(whereSeparator: \.isWhitespace).map { key(String($0)) }.filter { !$0.isEmpty }
   }
 
-  /// The menu bar's band, in thousandths from the top: always listed, since
-  /// "where is Export?" is so often answered there.
   static let menuBarDepth: CGFloat = 30
 
-  /// One line a label: `x1 y1 x2 y2 words`, in reading order. Past `byteLimit`
-  /// the lines nearest `area` are the ones kept.
   static func listing(_ lines: [ScreenText], byteLimit: Int, near area: CGRect? = nil) -> String? {
     func row(_ line: ScreenText) -> String {
       let words = line.text.count > 80 ? String(line.text.prefix(80)) + "…" : line.text

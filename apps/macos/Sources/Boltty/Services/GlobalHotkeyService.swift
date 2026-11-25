@@ -68,8 +68,6 @@ final class GlobalHotkeyService: @unchecked Sendable {
     stop()
   }
 
-  // MARK: - Asking before committing
-
   func probe(_ hotkey: HotkeyBinding) -> HotkeyAvailability {
     if hotkey.isModifierOnly { return ModifierHotkeyMonitor.availability }
     guard installHandler() else { return .failed(status: -1) }
@@ -87,8 +85,6 @@ final class GlobalHotkeyService: @unchecked Sendable {
     }
     return HotkeyAvailability(status: status)
   }
-
-  // MARK: - Holding it
 
   @discardableResult
   func register(_ hotkey: HotkeyBinding) -> HotkeyAvailability {
@@ -140,8 +136,6 @@ final class GlobalHotkeyService: @unchecked Sendable {
     isRunning = true
     return availability
   }
-
-  // MARK: - Carbon plumbing
 
   private func unregisterHotkey() {
     modifierMonitor.stop()

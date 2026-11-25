@@ -6,7 +6,6 @@ using namespace metal;
 
 struct BackdropVaryings {
   float4 position [[position]];
-  /// Points from the shell's bottom-left corner; y = 0 is the foot.
   float2 local;
 };
 
@@ -52,8 +51,6 @@ static inline float backdropFBM(float2 p, int octaves) {
 
 static inline float backdropFBM(float2 p) { return backdropFBM(p, 5); }
 
-// MARK: - Sky
-
 static float3 backdropSky(float2 local, float2 size, float t, constant float4 *lab) {
   const float h = local.y / size.y;
   const float2 uv = local / 420.0;
@@ -87,7 +84,6 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *l
       backdropFBM(p * 0.55 + float2(5.2, 1.3) - t * 0.016, 3)
     ) - 0.5;
     const float2 at = p + 0.6 * warp;
-    // Four octaves: a fifth frays the edges into smoke.
     const float density = backdropFBM(at, 4);
     const float band = exp(-pow((h - bands[layer]) / 0.22, 2.0));
     const float threshold = mix(0.6, 0.36, band);
@@ -100,7 +96,6 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *l
     const float3 under = mix(float3(horizon.x * 0.865, horizon.yz), underside, smoothstep(0.2, 0.62, h));
     const float3 shade = mix(under, color, 0.5);
     const float3 lowLight = mix(sunlight, glow, 0.3 + sun * 0.3 + (1.0 - smoothstep(0.0, 0.5, h)) * 0.25);
-    // High clouds are lit by the sky behind them: its own colour, lighter.
     const float3 skyLight = float3(min(color.x * 1.47 + 0.05, 0.97), color.yz);
     const float3 light = mix(lowLight, skyLight, smoothstep(0.5, 0.85, h) * 0.85);
     float3 body = mix(shade, light, lit * mix(1.0, 0.6, thick));
@@ -112,11 +107,7 @@ static float3 backdropSky(float2 local, float2 size, float t, constant float4 *l
   return oklabToSRGB(oklabCeiling(color, 0.39, 0.62));
 }
 
-// MARK: - Space
-
-// Light is added up linear, as light adds; each source is tinted in Oklab first.
-// Brightnesses were judged on encoded values, hence the 2.2; a shape (a pixel's
-// coverage, a glow's falloff) is how much of that light lands, so it stays linear.
+// Brightnesses were judged on encoded values, hence the 2.2; coverage stays linear.
 static inline float asLight(float brightness) { return pow(max(brightness, 0.0), 2.2); }
 
 static float3 backdropStarTint(float k, float3 face) {
@@ -125,7 +116,6 @@ static float3 backdropStarTint(float k, float3 face) {
   const float3 warm = oklch(0.90, 0.075, 72.0);
   float3 c = mix(blue, white, smoothstep(0.0, 0.35, k));
   c = mix(c, warm, smoothstep(0.75, 1.0, k));
-  // The face's light at the star's own lightness, so a tinted star is no dimmer.
   const float3 lit = float3(c.x, face.yz);
   return mix(c, lit, step(0.82, fract(k * 7.31)) * 0.6);
 }
@@ -170,12 +160,9 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
   const float3 glow = lab[5].xyz;
 
   const float breath = backdropFBM(local / 380.0 + float2(t * 0.004, 0.0), 3);
-  // The night sky: the face's ramp from a soft light in the middle, through
-  // middle, to zenith at the edges, drifting; quiet in lightness and chroma.
   const float lean = backdropFBM(local / size * 1.1 + float2(t * 0.005, 3.7), 3) - 0.5;
   const float r = length(float2((x - 0.5) * size.x, (h - 0.45) * size.y)) / (0.55 * max(size.x, size.y));
   const float g = clamp(r * 0.8 + lean * 0.7, 0.0, 1.0);
-  // Dark orange reads as mud, so the middle of the ramp leads, the glow only warming it.
   const float3 heart = mix(middle, glow, 0.3);
   float3 hue = mix(heart, middle, smoothstep(0.05, 0.85, g));
   hue = mix(hue, zenith, smoothstep(0.45, 1.0, g));
@@ -212,12 +199,9 @@ static float3 backdropSpace(float2 local, float2 size, float t, float pixel, con
   }
 
   float3 color = oklabCeiling(linearToOklab(light), 0.35, 0.565);
-  // Dark at the top for the prose: lightness alone, so what colour there is stays.
   color.x *= mix(1.0, 0.557, smoothstep(0.62, 1.0, h));
   return oklabToSRGB(color);
 }
-
-// MARK: - The frame
 
 fragment float4 agentBackdropFragment(
   BackdropVaryings in [[stage_in]],

@@ -1,6 +1,5 @@
 import AppKit
 
-/// A `live(…)` value as its source line writes it.
 struct DesignKnob: Sendable {
   let key: String
   let owner: String
@@ -67,7 +66,6 @@ struct DesignKnob: Sendable {
   nonisolated(unsafe) private static let declaration =
     /\s+(?:private )?static var (\w+): \w+ \{ live\((.+)\) \}\s*/
 
-  /// `text` with this knob's value written as `setting`; `nil` when its line no longer reads as it did.
   func write(_ setting: LiveSetting, into text: String) -> String? {
     let before = "static var \(name): "
     let old = "{ live(\(expression)) }"
@@ -80,7 +78,6 @@ struct DesignKnob: Sendable {
   }
 }
 
-/// The knobs, what was changed on them, and the source they are saved to.
 @MainActor
 final class DesignKnobStore {
   private(set) var knobs: [DesignKnob] = []
@@ -99,8 +96,6 @@ final class DesignKnobStore {
 
   func current(_ knob: DesignKnob) -> LiveSetting { changes[knob.key] ?? knob.setting }
 
-  /// The source as it is now is the truth, whatever this build was compiled with.
-  /// Returns whether it changed. A change made here to a value the source changed too gives way.
   @discardableResult
   func readSource() -> Bool {
     var fresh: [URL: String] = [:]
@@ -132,7 +127,6 @@ final class DesignKnobStore {
     let message: String
   }
 
-  /// All the changes or, when any cannot be placed, none.
   func save() throws {
     var written: [URL: String] = [:]
     for knob in knobs {

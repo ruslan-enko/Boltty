@@ -16,9 +16,6 @@ struct ACPAgent: Sendable {
   static let grok = ACPAgent(
     provider: .grok,
     displayName: "Grok",
-    // The person's ~/.grok/config.toml can say `always-approve`, and then
-    // nothing asks: Boltty's Ask would not be Ask. The flag is global, so it
-    // stands before `agent` (after it, `grok agent` refuses its arguments).
     arguments: ["--permission-mode", "default", "agent", "stdio"],
     capabilities: [
       .modelSelection, .modelSwitching, .permissions, .attachments, .images, .interrupt, .resumeSession,
@@ -111,8 +108,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let parts: [(question: String, labels: [String], previews: [String: String], multiple: Bool)]
   }
 
-  // MARK: - Availability
-
   func probe() async -> AgentAvailability {
     guard locate() != nil else { return .notInstalled }
     do {
@@ -177,8 +172,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     } ?? []
   }
 
-  // MARK: - Sessions
-
   func createSession(id: String, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
     _ = try await connect()
     let result = try await request("session/new", params: [
@@ -218,8 +211,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     ])
   }
 
-  /// Plan mode is per session (`session/set_mode`, 1.0.88), unlike the
-  /// permission mode, which is the process's.
   private func set(planning: Bool, on sessionID: String) async throws {
     _ = try await request("session/set_mode", params: [
       "sessionId": sessionID, "modeId": planning ? "plan" : "default"
@@ -310,8 +301,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let wanted = lock.withLock { wantedOptions[id] }
     let directory = wanted?.directory ?? FileManager.default.currentDirectoryPath
     do {
-      // `cwd` is required (1.0.77: "missing field `cwd`"), and a refused load read
-      // as a forgotten session: the chat went on in a new one, knowing nothing.
       _ = try await request("session/load", params: [
         "sessionId": id, "cwd": directory, "mcpServers": []
       ])
@@ -405,8 +394,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     emit(.executionStateChanged(sessionID: sessionID, state: .idle))
   }
 
-  // MARK: - Control
-
   func stop(sessionID: String) async throws {
     notify("session/cancel", params: ["sessionId": sessionID])
   }
@@ -487,7 +474,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
     try deliver(to: waiting.rpcID, result: Self.planResult(decision, feedback: feedback))
     lock.withLock { _ = plans.removeValue(forKey: requestID) }
-    // Approved, what follows in this turn is the work: out of plan mode at once.
     if decision == .approved, lock.withLock({ sessions[sessionID]?.planning ?? false }) {
       try? await set(planning: false, on: sessionID)
     }
@@ -531,8 +517,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   func restartIdleProcess() async { await shutdown() }
-
-  // MARK: - Transport
 
   @discardableResult
   private func connect() async throws -> JSONObject {
@@ -599,8 +583,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         }
       }
     }
-    // A new process has loaded nothing: kept, these sessions skipped
-    // `session/load` and every prompt went to a process that did not know them.
     let asked = lock.withLock { () -> [(sessionID: String, requestID: String)]? in
       guard self.process == nil || self.process === process else { return nil }
       let asked = permissions.map { ($0.value.sessionID, $0.key) }
@@ -641,7 +623,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   private func handleRequest(_ method: String, id: Int, params: JSONObject) {
-    // Grok 1.0.88 sends its extension methods with a leading `_` (`_x.ai/exit_plan_mode`).
     if let planMethod = agent.planMethod, method == planMethod || method == "_" + planMethod {
       return handlePlan(id: id, params: params)
     }
@@ -853,12 +834,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     return isPlan
   }
 
-  // MARK: - Commands
-
-  /// Grok lists a session's skills only to that session (1.0.88; `initialize`
-  /// names its own commands alone), and an empty `session/new` stays in its
-  /// history. So the list is the one a chat's session last sent for its folder,
-  /// else the person's own skills from any folder; none before a Grok chat runs.
   func commands(folder: String) async -> [AgentCommand] {
     lock.withLock {
       if let known = commandsByFolder[folder] { return known }
@@ -869,8 +844,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// Skills carry `_meta.path`; the CLI's own commands carry none and are left
-  /// out (one is `/always-approve`, which would undo Boltty's asking).
   static func commands(in listed: [JSONObject]) -> (all: [AgentCommand], personal: [AgentCommand]) {
     var all: [AgentCommand] = []
     var personal: [AgentCommand] = []
@@ -987,11 +960,8 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  // MARK: - JSON-RPC
-
   static let requestDeadline: TimeInterval = 120
 
-  /// `session/prompt` answers only when the turn ends, so it alone has no deadline.
   private func request(
     _ method: String,
     params: [String: Any],
@@ -1055,8 +1025,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     ]) else { return }
     try? lock.withLock({ process })?.writeLine(line)
   }
-
-  // MARK: - Plumbing
 
   private func emit(_ event: AgentEvent) {
     let continuation = lock.withLock { eventContinuation }

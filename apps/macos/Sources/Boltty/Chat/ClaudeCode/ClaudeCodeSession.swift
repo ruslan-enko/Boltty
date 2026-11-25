@@ -61,14 +61,10 @@ extension ClaudeCodeClient {
       lock.withLock { _ = sent.insert(messageID) }
     }
 
-    // MARK: - Permissions
-
     func rememberPermission(_ pending: PendingPermission) {
       lock.withLock { permissions[pending.controlRequestID] = pending }
     }
 
-    /// Taking the last one open puts the turn back to working, so ⌘Return
-    /// joins it again.
     func takePermission(_ requestID: String) -> PendingPermission? {
       lock.withLock {
         let taken = permissions.removeValue(forKey: requestID)
@@ -104,8 +100,6 @@ extension ClaudeCodeClient {
         )
       }
     }
-
-    // MARK: - The control channel
 
     func sendControl(_ request: [String: Any], timeout: TimeInterval) async throws -> JSONObject {
       let requestID: String = lock.withLock {
@@ -204,8 +198,6 @@ enum ClaudeCodeTranscript {
     var title: String?
   }
 
-  /// The last record of the turn that holds `messageID` (an answer's
-  /// `message.id`, or a question's record `uuid`): the place a fork is cut.
   static func forkAnchor(sessionID: String, through messageID: String) -> String? {
     guard let url = locate(sessionID: sessionID)?.url else { return nil }
     var anchor: String?
@@ -228,7 +220,6 @@ enum ClaudeCodeTranscript {
     return anchor
   }
 
-  /// The record of the chat's `index`-th question (from 0).
   static func questionRecord(sessionID: String, index: Int) -> String? {
     guard let url = locate(sessionID: sessionID)?.url else { return nil }
     var seen = 0
@@ -246,7 +237,6 @@ enum ClaudeCodeTranscript {
     return found
   }
 
-  /// A person's words, not a tool's result or text the CLI filed as theirs.
   private static func isQuestion(_ message: JSONObject?) -> Bool {
     guard let message else { return false }
     let text: String
@@ -356,7 +346,6 @@ enum ClaudeCodeTranscript {
             else { continue }
             let input = block.object("input") ?? JSONObject([:])
             toolHome[toolID] = id
-            // The plan is what the turn says, not a tool's detail.
             if name == ClaudeCodeClient.planTool, let plan = input.string("plan"), !plan.isEmpty {
               built.upsert(.text(TextPart(id: "\(toolID)-plan", kind: .text, text: plan)))
               continue

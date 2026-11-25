@@ -2,8 +2,6 @@ import AppKit
 
 @MainActor
 enum DesignElements {
-  // MARK: - Buttons
-
   static func buttons() -> [DesignSection] {
     func states(_ name: String, _ make: () -> (NSView, PaletteIconButton)) -> [DesignSpecimen] {
       let rest = make(), hover = make(), press = make(), off = make()
@@ -73,8 +71,6 @@ enum DesignElements {
     ])
   }
 
-  // MARK: - Chips
-
   static func chips() -> [DesignSection] {
     func folder(_ path: String, branch: String? = nil) -> NSView {
       let view = WorkingDirectoryChipView(frame: .zero)
@@ -100,8 +96,6 @@ enum DesignElements {
       }),
     ]
   }
-
-  // MARK: - Cards
 
   static func cards() -> [DesignSection] {
     let home = NSHomeDirectory()
@@ -150,8 +144,6 @@ enum DesignElements {
       ]),
     ]
   }
-
-  // MARK: - Rows
 
   static func rows() -> [DesignSection] {
     func session(_ title: String, _ agent: AgentId, state: AgentReportedState? = nil, unread: Bool = false,
@@ -210,8 +202,6 @@ enum DesignElements {
     ]
   }
 
-  // MARK: - Help and hints
-
   static func help() -> [DesignSection] {
     func hints(_ list: [PaletteKeyHints.Hint], progress: CGFloat = 0) -> NSView {
       let view = PaletteKeyHints(frame: .zero)
@@ -240,8 +230,6 @@ enum DesignElements {
       ]),
     ]
   }
-
-  // MARK: - Ask Boltty
 
   static func askBoltty(clear: Bool) -> [DesignSection] {
     let look = MascotLook.face(for: .claude)

@@ -78,8 +78,6 @@ final class MascotSettingsTests: XCTestCase {
     XCTAssertEqual(model.mascotLook(for: .codex), claudes)
   }
 
-  // MARK: - The swatches
-
   func testASwatchIsDrawnOnceAndKept() throws {
     let face = look(.capsule, "candy")
     let first = try XCTUnwrap(MascotStill.image(face, size: 40, scale: 2))

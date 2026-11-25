@@ -1,9 +1,3 @@
-//  OklabShading.h
-//
-//  Colour mixing for Boltty's shaders: colours are mixed in Oklab, where a
-//  step in lightness looks like one and two far hues do not meet in grey.
-//  Metal only; included by the shaders that draw colour.
-
 #ifndef OklabShading_h
 #define OklabShading_h
 
@@ -17,7 +11,6 @@ static inline float3 linearToSRGB(float3 c) {
   return metal::select(1.055 * metal::pow(c, 1.0 / 2.4) - 0.055, c * 12.92, c <= 0.0031308);
 }
 
-/// Linear sRGB, which may run past 1 (light added up), to Oklab.
 static inline float3 linearToOklab(float3 rgb) {
   rgb = metal::max(rgb, 0.0);
   const float3 lms = metal::pow(float3(
@@ -36,7 +29,6 @@ static inline float3 srgbToOklab(float3 c) {
   return linearToOklab(srgbToLinear(metal::clamp(c, 0.0, 1.0)));
 }
 
-/// A colour written as Boltty writes it: lightness, chroma, hue in degrees.
 static inline float3 oklch(float l, float c, float h) {
   const float turn = h * M_PI_F / 180.0;
   return float3(l, c * metal::cos(turn), c * metal::sin(turn));
@@ -74,18 +66,14 @@ static inline float3 oklabToSRGB(float3 c) {
   return linearToSRGB(metal::clamp(rgb, 0.0, 1.0));
 }
 
-/// Linear sRGB inside the gamut, chroma giving way: a colour as light to add up.
 static inline float3 oklabToLight(float3 c) {
   return srgbToLinear(oklabToSRGB(c));
 }
 
-/// Two sRGB colours mixed in Oklab.
 static inline float3 srgbMix(float3 a, float3 b, float t) {
   return oklabToSRGB(metal::mix(srgbToOklab(a), srgbToOklab(b), t));
 }
 
-/// A brightness ceiling in OKLCH: lightness rolls off past the knee and chroma
-/// stays, so a dimmed colour keeps its saturation instead of going grey.
 static inline float3 oklabCeiling(float3 c, float knee, float ceiling) {
   if (c.x <= knee) { return c; }
   const float room = ceiling - knee;

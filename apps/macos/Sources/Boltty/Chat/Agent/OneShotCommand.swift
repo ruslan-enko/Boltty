@@ -54,8 +54,6 @@ enum OneShotCommand {
     return box.value
   }
 
-  // MARK: - Plumbing
-
   private final class ResultBox: @unchecked Sendable {
     var value: Result?
   }

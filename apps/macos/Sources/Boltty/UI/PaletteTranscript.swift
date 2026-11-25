@@ -112,7 +112,6 @@ enum AgentActivityGroup {
 extension AgentActivity {
   var isThought: Bool { name == AgentActivityGroup.thoughtName }
 
-  /// Nothing but the tool's id to go on ("execute", "shell").
   var saysOnlyItsName: Bool { (summary ?? "").isEmpty && files.isEmpty }
 }
 

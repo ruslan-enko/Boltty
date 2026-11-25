@@ -59,9 +59,8 @@ final class AppUpdater: ObservableObject {
   }
   var relaunch: @MainActor () async throws -> Void = {
     try await UpdateInstaller.relaunch(Bundle.main.bundleURL)
-    // Not from inside this task: the quit waits for replies delivered on the
-    // main queue, and a run loop nested in a main-queue job never drains it,
-    // so the old copy hung in `terminate` beside the new one.
+    // Not from inside this task: a run loop nested in a main-queue job never drains it, and
+    // `terminate` hangs.
     RunLoop.main.perform { NSApp.terminate(nil) }
   }
   var presentFailure: @MainActor (Error) -> Bool = AppUpdater.failureAlert

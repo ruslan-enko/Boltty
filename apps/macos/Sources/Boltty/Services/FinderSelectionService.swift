@@ -94,9 +94,6 @@ final class FinderSelectionService {
     }
   }
 
-  /// The desktop's folder; then each window, front to back; then the selection.
-  /// Read here and judged in `parsePlace`, so a folder's name is never part of a
-  /// script.
   nonisolated private static let placeScript = """
     tell application id "\(finderBundleID)"
       if not running then return ""

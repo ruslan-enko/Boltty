@@ -25,7 +25,6 @@ import wave
 
 RATE = 44_100
 
-# Where the shipped sounds go, and which candidate each one is.
 SHIPPED = {
     "send": "drop",
     "done": "glass-up",
@@ -38,12 +37,8 @@ SHIPPED = {
     "tap": "tap",
 }
 
-# How far apart, in semitones, the send sound's variants stand. Played in turn
-# at random, so a sound heard fifty times a day is never quite the same twice.
 SEND_VARIANTS = (-1.0, 0.0, 1.0)
 
-# The first run's faces each exclaim in a voice of their own: one
-# exclamation a face (`EXCLAMATIONS`), at a pitch of its own in semitones.
 HUM_VARIANTS = (-2.0, 0.0, 1.0, 2.0, 3.0)
 HUM_LOUDNESS = -31.0
 
@@ -138,8 +133,6 @@ def transpose(semitones):
     return 2 ** (semitones / 12)
 
 
-# A small, high voice's vowels: (F1, F2) in Hz, a child's spacing lifted a
-# little, since the speakers are toys.
 VOWELS = {
     "a": (950.0, 1500.0),
     "e": (650.0, 2200.0),
@@ -188,36 +181,28 @@ def voice(segments, seed=7, stretch=1.5):
     return tail(out, 0.04)
 
 
-# What each face of the first run says as it shows its feeling, as the
-# characters in Zelda do — a breath, a vowel, a turn of pitch, no words.
-# In the faces' order; `hum(shift)` takes the voice up or down.
 EXCLAMATIONS = (
-    # "Hah!" — up, and down with a grin.
     lambda k: voice([
         (0.03, "a", "a", 430 * k, 470 * k, 0.0, 0.6, 0.85),
         (0.09, "a", "a", 470 * k, 610 * k, 0.6, 1.0, 0.1),
         (0.12, "a", "e", 610 * k, 420 * k, 1.0, 0.0, 0.15),
     ]),
-    # "Hm?" — a closed-mouth question.
     lambda k: voice([
         (0.03, "m", "m", 360 * k, 370 * k, 0.0, 0.7, 0.4),
         (0.10, "m", "m", 370 * k, 380 * k, 0.7, 0.9, 0.0),
         (0.14, "m", "m", 380 * k, 560 * k, 0.9, 0.0, 0.0),
     ]),
-    # "Heh-heh" — two quick laughs.
     lambda k: voice([
         (0.025, "e", "e", 520 * k, 540 * k, 0.0, 0.5, 0.9),
         (0.06, "e", "e", 560 * k, 500 * k, 0.9, 0.0, 0.1),
         (0.03, "e", "e", 500 * k, 500 * k, 0.0, 0.4, 0.95),
         (0.11, "e", "e", 580 * k, 460 * k, 0.9, 0.0, 0.1),
     ]),
-    # "Oh!" — surprise, up and over.
     lambda k: voice([
         (0.02, "o", "o", 420 * k, 450 * k, 0.0, 0.5, 0.8),
         (0.08, "o", "o", 450 * k, 640 * k, 0.5, 1.0, 0.05),
         (0.15, "o", "u", 640 * k, 480 * k, 1.0, 0.0, 0.05),
     ]),
-    # "Hyah!" — a jump's shout.
     lambda k: voice([
         (0.03, "i", "i", 480 * k, 500 * k, 0.0, 0.5, 0.85),
         (0.05, "i", "a", 500 * k, 640 * k, 0.5, 1.0, 0.05),
@@ -294,15 +279,6 @@ def pad_voice(number, start, attack, release, end, gain, length):
                 phase += step
     return out
 
-
-# --- the first run's sounds and music -------------------------------------
-#
-# After the feel of a promo's track. What was measured off that recording:
-# about 115 beats a minute in groups of three, three and two eighths; a dark
-# pad, a rumble and one bell before the beat; a long sub boom a hit; a dry
-# click with its body at 860 and 2015 Hz; low chords held short; a note
-# sliding down; a ladder of ticks from 330 Hz to 2.1 kHz; stretches with no
-# bass. None of it is taken: the notes are these, in E minor.
 
 BPM = 115.0
 BEAT = 60.0 / BPM
@@ -635,13 +611,10 @@ def write_music(folder):
     encode(folder, "show-ending", ending(), -19.0)
 
 
-# --- the candidates -------------------------------------------------------
-
 def drop(shift=0.0):
     """A drop falling into water: the bubble's note rises as it closes."""
     k = transpose(shift)
     body = sweep(430 * k, 1300 * k, 0.055, 0.045, 0.22)
-    # A lower, shorter echo of itself gives the drop a body.
     under = [0.18 * v for v in sweep(260 * k, 520 * k, 0.04, 0.025, 0.12)]
     return mix(body, under, 0.0)
 
@@ -703,8 +676,6 @@ CANDIDATES = {
 }
 
 
-# --- levels and files -----------------------------------------------------
-
 def loudest_window_db(samples, seconds=0.1):
     n = int(seconds * RATE)
     best = 0.0
@@ -765,19 +736,15 @@ def main():
             continue
         make = CANDIDATES[moment][name]
         if moment in ("run", "pop", "boom", "bell"):
-            # Five of each, each its own notes, each levelled alone.
             for index in range(5):
                 write(os.path.join(folder, f"{moment}-{index + 1}.wav"), level(make(VARIANT_SHIFTS.get(moment, (0,) * 5)[index], index), loudness_for(moment)))
         elif moment in ("send", "hum", "tap"):
-            # One gain for every variant, taken from the middle one, so the
-            # variants differ in pitch and not in level.
             middle = make(0.0)
             gain = max(abs(v) for v in level(middle, loudness_for(moment))) / max(abs(v) for v in middle)
             variants = SEND_VARIANTS if moment == "send" else HUM_VARIANTS
             for index, shift in enumerate(variants, start=1):
                 sound = make(shift, index - 1) if moment == "hum" else make(shift)
                 if moment == "hum":
-                    # Each exclamation its own level: they differ in shape.
                     sound = level(sound, HUM_LOUDNESS)
                     write(os.path.join(folder, f"{moment}-{index}.wav"), sound)
                 else:

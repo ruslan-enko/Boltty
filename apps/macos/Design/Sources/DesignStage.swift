@@ -19,7 +19,6 @@ class DesignFlippedView: NSView {
   override var isFlipped: Bool { true }
 }
 
-/// What a sample stands on, so its glass has something to see through.
 final class DesignTile: DesignFlippedView {
   static let corner: CGFloat = 14
   private let sample: NSView
@@ -65,21 +64,16 @@ final class DesignTile: DesignFlippedView {
   }
 }
 
-/// One thing in one state.
 @MainActor
 struct DesignSpecimen {
   let name: String
   var note = ""
   let view: NSView
-  /// The sample's own size; `nil` is what it asks for.
   var width: CGFloat?
   var height: CGFloat?
   var tile = CGSize(width: 180, height: 110)
-  /// The whole row.
   var isWide = false
-  /// The whole page.
   var fills = false
-  /// Panel parts are dark on any Mac; Settings' follow the system.
   var isDark = true
 }
 
@@ -90,7 +84,6 @@ struct DesignSection {
   let specimens: [DesignSpecimen]
 }
 
-/// A page's sections, their tiles flowing in rows.
 final class DesignPageView: DesignFlippedView {
   private static let margin: CGFloat = 24
   private static let gap: CGFloat = 12
@@ -141,7 +134,6 @@ final class DesignPageView: DesignFlippedView {
     return field
   }
 
-  /// Lays the page out at `width` and returns its height; a filling page takes `viewport`'s.
   func arrange(width: CGFloat, viewport: CGFloat) -> CGFloat {
     let room = max(200, width - Self.margin * 2)
     var y = Self.margin

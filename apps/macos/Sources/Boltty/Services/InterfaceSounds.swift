@@ -52,17 +52,17 @@ final class InterfaceSounds {
     }
   }
 
-  func startMusic() {
+  func startMusic(at moment: TimeInterval = 0) {
     guard isEnabled(), music == nil,
           let url = bundle.url(forResource: Self.musicName, withExtension: "m4a"),
           let player = try? AVAudioPlayer(contentsOf: url)
     else { return }
     player.volume = 0.8
+    player.currentTime = moment
     player.play()
     music = player
   }
 
-  /// Seconds into the music, while it plays.
   var musicTime: TimeInterval? { music.flatMap { $0.isPlaying ? $0.currentTime : nil } }
 
   func playEnding() {

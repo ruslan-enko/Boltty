@@ -1,7 +1,5 @@
 import AppKit
 
-/// A colour as Boltty writes it: lightness 0–1, chroma, hue in degrees.
-/// A variant moves one of the three, so the other two hold.
 struct OKLCH: Hashable, Sendable {
   var l, c, h: Double
 
@@ -13,7 +11,6 @@ struct OKLCH: Hashable, Sendable {
 
   var oklab: Oklab { Oklab(hue: h, chroma: c, l: l) }
 
-  /// Display P3; past it, chroma gives way and lightness and hue hold.
   var color: NSColor { NSColor(oklch: l, c, h) }
 
   func color(alpha: CGFloat) -> NSColor { NSColor(oklch: l, c, h, alpha: alpha) }
@@ -58,7 +55,6 @@ struct Oklab: Hashable, Sendable {
     return OKLCH(l, chroma, hue)
   }
 
-  /// Linear sRGB, chroma scaled by `scale`.
   func linearSRGB(chroma scale: Double = 1) -> (Double, Double, Double) {
     let a = self.a * scale, b = self.b * scale
     let l = pow(self.l + 0.3963377774 * a + 0.2158037573 * b, 3)
@@ -71,7 +67,6 @@ struct Oklab: Hashable, Sendable {
     )
   }
 
-  /// sRGB. Fitting, a colour past sRGB gives up chroma until it is inside.
   func color(fitting: Bool) -> NSColor {
     let scale = fitting ? Self.largestScale { Self.isInside(linearSRGB(chroma: $0)) } : 1
     let (r, g, b) = linearSRGB(chroma: scale)
@@ -130,8 +125,6 @@ extension Oklab {
   }
 }
 
-/// Core Animation and Core Graphics mix a gradient's stops in RGB, which greys
-/// the middle of two far hues; stops mixed in Oklab are set between them.
 enum OklabGradient {
   static let steps = 4
 

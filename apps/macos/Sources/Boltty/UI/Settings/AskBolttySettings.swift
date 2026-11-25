@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Ask Boltty
-
 extension BolttyAISettingsModel {
   var askBolttyReadOnly: Bool {
     get { appModel.settings.askBolttyReadOnly }
@@ -24,7 +22,6 @@ extension BolttyAISettingsModel {
     ).flatMap { AgentId(rawValue: $0.providerID) }
   }
 
-  /// Nobody chosen: a question goes where a new chat would.
   var askBolttyIsAutomatic: Bool {
     guard let stored = appModel.settings.askBolttyProviderID else { return true }
     return !askBolttyAgents.contains { $0.rawValue == stored }

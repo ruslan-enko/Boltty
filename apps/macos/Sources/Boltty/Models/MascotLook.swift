@@ -75,8 +75,6 @@ struct MascotRoster: Equatable, Sendable {
       ?? AgentHistory.tabOrder.first ?? .claude
   }
 
-  // MARK: - Storage
-
   static let storageKey = "boltty.mascotByProvider"
   static let legacyPaletteKey = "boltty.mascotPaletteByProvider"
 
@@ -105,8 +103,6 @@ struct MascotRoster: Equatable, Sendable {
     }
     return migrated
   }
-
-  // MARK: - What an agent wears
 
   static func defaultLook(for agent: AgentId) -> MascotLook? {
     let choice: (MascotShape, String)
@@ -151,8 +147,6 @@ struct MascotRoster: Equatable, Sendable {
     return result
   }
 
-  /// What the agents wear beside a face that is nobody's: no two of one gradient,
-  /// nor of that face's, while there are gradients enough.
   func looks(besides face: MascotLook) -> [AgentId: MascotLook] {
     var result = looks()
     var taken: Set<String> = [face.palette.id]
@@ -195,8 +189,6 @@ struct MascotRoster: Equatable, Sendable {
     let hash = agent.rawValue.utf8.reduce(UInt32(2_166_136_261)) { ($0 ^ UInt32($1)) &* 16_777_619 }
     return MascotLook(shape: .hex, palette: pool[Int(hash % UInt32(pool.count))])
   }
-
-  // MARK: - Choosing
 
   func owner(of look: MascotLook, besides agent: AgentId) -> AgentId? {
     looks().first { $0.key != agent && $0.value.faceID == look.faceID }?.key

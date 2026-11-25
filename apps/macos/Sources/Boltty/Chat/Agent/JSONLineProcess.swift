@@ -159,9 +159,7 @@ final class JSONLineProcess: @unchecked Sendable {
     }
   }
 
-  /// The exit can be reported before the handler has read the CLI's last
-  /// words, which are the error a refused start must carry. Read what is
-  /// left without blocking: a child that inherited the pipe may hold it open.
+  /// Non-blocking: a child that inherited the pipe may hold it open.
   private static func drain(_ pipe: Pipe, into absorb: (Data) -> Void) {
     let descriptor = pipe.fileHandleForReading.fileDescriptor
     _ = fcntl(descriptor, F_SETFL, fcntl(descriptor, F_GETFL) | O_NONBLOCK)

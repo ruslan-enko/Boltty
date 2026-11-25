@@ -2,10 +2,7 @@ import AVFoundation
 import AppKit
 import SwiftUI
 
-/// What a setting changes, shown as the thing itself over the person's own
-/// desktop, the way the system shows Liquid Glass.
 struct SettingsStage<Content: View>: View {
-  /// `nil` takes the row's whole width.
   var width: CGFloat? = SettingsStageMetrics.size.width
   var height: CGFloat = SettingsStageMetrics.size.height
   var corner: CGFloat = 16
@@ -32,7 +29,6 @@ struct SettingsStage<Content: View>: View {
     .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
     .accessibilityHidden(true)
     .task {
-      // The desktop as it is now: a wallpaper changed since is read again.
       let sources = DesktopPicture.sources()
       if let cached = DesktopPicture.cached, cached.source == sources.first {
         wallpaper = cached
@@ -49,18 +45,13 @@ struct SettingsStage<Content: View>: View {
 
 enum SettingsStageMetrics {
   static let size = CGSize(width: 320, height: 150)
-  /// A grouped section's corner and its rows' insets, read off the pixels on macOS 27.
   static let sectionCorner: CGFloat = 11
   static let rowInset: CGFloat = 10
   static let rowVerticalInset: CGFloat = 10
-  /// A stage that fills its section stands this far from every edge, its
-  /// corner concentric with the section's.
   static let sectionGap: CGFloat = 8
   static var fillingCorner: CGFloat { sectionCorner - sectionGap }
 }
 
-/// A stage that opens its group: the row's whole width, an even gap from the
-/// group's edges, its corner concentric with the group's.
 struct SettingsPreview<Content: View>: View {
   let height: CGFloat
   @ViewBuilder let content: () -> Content
@@ -72,8 +63,6 @@ struct SettingsPreview<Content: View>: View {
       .padding(.vertical, gap - SettingsStageMetrics.rowVerticalInset)
   }
 }
-
-// MARK: - The first screen
 
 struct PromptSample: NSViewRepresentable {
   let clearGlass: Bool
@@ -118,7 +107,6 @@ final class PromptSampleView: NSView {
   }
 }
 
-/// The first screen's line: the face, the placeholder, the folder and the microphone.
 final class PromptSampleRow: NSView {
   private static let face: CGFloat = 26
   private static let inset: CGFloat = 14
@@ -163,9 +151,6 @@ final class PromptSampleRow: NSView {
   func apply(look: MascotLook) { face.apply(look: look) }
 }
 
-// MARK: - Tiles
-
-/// The first screen in small, for the glass's tile: the shell, the face, the microphone.
 struct GlassSwatch: NSViewRepresentable {
   let clearGlass: Bool
   let look: MascotLook
@@ -222,13 +207,10 @@ final class GlassSwatchView: NSView {
   }
 }
 
-/// An open chat in small, for a backdrop's tile: the shell, the backdrop drawn
-/// by the chat's own renderer, and the question's bubble.
 struct BackdropSwatch: NSViewRepresentable {
   let backdrop: ChatBackdrop
   let palette: MascotPalette
   let clearGlass: Bool
-  /// The tile's corner, so the shell inside stays concentric with it.
   let corner: CGFloat
 
   func makeNSView(context: Context) -> BackdropSwatchView { BackdropSwatchView() }
@@ -240,7 +222,6 @@ struct BackdropSwatch: NSViewRepresentable {
 
 final class BackdropSwatchView: NSView {
   private static let inset: CGFloat = 6
-  /// How much of a chat the shell stands for: the sky's clouds are sized for a whole one.
   private static let sceneScale: CGFloat = 3
 
   private let host = PaletteGlassHost(content: NSView(), cornerRadius: 6, style: .bolttyAIPrompt)
@@ -260,7 +241,6 @@ final class BackdropSwatchView: NSView {
     bubble.wantsLayer = true
     bubble.layer?.backgroundColor = NSColor.white.cgColor
     bubble.layer?.cornerCurve = .continuous
-    // Over the glass, as a chat's backdrop is, and the question over both.
     for view in [host, sky, bubble] {
       view.translatesAutoresizingMaskIntoConstraints = true
       addSubview(view)
@@ -305,8 +285,6 @@ final class BackdropSwatchView: NSView {
   }
 }
 
-// MARK: - Finder's selection in the prompt
-
 struct FinderSelectionSample: NSViewRepresentable {
   let attaches: Bool
   let look: MascotLook
@@ -319,9 +297,6 @@ struct FinderSelectionSample: NSViewRepresentable {
   }
 }
 
-/// The first screen opened over Finder with two files selected there: one
-/// shell keeping its corner as it grows, the panel's own file cards in the band
-/// over the line, concentric with the shell.
 final class FinderSelectionSampleView: NSView {
   private static let lineHeight: CGFloat = 56
   private static let corner = lineHeight / 2
@@ -397,14 +372,10 @@ final class FinderSelectionSampleView: NSView {
       cardsHost.animator().frame = frames.cards
       cardsHost.animator().alphaValue = attaches ? 1 : 0
     }
-    // The glass's corner is set again for each new size, so it stays the line's.
     host.cornerRadius = Self.corner
   }
 }
 
-// MARK: - Words arriving as they are heard
-
-/// The listening orb's words, arriving out of the face's colours, over and over.
 final class ArrivingWordsSampleView: NSView {
   private let words = ListeningWordsView()
   private var phrase: [String] = []
@@ -477,8 +448,6 @@ final class ArrivingWordsSampleView: NSView {
   }
 }
 
-// MARK: - Dictation
-
 struct DictationSample: NSViewRepresentable {
   let phrase: String
   let look: MascotLook
@@ -491,7 +460,6 @@ struct DictationSample: NSViewRepresentable {
   }
 }
 
-/// The listening capsule: the face over the words, which arrive as they are heard.
 final class DictationSampleView: NSView {
   static let size = CGSize(width: 268, height: 116)
   private static let faceSide: CGFloat = 30
@@ -535,8 +503,6 @@ final class DictationSampleView: NSView {
   }
 }
 
-/// What the samples say. One language for now, in the catalogue so the
-/// samples follow Boltty's own language once it can be chosen.
 enum SampleText {
   static let placeholder = String(localized: "Describe a task or ask", comment: "The first screen's placeholder, in a Settings sample")
   static let spoken = String(localized: "Rename the photos on my desktop by date", comment: "Words being dictated, in a Settings sample")
@@ -549,8 +515,6 @@ enum SampleText {
   ]
 }
 
-// MARK: - Ask Boltty's answer beside the pointer
-
 struct AskAnswerSample: NSViewRepresentable {
   let canMakeChanges: Bool
   let look: MascotLook
@@ -562,9 +526,8 @@ struct AskAnswerSample: NSViewRepresentable {
   }
 }
 
-/// The face beside the pointer with its answer in the overlay's bubble.
 final class AskAnswerSampleView: NSView {
-  static let size = CGSize(width: 292, height: 96)
+  static let size = CGSize(width: 312, height: 96)
   private static let faceSide: CGFloat = 40
 
   private let bubble: PaletteGlassHost
@@ -576,12 +539,9 @@ final class AskAnswerSampleView: NSView {
     face.reduceMotion = MotionPreferences.reduceMotion
     let content = NSView()
     content.wantsLayer = true
-    content.layer?.backgroundColor = AskBolttyOverlayController.bubbleShade.cgColor
-    content.layer?.cornerRadius = AskBolttyOverlayController.bubbleCornerRadius
-    content.layer?.cornerCurve = .continuous
-    content.layer?.masksToBounds = true
     bubble = PaletteGlassHost(
-      content: content, cornerRadius: AskBolttyOverlayController.bubbleCornerRadius, style: .bolttyAI)
+      content: content, cornerRadius: AskBolttyOverlayController.bubbleCorner(height: Self.size.height - 12),
+      style: .bolttyAIPrompt)
     super.init(frame: CGRect(origin: .zero, size: Self.size))
     appearance = NSAppearance(named: .darkAqua)
     face.translatesAutoresizingMaskIntoConstraints = true
@@ -611,11 +571,8 @@ final class AskAnswerSampleView: NSView {
   }
 }
 
-// MARK: - The desktop behind it
-
 struct DesktopPicture: @unchecked Sendable {
   let image: CGImage
-  /// The first place looked, the wallpaper as the system names it.
   var source: URL?
 
   @MainActor static var cached: DesktopPicture?

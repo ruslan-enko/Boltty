@@ -136,7 +136,6 @@ struct AgentActivity: Identifiable, Codable, Equatable, Sendable {
     case running
     case completed
     case failed
-    /// Cut off with its turn, which is not a failure of the tool.
     case interrupted
   }
 

@@ -5,12 +5,9 @@ struct AskBolttyPoint: Equatable, Sendable {
   var x: CGFloat
   var y: CGFloat
   var label: String?
-  /// The words on what is meant, as read off the screen; placed on them when found.
   var text: String? = nil
   var hasPosition = true
 
-  /// How far, in thousandths, the words found may be from where the agent
-  /// pointed: farther, they are other words of the same spelling.
   static let reach: CGFloat = 250
 
   static let pattern = #"<point\b[^>]*>"#
@@ -55,9 +52,6 @@ struct AskBolttyPoint: Equatable, Sendable {
       label: label, text: text)
   }
 
-  /// On the words it names where they are found; else where the agent put it,
-  /// if it put it anywhere. `anywhere` lets the words stand far from that: the
-  /// screen has changed since the agent saw it.
   func placed(among lines: [ScreenText], anywhere: Bool = false) -> AskBolttyPoint? {
     if let text {
       let near = hasPosition ? CGPoint(x: x * 1000, y: y * 1000) : nil
@@ -85,11 +79,7 @@ struct AskBolttyPoint: Equatable, Sendable {
     return out.replacingOccurrences(of: tag, with: " ", options: .regularExpression)
   }
 
-  // MARK: - Through the voice
-
-  /// What stands for the n-th tag in speakable text, so a sentence carries its
-  /// point through `SentenceChunker` to the moment it is said. Private-use
-  /// characters: never typed, never said, never a sentence's end.
+  /// Private-use characters: never typed, never said, never a sentence's end.
   static let markerOpen: Character = "\u{F8F0}"
   static let markerClose: Character = "\u{F8F1}"
 

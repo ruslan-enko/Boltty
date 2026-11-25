@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 
-/// The limits window under the menu-bar mark: each agent's face, name and plan
-/// windows on the panel's own glass. A click outside or Escape closes it.
 @MainActor
 final class UsageGlanceController: NSObject {
   var rows: () -> [UsageGlanceRow] = { [] }
@@ -32,7 +30,6 @@ final class UsageGlanceController: NSObject {
   static let width: CGFloat = 288
   static let cornerRadius: CGFloat = 24
   static let inset: CGFloat = 12
-  /// The rows stand on the glass, in from its inset as far as the heading.
   static let rowInset: CGFloat = 6
   static let agentGap: CGFloat = 18
   static let edgeGap: CGFloat = 12
@@ -42,7 +39,6 @@ final class UsageGlanceController: NSObject {
   static let meterHeight: CGFloat = 4
   static let footDisc: CGFloat = 28
   static let footGlyph: CGFloat = 14
-  /// The discs sit concentric in the window's corners, as far from the side as from the foot.
   static let footInset: CGFloat = cornerRadius - footDisc / 2
 
   func toggle(under anchor: NSRect, statusWindow: NSWindow?) {
@@ -69,8 +65,6 @@ final class UsageGlanceController: NSObject {
     stopWatching()
     onVisibilityChange?(false)
   }
-
-  // MARK: - Reading
 
   private func read() {
     guard reading == nil else { return }
@@ -108,7 +102,6 @@ final class UsageGlanceController: NSObject {
       monitors.append(local)
     }
     watchChanges()
-    // The countdowns move; a minute is their finest step.
     ticker = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
       Task { @MainActor in self?.rebuild(force: true) }
     }
@@ -125,8 +118,6 @@ final class UsageGlanceController: NSObject {
     ticker?.invalidate()
     ticker = nil
   }
-
-  // MARK: - The window
 
   private func makePanel() -> KeyablePanel {
     let panel = KeyablePanel(
@@ -162,8 +153,6 @@ final class UsageGlanceController: NSObject {
     let host = PaletteGlassHost(
       content: content,
       cornerRadius: Self.cornerRadius,
-      // Frosted whatever the panel wears: it opens over any window, and clear
-      // glass let that window's words read through the lower half.
       style: .bolttyAIPrompt(clearGlass: false)
     )
     let root = NSView()
@@ -214,8 +203,6 @@ final class UsageGlanceController: NSObject {
     )
     panel.setFrame(frame, display: true)
   }
-
-  // MARK: - What it shows
 
   private func rebuild(force: Bool) {
     guard panel != nil else { return }
@@ -363,8 +350,6 @@ final class UsageGlanceController: NSObject {
       string: window.title,
       attributes: Self.attributes(size: AgentPaletteMetrics.typeFootnote, ink: PaletteInk.primary)
     )
-    // Title and share used share a line; when it comes back has a line of its
-    // own under the meter, since in longer languages the three did not fit one.
     let title = NSTextField(labelWithAttributedString: words)
     title.isSelectable = false
     title.maximumNumberOfLines = 2
@@ -442,10 +427,6 @@ final class UsageGlanceController: NSObject {
     onMore?()
   }
 
-  // MARK: - Parts
-
-  /// A down chevron's weight is in its arms, so centred by its box it reads
-  /// high in the disc (measured 0.75 pt above the disc's centre on screen).
   static let chevronDrop: CGFloat = 1.5
 
   private static func lowered(_ image: NSImage, by drop: CGFloat) -> NSImage {
@@ -474,7 +455,6 @@ final class UsageGlanceController: NSObject {
   }
 }
 
-/// What is used, in Boltty's accent, on a track of the glass's own fill.
 private final class UsageGlanceMeter: NSView {
   var used: Double = 0 { didSet { needsDisplay = true } }
 

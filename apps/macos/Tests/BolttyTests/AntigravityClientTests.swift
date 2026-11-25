@@ -14,8 +14,6 @@ final class AntigravityClientTests: XCTestCase {
     try? FileManager.default.removeItem(at: root)
   }
 
-  // MARK: - The record
-
   func testTheTranscriptIsReadOffTheSteps() throws {
     let call = Proto.bytes(7, Proto.join(
       Proto.string(1, "call_1"),
@@ -63,8 +61,6 @@ final class AntigravityClientTests: XCTestCase {
     XCTAssertEqual(try AntigravityTranscript.read(at: file).map(\.plainText), ["still here"])
   }
 
-  // MARK: - Usage
-
   func testUsageCountsThePersonAndEachModelCallWithItsModelsName() throws {
     let stamp = Proto.bytes(5, Proto.join(
       Proto.bytes(1, Proto.varint(1, 1_792_100_573)),
@@ -94,8 +90,6 @@ final class AntigravityClientTests: XCTestCase {
     let file = try makeConversation(id: "empty", steps: [], generations: [])
     XCTAssertEqual(AgentStatisticsReader.antigravitySessions(at: file), [])
   }
-
-  // MARK: - Models and endings
 
   func testEffortSuffixesFoldIntoOneModel() {
     let listing = """
@@ -136,8 +130,6 @@ final class AntigravityClientTests: XCTestCase {
 
     XCTAssertNil(AntigravityClient.failure(of: JSONObject(["status": "SUCCESS"]), stopped: false))
   }
-
-  // MARK: - The process
 
   func testASessionIsNamedByInitAndATurnStreams() async throws {
     let script = root.appendingPathComponent("agy")
@@ -264,8 +256,6 @@ final class AntigravityClientTests: XCTestCase {
     )
   }
 
-  // MARK: - Files the person sent
-
   func testAFileThePersonSentIsReadWithoutACardAndNothingElseOutsideIs() {
     let sent = OutgoingAttachment(
       url: URL(fileURLWithPath: "/Users/x/Library/Application Support/Boltty/a/3f2a1b2c-image1.png"),
@@ -373,8 +363,6 @@ final class AntigravityClientTests: XCTestCase {
       XCTAssertEqual(error, .serverStartFailed("Error: unknown flag"))
     }
   }
-
-  // MARK: - Helpers
 
   /// Never the person's `~/.gemini`: the hook and its folder live in `root`.
   private func makeClient(executable: String) -> AntigravityClient {

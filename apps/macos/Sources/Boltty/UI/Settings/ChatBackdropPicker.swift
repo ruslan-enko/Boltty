@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// The panel's glass and the chats' backdrop, side by side as tiles: each one
-/// the real thing in small, over the person's own desktop.
 struct AppearancePicker: View {
   @ObservedObject var model: BolttyAISettingsModel
   @AppStorage(ChatBackdrop.storageKey) private var stored = ChatBackdrop.standard.rawValue

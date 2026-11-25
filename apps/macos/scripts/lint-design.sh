@@ -1,18 +1,6 @@
 #!/usr/bin/env bash
-# scripts/lint-design.sh
-#
 #   ./scripts/lint-design.sh                    перевірити (код 1 = нові порушення)
 #   ./scripts/lint-design.sh --update-baseline  зафіксувати поточний борг
-#
-# ПРАВИЛА ПІД APPKIT. Перша версія цього скрипта шукала SwiftUI-модифікатори
-# (.cornerRadius, .blur, .ultraThinMaterial) і на цій кодовій базі давала нуль збігів —
-# бо UI майже цілком AppKit: 19 NSView проти 5 View. Лінтер був зелений і марний.
-# Тепер правила ловлять те, що тут справді є: layer.cornerRadius із літералом,
-# NSVisualEffectView, CIGaussianBlur, NSColor із компонент, systemFont(ofSize:).
-# SwiftUI-правила лишені — вони спрацюють на новому коді.
-#
-# BASELINE. Старий борг записується у scripts/lint-baseline.txt і збірку не валить;
-# падає тільки НОВЕ. Храповик: гірше стати не може, краще — поступово.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -20,7 +8,6 @@ cd "$(dirname "$0")/.."
 BASELINE="scripts/lint-baseline.txt"
 MODE="${1:-check}"
 
-# --- Де шукати ------------------------------------------------------------
 if [[ -d "Sources/Boltty" ]]; then
   SEARCH=(Sources/Boltty)           # наявний застосунок
 elif [[ -d "Sources/BolttyUI" ]]; then
@@ -30,30 +17,19 @@ else
   SEARCH=(.)
 fi
 
-# Місця, яким ці значення належать за визначенням.
 EXCLUDE='(^|/)(\.build|DerivedData|Tests|BolttyDesign|BolttyBrand|BolttyTypeface|MascotPalette|\.git)'
 
 swift_files() {
   find "${SEARCH[@]}" -name '*.swift' -type f 2>/dev/null | grep -Ev "$EXCLUDE" | sort
 }
 
-# --- Правила: rule|regex|підказка ----------------------------------------
 RULES=(
-# AppKit — те, що реально є в цій базі
-# `[0-9.]*[1-9]` — літерал, у якому є хоч одна ненульова цифра. `= 0` це не
-# радіус із макета, а «без кута»: вимкнути власний кут шару, щоб силует
-# малював хтось інший. Ловити його означало питати «звідки взялась ця
-# двійка» там, де двійки немає.
 'layer-radius|\.cornerRadius[[:space:]]*=[[:space:]]*[0-9.]*[1-9]|радіус літералом — Radius.* з BolttyDesign'
 'nsvisualeffect|NSVisualEffectView|на macOS 26 це NSGlassEffectView / .glassEffect через BolttyDesign'
 'cifilter-blur|CIFilter\(name:[[:space:]]*"CIGaussianBlur"|ручний блюр це не скло — системний матеріал'
 'nscolor-components|NSColor\((srgbRed|red|calibratedRed|deviceRed|hue|white):|Palette.* — кольори в asset catalog'
 'nsfont-size|NSFont\.systemFont\(ofSize:|BolttyTypeface / .boltty(_:) — інакше Dynamic Type ігнорується'
 
-# SwiftUI — нуль збігів сьогодні, спрацюють на новому коді
-# `\([^:]*\)` — без міток аргументів, бо модифікатор SwiftUI їх не має:
-# `.cornerRadius(12)`. Власна функція з міткою аргумента сюди не потрапляє:
-# одна така два роки стояла в baseline як борг, будучи звичайним викликом.
 'cornerRadius|\.cornerRadius\([^:]*\)|ConcentricRectangle() або RoundedRectangle(cornerRadius:style: .continuous)'
 'material|\.(ultraThin|thin|regular|thick|ultraThick)Material|.bolttySurface(...) — матеріал обирає BolttyDesign'
 'blur|\.blur\(radius:|blur() це не скло — .glassEffect(...)'
@@ -62,17 +38,11 @@ RULES=(
 'hex|0x[0-9A-Fa-f]{6}|Palette.* (дані палітри — виняток, їм місце в BolttyDesign)'
 )
 
-# Поля розділені `|`, але regex сам містить `|` — альтернації. Тому ім'я
-# береться до ПЕРШОГО роздільника, підказка після ОСТАННЬОГО, а regex — усе між.
-# Наївне `${rest%%|*}` різало regex посеред альтернації: `nscolor-components`
-# ставав `NSColor\((srgbRed`, grep падав з `mismatched (`, stderr ішов у
-# /dev/null, і правило мовчки не ловило жодного з 9 літеральних кольорів.
+# The regex holds `|` too: the name ends at the first one, the hint starts after the last.
 rule_name()  { printf '%s' "${1%%|*}"; }
 rule_hint()  { printf '%s' "${1##*|}"; }
 rule_regex() { local h="${1##*|}"; local r="${1#*|}"; printf '%s' "${r%"|$h"}"; }
 
-# Regex, який не компілюється, — це правило, якого немає. Мовчазно зелене
-# правило гірше за відсутнє, тому лінтер відмовляється працювати.
 validate_rules() {
   local bad=0 name regex
   for entry in "${RULES[@]}"; do
@@ -97,7 +67,6 @@ collect() {
     local rule regex
     rule=$(rule_name "$entry"); regex=$(rule_regex "$entry")
     echo "$files" | while read -r f; do
-      # Коментарі не рахуються: згадка в поясненні — не порушення.
       if grep -E "$regex" "$f" 2>/dev/null | grep -qvE '^\s*(//|\*|/\*)'; then
         echo "$f:$rule"
       fi

@@ -5,9 +5,6 @@ identity="Boltty Development"
 keychain="${HOME}/Library/Keychains/login.keychain-db"
 local_config="${0:A:h}/../Config/Signing.local.xcconfig"
 
-# Debug builds sign with the identity too (Config/Signing.xcconfig), so every
-# build on this Mac carries the release's designated requirement and keeps
-# its privacy grants. Written whether the identity is new or not.
 write_local_config() {
   print "// Written by scripts/setup-local-signing.sh: this Mac signs Debug builds\n// with its own identity. Not committed.\nBOLTTY_LOCAL_SIGN_IDENTITY = ${identity}" > "$local_config"
   print "Debug builds now sign with ${identity} (Config/Signing.local.xcconfig)"

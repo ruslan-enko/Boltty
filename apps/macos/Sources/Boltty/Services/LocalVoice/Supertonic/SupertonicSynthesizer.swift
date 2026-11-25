@@ -153,8 +153,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     return Array(wave.prefix(min(wave.count, samples)))
   }
 
-  // MARK: - Core ML
-
   private func predict(
     _ stage: String, _ model: MLModel, _ inputs: [String: MLMultiArray], output: String
   ) throws -> MLMultiArray {
@@ -170,8 +168,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
       throw Failure.stage(stage, error.localizedDescription)
     }
   }
-
-  // MARK: - The latent
 
   static func noise(
     channels: Int, length: Int, padded: Int, uniform: () -> Float = { Float.random(in: 0..<1) }
@@ -195,8 +191,6 @@ final class SupertonicSynthesizer: @unchecked Sendable {
     }
     return out
   }
-
-  // MARK: - Files
 
   private struct Style: Decodable {
     struct Component: Decodable {

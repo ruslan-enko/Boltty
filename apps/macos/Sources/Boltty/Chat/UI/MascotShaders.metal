@@ -19,8 +19,6 @@ vertex MascotVaryings mascotVertex(
   return out;
 }
 
-// MARK: - Stuffing
-
 constant float kCameraDistance = 90.0;
 
 constant float kEyeLine = 1.6;
@@ -597,8 +595,6 @@ static inline float silhouette(float2 p, int shape) {
   }
 }
 
-// MARK: - Noise
-
 static inline float3 noiseGradient(float3 cell) {
   const float3 q = float3(
     dot(cell, float3(127.1, 311.7, 74.7)),
@@ -634,8 +630,6 @@ static inline constant float2 *outlinePoints(int shape) {
     default: return kHexPolygon;
   }
 }
-
-// MARK: - The body
 
 kernel void mascotPlushField(
   device float *field [[buffer(MascotBufferIndexField)]],
@@ -714,8 +708,6 @@ static inline float3 bodyNormal(float3 p, Build b) {
     k.xxx * body(p + k.xxx * e, b)
   );
 }
-
-// MARK: - Colour
 
 static inline float3 oklabToLinear(float3 c) {
   const float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
@@ -805,8 +797,6 @@ static inline float gradientCoordinate(float3 p, constant MascotUniforms &u) {
   return saturate((top - (p.y + wave + drift)) / (top - bottom));
 }
 
-// MARK: - Eyes
-
 static inline float roundedBox(float2 p, float2 extent) {
   const float r = min(extent.x, extent.y);
   const float2 q = abs(p) - extent + r;
@@ -845,8 +835,6 @@ static inline float eyeDistance(float2 q, float4 eye, float4 look, float sizeSca
   shape = mix(shape, sleep, saturate(look.z));
   return shape * sizeScale;
 }
-
-// MARK: - Set into the cloth
 
 constant float kFeatureInset = 0.12;
 constant float kFeatureGroove = 0.2;
@@ -976,8 +964,6 @@ static inline float plugs(float3 p, Features f, constant MascotUniforms &u) {
   return d;
 }
 
-// MARK: - The studio
-
 struct Softbox {
   float3 direction;
   float3 up;
@@ -1072,8 +1058,6 @@ static inline float3 rollOff(float3 c) {
   return min(c, 0.82) + 0.18 * (1.0 - exp(-over / 0.18));
 }
 
-// MARK: - One ray
-
 struct MascotSample {
   float3 color;
   float coverage;
@@ -1111,10 +1095,7 @@ static inline float3 cloth(float3 pigment, Lighting l, float facing, float ao) {
   return softTouch(pigment, l.lit * mix(0.55, 1.0, ao), deep) * l.tint;
 }
 
-// Kept out of the march loop it is called once from (measured at 240pt and
-// 1.5×: 9.7 → 4.4 ms a frame, 60pt 3.2 → 1.6). Inlined, its
-// normals, studio and gamut fit held registers through every step of the
-// march, and the GPU ran fewer pixels at once for it.
+// Measured at 240pt and 1.5×: 9.7 → 4.4 ms a frame; inlined, it held registers through the march.
 __attribute__((noinline))
 static float3 shadeSolid(
   float3 p, View view, Build build, Features features, constant MascotUniforms &u, float underCoat
@@ -1178,8 +1159,6 @@ static float3 shadeSolid(
   color += studio(reflected, mix(0.25, 0.12, black)) * fresnel * mix(0.35, 0.25, black) * mix(0.3, 1.0, ao);
   return color;
 }
-
-// MARK: - Fur
 
 constant float kFurLength = 1.25;
 
@@ -1318,12 +1297,7 @@ fragment float4 mascotFragment(
   };
   const int rays = u.finish.z >= 1.0 ? clamp(int(u.finish.z), 1, 4)
     : (u.finish.y > 0.0 ? 2 : 4);
-  // One ray first; the rest only where this pixel's 2×2 quad disagrees —
-  // the silhouette, a socket's rim, a feature's edge. Inside a smooth
-  // cloth one ray is the whole answer, and that is most of the face: a big
-  // face cost four times what it needed. One call
-  // site for `shade`: two inlined copies doubled its registers and halved
-  // the GPU's occupancy.
+  // One call site for `shade`: two inlined copies halved the GPU's occupancy.
   float3 color = float3(0.0);
   float coverage = 0.0;
   int taken = 0;

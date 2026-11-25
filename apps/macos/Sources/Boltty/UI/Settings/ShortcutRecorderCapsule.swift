@@ -74,7 +74,6 @@ struct ShortcutRecorderCapsule: View {
     }
   }
 
-  /// Grey like any key that can be changed, the accent while it listens.
   private var fill: Color {
     if isRecording { return .bolttyAccent }
     guard isEnabled else { return Color.primary.opacity(0.04) }
@@ -121,8 +120,6 @@ extension NSEvent {
       .isEmpty
   }
 }
-
-// MARK: - AppKit
 
 private struct RecorderButton: NSViewRepresentable {
   let display: String

@@ -32,8 +32,6 @@ extension NativeSessionStore {
   func transcript(for session: NativeSession) throws -> [ConversationMessage]? { nil }
 }
 
-// MARK: - Reading the head of a file
-
 enum FileHead {
   static func forEachLine(
     of url: URL,
@@ -133,8 +131,6 @@ enum FileTail {
   }
 }
 
-// MARK: - Text the CLI wrote and filed as the user's
-
 struct DiskTranscript: Sendable {
   var messages: [ConversationMessage]
   var directory: String?
@@ -148,8 +144,6 @@ enum InjectedText {
     "subagent_notification", "skill"
   ]
 
-  /// The skill a Codex request carried, filed after its words as
-  /// `<skill><name>ping</name><path>…</path>…` (0.169).
   static func codexSkill(in text: String) -> String? {
     guard text.hasPrefix("<skill>"), let name = inside(text, tag: "name"), !name.isEmpty else { return nil }
     return name
@@ -161,13 +155,8 @@ enum InjectedText {
     "system-reminder"
   ]
 
-  /// Commands Boltty sends of its own accord, not the person's words.
   static let claudeOwnCommands: Set<String> = ["/compact"]
 
-  /// A `/skill` the person sent, filed as `<command-message>ping</command-message>
-  /// <command-name>/ping</command-name><command-args>hello</command-args>`
-  /// (2.1.325), read back as `/ping hello`. The CLI's own commands (`/clear`)
-  /// open with `<command-name>` and stay hidden.
   static func claudeCommand(in text: String) -> String? {
     guard text.hasPrefix("<command-message>"), let name = inside(text, tag: "command-name"),
           name.hasPrefix("/"), !claudeOwnCommands.contains(name)

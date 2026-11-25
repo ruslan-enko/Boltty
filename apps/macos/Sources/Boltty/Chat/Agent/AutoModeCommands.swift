@@ -1,9 +1,5 @@
 import Foundation
 
-/// Boltty's Auto Mode for commands, where the CLI has none Boltty can use
-/// (Antigravity, Grok, OpenCode). A command goes through when every part of it
-/// reads, builds, tests, or changes files inside the chat's folder; anything it
-/// cannot read with confidence asks.
 enum AutoModeCommands {
   struct Segment: Equatable {
     var words: [String] = []
@@ -46,8 +42,6 @@ enum AutoModeCommands {
     return true
   }
 
-  /// What "Always Allow" remembers: the program and its subcommand for tools that
-  /// have them (`git commit`, `npm test`), the whole line otherwise.
   static func alwaysKey(for line: String) -> String {
     guard let segments = segments(of: line), segments.count == 1,
           segments[0].writes.isEmpty, segments[0].reads.isEmpty,
@@ -57,24 +51,18 @@ enum AutoModeCommands {
     return "command:" + (key == words.joined(separator: " ") ? line : key)
   }
 
-  /// A path an agent may read without asking in Auto Mode: anything but where
-  /// credentials are kept.
   static func isReadable(_ path: String, home: String = NSHomeDirectory()) -> Bool {
     let home = followed(home) ?? home
     return Context(directory: home, home: home, cwd: home).readable(path)
   }
 
-  /// A file an edit tool may change without asking in Auto Mode: inside the
-  /// folder as the file system follows it, never in `.git` (its hooks run).
   static func isEditable(_ path: String, in directory: String, home: String = NSHomeDirectory()) -> Bool {
     let folder = followed(standard(directory, home: home) ?? directory) ?? directory
     let home = followed(home) ?? home
     return Context(directory: folder, home: home, cwd: folder).writable(path)
   }
 
-  /// The path as the file system will take it: links in the part that exists
-  /// followed. Nil when a link there leads nowhere, since writing through it
-  /// would make a file wherever it points.
+  /// Links followed; nil when one leads nowhere, since a write through it lands wherever it points.
   static func followed(_ path: String) -> String? {
     guard path.hasPrefix("/") else { return nil }
     let manager = FileManager.default
@@ -89,8 +77,6 @@ enum AutoModeCommands {
     let base = String(cString: real)
     return tail.isEmpty ? base : (base as NSString).appendingPathComponent(tail.joined(separator: "/"))
   }
-
-  // MARK: - Reading the line
 
   private enum Token: Equatable {
     case word(String)
@@ -223,8 +209,6 @@ enum AutoModeCommands {
     return tokens
   }
 
-  /// Drops what only wraps the command (`time`, `timeout 60`, `CI=1`); nil when a
-  /// variable could change what runs.
   private static func stripped(_ words: [String]) -> [String]? {
     var words = words[...]
     while let first = words.first {
@@ -263,8 +247,6 @@ enum AutoModeCommands {
     return program + " " + sub
   }
 
-  // MARK: - Judging a command
-
   private struct Context {
     let directory: String
     let home: String
@@ -288,8 +270,6 @@ enum AutoModeCommands {
       path == folder || path.hasPrefix(folder.hasSuffix("/") ? folder : folder + "/")
     }
 
-    /// Judged both as written and as followed: `~/.ssh` may be a link into a
-    /// dotfiles folder, and a link in the folder may lead out of it.
     func readable(_ word: String) -> Bool {
       guard let written = resolve(word), let path = AutoModeCommands.followed(written) else { return false }
       return ![(written, true), (path, false)].contains { path, isWritten in
@@ -337,7 +317,6 @@ enum AutoModeCommands {
     word.hasPrefix("/") || word.hasPrefix("~") || word.hasPrefix(".") || word.contains("/")
   }
 
-  /// Every argument that names a file may be read.
   private static func readsOnly(_ args: ArraySlice<String>, _ context: Context) -> Bool {
     args.allSatisfy { arg in
       let value = arg.hasPrefix("-") ? arg.split(separator: "=", maxSplits: 1).dropFirst().first.map(String.init) : arg
@@ -495,8 +474,6 @@ enum AutoModeCommands {
     return false
   }
 
-  /// A package script that builds, tests or checks, by its name: `test:unit`,
-  /// `build-docs`, `lint`. Anything else could be a script the agent just wrote.
   private static func buildScript(_ name: String) -> Bool {
     let words = name.lowercased().split(whereSeparator: { ":-_.".contains($0) }).map(String.init)
     guard let first = words.first, !risky(name) else { return false }

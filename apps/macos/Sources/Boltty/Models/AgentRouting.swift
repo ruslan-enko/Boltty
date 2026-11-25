@@ -1,23 +1,16 @@
 import Foundation
 
-/// Who a new chat goes to when nobody was chosen: the agent with the most of
-/// its plan left. Plans are in different units, so only the percentage used and
-/// the time it comes back are ever compared.
 enum AgentRouting {
   static let closeCall = 15
   static let soonReset: TimeInterval = 60 * 60
 
   struct Standing: Equatable, Sendable {
     var providerID: String
-    /// `nil` when the agent reports no percentage.
     var used: Int?
     var isSpent: Bool
     var comesBack: Date?
   }
 
-  /// The candidates in the order they are tried. `candidates` come in tab
-  /// order; `sticky` is who answered last and `preferred` the person's own
-  /// agent, each winning a close call so the choice does not jump about.
   static func ranked(
     candidates: [String],
     usage: [String: AgentUsage],
@@ -88,7 +81,6 @@ enum AgentRouting {
   }
 }
 
-/// A turn that failed before any word, given to the next agent.
 struct AgentHandOver: Equatable, Sendable {
   enum Reason: Equatable, Sendable { case spent, modelGone, failed }
 

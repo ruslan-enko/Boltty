@@ -21,9 +21,8 @@ enum LaunchTrace {
 
 _ = LaunchTrace.start
 
-// Not NSApplicationMain: it can ignore a programmatically assigned delegate.
-// Made first: it checks in with LaunchServices, which a copy of 0.2.5 or older
-// waits for before it quits to make way for this one.
+// Not NSApplicationMain: it can ignore a delegate assigned in code. Made first: it checks in with
+// LaunchServices, which 0.2.5 and older wait for.
 let app = NSApplication.shared
 
 UpdateInstaller.waitForReplacedCopy()

@@ -33,7 +33,6 @@ struct JSONObject: @unchecked Sendable {
 
   func strings(_ key: String) -> [String] { raw[key] as? [String] ?? [] }
 
-  /// A tool's result as words: pictures come as base64 among the text blocks.
   func toolOutput(_ key: String) -> String? {
     let blocks = (raw[key] as? [[String: Any]]) ?? (raw[key] as? [String: Any])?["content"] as? [[String: Any]]
     guard let blocks, !blocks.isEmpty else { return rendered(key) }

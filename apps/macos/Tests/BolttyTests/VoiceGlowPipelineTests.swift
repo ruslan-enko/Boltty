@@ -6,8 +6,6 @@ import XCTest
 final class VoiceGlowPipelineTests: XCTestCase {
   private let surface = CGSize(width: 520, height: 74.5)
 
-  // MARK: - The envelope
-
   func testTheGateDropsRoomToneAndKeepsSpeech() {
     let envelope = VoiceLevelEnvelope()
     XCTAssertEqual(envelope.gated(0), 0)
@@ -53,8 +51,6 @@ final class VoiceGlowPipelineTests: XCTestCase {
     XCTAssertEqual(coarse.level, fine.level, accuracy: 0.01)
   }
 
-  // MARK: - The phases
-
   func testOnlyListeningAndProcessingHoldAClock() {
     XCTAssertTrue(VoiceGlowPhase.listening.isAnimating)
     XCTAssertTrue(VoiceGlowPhase.processing.isAnimating)
@@ -82,8 +78,6 @@ final class VoiceGlowPipelineTests: XCTestCase {
       XCTAssertEqual(phase.beamMorph, 0)
     }
   }
-
-  // MARK: - Knowing when someone stopped talking
 
   func testSilenceBeforeAnySpeechNeverSends() {
     var watcher = VoiceSilenceWatcher()
@@ -141,8 +135,6 @@ final class VoiceGlowPipelineTests: XCTestCase {
     XCTAssertFalse(watcher.accept(level: 0, now: 10), "a spent countdown is not inherited")
   }
 
-  // MARK: - The frame handed to the shader
-
   func testEveryStopOfThePaletteReachesTheShader() {
     let input = frame(intensity: 0.7)
     let u = VoiceGlowRenderer.uniforms(for: input)
@@ -199,8 +191,6 @@ final class VoiceGlowPipelineTests: XCTestCase {
     )
   }
 
-  // MARK: - Accessibility and appearance
-
   func testReduceMotionStopsTheRaysButNotTheVoice() {
     var still = frame(intensity: 0.7, clock: 3, reduceMotion: true)
     still.flow = 9
@@ -229,8 +219,6 @@ final class VoiceGlowPipelineTests: XCTestCase {
     light.isLightAppearance = true
     XCTAssertEqual(VoiceGlowRenderer.uniforms(for: light).appearance, 1)
   }
-
-  // MARK: -
 
   private func frame(
     intensity: CGFloat,

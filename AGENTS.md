@@ -840,6 +840,8 @@ The loop that must keep working:
   selected there (`FinderSelectionService`, Finder Automation). Settings ›
   General › Finder switches it (`boltty.finderSelection.enabled`, on).
 - Refreshing rows never orders the window forward or steals first responder.
+- Hiding gives the Mac back to the app before it, unless another has come
+  forward meanwhile (a link's browser, Finder), which stays (`handBack`).
 - **Clicking outside** (a click, not a drag) hides; the panel takes every press
   on the screen, so a click outside does not reach the window below.
 
@@ -904,7 +906,9 @@ The loop that must keep working:
   it, Escape, Space or Return puts it back. It is a window of its own over the
   panel's, which keeps the key: drawn inside the panel, the chat's content stood
   over it and the controls under it still lit and opened. Every key is its while
-  it is up, and nothing else opens over it. A file that is gone plays the system
+  it is up, and nothing else opens over it. A file link in an
+  answer opens there too, fading in (a folder goes to Finder): the system's own
+  way with one is Finder, which hides the panel. A file that is gone plays the system
   alert. The whole screen opens out of the region it holds (`crop`, the layer's
   `contentsRect`) and closes back into it: grown from the region's frame, it
   stood squeezed. A file pressed outside the panel still goes to Quick Look's panel.
@@ -923,7 +927,7 @@ The loop that must keep working:
   (`PaletteAskedRegionView`, `ConversationMessage.askedRegion`): the app and window
   in secondary ink, then the region at the column's width (at most 240 high, its
   edge with the bubble's), with what the answer drew and pointed at on it in the
-  face's light (the answer's tags, laid over the region's thousandths;
+  marker's colour (the answer's tags, laid over the region's thousandths;
   `ChatWorkspaceCoordinator.withAnswers`). Drawn again, the drawings stand still;
   ones that arrive while it is open are drawn. A press is Quick Look; the expand disc in its corner
   (Whole Screen, `BolttyIcon.expand`) shows the picture the agent was sent.
@@ -1058,7 +1062,8 @@ the panel's first screen, where a press on empty glass that moves past 4 pt
 draws a region. Nothing switches it on. A chord of its own (⌃⌥⌘) was tried and
 removed: one key to remember is the point. ScreenCaptureKit freezes the display (Boltty's windows excluded), the
 outside dims to 40%, the border is light in the agent's gradient
-(`ScreenSelectionGlowView`), and the shell stands beside the region. The
+(`ScreenSelectionGlowView`, its inner glow faint, so what is selected keeps its
+colours; handles at the corners alone under 120 a side), and the shell stands beside the region. The
 pointer stays an arrow; only handles show resize cursors. While a drag
 would select, the pointer resting on the empty glass gets "Drag to ask about
 an area" beside it ("Drag to add an area" over a chat;
@@ -1228,28 +1233,43 @@ so in the orb ("No sound is reaching the microphone…",
   else the face goes where the agent put the step, or back to the pointer; a
   step whose words are still streaming waits for them. Escape ends the walk, and so does a
   minute with no click (`guideIdleLimit`): the face holds Escape while it is up.
-- **What the keys do is said where they act** (`PaletteKeyHints`, a help tag of
-  glass keycaps and words): under the region's orb "esc Cancel" while the
+- **What the keys do is said where they act** (`PaletteKeyHints`, a capsule of
+  the shell's glass and ramp, always frosted, its keycaps round and concentric): under the region's orb "esc Cancel" while the
   microphone starts, "Speak your question · esc Cancel" while it listens, "⏎ Ask
-  · esc Cancel" once something was said, filling from the left as a pause runs
+  · esc Cancel" once something was said, filling from the left in the face's light under black words, its first fifth shown as nothing and what is
+  drawn easing after it (`PaletteKeyHints.follow`: levels come in steps and fall at every word), as a pause runs
   toward sending by itself (`setRegionSilence`, the silence watcher's progress;
   speech empties it), and "Asking…" from Return or that pause until the face
   takes over (`regionHints`, `layoutRegionKeyHints`, riding the shell's spring,
   above it near the foot of the screen); under the face "esc Stop" while it thinks, and "Click to go on ·
-  esc Stop" through steps (`AskBolttyController.keyHints`). None at rest: the
-  rest hint says it.
+  esc Stop" through steps (`AskBolttyController.keyHints`). At rest "⌥Space
+  Ask more · esc Close" stands in the words' place. While no sound comes the
+  orb says so and the tag keeps only Cancel.
 - At most two sentences of an answer are said, one at a time: a new sentence
   takes the last one's place (`captionSentences`, `answerSentences`). The answer
   ends when the voice falls silent; `$speakingID` tells before the value changes,
   so it is read on the next turn of the run loop (asked at once, the voice was
   still saying it, and nothing ended the answer until the store moved).
 - The answer comes beside the face word by word, each arriving out of the blur
-  the listening words have (`ListeningWordsView`, `isCentred` off), the bubble
+  the listening words have (`ListeningWordsView`, `isCentred` off; "Thinking…", a step, an ask and a failure arrive so too, all at
+  once), the bubble
   growing to fit what has come (`revealWords`, `growBubble`); a new sentence
   starts it afresh. **The words hold still**: the bubble's top stays and lines
   are added below, only the face bobs, and the side stays while the widest
   bubble fits, gliding across when it does not. On the left it stands at its
-  whole sentence's width (the words hang from its left edge). With blips
+  whole sentence's width (the words hang from its left edge). The bubble is
+  the shell's glass and ramp, with the worded orb's padding and its corner's
+  share of the height (`bubbleCorner`), since a clamped corner made pills of it. Its
+  window is never key, so the glass lights no rim and the rim shade, a black line
+  there, is off (`shadesRim`). The bubble changes side rather than
+  stand on the region or a drawing, where the other side is free (`bubbleSide`).
+  **Drawings are a marker's** (`AskBolttyDrawingLayer`, `MarkerLine`): one colour,
+  the face's strongest, with no gradient and no edge, a faint shadow of the same
+  colour; the line sways, changes width with the hand and the direction, overshoots
+  where it closes, and is the same each time it is drawn. A glow, a white edge and a
+  gradient were tried and refused. A board is the marker's too, straight on the screen
+  beside the bubble: on glass and on a sheet of paper it was refused. Labels are white
+  pills with black words. It draws quickly, stroke after stroke, as a hand does. With blips
   (`AskBolttyBlips`, rendered on Core Audio's thread — its block is made
   `nonisolated`). Saying it aloud
   (`SpeechOutput`: Supertonic's 31 languages, once it is downloaded) is
@@ -1258,8 +1278,7 @@ so in the orb ("No sound is reaching the microphone…",
   read into `AskBolttySession.speaksAloud` as a question is sent. Said aloud,
   the words still type out, without blips over the voice.
 - **The face waits after the answer** (`AskBolttyOverlayController.rest`): its
-  words go once said, a line says what can be done ("⌥Space to ask more · Esc to
-  close", `restHint`, gone after 5 s, since a bubble riding with the pointer gets
+  words go once said, key hints say what can be done (`restHints`, gone after 5 s, since a bubble riding with the pointer gets
   in the way), and it goes by itself after 12 s. It returns to the pointer unless
   it pointed at something: then the place is the answer and it stays on it.
   **While it is there the launch key goes on with the question**
@@ -1347,7 +1366,11 @@ so in the orb ("No sound is reaching the microphone…",
 - **First run**: a show over a sky (`SunsetView` wearing a chat's Sky backdrop
   in Daybreak, at the screen's size; the written gradient is what README's shots
   stand on; `ShowSpace` maps 1800 × 1169 slides to the screen; its own clock,
-  `ShowClock`). One face is carried through every scene, and it is Boltty's
+  `ShowClock`). Everything in it moves on one curve, slow, then a sharp peak, then a
+  long settle (`ShowClock.curve`), with no springs; a move begun in the middle of
+  another keeps its speed (`ShowGlide`). `pace` (the waits) and
+  `ShowClock.quick` (the moves) are how fast it runs; the music starts
+  `musicStart` in, so its beat still comes in with the first line on white. One face is carried through every scene, and it is Boltty's
   own, the hexagon in Daybreak (`hero`): the one place Boltty has a face, since
   no agent has been chosen yet. Its beats: that face rising close, wider than
   the screen, on the sky; the title, "This is Boltty" a word at a time, with the
@@ -1357,9 +1380,10 @@ so in the orb ("No sound is reaching the microphone…",
   each a line alone on white (`card`): the prompt, ⇧Tab walking the agents and the
   field with them, the camera close on the words as they are typed, the capsule
   growing into the question and its answer; the agents' faces overlapped in a row
-  with ⌄, opening into the chat list; Ask Boltty over a recording (a region
-  dragged round the whole of it, the orb on its corner, the voice as a wave, the words, the answer and a
-  loop drawn round the silence); the last line, every face in a row turning in
+  with ⌄, opening into the chat list; Ask Boltty over
+  somebody's window in bars (a region dragged round a part of it, the orb on its
+  corner opening large as the camera comes in, the words, the face flying to the
+  heading, a loop drawn round it and the answer in a bubble); the last line, every face in a row turning in
   turn, gathered into Boltty's own beside its name, and the sky again. There the
   panel is a plain black shape (`ShowSlab`), not glass: over a pale field the
   ramp's thin foot read as grey. A made-up app window with a menu bar, the panel
@@ -1569,7 +1593,8 @@ so in the orb ("No sound is reaching the microphone…",
 - One `MTKView` per face, one shared pipeline, drawn on demand from the shared
   60 Hz `MascotClock` timer (a display link measured worse). `currentDrawable`
   only inside `draw(in:)`. Nothing on the canvas may force an offscreen pass (no
-  filter, mask, `masksToBounds`). Two rays a pixel live, four for stills; extra
+  filter, mask, `masksToBounds`). Two rays a pixel live, four for stills; the first screen's
+  face is drawn at twice the screen's scale (`promptMascotSupersampling`); extra
   rays only where a 2×2 quad disagrees; `shadeSolid` is `noinline`; the march is
   bounded by a box.
 - Motion is Boltty's own (`MascotMotion`): layered attention, breathing and one
@@ -1726,7 +1751,7 @@ so in the orb ("No sound is reaching the microphone…",
   glass's own edge is the system's. Left on purpose: table rules, a quote's bar,
   the work thread, the screen selection's edge, the Ask pointer's white edge
   (it stands on any screen), `RingedChoice`'s ring, and the 1-point inner edge
-  of white at 10% on Settings' sidebar tiles (`SettingsPageTile`).
+  of white at 20% on Settings' sidebar tiles (`SettingsPageTile`).
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
   concentric (`outer = inner + inset`), in Settings too: a stage that fills its
@@ -1913,13 +1938,13 @@ so in the orb ("No sound is reaching the microphone…",
 10. The unit-test host launches nothing of the product
     (`AppDelegate.isHostingUnitTests`) and runs as `.accessory`. Live tests shut
     down any CLI they start.
-11. **Write few comments.** Most code needs none: no comment on what the code
-    already says, no doc comment by habit, no history of what was tried, no
-    story of the bug a change fixes (that is the commit message). One earns its
-    place only where the reason is not obvious and would be missed (a measured
-    CLI quirk, a trap), and then it is one or two lines and says why. A fact
-    already in this file is not repeated in a comment. Who decided and when
-    belongs in git.
+11. **Write no comments.** 99% of comments in code are not needed, so the default
+    is none. Forbidden: a comment on what the code already says, a doc comment by
+    habit, a section heading, history of what was tried, the story of the bug a
+    change fixes (that is the commit message), a fact already in this file. The
+    other 1% is a reason that is not obvious and would be missed (a measured CLI
+    quirk, a trap): one line, two at most, and it says why. In doubt, leave it out.
+    Who decided and when belongs in git.
 12. **Keep this file current in the same change** that makes it stale. Where this
     file and the code disagree and it's unclear which is right, ask.
 13. Never publish anything outside the repo (issues, comments, releases) on the

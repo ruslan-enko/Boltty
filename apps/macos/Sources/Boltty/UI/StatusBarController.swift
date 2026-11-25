@@ -6,8 +6,6 @@ final class StatusBarController {
   private var menu: NSMenu?
   private(set) var snapshot = StatusBarSnapshot.idle
 
-  /// A left click opens the limits window under the mark; a right or
-  /// Control-click, and the window's More, open the menu.
   var onLimits: ((NSRect, NSWindow?) -> Void)?
   var onMenuWillOpen: (() -> Void)?
 

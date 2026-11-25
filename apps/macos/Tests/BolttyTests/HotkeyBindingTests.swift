@@ -46,8 +46,6 @@ final class HotkeyBindingTests: XCTestCase {
     XCTAssertEqual(binding.displayName, "⌃⌥Space")
   }
 
-  // MARK: - Latin key equivalents
-
   private func keyEvent(
     characters: String,
     keyCode: Int,
@@ -90,8 +88,6 @@ final class HotkeyBindingTests: XCTestCase {
     let event = keyEvent(characters: "V", keyCode: kVK_ANSI_V, modifiers: [.command, .shift])
     XCTAssertEqual(event.latinCharactersIgnoringModifiers, "v")
   }
-
-  // MARK: - Validation
 
   func testChordWithOptionOrControlIsAccepted() {
     for modifier in [optionKey, controlKey] {
@@ -196,8 +192,6 @@ final class HotkeyBindingTests: XCTestCase {
     XCTAssertNil(HotkeyValidation.reject(.optionSpace))
   }
 
-  // MARK: - Problem
-
   func testARejectionCarriesNoChordAndSaysWhy() {
     let problem = HotkeyProblem.rejected(.noModifier)
     XCTAssertNil(problem.attempted)
@@ -224,8 +218,6 @@ final class HotkeyBindingTests: XCTestCase {
     XCTAssertTrue(HotkeyProblem.unavailable(binding, .failed(status: -1)).isConflict)
   }
 
-  // MARK: - AppKit bridge
-
   func testModifierFlagsConvertToCarbonMasks() {
     XCTAssertEqual(HotkeyBinding.carbonModifiers(from: [.command]), UInt32(cmdKey))
     XCTAssertEqual(HotkeyBinding.carbonModifiers(from: [.option]), UInt32(optionKey))
@@ -244,8 +236,6 @@ final class HotkeyBindingTests: XCTestCase {
     )
   }
 }
-
-// MARK: - Suggestions
 
 final class HotkeySuggestionTests: XCTestCase {
   func testEverySuggestionPassesValidation() {
@@ -283,8 +273,6 @@ final class HotkeySuggestionTests: XCTestCase {
     XCTAssertNil(HotkeySuggestions.firstFree { _ in false }, "all taken: nothing to move to")
   }
 }
-
-// MARK: - ⌥⌘, with no key
 
 final class ModifierOnlyHotkeyTests: XCTestCase {
   func testItIsWrittenAsItsModifiersAlone() {

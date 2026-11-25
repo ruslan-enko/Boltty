@@ -19,8 +19,6 @@ final class AgentUsageTests: XCTestCase {
     JSONObject(line: json)!
   }
 
-  // MARK: - Limits
-
   func testClaudeCodeReportsItsFiveHourAndWeeklyWindows() throws {
     let usage = try XCTUnwrap(AgentUsage.claudeCode(object("""
       {"subscription_type":"pro","rate_limits_available":true,"rate_limits":{
@@ -103,8 +101,6 @@ final class AgentUsageTests: XCTestCase {
     XCTAssertEqual(severity(80), .high)
     XCTAssertEqual(severity(100), .exhausted)
   }
-
-  // MARK: - The pill's words
 
   func testThePillNamesTheFullestWindow() {
     let usage = AgentUsage(windows: [

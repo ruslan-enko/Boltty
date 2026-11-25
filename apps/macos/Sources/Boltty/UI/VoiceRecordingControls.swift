@@ -89,8 +89,6 @@ final class VoiceRecordingControls: NSView {
     fatalError("init(coder:) has not been implemented")
   }
 
-  // MARK: - Session
-
   func startRecording() {
     startedAt = Date()
     updateElapsed()
@@ -229,9 +227,6 @@ final class VoiceLevelMeter: NSView {
   }
 }
 
-/// An open chat's composer foot while it listens: × lets the take go, the
-/// voice runs across as a wave, the time it has run, and the microphone ends
-/// the take with its words left to edit.
 final class ChatDictationBar: NSView {
   var onCancel: (() -> Void)?
   var onStop: (() -> Void)?
@@ -319,7 +314,6 @@ final class ChatDictationBar: NSView {
     }
   }
 
-  /// Holds the wave where it stood while the last words are worked out.
   func freeze() {
     tick?.invalidate()
     tick = nil
@@ -344,8 +338,6 @@ final class ChatDictationBar: NSView {
   @objc private func stopPressed() { onStop?() }
 }
 
-/// Bars that run leftward, one a frame of the voice's loudness; the newest
-/// stands at the trailing edge.
 final class DictationWaveView: NSView {
   private var bars: [CALayer] = []
   private var levels: [CGFloat] = []

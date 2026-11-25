@@ -54,8 +54,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   func setSpeakingMessage(_ id: String?) { panelView.setSpeakingMessage(id) }
   var onPromptRefused: (() -> Void)?
 
-  // MARK: Asking about a region
-
   var regionAgent: (() -> AgentId?)?
   var onRegionReady: ((AgentId?) -> Void)?
   var onAskAboutRegion: ((_ words: String, _ selection: ScreenSelection, _ displayFrame: CGRect,
@@ -774,6 +772,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
 
   private func handBack(_ application: NSRunningApplication?) {
     guard let application else { return }
+    if let frontmost = NSWorkspace.shared.frontmostApplication,
+       frontmost.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+       frontmost.processIdentifier != application.processIdentifier { return }
     if let activatePreviousApplicationForTesting {
       activatePreviousApplicationForTesting(application)
     } else {
@@ -811,8 +812,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     CATransaction.commit()
   }
 
-  // MARK: - The drip
-
   private func dripSource() -> CGRect? {
     guard let window, let screen = window.screen else { return nil }
     let shell = panelView.surfaceFrameInView
@@ -845,8 +844,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.beginDripOut(into: source)
     return panelView.isDrippingForTesting
   }
-
-  // MARK: - Working directory
 
   private func currentWorkingDirectory() -> String {
     if let id = panelView.addressedSessionID,
@@ -1083,8 +1080,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     _ = panelView.focusField()
   }
 
-  // MARK: - A history row's menu
-
   static let openChatTitle = String(localized: "Open Chat")
   static let forkChatTitle = String(localized: "Fork Chat")
   static let deleteChatTitle = String(localized: "Delete Chat…")
@@ -1126,15 +1121,12 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     return menu
   }
 
-  /// The fork opens in the panel at once, with the messages it goes on from.
   private func fork(_ id: UUID, after messageID: String?) {
     guard let conversations, let forked = conversations.fork(id, after: messageID) else { return }
     if panelView.addressedSessionID != nil { panelView.leaveAddressing(animated: false) }
     beginAddressing(forked)
   }
 
-  /// Asked as Delete Chat is: what changes back, then the change. Where the
-  /// question leaves the chat with it, its words come back to the composer.
   private func confirmUndo(in id: UUID, from question: ConversationMessage) {
     guard let conversations, let conversation = conversations.conversation(id: id) else { return }
     Task { @MainActor [weak self] in
@@ -1293,8 +1285,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     )
   }
 
-  // MARK: - Plan usage
-
   private func syncUsageToPanel() {
     guard let conversations else {
       panelView.setUsage(nil, agent: nil)
@@ -1338,8 +1328,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     }
     ask(draft.typedText, about: region)
   }
-
-  // MARK: - Asking about a region
 
   func askAgain(about region: CGRect, agent: AgentId?) {
     leftChat = nil
@@ -1390,10 +1378,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + AgentPaletteMetrics.regionMicrophoneWait, execute: wait)
   }
 
-  /// A microphone that listens and hears nothing at all is the wrong input or a
-  /// muted one: the orb says where to look, rather than waiting on in silence.
-  /// Counted from the region's first take: an engine started again after an empty
-  /// take does not start the count again.
   private func watchForSilentMicrophone() {
     guard panelView.asksAboutRegionByVoice, silentMicrophoneCheck == nil else { return }
     let check = DispatchWorkItem { [weak self] in
@@ -1412,8 +1396,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   static let silentMicrophone =
     String(localized: "No sound is reaching the microphone. Check the input in System Settings › Sound.")
 
-  /// One more try, then the question is let go of and the panel says why: a
-  /// region has no text field to fall back on.
   private func regionMicrophoneFailed(_ message: String) {
     regionMicrophoneWait?.cancel()
     regionMicrophoneWait = nil
@@ -1670,7 +1652,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     steering: Bool = false
   ) {
     let preview = conversations?.preview(for: sessionID)
-    // A late question holds nothing up: its ask is gone, and a message lets it go.
     if let preview, let question = preview.question, !question.isLate {
       isSubmitting = false
       panelView.showError(BolttyAIFollowUp.busyMessage(agent: preview.agent))
@@ -1726,7 +1707,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     if let id = panelView.addressedSessionID {
       conversations?.saveDraft(panelView.currentDraft, for: id)
     } else {
-      // A search left open is not words for a new chat.
       newPromptDraft = panelView.isSearchingChats ? PromptDraft("") : panelView.currentDraft
     }
   }

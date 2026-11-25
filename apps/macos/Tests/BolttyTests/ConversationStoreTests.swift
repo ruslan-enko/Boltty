@@ -272,8 +272,6 @@ final class ConversationStoreTests: XCTestCase {
     }
   }
 
-  // MARK: - Messages
-
   func testOneSendProducesOneMessage() {
     let conversation = makeConversation()
     store.appendUserMessage(id: "msg_1", text: "hello", attachments: [], to: conversation.id)
@@ -420,8 +418,6 @@ final class ConversationStoreTests: XCTestCase {
     XCTAssertEqual(store.conversation(id: second.id)?.workingDirectory, "/tmp/two")
   }
 
-  // MARK: - Reconnect
-
   func testReconnectSnapshotDoesNotDuplicateOrLoseMessages() {
     let conversation = makeConversation()
     store.appendUserMessage(id: "msg_1", text: "do it", attachments: [], to: conversation.id)
@@ -509,8 +505,6 @@ final class ConversationStoreTests: XCTestCase {
     )
   }
 
-  // MARK: - Stop
-
   func testStopThenLateEventsSettleOnIdle() {
     let conversation = makeConversation()
     store.apply(envelope(.executionStateChanged(sessionID: "ses_1", state: .working)))
@@ -549,8 +543,6 @@ final class ConversationStoreTests: XCTestCase {
     )
     XCTAssertEqual(store.conversation(id: conversation.id)?.lastKnownState, .failed)
   }
-
-  // MARK: - Questions and permissions
 
   private func question(id: String = "que_1") -> PendingInteraction {
     PendingInteraction(
@@ -690,8 +682,6 @@ final class ConversationStoreTests: XCTestCase {
     )
   }
 
-  // MARK: - Working directory
-
   func testWorkingDirectoryFreezesOnceTheProviderHasASession() {
     let conversation = store.createConversation(title: "T", workingDirectory: "/tmp/a")
     store.setWorkingDirectory("/tmp/b", for: conversation.id)
@@ -712,8 +702,6 @@ final class ConversationStoreTests: XCTestCase {
     XCTAssertEqual(store.defaultWorkingDirectory(), WorkingDirectoryResolver.homeDirectoryPath)
   }
 
-  // MARK: - Unread and selection
-
   func testACompletedReplyElsewhereMarksUnreadWithoutChangingSelection() {
     let first = makeConversation(remote: "ses_1")
     let second = store.createConversation(title: "Other", workingDirectory: "/tmp")
@@ -725,8 +713,6 @@ final class ConversationStoreTests: XCTestCase {
     XCTAssertTrue(store.conversation(id: second.id)?.hasUnread == true)
     XCTAssertFalse(store.conversation(id: first.id)?.hasUnread == true)
   }
-
-  // MARK: - Drafts and staged files
 
   func testStagedFilesFollowTheirConversation() {
     let first = makeConversation(remote: "ses_1")
@@ -832,8 +818,6 @@ final class ConversationStoreTests: XCTestCase {
   private func attachment(_ name: String) -> ConversationAttachment {
     ConversationAttachment(id: UUID().uuidString, displayName: name)
   }
-
-  // MARK: - Search
 
   func testSearchMatchesTitleAndLastMessage() {
     let a = store.createConversation(title: "Rename the files", workingDirectory: "/tmp")

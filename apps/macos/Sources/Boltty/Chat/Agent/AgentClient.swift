@@ -68,11 +68,8 @@ protocol AgentClient: AnyObject, Sendable {
 
   func compact(sessionID: String) async throws
 
-  /// Skills and commands for `/`, as the CLI lists them for this folder.
   func commands(folder: String) async -> [AgentCommand]
 
-  /// What putting the agent's file changes back to before the chat's
-  /// `question`-th question (from 0) would change, and doing it.
   func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo
   func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo
 
@@ -133,7 +130,6 @@ struct AgentSessionOptions: Equatable, Sendable {
   var autoApprove: Bool
   var readOnly: Bool
   var planMode: Bool
-  /// A new session is made as a branch of this one rather than empty.
   var forkFrom: ForkPoint?
 
   init(
@@ -245,11 +241,9 @@ struct AgentEffortOption: Identifiable, Equatable, Sendable {
 }
 
 struct FileUndo: Equatable, Sendable {
-  /// The files that change back; empty where the CLI cannot tell beforehand.
   var files: [String] = []
   var insertions: Int?
   var deletions: Int?
-  /// The question and all after it leave the chat too (OpenCode).
   var cutsHistory = false
 }
 

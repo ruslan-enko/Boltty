@@ -42,7 +42,6 @@ final class AgentPaletteControllerTests: XCTestCase {
 
     conversations.notifyChanged()
     conversations.notifyChanged()
-    // Waits for the coalesced read rather than a fixed time: a busy CI runner took longer than 50 ms.
     let deadline = Date().addingTimeInterval(2)
     while conversations.switcherReads < readsAtShow + 2, Date() < deadline {
       RunLoop.main.run(until: Date().addingTimeInterval(0.01))
@@ -112,8 +111,6 @@ final class AgentPaletteControllerTests: XCTestCase {
     settle()
     XCTAssertGreaterThan(row.visibleRect.intersection(row.bounds).height, 0, "and still after widening")
   }
-
-  // MARK: - Coming back to the chat it left
 
   private func thinkingChat(
     _ conversations: FakeBolttyAIConversations, finished: Bool = false
@@ -1222,8 +1219,6 @@ final class AgentPaletteControllerTests: XCTestCase {
   }
 }
 
-// MARK: - The folder chip
-
 @MainActor
 final class BolttyAIWorkingDirectoryTests: XCTestCase {
   private var retained: [FakeBolttyAIConversations] = []
@@ -1443,8 +1438,6 @@ final class PickerPanelPresentationTests: XCTestCase {
     XCTAssertEqual(host.level, .popUpMenu, "closing the picker restores Boltty AI's level")
   }
 }
-
-// MARK: - Enter while the agent is working
 
 @MainActor
 final class BolttyAIBusyQueueTests: XCTestCase {
@@ -1746,8 +1739,6 @@ final class BolttyAIBusyQueueTests: XCTestCase {
     XCTAssertEqual(panel.visibleErrorForTesting, "That reply was not delivered. Try again.")
   }
 }
-
-// MARK: - Managing chats from the switcher
 
 @MainActor
 final class BolttyAISessionManagementTests: XCTestCase {

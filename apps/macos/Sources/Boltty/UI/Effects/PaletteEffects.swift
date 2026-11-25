@@ -74,8 +74,6 @@ final class PaletteEffects {
     return texture
   }
 
-  // MARK: - Frames, as numbers
-
   static func revealUniforms(
     progress: CGFloat, size: CGSize, imageAspect: CGFloat, pixelSize: CGFloat,
     cornerRadius: CGFloat, cornerIsContinuous: Bool
@@ -158,8 +156,6 @@ final class PaletteEffects {
     let t = min(1, max(0, (x - edge0) / max(edge1 - edge0, 0.0001)))
     return t * t * (3 - 2 * t)
   }
-
-  // MARK: - Frames, on the GPU
 
   func render(_ uniforms: PaletteRevealUniforms, texture: MTLTexture, in view: MTKView) {
     encode(reveal, uniforms, texture: texture, in: view)

@@ -1,7 +1,5 @@
 import AppKit
 
-// MARK: - Date heading
-
 @MainActor
 final class AgentHistorySectionHeaderView: NSView {
   private let label = NSTextField(labelWithString: "")
@@ -57,8 +55,6 @@ final class AgentHistorySectionHeaderView: NSView {
   }
 }
 
-// MARK: - Faces, ahead of time
-
 @MainActor
 enum AgentHistoryFaces {
   static var stills: [(agent: AgentId, side: CGFloat)] {
@@ -80,8 +76,6 @@ enum AgentHistoryFaces {
     }
   }
 }
-
-// MARK: - Tab strip
 
 @MainActor
 final class AgentHistoryTabView: NSView {
@@ -231,8 +225,6 @@ final class AgentHistoryTabView: NSView {
   var faceFramesForTesting: [NSRect] { faces.map(\.frame) }
   var labelFrameForTesting: NSRect { label.frame }
 
-  // MARK: Faces
-
   func setFaceAgents(_ agents: [AgentId]) {
     guard agent == nil else { return }
     let wanted = Array((agents.isEmpty ? Self.fallbackFaceAgents : agents)
@@ -259,14 +251,11 @@ final class AgentHistoryTabView: NSView {
     }
   }
 
-  // The last face stands in the middle, drawn over the rest; the others gather
-  // round it each a little off its even place and size, so it reads as a crowd.
   private static let crowdTurn: [CGFloat] = [0, 9, -7, 11]
   private static let crowdReach: [CGFloat] = [0.66, 0.62, 0.7, 0.64]
   private static let crowdScale: [CGFloat] = [0.86, 0.8, 0.9, 0.82]
   private static let crowdStart: CGFloat = -135
 
-  /// The faces round one in the middle, as large as fits `side`, that one at its centre.
   static func faceFrames(count: Int, in side: CGFloat) -> [CGRect] {
     guard count > 0 else { return [] }
     let count = min(count, crowdTurn.count + 1)
@@ -525,8 +514,6 @@ final class AgentHistoryTabStripView: NSView {
     onSelect?(agent)
   }
 
-  // MARK: - Layout
-
   private var trackFrame: NSRect {
     let inset = AgentPaletteMetrics.historyTabTopInset
     return NSRect(
@@ -594,8 +581,6 @@ final class AgentHistoryTabStripView: NSView {
       render(target)
     }
   }
-
-  // MARK: - Motion
 
   private func startClock() {
     guard link == nil else { return }

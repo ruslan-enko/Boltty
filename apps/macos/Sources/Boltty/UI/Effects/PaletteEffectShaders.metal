@@ -30,8 +30,6 @@ static inline float roundedDistance(float2 p, float2 halfSize, float radius, flo
 
 constexpr sampler effectSampler(coord::normalized, address::clamp_to_edge, filter::linear);
 
-// MARK: - Reveal
-
 vertex EffectVaryings revealVertex(
   uint id [[vertex_id]],
   constant PaletteRevealUniforms &u [[buffer(PaletteEffectBufferIndexUniforms)]]
@@ -86,8 +84,6 @@ fragment float4 revealFragment(
   return colour * (u.opacity * coverage);
 }
 
-// MARK: - Whip
-
 vertex EffectVaryings whipVertex(
   uint id [[vertex_id]],
   constant PaletteWhipUniforms &u [[buffer(PaletteEffectBufferIndexUniforms)]]
@@ -130,8 +126,6 @@ fragment float4 whipFragment(
   uv.y = 1.0 - uv.y;
   return image.sample(effectSampler, uv) * (u.opacity * coverage);
 }
-
-// MARK: - Selection glow
 
 vertex EffectVaryings selectionGlowVertex(
   uint id [[vertex_id]],

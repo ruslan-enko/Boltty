@@ -86,8 +86,6 @@ final class MascotClock {
   private func startIfNeeded() {
     guard timer == nil else { return }
     lastTick = Motion.now
-    // A display link was measured worse than this timer: the test bundle
-    // slowed and animation tests lost the main run loop.
     let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
       MainActor.assumeIsolated { self?.tick() }
     }
@@ -143,12 +141,9 @@ final class MascotNSView: NSView {
 
   var lookAtWindowPoint: CGPoint?
 
-  /// A turn of its own over the living one, about x, y and z: the first-run show's.
   var turn = SIMD3<Double>.zero {
     didSet { if turn != oldValue { render() } }
   }
-
-  // MARK: Going to rest, and waking
 
   private(set) var awake = 1.0
   private var swaysAboutRest = false
@@ -323,8 +318,6 @@ final class MascotNSView: NSView {
     render()
   }
 
-  // MARK: Testing seams
-
   var lastReactionForTesting: MascotReaction? { motion.lastReaction }
 
   var drawnTopStopForTesting: simd_float4 { canvas.drawnTopStopForTesting }
@@ -337,8 +330,6 @@ final class MascotNSView: NSView {
     return MascotRenderer.shared?.image(of: MascotRenderer.uniforms(for: frame, rays: 4), scale: scale)
   }
 }
-
-// MARK: - Motion
 
 extension MascotNSView {
   func advance(_ elapsed: Double) {
@@ -450,8 +441,6 @@ extension MascotNSView {
     )
   }
 }
-
-// MARK: - Visibility
 
 extension MascotNSView {
   private func updateMembership() {

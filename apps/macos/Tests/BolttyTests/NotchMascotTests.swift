@@ -268,8 +268,6 @@ final class NotchMascotTests: XCTestCase {
     XCTAssertFalse(dock.windowForTesting.isVisible)
   }
 
-  // MARK: The row of faces
-
   private func chat(_ agent: AgentId, _ state: ConversationExecutionState,
                     updated: TimeInterval = 0) -> Conversation {
     Conversation(providerID: agent.rawValue, title: "\(agent.rawValue) task", workingDirectory: "/tmp",

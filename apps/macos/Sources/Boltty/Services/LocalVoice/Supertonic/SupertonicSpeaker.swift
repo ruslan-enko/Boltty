@@ -91,8 +91,6 @@ final class SupertonicSpeaker {
     scheduleUnload()
   }
 
-  // MARK: - Playing
-
   private func synthesized(_ result: Result<[Float], Error>, id: Int, generation: Int) {
     guard generation == self.generation, let piece = waiting.removeValue(forKey: id) else { return }
     synthesizing -= 1
@@ -150,8 +148,6 @@ final class SupertonicSpeaker {
     }
     return buffer
   }
-
-  // MARK: - Idle
 
   private func scheduleUnload() {
     idleTimer?.invalidate()

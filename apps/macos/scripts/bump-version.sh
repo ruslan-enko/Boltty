@@ -1,16 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 
-# Moves Boltty to a new version, and its build number one up — once per
-# version: the same version again changes nothing, a lower one is refused.
-#
 #   scripts/bump-version.sh 0.2.0
-#
-# Both only ever grow: an installed Boltty compares its version with the
-# latest release's tag, so a version that did not grow is a release nobody is
-# told about.
-# project.yml is the source; the pbxproj is regenerated from it, and the
-# scheme XcodeGen rewrites on the way is put back as it was.
 
 cd "${0:A:h}/.."
 
@@ -20,8 +11,6 @@ version="${1:-}"
   exit 2
 }
 
-# "0.10.0" is newer than "0.9.2": number by number — release.sh and every
-# installed copy compare the same way.
 is_newer() {
   local -a a b
   a=(${(s:.:)1}); b=(${(s:.:)2})
@@ -38,8 +27,6 @@ current=$(sed -nE 's/^ *MARKETING_VERSION: "?([^"]+)"?$/\1/p' project.yml)
 build=$(sed -nE 's/^ *CURRENT_PROJECT_VERSION: "?([0-9]+)"?$/\1/p' project.yml)
 [[ -n "$current" && -n "$build" ]] || { print -u2 "no MARKETING_VERSION / CURRENT_PROJECT_VERSION in project.yml"; exit 1 }
 
-# Run twice for the same version, it does nothing the second time: the build
-# number moves once per version, not once per run.
 if [[ "$version" == "$current" ]]; then
   print "Boltty is already $current ($build) — nothing to change"
   exit 0

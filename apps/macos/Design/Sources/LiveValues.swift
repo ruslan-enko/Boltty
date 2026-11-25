@@ -34,7 +34,6 @@ final class LiveValues: @unchecked Sendable {
 
   func set(_ setting: LiveSetting?, for key: String) { lock.withLock { settings[key] = setting } }
 
-  /// The names read since the last call: what the page on screen is made of.
   func takeSeen() -> Set<String> {
     lock.withLock {
       defer { seen = [] }

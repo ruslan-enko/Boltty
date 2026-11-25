@@ -29,8 +29,6 @@ final class AgentStatisticsTests: XCTestCase {
 
   private func date(_ stamp: String) -> Date { ISO8601Stamp.date(from: stamp)! }
 
-  // MARK: Claude Code
-
   func testAClaudeReplyIsCountedOnceWithItsLastUsage() throws {
     try write([
       #"{"type":"user","message":{"role":"user","content":"fix the tests"},"uuid":"u1","timestamp":"2026-10-13T10:00:00.000Z"}"#,
@@ -53,8 +51,6 @@ final class AgentStatisticsTests: XCTestCase {
     XCTAssertEqual(summary.peakHour, 10)
   }
 
-  // MARK: Codex
-
   func testCodexTokensAreWhatTheRunningTotalGrewBy() throws {
     let name = "rollout-2026-10-13T10-00-00-01a11508-e860-7262-8977-c90e964ac81f.jsonl"
     try write([
@@ -74,8 +70,6 @@ final class AgentStatisticsTests: XCTestCase {
     XCTAssertEqual(summary.messages, 2, "scaffolding filed as the user's is not a message")
     XCTAssertEqual(summary.favoriteModel, "gpt-6-luna")
   }
-
-  // MARK: Grok
 
   func testGrokCountsTurnsFromEventsAndTokensFromUsage() throws {
     let directory = ".grok/sessions/%2FUsers%2Fme/01a099e5"
@@ -98,8 +92,6 @@ final class AgentStatisticsTests: XCTestCase {
     XCTAssertEqual(summary.tokens, 1000)
     XCTAssertEqual(summary.models.first?.id, "grok-4.6")
   }
-
-  // MARK: OpenCode
 
   func testOpenCodeReadsBothGenerationsAndFoldsSubSessions() throws {
     let url = home.appendingPathComponent(".local/share/opencode/opencode.db")
@@ -134,8 +126,6 @@ final class AgentStatisticsTests: XCTestCase {
     XCTAssertEqual(summary.sessions, 2)
   }
 
-  // MARK: Cache
-
   func testTheCacheReReadsOnlyWhatChanged() throws {
     let cache = home.appendingPathComponent("cache.json")
     let file = ".claude/projects/-p/s.jsonl"
@@ -153,8 +143,6 @@ final class AgentStatisticsTests: XCTestCase {
     try FileManager.default.removeItem(at: home.appendingPathComponent(file))
     XCTAssertTrue(reader.read().sessions.isEmpty, "a file gone from disk is gone from the count")
   }
-
-  // MARK: Summary
 
   func testTheRangeCountsFromMidnightDaysAgo() {
     let now = date("2026-10-13T15:00:00Z")

@@ -1,8 +1,5 @@
 import Foundation
 
-/// Files for `@`: a walk of the chat's folder, or Spotlight when the chat is in
-/// the home folder (the default, where a walk would never end). No CLI offers
-/// this to all five agents, so Boltty searches and the chosen file goes as a card.
 @MainActor
 final class FileMentionSearch {
   nonisolated static let resultLimit = 8
@@ -50,13 +47,10 @@ final class FileMentionSearch {
     stopSpotlight()
   }
 
-  /// Home, or a folder that holds it: Spotlight's index, not a walk.
   nonisolated static func usesSpotlight(_ root: String) -> Bool {
     let home = NSHomeDirectory()
     return root == home || home.hasPrefix(root.hasSuffix("/") ? root : root + "/")
   }
-
-  // MARK: - The chat's folder
 
   private func candidates(under root: String) async -> [FileMention.Candidate] {
     if let index, index.root == root, Date().timeIntervalSince(index.made) < Self.indexLifetime {
@@ -74,8 +68,6 @@ final class FileMentionSearch {
     index = (root, Date(), found)
     return found
   }
-
-  // MARK: - Spotlight
 
   private func searchSpotlight(
     _ query: String, under root: String,
@@ -140,7 +132,6 @@ enum FolderWalk {
   static let entryLimit = 40_000
   static let timeLimit: TimeInterval = 2
 
-  /// Never worth offering, and often most of a project's files.
   static let skippedNames: Set<String> = [
     "node_modules", "DerivedData", "Pods", "Carthage", "build", "dist", "target",
     "__pycache__", "venv", "vendor",
@@ -179,7 +170,6 @@ enum FolderWalk {
     return path.hasPrefix(prefix) ? String(path.dropFirst(prefix.count)) : path
   }
 
-  /// Spotlight's home holds Library and dot-folders, which nobody means by `@`.
   static func isOutOfSight(_ path: String, under root: String) -> Bool {
     let inside = relative(path, to: root)
     if inside == path, !path.hasPrefix(root) { return true }
@@ -189,8 +179,6 @@ enum FolderWalk {
   }
 }
 
-/// The plain lines of a folder's `.gitignore`: names and `*.ext`. Anything
-/// with a slash inside or another glob is passed over, never guessed at.
 struct GitIgnoreNames {
   var names: Set<String> = []
   var directoryNames: Set<String> = []

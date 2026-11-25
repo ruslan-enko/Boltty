@@ -84,8 +84,6 @@ final class PromptCaretView: NSView {
     glowLayer.contents = Self.glowImage(look: look, colors: glowColors, scale: scale)
   }
 
-  // MARK: Blinking
-
   func restartBlink(delay: TimeInterval, period: TimeInterval) {
     blinkLayer.removeAnimation(forKey: "blink")
     blinkLayer.opacity = 1
@@ -100,8 +98,6 @@ final class PromptCaretView: NSView {
     blink.isRemovedOnCompletion = false
     blinkLayer.add(blink, forKey: "blink")
   }
-
-  // MARK: The light
 
   nonisolated static let haloBlurRatio: CGFloat = 3
   nonisolated static let haloStrength: CGFloat = 0.6

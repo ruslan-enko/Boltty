@@ -136,8 +136,6 @@ final class AgentAdapterLiveTests: XCTestCase {
     )
   }
 
-  // MARK: - Limits (free: no model turn)
-
   func testClaudeCodeReportsItsPlanLimits() async throws {
     let client = ClaudeCodeClient()
     guard await client.probe().isAvailable else { throw XCTSkip("claude is not usable here") }
@@ -166,8 +164,6 @@ final class AgentAdapterLiveTests: XCTestCase {
     let usage = try XCTUnwrap(read, "account/rateLimits/read answered nothing")
     XCTAssertFalse(usage.windows.isEmpty)
   }
-
-  // MARK: - Context and compaction (costs one short turn and one compaction)
 
   private final class Recorder: @unchecked Sendable {
     private let lock = NSLock()
@@ -264,8 +260,6 @@ final class AgentAdapterLiveTests: XCTestCase {
     XCTAssertNotNil(Self.compactionRow(in: events), "contextCompaction became a row")
   }
 
-  // MARK: - Steering (Codex; costs one short turn)
-
   func testCodexTakesWordsMidTurnBelowThem() async throws {
     let client = CodexClient()
     guard await client.probe().isAvailable else { throw XCTSkip("codex is not usable here") }
@@ -344,8 +338,6 @@ final class AgentAdapterLiveTests: XCTestCase {
     XCTAssertEqual(CodexClient.decision(for: .always), "acceptForSession")
     XCTAssertEqual(CodexClient.decision(for: .reject), "decline")
   }
-
-  // MARK: - Grok
 
   func testGrokReportsItselfInstalled() async throws {
     let client = ACPClient(agent: .grok)

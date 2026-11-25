@@ -42,8 +42,6 @@ final class PromptAttachmentCard: NSView {
     case data(Data)
   }
 
-  // MARK: Looks
-
   static func look(for attachment: PromptAttachment) -> Look {
     switch attachment.payload {
     case let .imageData(data, _):
@@ -131,8 +129,6 @@ final class PromptAttachmentCard: NSView {
     return name.middleTruncated(to: 8)
   }
 
-  /// A path breaks after a slash where it can, so a name is not cut in two
-  /// while the folder before it would have made room.
   private static func pathText(_ path: String, font: NSFont, ink: NSColor) -> NSAttributedString {
     wordsText(path.replacingOccurrences(of: "/", with: "/\u{200B}"), font: font, ink: ink, breaks: .byWordWrapping)
   }
@@ -148,8 +144,6 @@ final class PromptAttachmentCard: NSView {
       .font: font, .foregroundColor: ink, .paragraphStyle: paragraph,
     ])
   }
-
-  // MARK: The view
 
   let look: Look
   private(set) var attachmentID: UUID?
@@ -322,8 +316,6 @@ final class PromptAttachmentCard: NSView {
     return super.hitTest(point)
   }
 
-  // MARK: Pointer
-
   override func mouseEntered(with event: NSEvent) { setHovered(true) }
   override func mouseExited(with event: NSEvent) {
     setHovered(false)
@@ -406,8 +398,6 @@ final class PromptAttachmentCard: NSView {
     CATransaction.commit()
   }
 
-  // MARK: Content
-
   private func applyWords() {
     let inset = AgentPaletteMetrics.attachmentCardInset
     let width = bounds.width - inset * 2
@@ -481,8 +471,6 @@ final class PromptAttachmentCard: NSView {
     reveal.start()
     revealForTesting = reveal
   }
-
-  // MARK: Coming and going
 
   func playEntrance() {
     guard !MotionPreferences.reduceMotion, let layer = surface.layer else { return }

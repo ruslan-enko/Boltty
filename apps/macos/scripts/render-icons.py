@@ -15,7 +15,6 @@ os.makedirs(OUT, exist_ok=True)
 HEAD = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#000" '
         'stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">')
 
-# The only radii: J a joint, M a medium corner, B a container's corner; S small features only.
 S, J, M, B = 0.75, 1.25, 2.0, 3.25
 
 
@@ -46,7 +45,6 @@ def poly(points, r=J, closed=False, then=""):
         joints[i] = dict(t=t, enter=(b[0] - ux * t, b[1] - uy * t),
                          leave=(b[0] + vx * t, b[1] + vy * t), r=b[2], sweep=1 if cross > 0 else 0,
                          lu=lu, lv=lv)
-    # A fillet that does not fit is a drawing error, never squeezed.
     for i, j in joints.items():
         nxt = joints.get((i + 1) % count)
         room = j["lv"] - j["t"] - (nxt["t"] if nxt else 0)
@@ -120,7 +118,6 @@ def w(name, *parts):
 APEX = J * (math.sqrt(2) - 1)  # how far a right-angled fillet stands inside its vertex
 BOX = lambda: R(1.75, 1.75, 12.5, 12.5, B)
 
-# Lines
 w("plus", P(line((8, 2.25), (8, 13.75)), line((2.25, 8), (13.75, 8))))
 w("xmark", P(line((3.25, 3.25), (12.75, 12.75)), line((12.75, 3.25), (3.25, 12.75))))
 w("check", P(poly([(2.75, 8.25), (6.25, 11.75), (13.25, 4.25)])))
@@ -128,7 +125,6 @@ w("chart", P(line((3.25, 14.25), (3.25, 9.25)), line((8, 14.25), (8, 1.75)), lin
 w("waveform", P(line((1.75, 6.5), (1.75, 9.5)), line((4.875, 4.25), (4.875, 11.75)), line((8, 1.75), (8, 14.25)),
                 line((11.125, 4.25), (11.125, 11.75)), line((14.25, 6.5), (14.25, 9.5))))
 
-# Chevrons: one drawing, turned
 CHEV = [(2.75, 5.625), (8, 10.875), (13.25, 5.625)]
 w("chevron-down", P(poly(CHEV)))
 w("chevron-left", P(poly(rot(CHEV, 1))))
@@ -136,10 +132,8 @@ w("chevron-up", P(poly(rot(CHEV, 2))))
 w("chevron-right", P(poly(rot(CHEV, 3))))
 w("chevrons-up-down", P(poly([(5, 6.438), (8, 3.5), (11, 6.438)]), poly([(5, 9.562), (8, 12.5), (11, 9.562)])))
 
-# Arrows
 w("arrow-down", P(line((8, 2.25), (8, 13.5 - APEX)), poly([(3.25, 8.75), (8, 13.5), (12.75, 8.75)])))
 
-# Circles
 w("circle", C(8, 8, 6.25))
 w("stop", R(4, 4, 8, 8, J).replace("/>", ' fill="#000"/>'))
 w("circle-dashed", *[P(arc(8, 8, 6.25, k * 45 - 90 + 9.5, k * 45 - 90 + 35.5)) for k in range(8)])
@@ -149,10 +143,8 @@ w("hex-grid", D(8, 8, 1.05), *[D(*pol(8, 8, 5.25, k * 60 - 90), 1.05) for k in r
 w("power", P(line((8, 1.75), (8, 7.25))), P(arc(8, 8.25, 6, -50, 230)))
 w("magnifier", C(7, 7, 5), P(line(pol(7, 7, 5, 45), (14, 14))))
 
-# Arrows round
 def reload_head(a, r=6.25):
     ax, ay = pol(8, 8, r, a)
-    # The head's fillet apex stands on the arc's end; its corner lies beyond, along the arc.
     tx, ty = -math.sin(math.radians(a)), math.cos(math.radians(a))
     return ax, ay, tx, ty
 
@@ -161,7 +153,6 @@ SYNC_HEADS = [(12.386, 1.407), (13.081, 3.547), (10.942, 4.243)], [(3.704, 14.63
 w("sync", P(arc(8, 8, 6.25, 175, 315)), P(arc(8, 8, 6.25, -5, 135)),
   *[P(poly(h)) for h in SYNC_HEADS])
 
-# Containers
 w("code", BOX(), P(poly([(6.75, 5.5), (4.25, 8), (6.75, 10.5)]), poly([(9.25, 5.5), (11.75, 8), (9.25, 10.5)])))
 w("terminal", BOX(), P(poly([(4.75, 5.25), (7.5, 8), (4.75, 10.75)]), line((9, 10.75), (11.25, 10.75))))
 w("film", BOX(), P(poly([(6.25, 5), (11.25, 8), (6.25, 11)], closed=True)))
@@ -172,14 +163,12 @@ w("copy", R(1.75, 5, 9.25, 9.25, 2.5), P(arc(11.75, 8.75, 2.5, 90, 0), "L14.25 4
 w("folder", P(poly([(1.75, 2.5, M), (6.25, 2.5), (8.25, 4.75), (14.25, 4.75, B), (14.25, 13.5, B), (1.75, 13.5, B)], closed=True)))
 w("lock", R(2.75, 6.75, 10.5, 7.5, B), P(poly([(5, 6.75), (5, 1.75, 3), (11, 1.75, 3), (11, 6.75)])), D(8, 10.5, 1.1))
 
-# Corners and dashes
 CORNER = [(1.75, 5), (1.75, 1.75, B), (5, 1.75)]
 corners = "".join(poly(rot(CORNER, k)) for k in range(4))
 dash = "".join(line(*rot([(7, 1.75), (9, 1.75)], k)) for k in range(4))
 w("region", P(corners, dash))
 w("text-scan", P(corners, line((4.75, 6.25), (11.25, 6.25)), line((4.75, 9.75), (9, 9.75))))
 
-# Bell
 DOME = (3.75, 2, 4.25)
 SIDES = [(12.25, 9, M), (13.75, 11.75), (2.25, 11.75), (3.75, 9, M)]
 CLAPPER = line((6.75, 14.25), (9.25, 14.25))
@@ -191,7 +180,6 @@ w("bell-slash",
   P(poly([(3.75, 6.5), (3.75, 9, M), (2.25, 11.75), (9.25, 11.75)])), P(CLAPPER),
   P(line((2.5, 2.5), (13.5, 13.5))))
 
-# Eye: two big arcs and two small ones, each tangent to the next
 hw, c, top_y = 6.25, J, 3.75
 half = 8 - top_y
 d_ = ((hw - c) ** 2 - (half - c) ** 2) / (2 * (half - c))
@@ -203,7 +191,6 @@ w("eye", P(f"M{p2(8 - tx, 8 - ty)}A{n(big)} {n(big)} 0 0 1 {p2(8 + tx, 8 - ty)}"
            f"A{n(big)} {n(big)} 0 0 1 {p2(8 - tx, 8 + ty)}"
            f"A{n(c)} {n(c)} 0 0 1 {p2(8 - tx, 8 - ty)}Z"), D(8, 8, 1.7))
 
-# Polygons, every vertex round
 HEX = [pol(8, 8, 6.75, k * 60 - 90) for k in range(6)]
 w("settings", P(poly(HEX, r=M, closed=True)), C(8, 8, 2.1))
 w("warning", P(poly([(8, -0.25), (15.75, 13.75), (0.25, 13.75)], r=M, closed=True)),
@@ -212,23 +199,19 @@ w("pointer-rays", P(poly([(5.75, 5.75), (14.5, 9), (10.5, 10.5), (9, 14.5)], r=S
   P(line((6, 1.75), (6, 3.25)), line((1.75, 6), (3.25, 6)), line((2.75, 2.75), (3.85, 3.85)),
     line((9.25, 2.75), (8.15, 3.85)), line((2.75, 9.25), (3.85, 8.15))))
 
-# Star: a round tip and a round waist at every point
 star = []
 for k in range(4):
     star.append(pol(6.75, 9.25, 6.5, k * 90 - 90) + (S,))
     star.append(pol(6.75, 9.25, 2.2, k * 90 - 45) + (S,))
 
-# Speaker
 w("speaker", P(poly([(1.75, 5.75), (4.5, 5.75), (8.75, 2.25), (8.75, 13.75), (4.5, 10.25), (1.75, 10.25)], closed=True)),
   P(arc(8.75, 8, 2.75, -50, 50), arc(8.75, 8, 5.5, -50, 50)))
 
-# People
 w("speaking-person", C(6, 5.25, 2.75), P(arc(6, 14.25, 4.25, 180, 360)),
   P(arc(8, 5.25, 3.25, -45, 45), arc(8, 5.25, 5.75, -45, 45)))
 w("people", C(5.75, 6.25, 2.25), P(arc(5.75, 14.25, 4, 180, 360)), C(10.75, 3.75, 1.75).replace("/>", ' stroke-width="1.2"/>'),
   P(arc(10.75, 12.25, 3.5, -70, 0)))
 
-# Link: two hooks facing each other and a bar between them, all on one diagonal
 def uv(u, v):
     k = math.sqrt(0.5)
     return (8 + (u + v) * k, 8 + (v - u) * k)
@@ -239,23 +222,17 @@ w("link", P(f"M{p2(*uv(1.25, rr))}L{p2(*uv(4.25, rr))}A{n(rr)} {n(rr)} 0 0 0 {p2
             f"M{p2(*uv(-1.25, -rr))}L{p2(*uv(-4.25, -rr))}A{n(rr)} {n(rr)} 0 0 0 {p2(*uv(-4.25, rr))}L{p2(*uv(-1.25, rr))}",
             line(uv(-2.25, 0), uv(2.25, 0))))
 
-# Music
 w("music", C(4.25, 12, 2), C(11.25, 10.5, 2), P(poly([(6.25, 12), (6.25, 3.25), (13.25, 1.75), (13.25, 10.5)])))
 
-# Compact: two corners and their diagonals
 NE = [(9.25, 3.25), (9.25, 6.75), (12.75, 6.75)]
 apex_d = APEX * math.sqrt(0.5)
 NE_LINE = [(13.75, 2.25), (9.25 + apex_d, 6.75 - apex_d)]
 w("compact", P(poly(NE)), P(line(*NE_LINE)), P(poly(rot(NE, 2))), P(line(*rot(NE_LINE, 2))))
 
-# Expand: compact turned outward, the corners at the box's and the diagonals reaching them
 NE_OUT = [(10.25, 2.25), (13.75, 2.25), (13.75, 5.75)]
 NE_OUT_LINE = [(9.25, 6.75), (13.75 - apex_d, 2.25 + apex_d)]
 w("expand", P(poly(NE_OUT)), P(line(*NE_OUT_LINE)), P(poly(rot(NE_OUT, 2))), P(line(*rot(NE_OUT_LINE, 2))))
 
-# Brain: two lobes, stepped, every step round
-
-# Keys
 k = 1.75
 w("key-command", P(f"M5.75 8L5.75 4A{k} {k} 0 1 0 4 5.75L12 5.75A{k} {k} 0 1 0 10.25 4L10.25 12"
                    f"A{k} {k} 0 1 0 12 10.25L4 10.25A{k} {k} 0 1 0 5.75 12Z"))
@@ -266,14 +243,10 @@ w("key-option", P(poly([(1.75, 3.5), (5, 3.5), (10.75, 12.5), (14.25, 12.5)])), 
 w("key-shift", P(poly([(8, 1), (15.25, 8.5, 1), (11, 8.5, 1), (11, 14.25), (5, 14.25), (5, 8.5, 1), (0.75, 8.5, 1)], closed=True)))
 w("key-tab", P(line((1.75, 8), (11.75 - APEX, 8))), P(poly([(8, 4.25), (11.75, 8), (8, 11.75)])), P(line((14.25, 3), (14.25, 13))))
 
-# An arrow's tip is two straight wings meeting on the stroke's round end, at 45 degrees
-# either side of the way it points: a fillet there turned the tip into a blob.
 def head(tip, heading, wing=3.0):
     return "".join(line(pol(tip[0], tip[1], wing, heading + 180 + side), tip) for side in (-45, 45))
 
 
-# Circles tangent one to the next: (x, y, radius, 1 bulging out, 0 a notch). Tangent by
-# construction, so an outline of bumps has no corner anywhere.
 def chain(circles):
     d = ""
     count = len(circles)
@@ -304,9 +277,7 @@ def notch(a, b, s, side):
     return (mx + side * h * dy / l, my - side * h * dx / l, s, 0)
 
 
-# The ten drawn after the Return and microphone reference.
 w("key-return", P(poly([(8, 3.25), (13.5, 3.25, 2.75), (13.5, 10, 2.75), (2.5, 10)])), P(head((2.5, 10), 180, 3.75)))
-# The capsule's foot and the cradle share a centre, so the gap between them is one number.
 w("mic", R(5, 1.5, 6, 8.5, 3), P(arc(8, 7, 5.75, 0, 180), line((8, 12.75), (8, 14.5))))
 w("arrow-down-circle", C(8, 8, 6.5), P(line((8, 4.75), (8, 11.25)), head((8, 11.25), 90, 3.5)))
 w("arrow-up-circle", C(8, 8, 6.5), P(line((8, 11.25), (8, 4.75)), head((8, 4.75), -90, 3.5)))
@@ -317,8 +288,6 @@ reload_tip = pol(8, 8.5, 5.5, RELOAD_END)
 w("reload", P(arc(8, 8.5, 5.5, -8, 360 + RELOAD_END)), P(head(reload_tip, RELOAD_END + 90 - 8, 2.6)))
 w("doc", P(poly([(3, 1.5, 2.5), (9.5, 1.5, 2.5), (13, 5, 2.5), (13, 14.5, 2.5), (3, 14.5, 2.5)], closed=True)),
   P(line((5.75, 8.5), (10.25, 8.5)), line((5.75, 11.25), (8.5, 11.25))))
-# Turned half a circle about its middle, the bolt is itself. Its corners stand far outside
-# the box so a soft fillet lands on the very tip and leaves the shoulders straight.
 BOLT = [(10, -1.25, 1.25), (0.5, 10.5, 1.25), (6.25, 10.5, 1)]
 w("bolt", P(poly(BOLT + [(16 - x, 16 - y, r) for x, y, r in BOLT], closed=True)))
 # The maintainer's own drawing, kept to the letter: its stars are curves, which is why

@@ -164,8 +164,6 @@ final class BolttyAIRevealGateTests: XCTestCase {
     }
   }
 
-  // MARK: - Streaming: a finished paragraph shows while the next is written
-
   func testAStreamIsCutAtItsLastBlankLineOutsideAFence() {
     func split(_ text: String) -> [String] {
       let cut = StreamingProse.split(text)
@@ -297,8 +295,6 @@ final class PaletteAnswerTextTests: XCTestCase {
     return range.location
   }
 
-  // MARK: - Line breaks
-
   func testOneItemALineKeepsItsLines() {
     let out = render("7 — A lucky number.\n8 — Looks the same rotated.").string
     XCTAssertFalse(out.contains("number. 8"), out)
@@ -315,8 +311,6 @@ final class PaletteAnswerTextTests: XCTestCase {
     let source = "```\nlet a = 1\nlet b = 2\n```"
     XCTAssertEqual(PaletteAnswerText.keepingLineBreaks(source), source)
   }
-
-  // MARK: - Tables
 
   private func textBlocks(_ string: NSAttributedString, at index: Int) -> [NSTextBlock] {
     style(string, at: index)?.textBlocks ?? []
@@ -419,8 +413,6 @@ final class PaletteAnswerTextTests: XCTestCase {
     XCTAssertTrue(textBlocks(out, at: try index(out, of: "After")).isEmpty)
   }
 
-  // MARK: - Code
-
   func testAFencedBlockIsFlushAndUnwashed() throws {
     let out = render("```swift\nlet a = 1\n```")
 
@@ -470,8 +462,6 @@ final class PaletteAnswerTextTests: XCTestCase {
     let second = try XCTUnwrap(style(out, at: try index(out, of: "second")))
     XCTAssertIdentical(first, second)
   }
-
-  // MARK: - Headings, rules and retractions
 
   func testHeadingsStepDownAsCodexSetsThem() throws {
     let out = render("# One\n\n## Two\n\n### Three\n\n#### Four\n\nBody.")
@@ -803,8 +793,6 @@ final class PaletteMessageBlockTests: XCTestCase {
   func testAMessageWithNoFilesReportsNone() {
     XCTAssertEqual(message([text("t1", "Just words.")]).resultFiles, [])
   }
-
-  // MARK: - The answer is prose
 
   func testAnAnswerIsOneRunAndAFailureIsNotInIt() {
     let shown = PaletteAnswerRun.shown([.prose("A.\n\nB."), .failure("HTTP 529"), .reasoning("hm")])
@@ -1180,8 +1168,6 @@ final class BolttyAIPreviewCardTests: XCTestCase {
       "the text is mostly gone where the disc begins")
   }
 
-  // MARK: - The agent's question
-
   func testStreamingAnAnswerPreservesTheReadersScrollPosition() {
     let body = (1...100).map { "Line \($0) of the answer" }.joined(separator: "\n")
     let card = makeCard(body: body, height: 260)
@@ -1342,8 +1328,6 @@ final class BolttyAIPreviewCardTests: XCTestCase {
     }
   }
 }
-
-// MARK: - The failure card
 
 @MainActor
 final class BolttyAIFailureCardTests: XCTestCase {
@@ -2202,8 +2186,6 @@ final class PaletteActivityRowTests: XCTestCase {
     return card
   }
 
-  // MARK: - The order the turn happened in
-
   func testTheBodyKeepsTheOrderTheTurnHappenedIn() {
     let segments = answer([
       .text(TextPart(id: "t1", kind: .text, text: "Looking.")),
@@ -2264,8 +2246,6 @@ final class PaletteActivityRowTests: XCTestCase {
     guard case let .group(work) = segments[0] else { return XCTFail("expected the pill alone") }
     XCTAssertEqual(work.map(\.isThought), [true, false])
   }
-
-  // MARK: - The row itself
 
   func testTheCardDrawsAGroupAndNotAWordOfItInTheProse() throws {
     let card = card(answer([
@@ -2328,8 +2308,6 @@ final class PaletteActivityRowTests: XCTestCase {
 
     XCTAssertTrue(card.expandedActivitiesForTesting.isEmpty)
   }
-
-  // MARK: - The measure and the draw
 
   func testAnOpenRowIsTallerThanAClosedOneByItsOutput() {
     let value = answer([activity("1", "bash", detail: "one\ntwo\nthree")])

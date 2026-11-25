@@ -92,8 +92,6 @@ struct HotkeyRecorderField: View {
   }
 }
 
-// MARK: - Menu chords
-
 struct MenuShortcutRecorderField: View {
   let id: String
   let binding: ShortcutBinding
@@ -145,8 +143,6 @@ struct MenuShortcutRecorderField: View {
     return true
   }
 }
-
-// MARK: - The menu
 
 private struct SuggestionAnchor: NSViewRepresentable {
   let suggestions: [HotkeySuggestions.Suggestion]

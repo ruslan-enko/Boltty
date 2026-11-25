@@ -24,8 +24,6 @@ final class ModelSwitchingTests: XCTestCase {
     return (store, engine, client)
   }
 
-  // MARK: - What Settings stores
-
   func testAStoredChoiceKnowsItsProviderAndAnOldOneStillReads() {
     let models = [option("zen", "shared"), option("strata", "shared"), option("strata", "other")]
     XCTAssertEqual(models.option(stored: "strata/shared")?.selection.providerID, "strata")
@@ -59,8 +57,6 @@ final class ModelSwitchingTests: XCTestCase {
     XCTAssertNil(coordinator.resolvedDefaultModel(for: "opencode"), "`opencode/qwen` would not run")
     XCTAssertEqual(coordinator.resolvedDefaultModel(for: "claude")?.modelID, "qwen")
   }
-
-  // MARK: - Applying it
 
   func testASessionStartedHereIsNotToldAgainUntilTheChatChanges() async throws {
     let (store, engine, client) = makeEngine()
@@ -144,8 +140,6 @@ final class ModelSwitchingTests: XCTestCase {
     XCTAssertEqual(store.conversation(id: chat.id)?.model, chosen)
   }
 
-  // MARK: - A model that has gone
-
   func testATurnThatFailedBeforeAnyReplyKeepsItsWords() {
     let store = makeStore()
     let chat = store.createConversation(title: "t", workingDirectory: "/tmp", providerID: "opencode")
@@ -178,8 +172,6 @@ final class ModelSwitchingTests: XCTestCase {
     XCTAssertEqual(report.sentence, AgentFailureReport.universalSentence)
     XCTAssertFalse(report.offersModelChoice)
   }
-
-  // MARK: - OpenCode's events
 
   private func events(_ json: String) throws -> [AgentEvent] {
     let frame = try JSONDecoder().decode(OpenCodeDTO.EventFrame.self, from: Data(json.utf8))

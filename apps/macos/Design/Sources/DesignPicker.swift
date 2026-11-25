@@ -1,10 +1,8 @@
 import AppKit
 
-/// A view of the product's, by the name its code gives it.
 @MainActor
 struct DesignElement {
   let view: NSView
-  /// The class that holds it, and the property there; a view no property holds goes by its class.
   let owner: String
   let property: String?
   let type: String
@@ -12,10 +10,8 @@ struct DesignElement {
 
   var name: String { property.map { "\(owner).\($0)" } ?? type }
 
-  /// `labels[2]` is told by `labels` in the code.
   var plainProperty: String? { property.map { String($0.prefix { $0 != "[" }) } }
 
-  /// The elements in `root`, from the outside in.
   static func all(in root: NSView) -> [DesignElement] {
     var names: [ObjectIdentifier: (owner: String, property: String)] = [:]
     var found: [DesignElement] = []
@@ -62,10 +58,8 @@ struct DesignElement {
     String(reflected.split(separator: ".").last ?? "")
   }
 
-  /// What only senses the pointer.
   private static let unseen: Set<String> = ["PaletteInvisibleScroller"]
 
-  /// The smallest element under `point` (in the window) that can be seen there.
   static func under(_ point: NSPoint, among elements: [DesignElement]) -> DesignElement? {
     let hits = elements.filter { element in
       guard !unseen.contains(element.type), element.name != "MascotNSView.canvas" else { return false }
@@ -81,7 +75,6 @@ struct DesignElement {
 
   private var area: CGFloat { view.bounds.width * view.bounds.height }
 
-  /// An empty label or a bare container over the rest is not what was pointed at.
   private var isSeen: Bool {
     if property?.hasSuffix("Sensor") == true { return false }
     if let field = view as? NSTextField { return !field.stringValue.isEmpty }
@@ -91,7 +84,6 @@ struct DesignElement {
     return layer.contents != nil || (layer.backgroundColor?.alpha ?? 0) > 0
   }
 
-  /// The element around this one.
   func parent(among elements: [DesignElement]) -> DesignElement? {
     var view = view.superview
     while let current = view {
@@ -121,7 +113,6 @@ struct DesignElement {
   private static func number(_ value: CGFloat) -> String { DesignFoundations.number(value) }
 }
 
-/// Over the page: outlines what the pointer is on, and what was chosen.
 final class DesignPickerOverlay: NSView {
   var onPick: ((DesignElement) -> Void)?
   var onCancel: (() -> Void)?

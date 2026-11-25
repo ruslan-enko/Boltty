@@ -1,6 +1,5 @@
 import AppKit
 
-/// The panel itself, with no conversations behind it, in one state.
 @MainActor
 enum DesignPanelState: String, CaseIterable {
   case first = "First screen"
@@ -126,8 +125,6 @@ enum DesignPanelState: String, CaseIterable {
       view.applyVoiceTranscript("Now move the subtitles with them")
     }
   }
-
-  // MARK: - Made-up chats
 
   private static func user(_ id: String, _ text: String) -> ConversationMessage {
     ConversationMessage(

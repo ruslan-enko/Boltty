@@ -3,8 +3,6 @@ import Foundation
 enum CodexRolloutTranscript {
   static let readLimit = 24 << 20
 
-  /// The skill's record follows the words it was sent with: `/name` goes back
-  /// in front of them, or stands alone when the request was the skill alone.
   static func prependSkill(
     _ name: String, to messages: inout [ConversationMessage], at stamp: Date, id: String?
   ) {
@@ -122,8 +120,6 @@ enum CodexRolloutTranscript {
     return AgentPlan.fold(messages)
   }
 
-  /// The turn that holds `messageID`: a turn's own id (what a live chat names
-  /// its answers by) or a message's id in the rollout (what a re-read one does).
   static func turnID(threadID: String, codexHome: URL, holding messageID: String) -> String? {
     guard let url = locate(threadID: threadID, in: codexHome.appendingPathComponent("sessions")) else {
       return nil
@@ -148,10 +144,6 @@ enum CodexRolloutTranscript {
     return found
   }
 
-  /// A forked thread's rollout holds only what came after the fork; its
-  /// `session_meta` names the thread it came from and how many of that
-  /// rollout's lines it carries (`forked_from_id`, `forked_from_ordinal_exclusive`,
-  /// 0.169). Oldest first, a fork of a fork included.
   static func forkPrefixes(of url: URL) -> [(url: URL, lines: Int)] {
     let sessions = url.deletingLastPathComponent().deletingLastPathComponent()
       .deletingLastPathComponent().deletingLastPathComponent()

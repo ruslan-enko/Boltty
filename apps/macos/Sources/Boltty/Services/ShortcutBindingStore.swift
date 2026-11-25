@@ -15,8 +15,6 @@ final class ShortcutBindingStore: ObservableObject {
     self.overrides = Self.load(from: defaults)
   }
 
-  // MARK: - Reading
-
   func binding(for id: String) -> ShortcutBinding {
     if let override = overrides[id] { return override }
     return Self.defaultBinding(for: id)
@@ -31,8 +29,6 @@ final class ShortcutBindingStore: ObservableObject {
   }
 
   func isCustomized(_ id: String) -> Bool { overrides[id] != nil }
-
-  // MARK: - Writing
 
   func setBinding(_ binding: ShortcutBinding?, for id: String) {
     if let binding, binding != Self.defaultBinding(for: id) {
@@ -49,8 +45,6 @@ final class ShortcutBindingStore: ObservableObject {
     persist()
     applyToBoundItems()
   }
-
-  // MARK: - Menu wiring
 
   func bind(_ item: NSMenuItem, to id: String) {
     boundItems.removeAll { $0.item === item }
@@ -81,8 +75,6 @@ final class ShortcutBindingStore: ObservableObject {
     item.keyEquivalentModifierMask = binding.modifiers
   }
 
-  // MARK: - Conflicts
-
   func conflicts() -> [ShortcutBinding: [String]] {
     var byBinding: [ShortcutBinding: [String]] = [:]
     for id in KeyboardShortcutCatalog.customizableIDs {
@@ -96,8 +88,6 @@ final class ShortcutBindingStore: ObservableObject {
   func conflictingIDs() -> Set<String> {
     Set(conflicts().values.flatMap { $0 })
   }
-
-  // MARK: - Persistence
 
   private func persist() {
     let encoded = overrides.mapValues { "\($0.modifiers.rawValue):\($0.keyEquivalent)" }

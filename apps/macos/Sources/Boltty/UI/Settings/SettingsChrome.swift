@@ -75,7 +75,6 @@ struct SettingsRefreshButton: View {
   }
 }
 
-/// A field that narrows a long page down, as a search field does.
 struct SettingsFilterField: View {
   let prompt: String
   @Binding var text: String

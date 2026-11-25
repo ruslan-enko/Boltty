@@ -47,7 +47,6 @@ enum CodexMapper {
       return .activity(AgentActivity(
         id: id,
         name: item.string("tool") ?? "tool",
-        // The REPL of Computer Use says what each call is for.
         summary: item.object("arguments")?.string("title")
           ?? item.string("server").map { "\($0) · \(item.string("tool") ?? "")" },
         state: state(item.string("status"), completed: completed),

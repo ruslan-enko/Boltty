@@ -90,7 +90,6 @@ struct MascotMotion {
     pointerTarget = SIMD3(max(-1, min(1, x)), max(-1, min(1, y)), weight)
   }
 
-  /// How loud the voice it listens to is, 0–1: it swells and widens its eyes.
   mutating func hear(_ level: Double) {
     hearing.target = max(0, min(1, level))
   }
@@ -112,8 +111,6 @@ struct MascotMotion {
     lastReaction = chosen
     action = Action(kind: .reaction(chosen), start: t, side: random.next() < 0.5 ? -1 : 1)
   }
-
-  // MARK: - Time
 
   mutating func update(_ elapsed: Double) {
     let dt = max(0, min(elapsed, 1.0 / 20))
@@ -222,8 +219,6 @@ struct MascotMotion {
     ]
   }
 
-  // MARK: - Attention
-
   private mutating func glance() {
     let back = random.next() < 0.22
     let angle = random.next() * 2 * .pi
@@ -245,8 +240,6 @@ struct MascotMotion {
     let x = scan < 0.86 ? -1 + 2 * (scan / 0.86) : 1 - 2 * ((scan - 0.86) / 0.14)
     focus = SIMD2(x, 0.45 - scanLine * 0.3)
   }
-
-  // MARK: - Actions
 
   private mutating func nextActionKind() -> Action.Kind? {
     switch mood.actions {
@@ -278,8 +271,6 @@ struct MascotMotion {
     range.lowerBound + random.next() * (range.upperBound - range.lowerBound)
   }
 }
-
-// MARK: - The pose
 
 struct MascotMotionPose: Equatable {
   var yaw = 0.0, pitch = 0.0, roll = 0.0
@@ -318,8 +309,6 @@ extension MascotMotionPose {
     return pose
   }
 }
-
-// MARK: - Moods
 
 struct MascotMood: Equatable {
   enum Actions: Equatable { case none, hops, bops, sighs, settles }
@@ -414,8 +403,6 @@ struct MascotMood: Equatable {
     }
   }
 }
-
-// MARK: - Pieces
 
 private struct Spring {
   var value = 0.0

@@ -35,8 +35,6 @@ struct AgentQuestion: Equatable, Sendable {
   let allowsMultiple: Bool
   let allowsCustom: Bool
   var copyText: String? = nil
-  /// Its ask is gone (`PendingInteraction.isLate`): answered as a message, and no
-  /// reason to refuse another.
   var isLate: Bool = false
 
   var keyboardFooter: String {

@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Boltty's design, shown by the parts the product draws with. An app of its own:
-/// nothing else of the product starts.
 @MainActor
 final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate, NSWindowDelegate {
   private enum Page {
@@ -30,7 +28,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
   private lazy var picker = DesignPickerOverlay(over: scroll)
   private let pick = NSButton(title: "Pick an Element", target: nil, action: nil)
   private var source: DesignElementSource?
-  /// Which of the elements of its name the chosen one is, to find it on the page made again.
   private var chosen: (name: String, ordinal: Int)?
   private var refresh: Timer?
   private var lastRefresh: CFTimeInterval = 0
@@ -67,8 +64,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
     }
   }
 
-  // MARK: - Pages
-
   private func makeRows() -> [Row] {
     func sections(_ title: String, _ make: @escaping () -> [DesignSection]) -> Row { .page(title, .sections(make)) }
     return [
@@ -96,7 +91,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
     }
   }
 
-  /// `-boltty.design.page "Chat list"` opens on that page.
   private var startRow: Int {
     let wanted = UserDefaults.standard.string(forKey: "boltty.design.page")
     return rows.firstIndex { if case .page(let title, _) = $0 { title == wanted } else { false } } ?? 1
@@ -123,7 +117,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
       holder.layoutSubtreeIfNeeded()
       findChosen()
       inspector.pageUses(LiveValues.shared.takeSeen(), isNewPage: isNewPage)
-      // What draws a moment later reads its values then.
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
         self?.inspector.pageUses(LiveValues.shared.takeSeen(), isNewPage: false)
       }
@@ -148,7 +141,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
     }
   }
 
-  /// The page is made again with the new values, never so often that the slider under the pointer waits.
   private func valuesChanged() {
     guard refresh == nil else { return }
     let wait = max(0.02, min(0.3, max(0.1, refreshCost)) - (CACurrentMediaTime() - lastRefresh))
@@ -204,8 +196,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
   }
 
   func windowWillClose(_ notification: Notification) { NSApp.terminate(nil) }
-
-  // MARK: - Window
 
   private func buildWindow() {
     window.title = "Boltty Design"
@@ -290,8 +280,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
     return field
   }
 
-  // MARK: - Picking
-
   private var elements: [DesignElement] {
     page?.subviews.compactMap { $0 as? DesignTile }.flatMap(DesignElement.all(in:)) ?? []
   }
@@ -325,7 +313,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
     inspector.show(element: nil, source: nil)
   }
 
-  /// The page was made again: the chosen element's view is another.
   private func findChosen() {
     guard let chosen else { return }
     let named = elements.filter { $0.name == chosen.name }
@@ -358,8 +345,6 @@ final class DesignWindowController: NSObject, NSApplicationDelegate, NSTableView
     submenu("Window", [("Close", #selector(NSWindow.performClose(_:)), "w")])
     return menu
   }
-
-  // MARK: - Sidebar
 
   func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
 

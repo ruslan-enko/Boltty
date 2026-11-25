@@ -1,9 +1,6 @@
 import Foundation
 import os
 
-/// Print mode cannot ask, and a `PreToolUse` hook can deny but not allow, so the
-/// process runs with `--dangerously-skip-permissions` and this gate decides every
-/// call. The hook fails closed.
 final class AntigravityPermissionGate: @unchecked Sendable {
   static let hookName = "boltty-permission-gate"
   static let environmentKey = "BOLTTY_AGY_GATE"
@@ -88,8 +85,6 @@ final class AntigravityPermissionGate: @unchecked Sendable {
       ))
     }
   }
-
-  // MARK: - The hook
 
   static var defaultHooksFile: URL {
     URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini/config/hooks.json")
@@ -208,7 +203,6 @@ enum AntigravityToolPolicy {
       }) else { return .allow }
       return .ask(action: "read", resources: [path], always: readKey(path))
     }
-    // agy's own notes (a plan, its task list) go to its `brain` folder.
     if edits.contains(tool) || tool == "write_file", !paths.isEmpty, paths.allSatisfy({ inside($0, brain) }) {
       return .allow
     }

@@ -1,8 +1,6 @@
 import Foundation
 
 enum OpenCodeMapper {
-  // MARK: - Messages
-
   static func message(from dto: OpenCodeDTO.Message) -> ConversationMessage? {
     switch dto.type {
     case "user":
@@ -12,7 +10,6 @@ enum OpenCodeMapper {
         createdAt: date(dto.time?.created),
         completedAt: date(dto.time?.created)
       )
-      // A skill goes beside the words (2.3.2): `/id` goes back in front of them.
       let skills = (dto.skills ?? []).map { "/" + $0.id }.joined(separator: " ")
       let text = [skills, dto.text ?? ""].filter { !$0.isEmpty }.joined(separator: " ")
       if !text.isEmpty {
@@ -152,7 +149,6 @@ enum OpenCodeMapper {
     return Array(Set(paths)).sorted()
   }
 
-  /// The record keeps no title for a call (2.3.2), so a command is named by its line.
   static func summary(forTool name: String?, input: JSONValue?) -> String? {
     guard let name, ["shell", "bash"].contains(name),
           let command = input?["command"]?.stringValue else { return nil }
@@ -161,7 +157,6 @@ enum OpenCodeMapper {
     return line.isEmpty ? nil : line
   }
 
-  /// Only OpenCode's own file tools: a path another tool names is not a file it made.
   private static func inputPaths(forTool name: String?, input: JSONValue?) -> [String] {
     guard let name, fileTools.contains(name) else { return [] }
     return ["filePath", "path", "file"].compactMap { input?[$0]?.stringValue }
@@ -169,8 +164,6 @@ enum OpenCodeMapper {
 
   private static let fileTools: Set<String> = ["read", "write", "edit", "multiedit", "patch", "apply_patch"]
 
-  /// A tool cut off with its turn did not fail: the turn's own "Stopped" says it,
-  /// so its line ("Tool execution interrupted") is not shown as an error.
   static func isInterruption(_ errorType: String?) -> Bool { errorType == "aborted" }
 
   private static func activityState(_ status: String?, errorType: String?) -> AgentActivity.State {
@@ -186,8 +179,6 @@ enum OpenCodeMapper {
     guard let milliseconds else { return Date() }
     return Date(timeIntervalSince1970: milliseconds / 1000)
   }
-
-  // MARK: - Interactions
 
   static func interaction(
     from dto: OpenCodeDTO.QuestionRequest,
@@ -288,8 +279,6 @@ enum OpenCodeMapper {
     )
   }
 
-  // MARK: - Session state
-
   static func executionState(fromStatus status: JSONValue?) -> ConversationExecutionState? {
     switch status?["type"]?.stringValue {
     case "idle": return .idle
@@ -362,11 +351,7 @@ enum OpenCodeMapper {
   }
 }
 
-// MARK: - Plan limits
-
 extension OpenCodeMapper {
-  /// `/api/experimental/usage/limits` (2.2.6): OpenCode Go's meters and the
-  /// Console's budgets, `data: null` until OpenCode is signed in to the Console.
   static func usage(limits: JSONValue?) -> AgentUsage {
     var windows: [AgentUsageWindow] = []
     var notes: [String] = []

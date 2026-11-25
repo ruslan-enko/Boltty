@@ -29,7 +29,6 @@ final class AskBolttySession: ObservableObject {
   @Published private(set) var pointing: AskBolttyPointing?
   @Published private(set) var drawn: [AskBolttyStroke] = []
   @Published private(set) var readsAloud = true
-  /// A walk through steps is under way: each click moves it on.
   @Published private(set) var isGuiding = false
   let reader = AskBolttyReader()
   var speaksAloud = false
@@ -69,10 +68,7 @@ final class AskBolttySession: ObservableObject {
   private var waitsForStep = false
   private var lookTask: Task<Void, Never>?
   private var guideIdle: Timer?
-  /// A step left this long without a click ends the walk: the face holds
-  /// Escape from every other app while it is up.
   static let guideIdleLimit: TimeInterval = 60
-  /// What is written on the display with this frame now, read afresh.
   var look: (@MainActor (CGRect) async -> [ScreenText]?)?
   static let settleAfterClick: TimeInterval = 0.45
   static let lookAgainAfter: TimeInterval = 0.7
@@ -96,8 +92,6 @@ final class AskBolttySession: ObservableObject {
 
   var speechID: String? { conversationID.map { "talk-\($0.uuidString)" } }
 
-  // MARK: - The question
-
   func warmUp(_ target: AskBolttyTarget) {
     interruptAnswer()
     stopTurn()
@@ -116,8 +110,6 @@ final class AskBolttySession: ObservableObject {
     ask(words, about: selection, on: displayFrame, targets: [target], speaksAloud: speaksAloud)
   }
 
-  /// The first target answers; if it fails before saying anything, the same
-  /// question goes to the next, each once.
   func ask(_ words: String, about selection: ScreenSelection, on displayFrame: CGRect,
            targets: [AskBolttyTarget], note: String? = nil, speaksAloud: Bool) {
     let words = words.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -160,8 +152,6 @@ final class AskBolttySession: ObservableObject {
     let engine = coordinator.engine
     Task { await engine.stop(conversationID: id) }
   }
-
-  // MARK: - Sending
 
   private func choosePlace(for target: AskBolttyTarget) {
     if let id = conversationID,
@@ -275,8 +265,6 @@ final class AskBolttySession: ObservableObject {
     }
   }
 
-  // MARK: - The answer
-
   private func watch(_ id: UUID) {
     storeWatch = coordinator.store.objectWillChange
       .sink { [weak self] _ in
@@ -329,8 +317,6 @@ final class AskBolttySession: ObservableObject {
 
     switch conversation.lastKnownState {
     case .working:
-      // Answered: it is at work again, and the next thing it asks must open the
-      // panel again, or a turn with many steps waits unseen on its second.
       if case .needsYou = phase { phase = .thinking }
       let live = BolttyAISessionList.liveStep(in: coordinator.store.transcript(id: id))
       if phase == .speaking, !isGuiding, live != nil, !voice.isSaying(speechID) {
@@ -370,8 +356,6 @@ final class AskBolttySession: ObservableObject {
     finish()
   }
 
-  /// A failure before any word: the next agent gets the same question, and the
-  /// face says who took it and why. With none left, it says why it failed.
   private func handOver(from conversation: Conversation, failure: MessageFailure?) {
     let who = name(of: conversation)
     let why: HandOverReason
@@ -489,8 +473,6 @@ final class AskBolttySession: ObservableObject {
       height: frame.height / display.height * 1000)
   }
 
-  // MARK: - Steps
-
   private func addStep(_ words: String, target: AskBolttyPoint) {
     steps.append((words, target))
     if !isGuiding {
@@ -500,7 +482,6 @@ final class AskBolttySession: ObservableObject {
     if waitsForStep, !words.isEmpty, steps.count - 1 == shownStep + 1 { presentStep(steps.count - 1) }
   }
 
-  /// A click: the next step, once what it opened has had a moment to show.
   func nextStep() {
     guard isGuiding, !waitsForStep else { return }
     lookTask?.cancel()
@@ -524,7 +505,6 @@ final class AskBolttySession: ObservableObject {
 
   private func presentStep(_ index: Int) {
     guard isGuiding, steps.indices.contains(index), let speechID else { return }
-    // Its words are still coming: the piece that brings them presents it.
     guard !steps[index].words.isEmpty else {
       waitsForStep = true
       return
@@ -550,8 +530,6 @@ final class AskBolttySession: ObservableObject {
     lookTask = Task { [weak self] in await self?.find(step.target, for: index) }
   }
 
-  /// The step's words on the screen as it is now: the earlier step may have
-  /// opened a menu or a dialog the agent never saw.
   private func find(_ target: AskBolttyPoint, for index: Int) async {
     guard let text = target.text, let frame = answerFrame, let look else {
       pointAtItsPlace(target)
@@ -573,8 +551,6 @@ final class AskBolttySession: ObservableObject {
     if !Task.isCancelled, shownStep == index { pointAtItsPlace(target) }
   }
 
-  /// Where the agent put a step it could see; with no place, the face goes back
-  /// to the pointer.
   private func pointAtItsPlace(_ target: AskBolttyPoint) {
     guard target.hasPosition else {
       pointing = nil
@@ -617,9 +593,8 @@ final class AskBolttySession: ObservableObject {
     if isGuiding { isGuiding = false }
   }
 
-  /// Looks again rather than ending: the voice can fall silent between the turn
-  /// ending and Ask Boltty hearing of it, and the last sentence was then never
-  /// said.
+  /// Looks again rather than ending: the voice can fall silent before Ask Boltty hears the turn
+  /// ended.
   func speechFinished() {
     guard phase == .speaking, let id = conversationID else { return }
     follow(id)

@@ -42,14 +42,10 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let planMode = AgentCapabilities(rawValue: 1 << 23)
 
-  /// The plan is the turn's reply (OpenCode's `plan` agent): the engine puts
-  /// the card under it once the turn ends.
   static let planInReply = AgentCapabilities(rawValue: 1 << 24)
 
-  /// A session can be made as a branch of another, cut after a turn.
   static let forking = AgentCapabilities(rawValue: 1 << 25)
 
-  /// The agent's own changes to files can be put back to before a question.
   static let fileUndo = AgentCapabilities(rawValue: 1 << 26)
 
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }

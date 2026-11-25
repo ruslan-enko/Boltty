@@ -21,8 +21,6 @@ final class PromptAttachmentCardTests: XCTestCase {
     AgentPaletteMetrics.attachmentCardSide - AgentPaletteMetrics.attachmentCardInset * 2
   }
 
-  // MARK: - Taking one back
-
   func testBackspaceAtTheFieldsStartTakesTheLastCard() {
     let field = makeField()
     let first = file("/x/a.mov")
@@ -100,8 +98,6 @@ final class PromptAttachmentCardTests: XCTestCase {
     XCTAssertEqual(told, 0, "dictation rewrites the words on every result")
   }
 
-  // MARK: - What it says
-
   func testAFileSaysWhereItIsAndWhatItIs() throws {
     let path = NSHomeDirectory() + "/Desktop/Upload 1.mp4"
     let look = PromptAttachmentCard.look(for: file(path))
@@ -172,8 +168,6 @@ final class PromptAttachmentCardTests: XCTestCase {
     XCTAssertEqual(look.tag, "Text")
   }
 
-  // MARK: - A path in three lines
-
   func testAPathThatFitsIsLeftWhole() {
     XCTAssertEqual(
       PromptAttachmentCard.fitted(path: "~/Desktop/a.mp4", font: font, width: wordsWidth, lines: 3),
@@ -197,8 +191,6 @@ final class PromptAttachmentCardTests: XCTestCase {
     XCTAssertFalse(fitted.contains("/"), "not even a folder left")
   }
 
-  // MARK: - The ×
-
   func testTheCloseComesWithThePointerOnlyWhereACardCanBeTakenBack() {
     let inDraft = PromptAttachmentCard(attachment: file("/x/a.mov"), corner: 13)
     var removed = 0
@@ -215,8 +207,6 @@ final class PromptAttachmentCardTests: XCTestCase {
     sent.setHoveredForTesting(true)
     XCTAssertFalse(sent.isCloseShownForTesting, "what has gone cannot be taken back")
   }
-
-  // MARK: - The strip
 
   private func makeStrip(width: CGFloat = 300) -> PromptAttachmentStrip {
     let strip = PromptAttachmentStrip(frame: NSRect(
@@ -266,8 +256,6 @@ final class PromptAttachmentCardTests: XCTestCase {
         + AgentPaletteMetrics.attachmentCardInset,
       AgentPaletteMetrics.attachmentCardSide)
   }
-
-  // MARK: - What it says under the pointer
 
   func testAFileShowsItsWholePath() {
     let path = "/Users/e/clips/a-very-long-recording-name-from-the-camera.mov"

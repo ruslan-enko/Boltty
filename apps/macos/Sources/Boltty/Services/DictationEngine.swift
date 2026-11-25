@@ -53,8 +53,6 @@ enum DictationEngineError: LocalizedError, Equatable {
   }
 }
 
-// MARK: - SFSpeechRecognizer
-
 @MainActor
 final class LegacyDictationEngine: DictationEngine {
   static let displayName = String(localized: "Apple (on-device)")

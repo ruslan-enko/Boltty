@@ -23,8 +23,6 @@ final class ShortcutBindingTests: XCTestCase {
     XCTAssertTrue(ShortcutBinding.unbound.isUnbound)
   }
 
-  // MARK: - Validation
-
   func testBareKeyIsRejected() {
     let binding = ShortcutBinding(keyEquivalent: "k", modifiers: [])
     XCTAssertEqual(ShortcutBindingValidation.reject(binding), .noModifier)
@@ -129,8 +127,6 @@ final class ShortcutBindingStoreTests: XCTestCase {
     XCTAssertNil(defaults.object(forKey: ShortcutBindingStore.overridesKey))
   }
 
-  // MARK: - Menu items
-
   func testBindingWritesThroughToTheMenuItem() {
     let store = ShortcutBindingStore(defaults: defaults)
     let item = NSMenuItem()
@@ -164,8 +160,6 @@ final class ShortcutBindingStoreTests: XCTestCase {
     store.setBinding(ShortcutBinding(keyEquivalent: "j", modifiers: .command), for: "minimize")
     XCTAssertEqual(item.keyEquivalent, ",")
   }
-
-  // MARK: - Conflicts
 
   func testDefaultsHaveNoConflicts() {
     XCTAssertTrue(

@@ -307,8 +307,6 @@ final class BolttyAIScreenshotTests: XCTestCase {
     app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
   }
 
-  // MARK: - Every state with glass in it
-
   private func openPanel(_ flags: [String]) {
     app.terminate()
     app = XCUIApplication()

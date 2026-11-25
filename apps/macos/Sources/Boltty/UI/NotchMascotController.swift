@@ -579,8 +579,6 @@ private final class NotchMascotView: NSView {
     }
   }
 
-  // MARK: Shape
-
   private func shape(expanded: Bool) -> CGRect {
     guard let geometry else { return .zero }
     let bubble = geometry.bubble
@@ -661,8 +659,6 @@ private final class NotchMascotView: NSView {
       layer?.add(fade, forKey: "visibility")
     }
   }
-
-  // MARK: The line
 
   func lineWidth(for line: String) -> CGFloat {
     let text = NSAttributedString(string: line, attributes: [.font: lineLabel.font as Any])
@@ -791,8 +787,6 @@ private final class NotchMascotView: NSView {
     }
     return context.makeImage()
   }
-
-  // MARK: Pointer
 
   private func face(at point: NSPoint) -> UUID? {
     guard let geometry else { return nil }

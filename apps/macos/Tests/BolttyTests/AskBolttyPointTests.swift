@@ -126,19 +126,15 @@ final class AskBolttyOverlayGeometryTests: XCTestCase {
   func testAFaceAtRestShowsWhatCanBeDone() async throws {
     let overlay = AskBolttyOverlayController()
     defer { overlay.hide() }
-    overlay.restHint = { "⌥Space to ask more · Esc to close" }
+    overlay.restHints = { AskBolttyController.restHints(launchKey: "⌥Space") }
     overlay.pointer = { CGPoint(x: 400, y: 400) }
     overlay.show(.speaking, caption: "Hello there.", agent: .claude)
     try await Task.sleep(for: .seconds(0.6))
     overlay.show(.idle, caption: "", agent: .claude)
     try await Task.sleep(for: .seconds(2))
 
-    let bubble = overlay.bubbleForTesting
-    XCTAssertEqual(overlay.textForTesting, "⌥Space to ask more · Esc to close")
-    XCTAssertFalse(bubble.isHidden)
-    XCTAssertEqual(bubble.alpha, 1)
-    XCTAssertEqual(bubble.wordsAlpha, 1)
-    XCTAssertGreaterThan(bubble.frame.width, 100)
+    XCTAssertTrue(overlay.bubbleForTesting.isHidden)
+    XCTAssertEqual(overlay.keyHintsForTesting.map(\.key), ["⌥Space", "esc"])
   }
 
   func testThePointerMarksTailLiesTowardTheFaceWhicheverSideItLanded() {
@@ -216,20 +212,13 @@ final class AskBolttyOverlayGeometryTests: XCTestCase {
                          AskBolttyOverlayController.flightDuration(from: from, to: CGPoint(x: 120, y: 100)))
   }
 
-  func testTheBubbleIsAtMostItsLinesAndAShortLineIsOne() {
-    let long = String(repeating: "and then the next word ", count: 30)
-    let line = AskBolttyOverlayController.bubbleLineHeight
-    let padding = AskBolttyOverlayController.bubblePadding.height * 2
-    XCTAssertEqual(AskBolttyOverlayController.bubbleSize(for: long, lines: 1).height, line + padding)
-    let most = AskBolttyOverlayController.bubbleMaxLines
-    XCTAssertEqual(AskBolttyOverlayController.bubbleSize(for: long, lines: most).height,
-                   line * CGFloat(most) + padding, accuracy: 1)
-    XCTAssertLessThanOrEqual(
-      AskBolttyOverlayController.bubbleSize(for: long, lines: most).width,
-      AskBolttyOverlayController.bubbleMaxTextWidth + AskBolttyOverlayController.bubblePadding.width * 2)
-    let short = AskBolttyOverlayController.bubbleSize(for: "Thinking…", lines: 3)
-    XCTAssertEqual(short.height, line + padding, "a short line is one line tall")
-    XCTAssertEqual(AskBolttyOverlayController.bubbleSize(for: "", lines: 3), .zero)
+  func testTheBubbleKeepsOffWhatWasAskedAboutWhereItCan() {
+    let face = CGRect(x: 600, y: 400, width: 40, height: 40)
+    let asked = CGRect(x: 700, y: 380, width: 200, height: 60)
+    XCTAssertEqual(AskBolttyOverlayController.bubbleSide(
+      current: .right, beside: face, in: screen, clear: [asked], height: 60), .left)
+    let both = [asked, CGRect(x: 300, y: 380, width: 200, height: 60)]
+    XCTAssertEqual(AskBolttyOverlayController.bubbleSide(
+      current: .right, beside: face, in: screen, clear: both, height: 60), .right)
   }
-
 }

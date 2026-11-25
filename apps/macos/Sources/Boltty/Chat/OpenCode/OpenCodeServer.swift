@@ -289,8 +289,6 @@ actor OpenCodeServer {
     return Int(output[portRange])
   }
 
-  // MARK: - Reaping servers a crash left behind
-
   private static var pidFileURL: URL? {
     if let override = ledgerOverride.withLock({ $0 }) { return override }
     let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first

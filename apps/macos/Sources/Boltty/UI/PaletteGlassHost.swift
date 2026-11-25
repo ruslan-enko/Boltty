@@ -320,8 +320,6 @@ final class PaletteGlassHost: NSView {
     }
   }
 
-  /// `NSGlassEffectView` draws the continuous curve at every radius, a capsule's
-  /// too: a circular layer over it left a dark sliver where the arc begins.
   private let effectiveCornerCurve: CALayerCornerCurve = .continuous
 
   var cornerCurveForTesting: CALayerCornerCurve { renderedCornerCurve }
@@ -437,16 +435,15 @@ final class PaletteGlassHost: NSView {
   private let colorLayerView = NSView(frame: .zero)
   private let verticalOverlayView = PaletteGlassOverlayView(frame: .zero)
   private let verticalOverlayGradientLayer = CAGradientLayer()
-  /// The glass lights its own rim along the foot, thinning up the corners, and
-  /// under the wash's thin end that read as a second edge. This dims it there
-  /// and nowhere else: round the whole shell it read as a black border.
   private let rimShade = CALayer()
   private let rimShadeFade = CAGradientLayer()
   private let rimShadeLayers = PaletteGlassHost.rimShade.map { _ in CALayer() }
   static let rimShade: [(width: CGFloat, alpha: CGFloat)] = [(0.5, 0.25), (1, 0.23), (1.5, 0.07)]
-  /// Regular glass lights its rim about a third less.
   static let regularRimShade: Float = 0.7
   private var showsGlass = true
+  var shadesRim = true {
+    didSet { if shadesRim != oldValue { applyVerticalOverlayColors() } }
+  }
 
   init(
     content: NSView,
@@ -765,7 +762,7 @@ final class PaletteGlassHost: NSView {
       return
     }
 
-    rimShade.isHidden = verticalOverlay != .bolttyAIPromptRamp
+    rimShade.isHidden = !shadesRim || verticalOverlay != .bolttyAIPromptRamp
     rimShade.opacity = glassStyle == .clear ? 1 : Self.regularRimShade
 
     if let base = verticalOverlay.baseFillColor {

@@ -91,8 +91,6 @@ final class BolttyAISettingsModel: ObservableObject {
       .store(in: &cancellables)
   }
 
-  // MARK: - Usage
-
   struct UsageRow: Identifiable, Equatable {
     let agent: AgentId
     let usage: AgentUsage?
@@ -118,8 +116,6 @@ final class BolttyAISettingsModel: ObservableObject {
       return UsageRow(agent: agent, usage: usage, history: history, isSignedOut: isSignedOut)
     }
   }
-
-  // MARK: - Mascots
 
   var mascotRoster: MascotRoster {
     MascotRoster(selections: appModel.settings.mascotSelections, preferred: appModel.settings.agentPreset)
@@ -194,7 +190,6 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.keepsChatsDays = newValue } }
   }
 
-  /// How many chats keeping them for `days` would move to the Trash now.
   func chatsPast(days: Int) -> Int {
     guard let cutoff = HistoryRetention.cutoff(days: days) else { return 0 }
     return engine.store.conversations.filter {
@@ -243,11 +238,8 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.agentPreset = newValue } }
   }
 
-  // MARK: - Who takes a new chat
-
   var routesAutomatically: Bool { appModel.settings.routesAutomatically }
 
-  /// `nil` is automatic: whoever has the most of their plan left.
   func sendNewChats(to agent: AgentId?) {
     appModel.updateSettings { settings in
       settings.routesAutomatically = agent == nil
@@ -260,7 +252,6 @@ final class BolttyAISettingsModel: ObservableObject {
     return enabledAdapters.filter(ready.contains)
   }
 
-  /// Ready, enabled agents in the order a new chat would try them.
   var routingStandings: [AgentRouting.Standing] {
     let candidates = routableAgents.map(\.rawValue)
     let usage = engine.usageByProvider
@@ -377,8 +368,6 @@ final class BolttyAISettingsModel: ObservableObject {
       }
     }
   }
-
-  // MARK: - Menu shortcuts
 
   var shortcutSections: [KeyboardShortcutSection] {
     KeyboardShortcutCatalog.sections
@@ -497,11 +486,7 @@ final class BolttyAISettingsModel: ObservableObject {
     set { appModel.updateSettings { $0.askBolttySpeaksAloud = newValue } }
   }
 
-  // MARK: Supertonic
-
   var supertonicState: LocalModelStore.State { modelState(.supertonic3) }
-
-  // MARK: Local models
 
   func modelState(_ id: LocalVoiceModel.ID) -> LocalModelStore.State {
     localModels?.state(of: id) ?? .notInstalled
@@ -548,8 +533,6 @@ final class BolttyAISettingsModel: ObservableObject {
     setupVoices = []
   }
 
-  // MARK: Parakeet
-
   static let parakeetEngine = "parakeet"
 
   var usesLocalDictation: Bool {
@@ -562,8 +545,6 @@ final class BolttyAISettingsModel: ObservableObject {
     usesLocalDictation = local
     if local { fetchIfMissing(.parakeetUltra) }
   }
-
-  // MARK: Reading voice
 
   static let localVoices: [(id: String, title: String)] = SupertonicSynthesizer.presets.map { id in
     let number = id.dropFirst()
@@ -665,7 +646,6 @@ struct AgentSettingsRow: Identifiable, Equatable {
   let isReady: Bool
   let needsLogin: Bool
   let isInstalled: Bool
-  /// Only where the agent is not here and its installer can bring it.
   let install: Install?
 
   struct Install: Equatable {

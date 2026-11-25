@@ -37,10 +37,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var reasoningEffort: String?
   var autoApprove: Bool
   var readOnly: Bool = false
-  /// The next turn plans and changes nothing until the plan is approved.
   var planMode: Bool = false
-  /// Where this chat branched off another; its session is made from there by
-  /// the first message, then this is cleared.
   var forkedFrom: ForkPoint?
   var isAskBoltty: Bool = false
   var createdAt: Date
@@ -88,7 +85,6 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     case id, providerID, remoteSessionID, title, workingDirectory, model
     case reasoningEffort, autoApprove, readOnly, createdAt, updatedAt, draft, draftAttachments
     case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode, forkedFrom
-    /// Written as "isTalk" before Talk was named Ask Boltty; chats on disk carry it.
     case isAskBoltty = "isTalk"
   }
 
@@ -123,7 +119,6 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   }
 }
 
-/// A session and the message whose turn it is cut after; no message, all of it.
 struct ForkPoint: Codable, Equatable, Hashable, Sendable {
   var sessionID: String
   var messageID: String?
@@ -152,8 +147,6 @@ struct ModelSelection: Codable, Equatable, Hashable, Sendable {
     "gpt": "GPT", "glm": "GLM", "deepseek": "DeepSeek", "oss": "OSS", "xai": "xAI", "ai": "AI", "vl": "VL",
   ]
 
-  /// A CLI that lists only ids gets them read as a name: `claude-opus-4-6-thinking`
-  /// is "Claude Opus 4.6 Thinking". An id already written as a name stays.
   static func readable(_ id: String) -> String {
     let last = id.split(separator: "/").last.map(String.init) ?? id
     guard !last.isEmpty, !last.contains(" "), last == last.lowercased() else { return id }

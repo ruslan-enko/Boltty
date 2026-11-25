@@ -187,8 +187,6 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertEqual(askBoltty.phase, .idle)
   }
 
-  // MARK: - Pointing, and staying quiet
-
   func testTheMascotPointsWhenTheVoiceReachesTheSentenceThatNamesIt() async throws {
     voice.holds = true
     try ask("where do I share this?")
@@ -248,8 +246,6 @@ final class AskBolttySessionTests: XCTestCase {
     XCTAssertEqual(lifted.copyableText, "what is this?")
     XCTAssertEqual(store.conversation(id: id)?.sentFiles.map(\.name), ["Area.png"])
   }
-
-  // MARK: - Shown, not said; and gone when done
 
   func testAnAnswerInALanguageBolttyDoesNotSpeakIsShownWhole() async throws {
     voice.speaks = false

@@ -29,8 +29,6 @@ final class ModifierHotkeyMonitor: @unchecked Sendable {
 
   deinit { stop() }
 
-  // MARK: - Permission
-
   static var hasAccess: Bool { CGPreflightListenEventAccess() }
 
   static var availability: HotkeyAvailability {
@@ -48,8 +46,6 @@ final class ModifierHotkeyMonitor: @unchecked Sendable {
     else { return }
     NSWorkspace.shared.open(pane)
   }
-
-  // MARK: - Holding it
 
   func start(_ binding: HotkeyBinding) -> HotkeyAvailability {
     stop()
@@ -98,8 +94,6 @@ final class ModifierHotkeyMonitor: @unchecked Sendable {
   }
 
   var isRunning: Bool { tap != nil }
-
-  // MARK: - Reading the keyboard
 
   func handle(_ type: CGEventType, _ event: CGEvent) {
     switch type {

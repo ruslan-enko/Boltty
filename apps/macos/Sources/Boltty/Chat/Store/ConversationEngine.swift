@@ -64,8 +64,6 @@ final class ConversationEngine: ObservableObject {
     self.init(store: store, registry: AgentRegistry(clients: [client]))
   }
 
-  // MARK: - Routing
-
   func client(for conversationID: UUID) -> AgentClient? {
     guard let providerID = store.conversation(id: conversationID)?.providerID else { return nil }
     return registry.client(forProviderID: providerID)
@@ -144,8 +142,6 @@ final class ConversationEngine: ObservableObject {
     guard let client = client(for: conversationID) else { throw AgentClientError.notInstalled }
     return client
   }
-
-  // MARK: - Lifecycle
 
   func start() {
     guard !hasStarted else { return }
@@ -328,9 +324,6 @@ final class ConversationEngine: ObservableObject {
       else { return nil }
       return (client, remote)
     }
-    // Every stop, not the first to answer: a turn on the person's own OpenCode
-    // service outlives Boltty if its stop is cut short. The deadline is a timer
-    // racing the stops, so a stop that never answers cannot hold the quit.
     let (finished, finish) = AsyncStream.makeStream(of: Void.self)
     let all = Task {
       await withTaskGroup(of: Void.self) { group in
@@ -350,8 +343,6 @@ final class ConversationEngine: ObservableObject {
     all.cancel()
     timer.cancel()
   }
-
-  // MARK: - Events
 
   private func handle(_ envelope: AgentEventEnvelope) async {
     if case .modelsChanged = envelope.event {
@@ -409,8 +400,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  // MARK: - Naming
-
   private func nameIfDue(_ id: UUID) {
     guard !store.isReadOnly, !namingChats.contains(id),
           let conversation = store.conversation(id: id),
@@ -442,8 +431,6 @@ final class ConversationEngine: ObservableObject {
     await refreshUsage(force: true)
   }
 
-  // MARK: - Context
-
   func refreshContext(conversationID: UUID) async {
     guard let conversation = store.conversation(id: conversationID),
           let remote = conversation.remoteSessionID,
@@ -453,8 +440,6 @@ final class ConversationEngine: ObservableObject {
     else { return }
     contextByConversation[conversationID] = usage
   }
-
-  // MARK: - Steering
 
   func steer(text: String, in conversationID: UUID) async -> Bool {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -532,8 +517,6 @@ final class ConversationEngine: ObservableObject {
           askedAt: interactions[index].askedAt
         )
       }
-      // Not asked any more and no turn going on past it: its server went, since
-      // an answer from elsewhere would have the turn working.
       if snapshot.state != .working {
         store.markQuestionsGone(in: conversationID, except: Set(interactions.map(\.id)))
       }
@@ -572,8 +555,6 @@ final class ConversationEngine: ObservableObject {
       return false
     }
   }
-
-  // MARK: - Sending
 
   @discardableResult
   func send(
@@ -798,9 +779,7 @@ final class ConversationEngine: ObservableObject {
       )
       return false
     } catch {
-      // It may have landed and be running: idle would invite a second send
-      // into a live turn. Ask the agent's record; only with no answer at all
-      // is the chat let go.
+      // It may be running: idle would invite a second send into a live turn.
       if await !refresh(conversationID: conversationID) {
         store.setExecutionState(.idle, for: conversationID)
       }
@@ -812,9 +791,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// One session per chat, however many callers ask at once: Ask Boltty warms a
-  /// chat's session while the person speaks, and the send that follows must
-  /// wait for that one rather than start a second.
   func ensureRemoteSession(for conversationID: UUID) async throws -> String {
     guard let conversation = store.conversation(id: conversationID) else {
       throw AgentClientError.sessionNotFound
@@ -868,8 +844,6 @@ final class ConversationEngine: ObservableObject {
     store.setPlanMode(enabled, for: conversationID)
   }
 
-  // MARK: - Undoing an agent's changes
-
   func canUndoChanges(_ conversationID: UUID) -> Bool {
     guard let conversation = store.conversation(id: conversationID),
           !conversation.isAskBoltty, !store.isReadOnly, conversation.remoteSessionID != nil,
@@ -900,8 +874,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// Puts the files back. Where the question leaves the chat too, its words
-  /// are returned, for the composer.
   func undoChanges(_ conversationID: UUID, from questionID: String) async -> String? {
     guard canUndoChanges(conversationID),
           let conversation = store.conversation(id: conversationID),
@@ -927,8 +899,6 @@ final class ConversationEngine: ObservableObject {
     return nil
   }
 
-  // MARK: - Forking
-
   func canFork(_ conversationID: UUID) -> Bool {
     guard let conversation = store.conversation(id: conversationID),
           !conversation.isAskBoltty, !store.isReadOnly,
@@ -937,10 +907,6 @@ final class ConversationEngine: ObservableObject {
     return registry.capabilities(forProviderID: conversation.providerID).contains(.forking)
   }
 
-  /// A new chat that goes on from the end of the turn holding `messageID` (all of
-  /// the chat when nil). It shows those messages at once; its session is made
-  /// as a branch of this one by its first message, so a fork never sent leaves
-  /// nothing in the CLI's history.
   func fork(_ conversationID: UUID, after messageID: String?) -> UUID? {
     guard canFork(conversationID), let source = store.conversation(id: conversationID) else { return nil }
     let point = source.remoteSessionID.map { ForkPoint(sessionID: $0, messageID: messageID) }
@@ -961,8 +927,6 @@ final class ConversationEngine: ObservableObject {
     return copy.id
   }
 
-  /// The messages up to the end of the turn that holds `messageID`: everything
-  /// before the next question.
   static func messages(
     _ messages: [ConversationMessage], throughTurnOf messageID: String?
   ) -> [ConversationMessage] {
@@ -973,8 +937,6 @@ final class ConversationEngine: ObservableObject {
     return Array(messages[..<next])
   }
 
-  /// A planning turn that ended with a reply, on an agent whose plan is its
-  /// reply: the card goes under it, and its answer goes as the next message.
   func askAboutReplyPlan(in conversationID: UUID) {
     guard let conversation = store.conversation(id: conversationID), conversation.planMode,
           let remote = conversation.remoteSessionID,
@@ -993,8 +955,6 @@ final class ConversationEngine: ObservableObject {
       kind: .plan(PlanPrompt(markdown: reply.plainText, toolCallID: nil, endedTurn: true))
     ))
   }
-
-  // MARK: - Stopping
 
   func stop(conversationID: UUID) async {
     guard let remote = store.conversation(id: conversationID)?.remoteSessionID,
@@ -1033,7 +993,6 @@ final class ConversationEngine: ObservableObject {
     }
   }
 
-  /// Lets an idle chat's session go and keeps the chat: the next message resumes it.
   func releaseSession(of id: UUID) {
     guard let conversation = store.conversation(id: id),
           !conversation.lastKnownState.blocksSending,
@@ -1057,8 +1016,6 @@ final class ConversationEngine: ObservableObject {
     notices[id] = nil
     store.trashConversation(id: id)
   }
-
-  // MARK: - Interactions
 
   @discardableResult
   func answer(
@@ -1101,7 +1058,6 @@ final class ConversationEngine: ObservableObject {
       try await client.rejectQuestion(requestID: interactionID, sessionID: remote)
       store.resolveInteraction(id: interactionID, in: conversationID, with: .rejected)
     } catch AgentClientError.requestGone {
-      // Refused, so it does not stay to be answered late.
       store.resolveInteraction(id: interactionID, in: conversationID, with: .rejected)
       await putAway(interactionID: interactionID, in: conversationID)
     } catch {
@@ -1208,8 +1164,6 @@ final class ConversationEngine: ObservableObject {
       store.setExecutionState(.idle, for: conversationID)
     }
   }
-
-  // MARK: - Helpers
 
   nonisolated static let untitled = "New conversation"
   static let secondCopyRefusal =

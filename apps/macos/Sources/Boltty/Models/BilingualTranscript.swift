@@ -1,9 +1,6 @@
 import Foundation
 import NaturalLanguage
 
-/// Two recognizers hear the same audio, one per language; this decides whose words
-/// each stretch gets. Apple's speech API takes one locale per recognizer and has no
-/// language detection.
 struct BilingualTranscript {
   enum Side: Sendable {
     case primary
@@ -89,8 +86,6 @@ struct BilingualTranscript {
     }
     return String(output.text.drop(while: \.isWhitespace))
   }
-
-  // MARK: - Choosing
 
   private mutating func decide() {
     decided = []
@@ -181,8 +176,6 @@ struct BilingualTranscript {
     return recognizer.languageHypotheses(withMaximum: 2)[own] ?? 0
   }
 
-  // MARK: - Words still being said
-
   private func visibleTail(of side: Side) -> Piece? {
     guard let tail = stream(side).tail, tail.end > decidedThrough + 0.05 else { return nil }
     return tail
@@ -202,8 +195,6 @@ struct BilingualTranscript {
   private static func weight(_ text: String) -> Int {
     text.reduce(0) { $0 + ($1.isWhitespace ? 0 : 1) }
   }
-
-  // MARK: - Plumbing
 
   private func stream(_ side: Side) -> Stream {
     side == .primary ? primary : secondary

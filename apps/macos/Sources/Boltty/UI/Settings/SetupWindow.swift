@@ -24,7 +24,6 @@ enum SetupStep: Int, CaseIterable {
     }
   }
 
-  /// With no agent there is no face to give.
   static func steps(hasNoAgents: Bool) -> [SetupStep] {
     hasNoAgents ? allCases.filter { $0 != .mascots } : allCases
   }
@@ -93,8 +92,6 @@ struct SetupView: View {
       Task { await model.refreshAgents() }
     }
   }
-
-  // MARK: The left: what this is, what next
 
   private var words: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -167,8 +164,6 @@ struct SetupView: View {
     }
   }
 
-  // MARK: The right: the thing being chosen
-
   @ViewBuilder
   private func visual(for step: SetupStep) -> some View {
     switch step {
@@ -218,8 +213,6 @@ private struct SetupTile<Content: View>: View {
       .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
   }
 }
-
-// MARK: - Agents
 
 private struct SetupAgentsVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
@@ -352,8 +345,6 @@ private struct SetupAgentTile: View {
   }
 }
 
-// MARK: - Mascots
-
 private struct SetupMascotsVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
   let onFaceHover: (Int) -> Void
@@ -428,8 +419,6 @@ private struct SetupMascotFace: View {
   }
 }
 
-// MARK: - Keys
-
 private struct SetupKeysVisual: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -496,8 +485,6 @@ private struct SetupKeycaps: View {
     .animation(SettingsMotion.quick, value: caps)
   }
 }
-
-// MARK: - Access
 
 private struct SetupAccessVisual: View {
   @ObservedObject var model: AccessPermissionsModel
@@ -569,8 +556,6 @@ private struct SetupAccessTile: View {
     }
   }
 }
-
-// MARK: - Window
 
 private final class SetupCardWindow: NSWindow {
   override var canBecomeKey: Bool { true }
@@ -652,8 +637,6 @@ final class SetupWindowController: NSWindowController, NSWindowDelegate {
     DispatchQueue.main.async { [weak self] in self?.onClose?() }
   }
 }
-
-// MARK: - Voice
 
 private struct SetupVoiceVisual: View {
   @ObservedObject var model: BolttyAISettingsModel

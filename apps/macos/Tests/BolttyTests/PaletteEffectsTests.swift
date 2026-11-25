@@ -79,8 +79,6 @@ final class PaletteEffectsTests: XCTestCase {
     XCTAssertNotNil(PaletteWhipView.make(image: image, from: .zero, to: .zero, duration: 1))
   }
 
-  // MARK: - Pixels
-
   static func halves(width: Int, height: Int) -> CGImage? {
     guard let context = CGContext(
       data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,

@@ -32,9 +32,8 @@ enum AntigravityTranscript {
     var payload: Data
   }
 
-  /// WAL: while `agy` has a file open its steps are in the `-wal`, which only
-  /// `mode=ro` reads; after it exits `mode=ro` cannot open the file, so it is
-  /// opened immutable. A read that loses that race is retried once.
+  /// `mode=ro` cannot open the file once `agy` has exited; a read that loses that race is retried
+  /// once.
   static func read(at file: URL) throws -> [ConversationMessage] {
     do {
       return messages(from: try steps(at: file))
@@ -108,8 +107,6 @@ enum AntigravityTranscript {
     let length = Int(sqlite3_column_bytes(statement, column))
     return sqlite3_column_blob(statement, column).map { Data(bytes: $0, count: length) } ?? Data()
   }
-
-  // MARK: - Usage
 
   struct Use: Equatable {
     var date: Date

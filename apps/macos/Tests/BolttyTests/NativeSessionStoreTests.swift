@@ -15,8 +15,6 @@ final class NativeSessionStoreTests: XCTestCase {
     try? FileManager.default.removeItem(at: root)
   }
 
-  // MARK: - Codex fixtures
-
   @discardableResult
   private func writeRollout(
     id: String,
@@ -62,8 +60,6 @@ final class NativeSessionStoreTests: XCTestCase {
 
   private let idA = "01a0be59-db33-7562-bd41-fcea8dc7bd2e"
   private let idB = "01a0b432-1111-2222-3333-444455556666"
-
-  // MARK: - Codex
 
   func testACodexSessionIsReadFromItsRolloutRatherThanFromTheIndex() throws {
     try writeRollout(id: idA, cwd: "/Users/me/Projects/alpha")
@@ -143,8 +139,6 @@ final class NativeSessionStoreTests: XCTestCase {
     XCTAssertEqual(sessions.first { $0.id == idB }?.title, "Codex session")
   }
 
-  // MARK: - Reading the head of a file
-
   func testTheHeadReaderStopsAtItsLineLimit() throws {
     let url = root.appendingPathComponent("big.jsonl")
     try (0..<5000).map { "line \($0)" }
@@ -173,8 +167,6 @@ final class NativeSessionStoreTests: XCTestCase {
 
     XCTAssertEqual(try FileHead.lines(of: url, maxLines: 10), ["first", "second"])
   }
-
-  // MARK: - Reading the tail of a file
 
   private func tailLines(of url: URL, maxBytes: Int) throws -> (lines: [String], complete: Bool) {
     var lines: [String] = []
@@ -348,8 +340,6 @@ final class NativeSessionStoreTests: XCTestCase {
     let message = #"{"role":"user","content":[{"type":"text","text":"\#(text)"}]}"#
     return #"{"type":"user","uuid":"\#(uuid)","timestamp":"2026-09-21T09:15:42.123Z","message":\#(message)}"#
   }
-
-  // MARK: - OpenCode
 
   typealias OpenCodeRow = (id: String, title: String?, directory: String,
                            updated: Int64, parent: String?, archived: Int64?)
@@ -537,7 +527,6 @@ final class NativeSessionStoreTests: XCTestCase {
       }
     }
   }
-  // MARK: - Claude Code
 
   @discardableResult
   private func writeClaudeSession(
@@ -634,8 +623,6 @@ final class NativeSessionStoreTests: XCTestCase {
     XCTAssertEqual(try store.sessions(limit: 10), [])
   }
 
-  // MARK: - Grok
-
   @discardableResult
   private func writeGrokSession(
     id: String,
@@ -715,8 +702,6 @@ final class NativeSessionStoreTests: XCTestCase {
     XCTAssertEqual(try store.sessions(limit: 10), [])
   }
 
-  // MARK: - Re-reading one chat
-
   func testOneChangedRolloutIsReReadOnItsOwn() throws {
     try writeRollout(id: idA, userTexts: ["the first thing"])
     try writeIndex([])
@@ -750,8 +735,6 @@ final class NativeSessionStoreTests: XCTestCase {
         .session(for: .chat(id: "ses_1", at: root))
     )
   }
-
-  // MARK: - Reading a transcript out of the CLI's own file
 
   func testACodexTranscriptIsRebuiltFromItsRollout() throws {
     let url = try writeRollout(id: idA, userTexts: [])
@@ -881,8 +864,6 @@ final class NativeSessionStoreTests: XCTestCase {
     return false
   }
 
-  // MARK: - Grok's transcript
-
   func testAGrokTranscriptIsRebuiltFromItsChatHistory() throws {
     let directory = try writeGrokSession(id: "01a0-real", messages: 12, history: [
       #"{"type":"system","content":"You are Grok"}"#,
@@ -1004,8 +985,6 @@ final class NativeSessionStoreTests: XCTestCase {
     }
   }
 
-  // MARK: - The adapters read the same files
-
   func testTheCodexAdapterReadsEveryRealThreadWithoutStartingCodex() async throws {
     let home = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex")
     try XCTSkipUnless(FileManager.default.fileExists(atPath: home.path), "Codex has never run here")
@@ -1038,8 +1017,6 @@ final class NativeSessionStoreTests: XCTestCase {
     }
     XCTAssertGreaterThan(withUserTurns, 0, "not one real Grok chat showed anything typed")
   }
-
-  // MARK: - Against the real stores
 
   func testTheRealCodexStoreReadsAsSessions() throws {
     let home = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex")

@@ -93,8 +93,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     didSet { if fillsShell != oldValue { refresh() } }
   }
 
-  // MARK: - Testing seams
-
   var isListeningForTesting: Bool { phase == .listening }
   var smoothedLevelForTesting: CGFloat { envelope.level }
   var displayedLevelForTesting: CGFloat { displayedIntensity }
@@ -117,8 +115,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
       && layer.backgroundFilters == nil
       && !layer.masksToBounds
   }
-
-  // MARK: - Life
 
   init(frame frameRect: NSRect) {
     let renderer = VoiceGlowRenderer(pixelFormat: .bgra8Unorm)
@@ -174,8 +170,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     super.layout()
     refresh()
   }
-
-  // MARK: - Input
 
   func apply(palette: MascotPalette) {
     guard palette != self.palette else { return }
@@ -236,8 +230,6 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     envelope.accept(targetLevel, dt: 1 / 47)
     if link == nil { refresh() }
   }
-
-  // MARK: - The clock
 
   private var needsClock: Bool {
     phase.isAnimating || opacity > 0.001
@@ -331,13 +323,10 @@ final class VoiceEdgeGlowView: MTKView, MTKViewDelegate {
     }
   }
 
-  // MARK: - The frame
-
   private func refresh() {
     let size = bounds.size
     guard size.width > 1, size.height > 1 else { return }
     lastUniforms = VoiceGlowRenderer.uniforms(for: makeFrame(size: size))
-    // The rays are no longer drawn: the view keeps only the take's clock and phase.
   }
 
   func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}

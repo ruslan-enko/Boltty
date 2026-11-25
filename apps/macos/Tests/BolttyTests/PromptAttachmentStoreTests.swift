@@ -96,8 +96,6 @@ final class PromptAttachmentStoreTests: XCTestCase {
     }
   }
 
-  // MARK: - Cleanup (D11)
-
   func testOnlyEntriesPastTheAgeLimitAreRemoved() throws {
     let now = Date()
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

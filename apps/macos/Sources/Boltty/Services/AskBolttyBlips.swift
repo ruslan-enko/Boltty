@@ -40,10 +40,8 @@ final class AskBolttyBlips {
     return true
   }
 
-  /// The render block, made outside the main actor. Written inside a
-  /// main-actor method the closure is main-actor isolated, the runtime checks
-  /// that where Core Audio calls it — its own I/O thread — and the app stops
-  /// on `_dispatch_assert_queue_fail` at the first blip.
+  /// Outside the main actor: a main-actor closure is checked on Core Audio's thread and stops the
+  /// app.
   nonisolated static func makeSource(format: AVAudioFormat, state: BlipState) -> AVAudioSourceNode {
     AVAudioSourceNode(format: format) { @Sendable _, _, frameCount, buffers in
       let list = UnsafeMutableAudioBufferListPointer(buffers)

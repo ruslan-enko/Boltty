@@ -2,8 +2,6 @@ import XCTest
 @testable import Boltty
 
 final class OpenCodeTransportTests: XCTestCase {
-  // MARK: - Errors the provider passed along
-
   private func errorValue(_ object: [String: Any]) throws -> JSONValue {
     let data = try JSONSerialization.data(withJSONObject: object)
     return try JSONDecoder().decode(JSONValue.self, from: data)
@@ -56,8 +54,6 @@ final class OpenCodeTransportTests: XCTestCase {
     )
   }
 
-  // MARK: - Asking for a transcript
-
   func testTheTranscriptRequestStaysInsideTheServersLimit() throws {
     let path = OpenCodeClient.messagesPath(sessionID: "ses_1")
     let query = try XCTUnwrap(URLComponents(string: "http://x\(path)")?.queryItems)
@@ -95,8 +91,6 @@ final class OpenCodeTransportTests: XCTestCase {
     )
   }
 
-  // MARK: - Did anything happen while the stream was down
-
   private func frame(seq: Int) throws -> OpenCodeDTO.EventFrame {
     try JSONDecoder().decode(OpenCodeDTO.EventFrame.self, from: Data("""
       {"id":"evt_\(seq)","type":"session.next.prompted","durable":{"seq":\(seq)}}
@@ -121,8 +115,6 @@ final class OpenCodeTransportTests: XCTestCase {
   func testAFailedProbeCannotAnswer() {
     XCTAssertNil(OpenCodeClient.missedAnything(seen: 7, events: nil))
   }
-
-  // MARK: - Walking a transcript
 
   private func pagingFetch(
     count: Int,
@@ -204,8 +196,6 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(requests.value.count, 1)
     XCTAssertEqual(messages.map(\.id), ["msg_0", "msg_1"])
   }
-
-  // MARK: - Server-sent events
 
   private let sample = """
     data: {"id":"evt_1","type":"server.connected","data":{}}
@@ -291,8 +281,6 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(parser.consume("\n\n").count, 1)
   }
 
-  // MARK: - Event decoding
-
   private func events(_ json: String) -> [AgentEvent] {
     guard let frame = try? JSONDecoder().decode(
       OpenCodeDTO.EventFrame.self,
@@ -355,8 +343,6 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(activity.files, ["/tmp/notes.md"])
     XCTAssertEqual(activity.headline, "Wrote notes.md")
   }
-
-  // MARK: - opencode 2.0
 
   func test20StreamsTextAgainstAnOrdinalRatherThanAPartID() {
     let mapped = events(
@@ -509,8 +495,6 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(mapped, [.executionStateChanged(sessionID: "ses_1", state: .idle)])
   }
 
-  // MARK: - The 2.0 transcript
-
   private func decodeMessage(_ json: String) throws -> ConversationMessage? {
     let dto = try JSONDecoder().decode(OpenCodeDTO.Message.self, from: Data(json.utf8))
     return OpenCodeMapper.message(from: dto)
@@ -547,8 +531,6 @@ final class OpenCodeTransportTests: XCTestCase {
   func testAnIdleRowIsNotAMessage() throws {
     XCTAssertNil(try decodeMessage(#"{"id":"msg_1","time":{"created":1},"type":"idle","outcome":"succeeded"}"#))
   }
-
-  // MARK: - Forms, which is what 2.0 made of questions
 
   func testAFormBecomesTheCardsOwnQuestion() {
     let mapped = events(
@@ -853,8 +835,6 @@ final class OpenCodeTransportTests: XCTestCase {
     XCTAssertEqual(message.role, .agent)
   }
 
-  // MARK: - REST projection
-
   func testRestHistoryDecodesUserAndAssistantMessages() throws {
     let json = """
       {"data":[
@@ -883,8 +863,6 @@ final class OpenCodeTransportTests: XCTestCase {
     }
     XCTAssertEqual(activity.files, ["/tmp/a.txt"])
   }
-
-  // MARK: - Server management
 
   func testThePortIsReadFromTheServersOwnOutput() {
     XCTAssertEqual(
@@ -1115,8 +1093,6 @@ final class OpenCodeLiveEventShapeTests: XCTestCase {
     }
   }
 
-  // MARK: - Model catalog from the CLI
-
   func testCLICatalogIsParsedAsProviderSlashModel() {
     let models = OpenCodeMapper.models(fromCLILines: [
       "opencode/big-pickle",
@@ -1160,8 +1136,6 @@ final class OpenCodeAllowancesTests: XCTestCase {
     XCTAssertFalse(allowances.ask("p5", saving: [], in: "ses_a"), "an ask that saves nothing always asks")
     XCTAssertEqual(allowances.decide(.reject, requestID: "p4", sessionID: "ses_a"), .reject)
   }
-
-  // MARK: - Folders the background service cannot open
 
   func testFoldersMacOSKeepsFromALaunchdServiceRunOnBolttysOwnServer() {
     let home = "/Users/someone"

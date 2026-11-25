@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Settings' own controls, for the design window.
 struct DesignSettingsSamples: View {
   @State private var isOn = true
   @State private var segment = 0

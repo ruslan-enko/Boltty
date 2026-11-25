@@ -12,7 +12,6 @@ concurrency:
 jobs:
   lint:
     name: Lint
-    # macOS minutes are expensive on a private repository; run once it's public.
     if: ${{ !github.event.repository.private }}
     runs-on: macos-latest
     steps:
@@ -25,7 +24,6 @@ jobs:
   build:
     name: Build
     if: ${{ !github.event.repository.private }}
-    # The app needs the macOS 27 SDK; this is GitHub's Xcode 27 image.
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v5
@@ -44,7 +42,6 @@ jobs:
     name: Unit tests
     if: ${{ !github.event.repository.private }}
     runs-on: xcode-27
-    # A failing XCTest can look like a hang.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5

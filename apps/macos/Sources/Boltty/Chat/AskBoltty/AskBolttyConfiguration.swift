@@ -28,8 +28,6 @@ enum AskBolttyConfiguration {
       .first.map { target(for: $0, settings: settings, models: models) }
   }
 
-  /// Who answers, in the order they are tried: the agent chosen for this
-  /// question, Ask Boltty's agent, the person's own agent, then the rest.
   static func ranked(settings: AppSettings, candidates: [String], chosen: String? = nil) -> [String] {
     var order: [String] = []
     for id in [chosen, settings.askBolttyProviderID, settings.agentPreset?.rawValue] + candidates.map(Optional.some) {
@@ -39,8 +37,6 @@ enum AskBolttyConfiguration {
     return order
   }
 
-  /// The model chosen in Settings › Ask Boltty belongs to Ask Boltty's agent; any
-  /// other answers in its default model.
   static func target(
     for providerID: String, settings: AppSettings, models: [String: [AgentModelOption]]
   ) -> AskBolttyTarget {
@@ -134,6 +130,5 @@ struct AskBolttyRegion: Equatable, Sendable {
   var finderPlace: FinderPlace? = nil
   var isOverUnreadFinder = false
   var labels: [ScreenText] = []
-  /// The selected area in the first picture's thousandths, top left at 0 0.
   var area: CGRect? = nil
 }

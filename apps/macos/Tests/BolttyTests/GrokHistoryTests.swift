@@ -38,8 +38,6 @@ final class GrokHistoryTests: XCTestCase {
     return ACPClient(agent: agent, executable: executable)
   }
 
-  // MARK: - Reading
-
   func testGrokAndCodexNowDeclareTheyCanFollowAChat() {
     XCTAssertTrue(ACPAgent.grok.capabilities.contains(.rereadableTranscript))
     XCTAssertTrue(CodexClient().capabilities.contains(.rereadableTranscript))
@@ -90,8 +88,6 @@ final class GrokHistoryTests: XCTestCase {
       guard case .transport = error else { return XCTFail("expected transport, got \(error)") }
     }
   }
-
-  // MARK: - Sending into a session this process has not seen
 
   private func fixtureAgent() throws -> String {
     let script = root.appendingPathComponent("grok-fixture")

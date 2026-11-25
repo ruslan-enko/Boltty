@@ -42,8 +42,6 @@ final class AgentHistoryTests: XCTestCase {
     AgentHistory.sections(items, agent: agent, now: now, calendar: calendar)
   }
 
-  // MARK: - Tabs
-
   func testEveryAdapterKeepsATabEvenWithNothingBehindIt() {
     let tabs = AgentHistory.tabs([
       row(.claude, "One", updated: at(0))
@@ -64,8 +62,6 @@ final class AgentHistoryTests: XCTestCase {
     XCTAssertEqual(tabs.first { $0.agent == .codex }?.count, 2)
     XCTAssertEqual(tabs.first { $0.agent == .grok }?.count, 1)
   }
-
-  // MARK: - Filtering by tab
 
   func testNoActiveTabMeansEveryAgent() {
     let all = sections([
@@ -94,8 +90,6 @@ final class AgentHistoryTests: XCTestCase {
     XCTAssertEqual(sections([orphan]).flatMap(\.items).map(\.title), ["From an adapter we dropped"])
     XCTAssertTrue(AgentHistory.tabOrder.allSatisfy { sections([orphan], agent: $0).isEmpty })
   }
-
-  // MARK: - Days
 
   func testRowsFallIntoTheDayTheyWereLastTouched() {
     let result = sections([

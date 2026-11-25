@@ -3,9 +3,7 @@ import XCTest
 @testable import Boltty
 
 final class AskBolttyBlipsTests: XCTestCase {
-  /// Core Audio calls the render block on its own thread. Rendered here off
-  /// the main thread, a block that had kept the main actor's isolation stops
-  /// the process, as it stopped the app at its first blip.
+  /// Off the main thread: a block that kept main-actor isolation stops the process.
   func testTheBlipRendersOffTheMainThread() async throws {
     let peak = try await Task.detached { () -> Float in
       let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!

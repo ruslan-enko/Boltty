@@ -1,6 +1,3 @@
-# Shortcuts for working on Boltty. Everything here calls the scripts in
-# apps/macos/scripts or xcodebuild; see CONTRIBUTING.md for what they do.
-
 APP_DIR := apps/macos
 DERIVED := $(APP_DIR)/.derivedData
 XCODEBUILD := xcodebuild -project $(APP_DIR)/Boltty.xcodeproj -scheme Boltty \

@@ -1,6 +1,5 @@
 import AppKit
 
-/// A design value as the Swift source writes it, read from the checkout this build came from.
 struct DesignValue: Sendable {
   let owner: String
   let name: String
@@ -9,7 +8,6 @@ struct DesignValue: Sendable {
   let line: Int
   var mentions = 0
 
-  /// A number or a colour written out, as against one worked out from others.
   var isWritten: Bool {
     expression.wholeMatch(of: /-?[0-9][0-9_.]*/) != nil
       || expression.hasPrefix("OKLCH(") || expression.hasPrefix("NSColor") || expression.hasPrefix("CGSize(")

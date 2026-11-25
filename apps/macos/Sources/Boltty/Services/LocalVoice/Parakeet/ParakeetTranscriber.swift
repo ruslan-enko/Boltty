@@ -88,8 +88,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
       .trimmingCharacters(in: .whitespaces)
   }
 
-  // MARK: - Stages
-
   private func encode(_ window: [Float]) throws -> (MLMultiArray, Int) {
     var padded = window
     padded += [Float](repeating: 0, count: Self.windowSamples - window.count)
@@ -144,8 +142,6 @@ final class ParakeetTranscriber: @unchecked Sendable {
       throw Failure.stage(stage, error.localizedDescription)
     }
   }
-
-  // MARK: - Arrays
 
   private static func column(_ frames: MLMultiArray, _ index: Int) -> [Float] {
     let strides = frames.strides.map(\.intValue)

@@ -8,8 +8,6 @@ final class AppSettingsTests: XCTestCase {
     isolatedDefaults(named: "boltty.tests.settings.\(name)")
   }
 
-  // MARK: - Defaults
-
   func testAFreshDomainLoadsTheShippedDefaults() {
     let loaded = AppSettings.load(defaults: defaults())
 
@@ -29,8 +27,6 @@ final class AppSettingsTests: XCTestCase {
     XCTAssertTrue(loaded.playsSounds, "sounds are on until somebody turns them off")
     XCTAssertTrue(loaded.checksForUpdates, "the daily check is on until somebody turns it off")
   }
-
-  // MARK: - "Absent" is not "false"
 
   func testAnUnsetHotkeyEnabledIsOnAndAnExplicitOffIsOff() {
     let suite = defaults()
@@ -98,8 +94,6 @@ final class AppSettingsTests: XCTestCase {
     XCTAssertEqual(AppSettings.load(defaults: suite).autoApproveProviderIDs, ["claude", "agy"])
   }
 
-  // MARK: - The pre-recorder hotkey
-
   func testTheLegacyHotkeyStringStillResolves() {
     let suite = defaults()
     suite.set("controlOptionSpace", forKey: "boltty.askBolttyHotkey")
@@ -140,8 +134,6 @@ final class AppSettingsTests: XCTestCase {
 
     XCTAssertEqual(suite.string(forKey: "boltty.askBolttyHotkey"), "controlOptionSpace")
   }
-
-  // MARK: - Removed values stay on disk
 
   func testRemovedKeysAreNeitherReadNorRewrittenNorDeleted() {
     let suite = defaults()
@@ -187,8 +179,6 @@ final class AppSettingsTests: XCTestCase {
 
     XCTAssertNil(suite.object(forKey: "boltty.promptShortcuts"))
   }
-
-  // MARK: - Round trip
 
   func testEveryFieldSurvivesASaveAndLoad() {
     let suite = defaults()
@@ -256,8 +246,6 @@ final class AppSettingsTests: XCTestCase {
     suite.set("some-agent-from-the-future", forKey: "boltty.agentPreset")
     XCTAssertNil(AppSettings.load(defaults: suite).agentPreset)
   }
-
-  // MARK: - The preset
 
   func testDisablingThePresetAgentMovesThePresetToAnotherEnabledOne() {
     var settings = AppSettings(agentPreset: .codex, enabledProviderIDs: ["codex", "grok"])

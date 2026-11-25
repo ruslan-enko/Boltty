@@ -280,8 +280,6 @@ private final class OptionMarkView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
-// MARK: - A permission, as a Mac asks for one
-
 final class BolttyAICommandWell: NSView {
   static let maximumLines = 4
 
@@ -529,8 +527,6 @@ final class BolttyAIApprovalBar: NSView {
   func buttonForTesting(_ label: String) -> NSButton? {
     options.firstIndex { $0.label == label }.map { buttons[$0] }
   }
-  /// The answer `step` buttons along from `index` in the order they are drawn,
-  /// left to right (or top to bottom when stacked), within what Return may press.
   func answer(beside index: Int, step: Int) -> Int? {
     let order = answerButtonsInRow.map(\.tag).filter { $0 < returnReach }
     guard let at = order.firstIndex(of: index) else { return order.first }
@@ -694,9 +690,6 @@ final class BolttyAIApprovalBar: NSView {
     }
   }
 
-  /// The default is a fill of its own, not the glass's `bezelColor`: the system
-  /// leaves a bezel colour out while the panel is not key, and the default stood
-  /// as black words on grey glass.
   private static func mark(_ button: GlassPillLabelButton, asDefault: Bool) {
     button.isBordered = !asDefault
     button.restingBackground = asDefault ? BolttyBrand.accentOnGlass : .clear

@@ -183,7 +183,7 @@ final class AskBolttyConfigurationTests: XCTestCase {
 
   @MainActor
   func testTheFaceAtRestNamesTheKeyThatGoesOn() {
-    XCTAssertEqual(AskBolttyController.restHint(launchKey: "⌥Space"), "⌥Space to ask more · Esc to close")
-    XCTAssertEqual(AskBolttyController.restHint(launchKey: nil), "Esc to close")
+    XCTAssertEqual(AskBolttyController.restHints(launchKey: "⌥Space").map(\.key), ["⌥Space", "esc"])
+    XCTAssertEqual(AskBolttyController.restHints(launchKey: nil).map(\.key), ["esc"])
   }
 }

@@ -1,11 +1,9 @@
 import AppKit
 
-/// The page's values, each with its sliders.
 final class DesignInspector: NSView, NSSearchFieldDelegate {
   var onChange: (() -> Void)?
   var onParent: (() -> Void)?
   var onLetGo: (() -> Void)?
-  /// The page's name, as a note to Claude says it.
   var page = ""
   private let elementBox = NSStackView()
   private let elementName = NSTextField(wrappingLabelWithString: "")
@@ -92,8 +90,6 @@ final class DesignInspector: NSView, NSSearchFieldDelegate {
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-  // MARK: - The element
-
   private func buildElementBox() {
     elementName.font = roundedAppFont(size: 13, weight: .semibold)
     elementName.isSelectable = true
@@ -134,9 +130,7 @@ final class DesignInspector: NSView, NSSearchFieldDelegate {
       return
     }
     var keys = shown.plainProperty.map { source?.values(of: shown.owner, property: $0) ?? [] } ?? []
-    // What the property's own lines do not say, the element's class does.
     if shown.isBoltty { keys.formUnion(source?.values(of: shown.type) ?? []) }
-    // An answer's words are dressed apart from the view that shows them.
     if shown.view is NSTextView || shown.plainProperty == "answerViews" || shown.plainProperty == "textViews" {
       keys.formUnion(source?.values(of: "PaletteAnswerText") ?? [])
     }
@@ -187,7 +181,6 @@ final class DesignInspector: NSView, NSSearchFieldDelegate {
     onLetGo?()
   }
 
-  /// What the page just shown read. A drag re-reads the page, and its rows stay put.
   func pageUses(_ keys: Set<String>, isNewPage: Bool) {
     used = isNewPage ? keys : used.union(keys)
     if isNewPage { rebuild() }

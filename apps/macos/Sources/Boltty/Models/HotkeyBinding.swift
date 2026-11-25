@@ -22,8 +22,6 @@ struct HotkeyBinding: Hashable, Sendable {
   static let modifierOnlyChoices: Set<HotkeyBinding> = [optionCommand]
 }
 
-// MARK: - Display
-
 extension HotkeyBinding {
   var displayName: String {
     if isModifierOnly { return Self.modifierSymbols(carbonModifiers) }
@@ -75,8 +73,6 @@ extension HotkeyBinding {
     return String(localized: "Key \(String(keyCode))")
   }
 }
-
-// MARK: - Layout translation
 
 enum KeyboardLayoutCharacter {
   static func current(for keyCode: UInt32) -> String? {
@@ -133,8 +129,6 @@ extension NSEvent {
     return KeyboardLayoutCharacter.ascii(for: UInt32(keyCode))?.lowercased() ?? typed
   }
 }
-
-// MARK: - Validation
 
 enum HotkeyRejection: Equatable, Sendable {
   case noModifier
@@ -221,8 +215,6 @@ enum HotkeyValidation {
     return carbon & others == 0
   }
 }
-
-// MARK: - AppKit bridge
 
 extension HotkeyBinding {
   static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {

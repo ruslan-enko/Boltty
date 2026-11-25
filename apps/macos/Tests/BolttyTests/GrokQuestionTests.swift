@@ -27,9 +27,6 @@ final class GrokQuestionTests: XCTestCase {
 }
 
 final class GrokLaunchTests: XCTestCase {
-  /// Measured on grok 1.0.60: with `[ui] permission_mode = "always-approve"`
-  /// in the person's config, plain `grok agent stdio` wrote and ran without
-  /// asking; `--permission-mode default` brings every ask back.
   func testGrokAsksWhateverThePersonsConfigSays() {
     let arguments = ACPAgent.grok.arguments
     XCTAssertEqual(arguments, ["--permission-mode", "default", "agent", "stdio"])

@@ -104,8 +104,6 @@ struct UsageOverviewSection: View {
     }
   }
 
-  // MARK: Overview
-
   private func tiles(_ summary: AgentStatisticsSummary) -> some View {
     Grid(horizontalSpacing: 8, verticalSpacing: 8) {
       GridRow {
@@ -138,8 +136,6 @@ struct UsageOverviewSection: View {
     .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     .accessibilityElement(children: .combine)
   }
-
-  // MARK: Models
 
   private func models(_ summary: AgentStatisticsSummary) -> some View {
     let total = max(summary.tokens, 1)
@@ -178,8 +174,6 @@ struct UsageOverviewSection: View {
     parts.append(String(localized: "\(row.sessions) sessions"))
     return parts.joined(separator: " · ")
   }
-
-  // MARK: Formatting
 
   private static func decimal(_ value: Int) -> String {
     let formatter = NumberFormatter()

@@ -82,8 +82,6 @@ final class ConversationPersistence {
     conversationDirectory(id).appendingPathComponent("attachments", isDirectory: true)
   }
 
-  // MARK: - Envelopes
-
   private struct IndexFile: Codable {
     var version: Int
     var conversations: [Conversation]
@@ -103,8 +101,6 @@ final class ConversationPersistence {
     var transcripts: [UUID: ConversationTranscript] = [:]
     var damaged: [UUID] = []
   }
-
-  // MARK: - Reading
 
   func load() -> LoadedState {
     var state = LoadedState()
@@ -167,8 +163,6 @@ final class ConversationPersistence {
       .appendingPathExtension("\(label)-\(stamp).json")
     try? FileManager.default.moveItem(at: url, to: target)
   }
-
-  // MARK: - Writing
 
   func saveIndex(_ conversations: [Conversation], selected: UUID?) {
     guard isPrimary else { return }
@@ -288,7 +282,6 @@ struct ConversationTranscript: Equatable, Sendable {
     interactions.first { $0.isOpen }
   }
 
-  /// Unlike an open ask this holds nothing up: the chat sends as usual.
   var lateQuestion: PendingInteraction? {
     interactions.last { $0.isLate }
   }

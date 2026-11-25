@@ -29,8 +29,6 @@ final class PromptDraftTests: XCTestCase {
     store = StubStore()
   }
 
-  // MARK: - Kind resolution (D13)
-
   func testKindComesFromUTIConformanceNotExtensionStrings() {
     XCTAssertEqual(PromptAttachmentKind.resolve(for: .png), .image)
     XCTAssertEqual(PromptAttachmentKind.resolve(for: .heic), .image)
@@ -58,8 +56,6 @@ final class PromptDraftTests: XCTestCase {
       .file
     )
   }
-
-  // MARK: - Labels
 
   func testFileChipsAreNamedByKindNotByPath() {
     let chip = PromptAttachment.file(
@@ -90,8 +86,6 @@ final class PromptDraftTests: XCTestCase {
     XCTAssertTrue(shown.contains("…"))
     XCTAssertTrue(shown.hasSuffix(".mov"), "the extension is the informative part: \(shown)")
   }
-
-  // MARK: - Links
 
   func testOnlyAWholeURLWithASchemeAndHostIsALink() {
     XCTAssertTrue(PromptAttachmentKind.isLink("https://figma.com/design/abc?node-id=1-2"))
@@ -146,8 +140,6 @@ final class PromptDraftTests: XCTestCase {
     )
   }
 
-  // MARK: - Expansion (D9, D10)
-
   func testFileChipExpandsToItsAbsolutePath() throws {
     var draft = PromptDraft("Optimize ")
     draft.append(PromptAttachment.file(URL(fileURLWithPath: "/Users/e/clips/video1.mov")))
@@ -195,8 +187,6 @@ final class PromptDraftTests: XCTestCase {
     XCTAssertEqual(text, "<pasted-text>line one</pasted-text>")
     XCTAssertTrue(files.isEmpty, "the words reach the agent; only the card is lost")
   }
-
-  // MARK: - Words first
 
   func testADraftKeepsItsWordsAheadOfWhatCameWithThem() {
     var draft = PromptDraft("Compare these")
@@ -365,8 +355,6 @@ final class PromptDraftTests: XCTestCase {
     XCTAssertThrowsError(try PromptExpansion.expand(draft, store: store))
   }
 
-  // MARK: - Reaching the agent intact
-
   func testAPathWithSpacesIsQuotedForTheReader() throws {
     var draft = PromptDraft("Convert ")
     draft.append(PromptAttachment.file(URL(fileURLWithPath: "/Users/e/my clip (final).mov")))
@@ -384,8 +372,6 @@ final class PromptDraftTests: XCTestCase {
     XCTAssertEqual(try PromptExpansion.expand(draft, store: store), "/Users/e/clip.mov")
   }
 
-  // MARK: - Emptiness (D17)
-
   func testAChipWithNoWordsIsAValidPrompt() throws {
     var draft = PromptDraft()
     draft.append(PromptAttachment.file(URL(fileURLWithPath: "/Users/e/report.pdf")))
@@ -399,8 +385,6 @@ final class PromptDraftTests: XCTestCase {
     XCTAssertTrue(PromptDraft("   ").isEffectivelyEmpty)
     XCTAssertTrue(PromptDraft().isEffectivelyEmpty)
   }
-
-  // MARK: - Draft bookkeeping
 
   func testAdjacentTypingMergesIntoOneRun() {
     var draft = PromptDraft()
@@ -529,8 +513,6 @@ final class SentFileTests: XCTestCase {
     XCTAssertEqual(words(lifted), ["text1 and file1"])
     XCTAssertEqual(files(lifted).map(\.displayName), ["text1.txt", "report.pdf"])
   }
-
-  // MARK: - A region of the screen
 
   private struct FixedStore: PromptAttachmentStoring {
     func fileURL(for attachment: PromptAttachment) throws -> URL {

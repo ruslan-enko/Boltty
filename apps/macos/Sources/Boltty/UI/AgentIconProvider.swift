@@ -27,8 +27,6 @@ enum AgentIconProvider {
   }
 }
 
-// MARK: - Trimming
-
 @MainActor
 extension AgentIconProvider {
   private static var trimmedCache: [AgentId: NSImage] = [:]

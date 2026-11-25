@@ -142,8 +142,6 @@ final class GlobalHotkeyServiceTests: XCTestCase {
     }
   }
 
-  // MARK: - Availability
-
   func testAvailabilityMapsCarbonStatus() {
     XCTAssertEqual(HotkeyAvailability(status: noErr), .free)
     XCTAssertEqual(HotkeyAvailability(status: OSStatus(eventHotKeyExistsErr)), .taken)

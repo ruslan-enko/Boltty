@@ -1,7 +1,6 @@
 import AppKit
 
 extension ConversationMessage {
-  /// The region an Ask Boltty question was about, when this question is one.
   var askedRegion: (path: String, region: AskedRegion)? {
     for part in parts {
       if case let .attachment(attachment) = part, let region = attachment.asked,
@@ -13,8 +12,6 @@ extension ConversationMessage {
   }
 }
 
-/// What an Ask Boltty question was about, over its words: where it was asked,
-/// the region at the chat's width, and what the answer drew on it.
 final class PaletteAskedRegionView: NSView {
   static let placeHeight: CGFloat = 18
   static let placeGap: CGFloat = 6
@@ -105,7 +102,6 @@ final class PaletteAskedRegionView: NSView {
     return size
   }
 
-  /// The shapes an answer drew, with each place it pointed at as a ring.
   static func shapes(in answer: String?) -> [AskBolttyShape] {
     guard let answer else { return [] }
     return AskBolttyMark.all(in: answer).compactMap { mark in
@@ -157,8 +153,6 @@ final class PaletteAskedRegionView: NSView {
     if !hasLoaded, size.width > 0 { loadPicture(side: max(size.width, size.height)) }
   }
 
-  /// The whole screen in the picture's points, so the answer's thousandths land
-  /// where it meant them on the region.
   private var drawingSpace: CGRect {
     let frame = shownImageRect
     let area = region.areaRect
@@ -170,8 +164,6 @@ final class PaletteAskedRegionView: NSView {
     return CGRect(x: frame.minX - area.minX * x, y: maxY - height, width: 1000 * x, height: height)
   }
 
-  /// Where the picture stands in its box: a region too thin for the box's least
-  /// height stands in its middle.
   private var shownImageRect: CGRect {
     let box = picture.bounds
     guard region.width > 0, region.height > 0, box.width > 0 else { return box }
@@ -196,8 +188,6 @@ final class PaletteAskedRegionView: NSView {
         layer.contents = image
       })
   }
-
-  // MARK: - Acting on it
 
   override func mouseUp(with event: NSEvent) {
     guard event.clickCount == 1,

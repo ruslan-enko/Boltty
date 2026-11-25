@@ -6,8 +6,6 @@ using namespace metal;
 
 struct Varyings {
   float4 position [[position]];
-  /// Points from the shell's bottom-left corner. Unflipped, matching
-  /// `VoiceEdgeGlowLayout`, where y = 0 is the bottom edge.
   float2 local;
 };
 
@@ -83,9 +81,6 @@ static inline float3 rayColour(
   const float n2 = rayNoise(a * 13.0 - f * 0.78, 13.0, rho * 1.15 - f * 0.34, 17.0);
   const float n3 = rayNoise(a * 22.0 + f * 1.25, 22.0, rho * 1.90 - f * 0.55, 31.0);
 
-  // Averaging three noises piles the values up in the middle, which would draw
-  // every ray the same mid-palette colour. Stretched about the middle, so the
-  // rays reach both ends of what they are given — more so the louder it is.
   const float gain = 2.0 + 1.6 * level;
   const float n = saturate((n1 * 0.52 + n2 * 0.31 + n3 * (0.17 + 0.10 * level) - 0.5) * gain + 0.5);
 
@@ -100,12 +95,6 @@ static inline float3 paletteLight(constant VoiceGlowUniforms &u, float n, float 
   lab.yz *= 1.35;
   float3 colour = oklabToSRGB(lab);
 
-  // A palette's pale stop is the brightest thing in it and would take white
-  // words, or a light band, with it — so what is close to white is carried
-  // toward the palette's first stop, its body colour, rather than darkened to
-  // grey, which was a plateau of nothing. By the *smallest* channel, not by
-  // brightness: a yellow is bright and still a colour, and darkening it by
-  // brightness turned it to olive.
   const float whiteness = smoothstep(0.50, 0.88, min(colour.r, min(colour.g, colour.b)));
   return srgbMix(colour, u.colors[0].rgb * 0.92, whiteness * carry);
 }

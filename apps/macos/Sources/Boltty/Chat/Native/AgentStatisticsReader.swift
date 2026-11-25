@@ -26,8 +26,6 @@ struct AgentStatisticsReader: Sendable {
       .appendingPathComponent("Boltty/Usage/statistics.json")
   }
 
-  // MARK: - Units
-
   private struct Unit: Sendable {
     enum Kind: Sendable { case claude, codex, grok, opencode, antigravity }
     var kind: Kind
@@ -167,8 +165,6 @@ struct AgentStatisticsReader: Sendable {
     }
   }
 
-  // MARK: - Cache
-
   private func loadCache() -> Cache {
     guard let cacheURL,
           let data = try? Data(contentsOf: cacheURL),
@@ -187,8 +183,6 @@ struct AgentStatisticsReader: Sendable {
       try? data.write(to: cacheURL, options: .atomic)
     }
   }
-
-  // MARK: - Lines
 
   private static func forEachLine(of url: URL, _ body: (Data) -> Void) {
     try? FileHead.forEachLine(of: url, maxLines: .max, maxBytes: .max) { line in
@@ -223,8 +217,6 @@ struct AgentStatisticsReader: Sendable {
     guard let parts = content as? [[String: Any]] else { return "" }
     return parts.compactMap { $0["text"] as? String }.joined(separator: "\n")
   }
-
-  // MARK: - Claude Code
 
   private static let claudeAssistant = Data("\"type\":\"assistant\"".utf8)
   private static let claudeUser = Data("\"type\":\"user\"".utf8)
@@ -276,8 +268,6 @@ struct AgentStatisticsReader: Sendable {
     return accumulator.isEmpty ? [] : [.init(agent: AgentId.claude.rawValue, id: id, samples: accumulator.samples)]
   }
 
-  // MARK: - Codex
-
   private static let codexTurnContext = Data("\"type\":\"turn_context\"".utf8)
   private static let codexTokenCount = Data("\"type\":\"token_count\"".utf8)
   private static let codexResponseItem = Data("\"type\":\"response_item\"".utf8)
@@ -328,8 +318,6 @@ struct AgentStatisticsReader: Sendable {
     return accumulator.isEmpty ? [] : [.init(agent: AgentId.codex.rawValue, id: id, samples: accumulator.samples)]
   }
 
-  // MARK: - Grok
-
   private static let grokTurnStarted = Data("\"type\":\"turn_started\"".utf8)
   private static let grokFirstToken = Data("\"type\":\"first_token\"".utf8)
 
@@ -375,8 +363,6 @@ struct AgentStatisticsReader: Sendable {
     }
     return accumulator.isEmpty ? [] : [.init(agent: AgentId.grok.rawValue, id: id, samples: accumulator.samples)]
   }
-
-  // MARK: - OpenCode
 
   static func openCodeSessions(in database: URL) -> [AgentStatistics.Session] {
     var handle: OpaquePointer?
@@ -439,8 +425,6 @@ struct AgentStatisticsReader: Sendable {
       return .init(agent: AgentId.opencode.rawValue, id: id, samples: accumulator.samples)
     }
   }
-
-  // MARK: - Antigravity
 
   static func antigravitySessions(at url: URL) -> [AgentStatistics.Session] {
     guard let steps = try? AntigravityTranscript.steps(at: url) else { return [] }

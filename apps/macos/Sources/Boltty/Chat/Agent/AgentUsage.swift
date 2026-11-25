@@ -2,8 +2,6 @@ import Foundation
 
 struct AgentUsage: Equatable, Sendable {
   var windows: [AgentUsageWindow]
-  /// What can be said without a percentage (OpenCode's free models: the
-  /// allowance is the server's, so only the steps taken are known).
   var notes: [String] = []
 
   var pressing: AgentUsageWindow? {

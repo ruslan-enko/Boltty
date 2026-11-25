@@ -480,8 +480,6 @@ final class BolttyAIPreviewCard: NSView {
         if case let .attachment(attachment) = part { return attachment.url != nil }
         return false
       }
-      // The bubble is pinned to the row's top and to the room for the question's
-      // actions under it, so the ghost needs that room too.
       let ghostFrame = isFlipped
         ? NSRect(x: landing.minX, y: landedBubble.minY,
                  width: landing.width, height: landing.maxY - landedBubble.minY)
@@ -538,9 +536,7 @@ final class BolttyAIPreviewCard: NSView {
     let duration = AgentPaletteMetrics.previewSendFlightDuration
     let ghosts = risers.map(\.view) + morphs.flatMap { [$0.card, $0.chip].compactMap { $0 } }
       + whips + [wordsMorph?.bubble, wordsMorph?.typed, wordsMorph?.landed].compactMap { $0 }
-    // Every part runs on Core Animation's clock. The clip view's animator() is
-    // AppKit's timer on the main thread, which the turn starting keeps busy: the
-    // transcript stuttered under a bubble that glided.
+    // The clip view's animator() runs on the main thread, which a starting turn keeps busy.
     CATransaction.begin()
     CATransaction.setCompletionBlock { [weak self, weak row] in
       MainActor.assumeIsolated {
@@ -641,11 +637,6 @@ final class BolttyAIPreviewCard: NSView {
     var linesMatch: Bool
   }
 
-  /// The words leave the composer as they stood there and the bubble grows round
-  /// them on the way up, as Messages sends. Only the bubble scales: the words are
-  /// two pictures at their own size on one path, the typed ones fading into the
-  /// bubble's, so the lines never part. Where the composer wraps them otherwise
-  /// than the bubble does, the typed words fade where they stand instead.
   private func makeWordsMorph(
     _ bubble: NSView, landing: NSRect, row: PaletteChatMessageView,
     from spoken: FlightOrigin, image: NSImage
@@ -1011,8 +1002,6 @@ final class BolttyAIPreviewCard: NSView {
     updateScrollEdge()
   }
 
-  // MARK: - The scroll edge
-
   private let scrollEdge = CAGradientLayer()
 
   private func configureScrollEdge() {
@@ -1038,7 +1027,6 @@ final class BolttyAIPreviewCard: NSView {
     let bottomWhole = max(topWhole, height - edge - soft)
     let bottomGone = min(height, max(bottomWhole, height - edge + soft))
 
-    // Gone by the back disc's middle, as the list's rows are by its foot discs'.
     let topGone = min(
       topWhole, AgentPaletteMetrics.previewCloseInset + AgentPaletteMetrics.previewCloseDiameter / 2)
     let curve = ScrollEdgeBlur.smoothstep
@@ -1161,7 +1149,6 @@ final class BolttyAIPreviewCard: NSView {
     )
   }
 
-  /// The work since the agent's last words, said on the working line.
   static func liveWork(
     of preview: BolttyAISessionPreview
   ) -> (messages: [ConversationMessage], work: [AgentActivity]) {
@@ -1203,7 +1190,6 @@ final class BolttyAIPreviewCard: NSView {
           !preview.withholdsAnswer else { return nil }
     let body = preview.displayBody.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !body.isEmpty else { return nil }
-    // With nothing answered the body is the person's own request.
     let isRequest = [preview.retryPrompt, preview.title].contains {
       $0?.trimmingCharacters(in: .whitespacesAndNewlines) == body
     }
@@ -1365,8 +1351,6 @@ final class BolttyAIPreviewCard: NSView {
     turnClock = nil
   }
 
-  // MARK: - The agent's question
-
   var isAnswering: Bool { !optionRows.isEmpty }
 
   var focusedOptionIndex: Int { focusedOption }
@@ -1452,9 +1436,6 @@ final class BolttyAIPreviewCard: NSView {
     return true
   }
 
-  /// ← and → walk the default across the approval buttons in the order they
-  /// stand, so Return presses the one that is lit. Words in the composer keep
-  /// the arrows, since then Return refuses with them.
   @discardableResult
   func moveApprovalFocus(by step: Int) -> Bool {
     guard let approvalBar, !composerHasWords, !optionRows.isEmpty else { return false }
@@ -1670,7 +1651,6 @@ final class PaletteChatMessageView: NSView {
   private var sentCards: [PromptAttachmentCard] = []
   private var askedView: PaletteAskedRegionView?
   var askedViewForTesting: PaletteAskedRegionView? { askedView }
-  /// Whose light the answer's drawings over an asked region are in.
   var agent: AgentId? {
     didSet {
       guard agent != oldValue, let agent else { return }
@@ -1759,7 +1739,6 @@ final class PaletteChatMessageView: NSView {
     return (inSelf(copyButton), inSelf(answerViews.last ?? textViews.first ?? bodyStack))
   }
   var bubbleFrameForFlight: NSRect { convert(bubble.bounds, from: bubble) }
-  /// The bubble's words alone, where they stand in the row.
   func bubbleTextSnapshotForFlight() -> (frame: NSRect, image: NSImage)? {
     let rect = bodyStack.bounds
     guard rect.width > 1, rect.height > 1,
@@ -1800,7 +1779,6 @@ final class PaletteChatMessageView: NSView {
     } else {
       bubble.radius = 0
     }
-    // The answer's Copy stands past the bubble's edge, by its corner.
     bubble.clipsToBounds = user
     let side = user ? AgentPaletteMetrics.previewUserBubbleHorizontalPadding : 0
     let top = user ? AgentPaletteMetrics.previewUserBubbleVerticalPadding : 0
@@ -2248,13 +2226,10 @@ final class PaletteChatMessageView: NSView {
     }
   }
 
-  /// The words that left the streaming paragraph finish arriving here, where
-  /// the same words now stand at the end of the answer.
   func continueArrival(_ handOff: PaletteStreamingTailView.HandOff) {
     guard let view = answerViews.last, !handOff.words.isEmpty else { return }
     let shown = view.string as NSString
     let all = PaletteStreamingTailView.words(in: view.string)
-    // The delta that closed the paragraph may carry its last few words too.
     for extra in 0...min(12, max(0, all.count - handOff.words.count)) {
       let ranges = Array(all.suffix(handOff.words.count + extra))
       guard zip(ranges, handOff.words).allSatisfy({ shown.substring(with: $0) == $1 }) else { continue }
@@ -2375,8 +2350,6 @@ final class PaletteChatMessageView: NSView {
     }
   }
 
-  /// An asked region stands over the question as wide as the column, its edge
-  /// with the bubble's.
   static func askedRegionWidth(in width: CGFloat) -> CGFloat {
     max(0, width)
   }
@@ -2529,8 +2502,6 @@ final class PaletteChatMessageView: NSView {
   }
 }
 
-/// The paragraph still growing at the end of a running reply, drawn as the
-/// answer draws it, so nothing moves when it closes and joins the reply.
 final class PaletteStreamingTailView: NSView {
   struct HandOff {
     let words: [String]
@@ -2545,8 +2516,6 @@ final class PaletteStreamingTailView: NSView {
   private var height: NSLayoutConstraint!
   private var agent: AgentId?
   private(set) var lightForTesting: [NSColor] = []
-  /// The words of a paragraph that has closed, or of the last one when the
-  /// reply ends, for the reply's row to finish their arrival.
   var onHandOff: ((HandOff) -> Void)?
 
   init() {
@@ -2630,8 +2599,6 @@ final class PaletteStreamingTailView: NSView {
     if abs(height.constant - measured) > 0.5 { height.constant = measured }
   }
 
-  /// A reply comes in bursts; its words are let in one after another, never
-  /// more than `previewStreamingWordLag` behind what has come.
   static func births(
     for count: Int, after last: CFTimeInterval?, now: CFTimeInterval
   ) -> [CFTimeInterval] {
@@ -2674,9 +2641,6 @@ final class PaletteStreamingTailView: NSView {
   }
 }
 
-/// Words arriving: each fades in from its birth and passes through the agent's
-/// light to its own ink. Drawn as the layout manager's temporary colour, so the
-/// text is set once per change, not once a frame.
 @MainActor
 final class WordArrival: NSObject {
   struct Word {
@@ -2699,7 +2663,6 @@ final class WordArrival: NSObject {
     resume()
   }
 
-  /// Adds words without letting go of those still arriving elsewhere in the text.
   func add(_ more: [Word]) {
     let now = Motion.now
     let kept = words.filter { word in
@@ -3067,7 +3030,6 @@ final class PaletteWorkingLineView: NSView {
   }
 }
 
-/// A sent message's bubble: a plain round shape, a capsule while it is one line.
 final class MessageBubbleView: NSView {
   var fill: NSColor? { didSet { applyFill() } }
   var radius: CGFloat = AgentPaletteMetrics.previewUserBubbleCornerRadius {

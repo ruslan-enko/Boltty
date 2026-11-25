@@ -26,8 +26,6 @@ struct ShortcutBinding: Equatable, Hashable, Sendable {
   }
 }
 
-// MARK: - Display
-
 extension ShortcutBinding {
   var displayName: String {
     guard !isUnbound else { return String(localized: "None") }
@@ -65,8 +63,6 @@ extension ShortcutBinding {
     return keyEquivalent.uppercased()
   }
 }
-
-// MARK: - Validation
 
 enum ShortcutBindingRejection: Equatable, Sendable {
   case noModifier

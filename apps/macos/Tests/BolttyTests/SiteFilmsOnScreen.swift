@@ -3,8 +3,6 @@ import SwiftUI
 import XCTest
 @testable import Boltty
 
-/// Films Settings' own "how it works" samples for the website: each sample on
-/// its SettingsStage over the desktop picture, looping through its states.
 /// Set TEST_RUNNER_BOLTTY_SITE_FILMS=<dir>.
 @MainActor
 final class SiteFilmsOnScreen: XCTestCase {
@@ -41,8 +39,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     try await film("site-answer", seconds: 10) { AnswerFilm() }
   }
 
-  /// The real panel, its face turning into each agent's on ⇧Tab, over the
-  /// desktop picture at full size: the README's prompt film, framed for the site.
   func testFilmPanelFaces() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let backdrop = try desktop(on: screen)
@@ -69,7 +65,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     _ = conversations
   }
 
-  /// A task typed into the panel; Return, and the same panel is the chat with the agent's answer.
   func testFilmPanelChat() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let backdrop = try desktop(on: screen)
@@ -95,7 +90,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     try await Task.sleep(for: .seconds(0.5))
   }
 
-  /// A task typed in; the agent stops and asks before running a command.
   func testFilmPanelApprove() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let backdrop = try desktop(on: screen)
@@ -143,7 +137,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     return id
   }
 
-  /// Talk to it: the prompt listens, the words arrive as they are said.
   func testFilmPanelVoice() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let backdrop = try desktop(on: screen)
@@ -170,7 +163,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     try await Task.sleep(for: .seconds(0.5))
   }
 
-  /// Keep an eye on things: ↓ opens the recent chats, a tab per agent.
   func testFilmPanelHistory() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let backdrop = try desktop(on: screen)
@@ -195,7 +187,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     try await Task.sleep(for: .seconds(0.5))
   }
 
-  /// Ask about the screen: a heading selected, the question said out loud, the face answers beside the pointer.
   func testFilmAskScreen() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let backdrop = try desktop(on: screen)
@@ -215,7 +206,7 @@ final class SiteFilmsOnScreen: XCTestCase {
     let overlay = AskBolttyOverlayController()
     let pointer = CGPoint(x: heading.x + 90, y: heading.y - 90)
     overlay.pointer = { pointer }
-    overlay.restHint = { AskBolttyController.restHint(launchKey: "⌥Space") }
+    overlay.restHints = { AskBolttyController.restHints(launchKey: "⌥Space") }
     let top = NSScreen.screens.first?.frame.maxY ?? pointer.y
     CGWarpMouseCursorPosition(CGPoint(x: pointer.x, y: top - pointer.y))
     let reel = try record(area, seconds: 14, to: "site-ask-screen.mov")
@@ -292,15 +283,11 @@ final class SiteFilmsOnScreen: XCTestCase {
     return window
   }
 
-  /// The site's frame: one fixed 16:10 size for every film, big enough for the
-  /// tallest panel (the chat, 672 × 659) with room round it, hanging from the panel's top.
   private static let filmSize = CGSize(width: 1248, height: 780)
   private static let filmMargin: CGFloat = 60
 
-  /// The chat as a person might size it for a quick task: the prompt's width, not much taller.
   private static let compactSizes = BolttyAISurfaceSizes(
     chat: CGSize(width: 540, height: 420), history: CGSize(width: 540, height: 420))
-  /// The frame for films that open the compact chat or list: 16:10 round 540 × 420.
   private static let compactFilm = CGSize(width: 896, height: 560)
 
   private func frame(around view: AgentPaletteView, on screen: NSScreen, size: CGSize = filmSize) throws -> CGRect {
@@ -399,8 +386,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     return reel
   }
 
-  // MARK: - Filming
-
   private func film<V: View>(_ name: String, seconds: Int, @ViewBuilder content: () -> V) async throws {
     let sample = content()
     let screen = try XCTUnwrap(NSScreen.main)
@@ -417,7 +402,6 @@ final class SiteFilmsOnScreen: XCTestCase {
     window.setFrame(frame, display: true)
     window.orderFrontRegardless()
     defer { window.orderOut(nil) }
-    // The desktop picture loads, then the sample settles before the reel starts.
     try await Task.sleep(for: .seconds(2.5))
     let top = NSScreen.screens.first?.frame.maxY ?? frame.maxY
     let region = "\(Int(frame.minX)),\(Int(top - frame.maxY)),\(Int(frame.width)),\(Int(frame.height))"
@@ -433,7 +417,6 @@ private let agents: [AgentId] = [.claude, .codex, .opencode, .grok, .antigravity
 
 private func look(_ agent: AgentId) -> MascotLook { MascotLook.face(for: agent) }
 
-/// The prompt, its face turning into each agent's, as ⇧Tab does.
 private struct FacesFilm: View {
   @State private var index = 0
   var body: some View {
@@ -448,7 +431,6 @@ private struct FacesFilm: View {
   }
 }
 
-/// Opened over Finder: the selected files arrive as cards over the line.
 private struct FinderFilm: View {
   @State private var attaches = false
   var body: some View {
@@ -465,7 +447,6 @@ private struct FinderFilm: View {
   }
 }
 
-/// Dictation: the words arrive as they are heard.
 private struct DictationFilm: View {
   @State private var phrase = SampleText.spoken
   var body: some View {
@@ -483,7 +464,6 @@ private struct DictationFilm: View {
   }
 }
 
-/// Ask Boltty: the face beside the pointer, its answer word by word.
 private struct AnswerFilm: View {
   @State private var canMakeChanges = false
   var body: some View {

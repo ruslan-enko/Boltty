@@ -75,8 +75,6 @@ final class VoiceGlowRenderer {
 
   var metalDevice: MTLDevice { device }
 
-  // MARK: - The frame, as numbers
-
   static func uniforms(for frame: Frame) -> VoiceGlowUniforms {
     var u = VoiceGlowUniforms()
     let intensity = min(1, max(0, frame.intensity))
@@ -141,8 +139,6 @@ final class VoiceGlowRenderer {
   }
 
   static let colorCount = Int(VOICE_GLOW_COLOR_COUNT)
-
-  // MARK: - The frame, on the GPU
 
   func render(_ uniforms: VoiceGlowUniforms, in view: MTKView) {
     guard uniforms.opacity > 0,

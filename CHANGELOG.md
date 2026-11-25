@@ -2,6 +2,30 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.12.9
+
+**Ask Boltty**
+- Drawings are a marker's: one strong colour, a line that sways and changes width as
+  a hand's does, drawn quickly. Labels are white with black words.
+- The answer's bubble is on the panel's glass and keeps off the region and the
+  drawings where the other side is free.
+- Key hints are capsules of the same glass, also after the answer ("Ask more",
+  "Close"). The one that sends fills in the face's colours, smoothly.
+- "Thinking…", steps and failures arrive out of the blur too.
+- The selection's glow is fainter, so what is selected keeps its colours, and a
+  small region has handles at its corners alone.
+
+**Panel**
+- A file link in an answer opens over the panel; a folder opens in Finder.
+- Closing the panel no longer takes you away from an app that has come forward since.
+- The first screen's face is sharper.
+
+**First run**
+- The intro is faster, moves on one curve, and shows Ask Boltty over a window.
+
+**Settings**
+- New pictures in the sidebar.
+
 ## 0.12.8
 
 **Agents**

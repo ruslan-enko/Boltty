@@ -180,8 +180,6 @@ final class WorkingDirectoryChipView: PaletteIconButton {
   }
 }
 
-// MARK: - Plan usage text
-
 enum UsagePillText {
   static func title(for usage: AgentUsage, now: Date = Date()) -> String? {
     guard let window = usage.pressing else { return nil }
@@ -263,7 +261,6 @@ final class PlanUsageRingView: PaletteIconButton {
   }
   var onCompact: (() -> Void)?
   var percentForTesting: Int { PlanUsageRingReading.percent(usage) }
-  /// The plan's, else, for an agent whose usage came with no plan, the chat's context.
   var showsContext: Bool { usage?.windows.isEmpty == true && context != nil }
   var shownPercent: Int {
     showsContext ? min(100, max(0, context?.percent ?? 0)) : PlanUsageRingReading.percent(usage)
@@ -360,7 +357,6 @@ final class PlanUsageRingView: PaletteIconButton {
     arc.lineCapStyle = .round
     arc.appendArc(withCenter: center, radius: diameter / 2, startAngle: top,
                   endAngle: isFlipped ? top + sweep : top - sweep, clockwise: !isFlipped)
-    // A plan nearly spent reads at a glance; in the ink, full looked like empty.
     let nearlySpent = percent >= AgentPaletteMetrics.planRingWarningPercent
     (nearlySpent ? BolttyBrand.accentOnGlass : contentTintColor ?? tintForTesting).setStroke()
     arc.stroke()

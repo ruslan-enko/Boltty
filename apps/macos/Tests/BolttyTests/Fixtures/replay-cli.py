@@ -44,8 +44,6 @@ def answers(record, ids):
     return "id" in ids and frame.get("id") == ids["id"] and "method" not in frame
 
 def play(start, stop, swap, ids=None):
-    # A reply recorded after later inputs — a recorder that did not wait for
-    # it — still answers its own request, first.
     if ids:
         for index, record in enumerate(records):
             if index not in played and record["dir"] == "out" and answers(record, ids):
@@ -69,9 +67,7 @@ def play(start, stop, swap, ids=None):
             line = line.replace(json.dumps(old), json.dumps(new))
         print(line, flush=True)
 
-# `readline`, never `for line in sys.stdin`: the iterator reads ahead, and a
-# first line that is a handshake waits for a second that never comes — the
-# adapter is waiting on the answer before it sends anything else.
+# Not `for line in sys.stdin`: it reads ahead and the handshake never gets its answer.
 log = open(os.environ["BOLTTY_REPLAY_LOG"], "a") if os.environ.get("BOLTTY_REPLAY_LOG") else None
 n = -1
 while True:
@@ -89,5 +85,4 @@ while True:
     stop = inputs[n + 1] if n + 1 < len(inputs) else len(records)
     play(inputs[n] + 1, stop, swap, recorded)
     if n + 1 == len(inputs):
-        # Everything after the last input, then stay open as the CLI would.
         time.sleep(3600)

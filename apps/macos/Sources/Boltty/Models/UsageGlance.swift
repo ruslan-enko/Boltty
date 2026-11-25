@@ -1,19 +1,15 @@
 import Foundation
 
-/// One agent's line in the limits window under the menu-bar mark.
 struct UsageGlanceRow: Equatable {
   enum Content: Equatable {
     case limits(AgentUsage)
     case signedOut(command: String)
-    /// Declares no plan limit (OpenCode): said, not left blank.
     case noPlanLimit
-    /// Reports limits, but none has come yet.
     case waiting
   }
 
   let agent: AgentId
   let content: Content
-  /// The agent a new chat would go to now, when that is decided by the plans.
   var takesNextChat = false
 }
 

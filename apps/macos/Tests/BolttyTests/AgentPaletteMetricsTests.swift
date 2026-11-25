@@ -181,8 +181,6 @@ final class AgentPaletteMetricsTests: XCTestCase {
     XCTAssertEqual(AgentPaletteMetrics.panelSize().width, 640)
   }
 
-  // MARK: - Mascot geometry
-
   func testOnlyThePromptsFaceOverhangsItsBox() {
     let prompt = AgentPaletteMetrics.promptMascotSize / AgentPaletteMetrics.iconSize
     let row = AgentPaletteMetrics.resultsMascotSize / AgentPaletteMetrics.resultsIconFrameSize

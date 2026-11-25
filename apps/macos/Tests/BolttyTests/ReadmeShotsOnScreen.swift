@@ -36,8 +36,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     try await super.tearDown()
   }
 
-  // MARK: - The panel
-
   func testPhotographThePanel() async throws {
     let (controller, conversations) = makePanel()
     let view = try XCTUnwrap(controller.window?.contentView as? AgentPaletteView)
@@ -174,8 +172,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     return id
   }
 
-  // MARK: - Ask Boltty
-
   func testPhotographAskBoltty() async throws {
     let screen = try XCTUnwrap(NSScreen.main)
     let note = makeNote(on: screen)
@@ -194,7 +190,7 @@ final class ReadmeShotsOnScreen: XCTestCase {
     let overlay = AskBolttyOverlayController()
     let pointer = CGPoint(x: heading.x + 90, y: heading.y - 90)
     overlay.pointer = { pointer }
-    overlay.restHint = { AskBolttyController.restHint(launchKey: "⌥Space") }
+    overlay.restHints = { AskBolttyController.restHints(launchKey: "⌥Space") }
     let top = NSScreen.screens.first?.frame.maxY ?? pointer.y
     CGWarpMouseCursorPosition(CGPoint(x: pointer.x, y: top - pointer.y))
     try await Task.sleep(for: .seconds(0.8))
@@ -271,8 +267,6 @@ final class ReadmeShotsOnScreen: XCTestCase {
     window.orderFrontRegardless()
     return window
   }
-
-  // MARK: - Taking the pictures
 
   private func photograph(_ view: AgentPaletteView, to name: String) throws {
     try photograph(area(around: view), to: name)

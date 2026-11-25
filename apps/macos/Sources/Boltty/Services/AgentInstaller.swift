@@ -1,6 +1,5 @@
 import Foundation
 
-/// Runs an agent's own installer, as its site tells people to, when the person asks.
 @MainActor
 final class AgentInstaller: ObservableObject {
   enum State: Equatable {

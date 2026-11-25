@@ -32,7 +32,7 @@ final class AskBolttyController {
     session = AskBolttySession(coordinator: coordinator, speech: speech)
 
     overlay.onVisibleChange = { [weak self] in self?.syncEscapeKey() }
-    overlay.restHint = { [weak self] in Self.restHint(launchKey: self?.launchKeyName?()) }
+    overlay.restHints = { [weak self] in Self.restHints(launchKey: self?.launchKeyName?()) }
     session.onSpent = { [weak self] providerID, resetsAt in
       self?.coordinator.markSpent(providerID, until: resetsAt)
     }
@@ -96,8 +96,7 @@ final class AskBolttyController {
       }
       .store(in: &cancellables)
     coordinator.settleAskBolttyChats()
-    // On the next turn of the run loop: `$speakingID` tells before the value
-    // changes, and asked then the voice is still saying what it has finished.
+    // On the next turn: `$speakingID` tells before the value changes.
     speech.$speakingID
       .removeDuplicates()
       .filter { $0 == nil }
@@ -106,17 +105,16 @@ final class AskBolttyController {
       .store(in: &cancellables)
   }
 
-  // MARK: - A question about a region
-
   static func keyHints(phase: AskBolttySession.Phase, guiding: Bool) -> [PaletteKeyHints.Hint] {
     let stop = PaletteKeyHints.Hint(key: "esc", words: String(localized: "Stop"))
     if guiding { return [PaletteKeyHints.Hint(key: nil, words: String(localized: "Click to go on")), stop] }
     return phase == .thinking ? [stop] : []
   }
 
-  static func restHint(launchKey: String?) -> String {
-    guard let launchKey else { return String(localized: "Esc to close") }
-    return String(localized: "\(launchKey) to ask more · Esc to close")
+  static func restHints(launchKey: String?) -> [PaletteKeyHints.Hint] {
+    let close = PaletteKeyHints.Hint(key: "esc", words: String(localized: "Close"))
+    guard let launchKey else { return [close] }
+    return [PaletteKeyHints.Hint(key: launchKey, words: String(localized: "Ask more")), close]
   }
 
   var answeringAgent: AgentId? {
@@ -148,6 +146,7 @@ final class AskBolttyController {
     let targets = targets(for: agent)
     guard !targets.isEmpty else { return false }
     lastRegion = selection.frame
+    overlay.region = selection.frame
     overlay.holdForArrival()
     session.ask(
       words, about: selection, on: displayFrame, targets: targets,
@@ -168,9 +167,6 @@ final class AskBolttyController {
     targets(for: agent).first
   }
 
-  /// Every agent that could answer, in the order they are tried; one whose plan
-  /// is used up goes last, so a question is never refused while another could
-  /// take it.
   private func targets(for agent: AgentId?) -> [AskBolttyTarget] {
     let current = settings()
     let engine = coordinator.engine
@@ -195,7 +191,6 @@ final class AskBolttyController {
 
   private func isSpent(_ providerID: String) -> Bool { coordinator.isSpent(providerID) }
 
-  /// Said beside the face when the agent that would have answered is skipped.
   private func skipNote(wanted: AgentId?, answering: String?) -> String? {
     let current = settings()
     let first = wanted?.rawValue ?? current.askBolttyProviderID
@@ -208,6 +203,7 @@ final class AskBolttyController {
 
   func apply(_ settings: AppSettings) {
     overlay.makesSounds = settings.playsSounds
+    overlay.usesClearGlass = settings.panelClearGlass
   }
 
   func setPanelVisible(_ visible: Bool) {
@@ -229,8 +225,6 @@ final class AskBolttyController {
     }
   }
 
-  /// A click anywhere moves a walk through steps on; it reaches the app
-  /// clicked as it would have.
   private func listenForStepClicks(_ listens: Bool) {
     if let stepClicks { NSEvent.removeMonitor(stepClicks) }
     stepClicks = nil

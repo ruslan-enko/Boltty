@@ -9,10 +9,6 @@ enum SupertonicText {
 
   static let window = 128
 
-  /// Characters per pass. The window would hold ~110, but quality falls off
-  /// toward its end (FluidAudio measured 17.6 % WER at 105 characters, 0 % at
-  /// 71), so passes stay in the clean range. Korean and Japanese decompose to
-  /// more scalars per character.
   static func passLength(for language: String) -> Int {
     language == "ko" || language == "ja" ? 57 : 70
   }
@@ -68,8 +64,6 @@ enum SupertonicText {
     return (ids, mask)
   }
 
-  // MARK: - Cleaning (from the reference)
-
   static func clean(_ raw: String) -> String {
     var text = raw.decomposedStringWithCompatibilityMapping
     text = String(String.UnicodeScalarView(text.unicodeScalars.filter { !isEmoji($0.value) }))
@@ -96,8 +90,6 @@ enum SupertonicText {
     ]
     return closing.contains(last) ? text : text + "."
   }
-
-  // MARK: - Chunking (from the reference)
 
   static func passes(_ piece: String, limit: Int) -> [String] {
     let trimmed = piece.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -177,8 +169,6 @@ enum SupertonicText {
     buffer = ""
   }
 
-  // MARK: - Scripts
-
   private static func isLatin(_ character: Character) -> Bool {
     character.unicodeScalars.allSatisfy { scalar in
       switch scalar.value {
@@ -199,8 +189,6 @@ enum SupertonicText {
     }
     return out
   }
-
-  // MARK: - Tables (from the reference)
 
   private static let abbreviations: Set<String> = [
     "Dr.", "Mr.", "Mrs.", "Ms.", "Prof.", "Sr.", "Jr.", "St.", "Ave.", "Rd.", "Blvd.", "Dept.",

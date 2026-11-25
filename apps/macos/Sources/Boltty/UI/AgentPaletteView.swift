@@ -58,6 +58,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private let screenOutlines = ScreenSelectionOverlay()
   private let selectionPointerHint = ScreenSelectionPointerHint()
   private let regionKeyHints = PaletteKeyHints()
+  private var regionHearsNothing = false
   private var regionIsAsking = false
   private let hearingEnvelope = VoiceLevelEnvelope()
   private var selectionPointerHintTimer: Timer?
@@ -324,8 +325,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       && addressedPreview == nil
   }
 
-  /// An open chat keeps its transcript and composer while it listens; the foot
-  /// becomes the take.
   private var dictatesInChat: Bool {
     (isVoiceListening || isVoiceProcessing) && addressedPreview != nil && !asksByVoice
       && !isResultsExpanded
@@ -477,8 +476,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private var isVoiceProcessing = false
   private var voicePrefixDraft: PromptDraft?
   private var appliedVoiceTranscript: String?
-  /// Where the spoken text begins, in UTF-16 units — everything before it was
-  /// typed before the mic went live and must never be touched.
   private var voicePrefixLength: Int?
   private var voiceExpectedText: String?
   private var voiceTranscriptWasInterrupted = false
@@ -489,8 +486,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private var sessionItems: [BolttyAISessionItem] = []
   private var sessionTranscripts: [UUID: ConversationTranscript] = [:]
   private var resultItems: [BolttyAISessionItem] = []
-  /// `resultItems` stays flat: it is the selection space that keyboard movement,
-  /// Enter and the highlight index into.
   private var resultSections: [AgentHistory.Section] = []
   private(set) var activeHistoryAgent: AgentId?
   private var headersByDay: [String: AgentHistorySectionHeaderView] = [:]
@@ -542,8 +537,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     return picker
   }()
 
-  /// The skills and commands of the agent the words would go to, in this folder:
-  /// nil while that agent offers none.
   var commandSource: ((_ folder: String) async -> (agent: AgentId, commands: [AgentCommand])?)?
   private var commandList: (key: String, agent: AgentId, commands: [AgentCommand])?
   private var commandRead: (key: String, task: Task<(agent: AgentId, commands: [AgentCommand])?, Never>)?
@@ -556,8 +549,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private(set) var mode: Mode = .prompt
 
-  /// True while the field holds a query instead of a message — the one state in
-  /// which its text must never be sent to an agent.
   var fieldIsQuery: Bool { mode == .search }
 
   private var resultsQuery: String { mode == .search ? field.searchQuery : "" }
@@ -657,7 +648,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   var surfaceMotionForTesting: PaletteSurfaceMotion { surfaceMotion }
   var isVoiceListeningForTesting: Bool { isVoiceListening }
   var isVoiceListeningNow: Bool { isVoiceListening }
-  /// An open chat's take ends only by a press: a pause never sends it.
   var isDictatingInChat: Bool { dictatesInChat }
   var micButtonForTesting: GlassCircleVoiceButton { micButton }
   var isShowingRecordingControlsForTesting: Bool { !recordingControls.isHidden }
@@ -734,10 +724,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   override init(frame frameRect: NSRect) {
-    // Shadow lives on the capsule containers: NSGlassEffectView and layer-backed
-    // parents often clip CALayer shadows on the host. Start without a wash:
-    // content-hosting glass omits the initializer's wash, so starting with
-    // .bolttyAI would skip it on the first same-style apply.
+    // Start without a wash: content-hosting glass omits the initializer's, so the first same-style
+    // apply would be skipped.
     promptHost = PaletteGlassHost(
       content: NSView(),
       cornerRadius: AgentPaletteMetrics.cornerRadius,
@@ -790,6 +778,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     refreshMascotEmotion()
     syncVoiceGlowPalette()
     if listening {
+      regionHearsNothing = false
       placeVoiceGlow()
       voiceGlow.fillsShell = showsCompactListening
       setListeningWords("")
@@ -900,8 +889,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     if listeningWords.wordCount > before { listeningFace.nod() }
   }
 
-  /// Under the orb while a region's question is asked: what Return and Escape
-  /// do, Return only once something was said (with nothing, it is the alert).
   private func layoutRegionKeyHints(under shell: CGRect) {
     guard asksByVoice, !isHandingOver, window?.isVisible == true else {
       regionKeyHints.hide()
@@ -927,12 +914,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     let cancel = Hint(key: "esc", words: String(localized: "Cancel"))
     if regionIsAsking || holdsQuestionWords { return [Hint(key: nil, words: String(localized: "Asking…"))] }
     guard isVoiceListening else { return [cancel] }
+    if regionHearsNothing, field.draft.isEffectivelyEmpty { return [cancel] }
     return field.draft.isEffectivelyEmpty
       ? [Hint(key: nil, words: String(localized: "Speak your question")), cancel]
       : [Hint(key: "⏎", words: String(localized: "Ask")), cancel]
   }
 
-  /// How far a pause after speech has gone toward sending it by itself.
   func setRegionSilence(_ progress: CGFloat) {
     guard asksByVoice else { return }
     regionKeyHints.progress = regionHints.contains(where: { $0.key == "⏎" }) ? progress : 0
@@ -944,10 +931,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     needsLayout = true
   }
 
-  /// What the microphone is doing, said in the orb in secondary ink while a
-  /// region's question has no words yet.
   func showRegionVoiceStatus(_ status: String?, whileListening: Bool = false) {
     guard asksByVoice, whileListening || !isVoiceListening, field.draft.isEffectivelyEmpty else { return }
+    regionHearsNothing = whileListening && status?.isEmpty == false
     listeningWords.setText(
       status ?? "", animated: window?.isVisible == true, ink: PaletteInk.secondary)
     needsLayout = true
@@ -1062,8 +1048,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     takeKeyForLightbox(event) || super.performKeyEquivalent(with: event)
   }
 
-  /// While a picture is open every key is its: those that close it do, the rest
-  /// reach nothing under it.
   private func takeKeyForLightbox(_ event: NSEvent) -> Bool {
     guard let lightbox else { return false }
     if event.type == .keyDown,
@@ -1386,6 +1370,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     voiceGlow.apply(palette: palette)
     if let look = selectedAgentImage.mascotLook { listeningFace.apply(look: look) }
     listeningWords.colors = VoiceEdgeGlowLayout.rayColors(from: palette)
+    regionKeyHints.colours = palette.arrivalLight
     field.caretPalette = palette
   }
 
@@ -1433,7 +1418,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     surfaceReady = false
     pendingConversationID = UUID()
     if !resumingChat {
-      // The field holds a list search as its text; reopened, it read as a new request.
       if mode == .search { field.clearPrompt() }
       mode = .prompt
       collapseResults(animated: false)
@@ -1487,8 +1471,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     expandResults()
   }
 
-  // MARK: - Session switcher
-
   private func expandResults() {
     onWillShowSessions?()
     isResultsExpanded = true
@@ -1497,9 +1479,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   var isShowingSessions: Bool { isResultsExpanded && !showsNoAgentsState }
 
-  /// The card keeps its full geometry until the fade is over: zeroing the height
-  /// with the fade lays the panel out synchronously and crushes the still-opaque
-  /// card for a frame.
+  /// Full geometry until the fade is over: zeroing the height crushes the still-opaque card for a
+  /// frame.
   private func collapseResults(animated: Bool = true) {
     isResultsExpanded = false
     selectedResultIndex = -1
@@ -1539,9 +1520,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     applyStopAffordance(preview)
     syncHandOverNote(preview)
     syncSendButton()
-    // In the panel first, at its width. The first chat since launch was measured
-    // with the card nowhere: its words wrapped narrow, its floor stayed that
-    // tall, and a long chat opened on the blank under its end.
     showPreview(animated: true)
     needsLayout = true
     layoutSubtreeIfNeeded()
@@ -2077,8 +2055,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
         height - AgentPaletteMetrics.historyFootDiscInset - AgentPaletteMetrics.previewCloseDiameter
           - AgentPaletteMetrics.previewScrollEdgeSoftness
       )
-      // Gone by the discs' middle: faded to the very foot, a day's heading still
-      // read beside them, cut by the disc.
       let gone = min(height, max(whole, height - AgentPaletteMetrics.historyFootDiscInset
         - AgentPaletteMetrics.previewCloseDiameter / 2))
       stops += ScrollEdgeBlur.smoothstep.map { (whole + (gone - whole) * $0.t, 1 - $0.s) }
@@ -2192,8 +2168,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private func scrollSelectedResultVisible() {
     guard resultLineIndexByRow.indices.contains(selectedResultIndex) else { return }
     let clipView = resultsScroll.contentView
-    // A held arrow key repeats ~25 times a second: lay out only the scroll view's
-    // subtree.
     resultsScroll.layoutSubtreeIfNeeded()
 
     let line = resultLineIndexByRow[selectedResultIndex]
@@ -2295,8 +2269,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     confirmSelectionOrSubmit()
   }
 
-  // MARK: - Mode
-
   func openSwitcher() {
     guard mode == .prompt else { return }
     fileMention.reset()
@@ -2338,8 +2310,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     syncTrailingHint()
   }
 
-  // MARK: - The agent a new prompt starts on
-
   func setAgentChoices(_ agents: [AgentId], planned: AgentId?) {
     guard agents != agentChoices || planned != plannedAgent else { return }
     let changed = agents != agentChoices
@@ -2366,7 +2336,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     syncTrailingHint()
   }
 
-  /// Fixes the agent even when it is the one automatic routing would pick now.
   func holdAgent(_ agent: AgentId) {
     guard agentChoices.contains(agent), chosenAgent != agent else { return }
     chosenAgent = agent
@@ -2489,7 +2458,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private var trailingHintKeys: [PromptKeyHint] {
     guard mode == .prompt, !isVoiceListening, !field.isEmptyPrompt else { return [] }
-    // Return chooses from an open `@` or `/` list, so nothing may say it asks.
     guard !fileMention.isOpen, !commandPicker.isOpen else { return [] }
     if let preview = addressedPreview {
       if let question = previewCard.pendingQuestion, question.takesWordsAsRefusal, draftHasWords {
@@ -2533,7 +2501,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       syncSelectionOverlay()
     }
 
-    // An agent chosen with ⇧Tab can wear the same face as the default route.
     hintLabel.stringValue = chosenAgent.map { String(localized: "Ask \($0.displayName)") } ?? String(localized: "Describe a task or ask")
     selectedAgentImage.showMascot(
       conversationID: pendingConversationID,
@@ -2606,8 +2573,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     layer.add(resolve, forKey: Self.targetSwapBlurKey)
     CATransaction.commit()
   }
-
-  // MARK: - Setup
 
   private func setup() {
     wantsLayer = true
@@ -2731,7 +2696,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
         equalTo: promptForeground.leadingAnchor,
         constant: AgentPaletteMetrics.chatComposerControlsTrailingInset),
       leadingControls.centerYAnchor.constraint(equalTo: trailingControls.centerYAnchor),
-      // The model chip gives way (the model's name at its end) before the foot's two groups meet.
       leadingControls.trailingAnchor.constraint(
         lessThanOrEqualTo: trailingControls.leadingAnchor,
         constant: -ComposerControlGroup.gap),
@@ -2820,15 +2784,12 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       self.syncPromptHeight()
       self.refreshPromptEdgeFades()
     }
-    // The width the sentence wraps in is not settled until the scroll view has
-    // tiled. Do not change its constraint set inside that layout pass; settle
-    // expansion once TextKit has received the final width.
+    // The wrap width settles after the scroll view tiles; never change constraints inside that
+    // pass.
     field.onWrapWidthChange = { [weak self] in
       guard let self else { return }
       if self.updatePromptHeights() { self.refreshPromptEdgeFades() }
-      // TextKit can finish updating its container after setFrameSize returns.
-      // Coalesce one final measurement outside that layout transaction; the
-      // last animation frame must not retain the previous width's line count.
+      // TextKit can finish after `setFrameSize` returns, so measure once more outside that pass.
       self.schedulePromptRemeasure()
     }
     promptScroll.contentView.postsBoundsChangedNotifications = true
@@ -3122,9 +3083,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     syncPointerWhereItIs()
     for capsule in [promptCapsule, resultsCapsule, previewCapsule] {
       capsule.layer?.shadowOpacity = 0
-      // Guarded: `clipsToBounds` invalidates layout on every write, and writing
-      // the value it already holds from inside `layout()` spins the run loop —
-      // the same trap `syncResultsCardCorner` was written around.
+      // Guarded: `clipsToBounds` invalidates layout on every write, and from `layout()` that spins
+      // the run loop.
       if capsule.clipsToBounds { capsule.clipsToBounds = false }
     }
   }
@@ -3338,8 +3298,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private var shownShape: AgentPaletteMetrics.SurfaceShape?
   private var shownCorner: CGFloat = 0
 
-  /// A new state's corner is reached along the shell's spring, so the clear
-  /// glass's lit rim moves with the shape rather than ahead of it.
   private func shellCorner(
     for shape: AgentPaletteMetrics.SurfaceShape, at rect: CGRect
   ) -> CGFloat {
@@ -3374,7 +3332,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private func drawSurface(at target: CGRect) {
     surfaceFrame = target
-    // Between pixels the wash covers half of the glass's lit rim, which flashes.
     let rect = window == nil ? target : backingAlignedRect(target, options: .alignAllEdgesNearest)
     rideAttachmentBand(at: target)
     CATransaction.begin()
@@ -3420,8 +3377,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     CATransaction.commit()
   }
 
-  /// The open chat and the list wear the backdrop; the first screen and the
-  /// listening orb stay glass, too small for a sky.
   private func showBackdrop() {
     let isChat = addressedPreview != nil && !showsCompactListening
     let isList = addressedPreview == nil && isResultsExpanded
@@ -3546,8 +3501,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     }
     _ = focusField()
   }
-
-  // MARK: - Resizing
 
   private enum ResizableShell { case chat, history }
 
@@ -3731,10 +3684,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     NSCursor.arrow.set()
   }
 
-  /// Sets `cursor` and remembers that this view did. Never in the unit-test
-  /// host: the panel makes the cursor reach the screen from the background
-  /// (`BackgroundCursor`), and a suite laying out a shown panel would put
-  /// the developer's pointer in a resize arrow while they work.
+  /// Never in the unit-test host: it would turn the developer's own pointer into a resize arrow.
   private func wear(_ cursor: NSCursor) {
     guard !AppDelegate.isHostingUnitTests else { return }
     cursor.set()
@@ -3880,8 +3830,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     return true
   }
 
-  // MARK: - Selecting the screen
-
   enum ScreenSelectionPhase: Equatable {
     case idle
     case drawing
@@ -3904,8 +3852,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     screenSelectionPhase == .editing ? screenSelectionGlobal : nil
   }
 
-  /// A question about a region is spoken, never typed: the shell stays the orb
-  /// from the region's first frame until it is sent or let go of.
   private var asksByVoice: Bool {
     screenSelectionPhase == .editing && addressedPreview == nil
   }
@@ -4217,8 +4163,6 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   func pressEscapeForTesting() {
     _ = textView(field, doCommandBy: #selector(NSResponder.cancelOperation(_:)))
   }
-
-  // MARK: - The drip
 
   func beginDrip(from source: CGRect) {
     layoutSubtreeIfNeeded()
@@ -4790,7 +4734,6 @@ extension AgentPaletteView: NSTextViewDelegate {
       if addressedPreview != nil, previewCard.isAnswering,
          previewCard.moveOptionFocus(by: 1) { return true }
       if addressedPreview != nil { return false }
-      // A draft of several lines is walked down first; the list waits below its last.
       if !isResultsExpanded, !field.isCaretOnLastLine { return false }
       if !isResultsExpanded {
         openSwitcher()
@@ -4910,8 +4853,6 @@ extension AgentPaletteView: NSTextViewDelegate {
     syncComposerLists()
   }
 
-  /// `@` and `/` open their lists wherever words are typed to an agent: never in
-  /// the list's search, while listening, or over a region (spoken there).
   private func syncComposerLists() {
     let allowed = mode == .prompt && !isResultsExpanded && !asksByVoice && !isVoiceListening
       && screenSelectionPhase == .idle && !isRestoringChatDraft && !isApplyingVoiceTranscript
@@ -4928,7 +4869,6 @@ extension AgentPaletteView: NSTextViewDelegate {
     }
   }
 
-  /// Whose list it is: the open chat's agent, else the one the first screen wears.
   private func commandKey(folder: String) -> String {
     let who = addressedPreview.map { "chat:\($0.id)" } ?? "new:\(agentForNewPrompt?.rawValue ?? "")"
     return who + "|" + folder
@@ -4957,8 +4897,6 @@ extension AgentPaletteView: NSTextViewDelegate {
     }
   }
 
-  /// The words begin with the command; a new chat is held to the agent whose
-  /// command it is, as ⇧Tab would, so automatic routing does not send it elsewhere.
   private func useCommand(_ command: AgentCommand, replacing range: NSRange) {
     let length = (field.string as NSString).length
     guard NSMaxRange(range) <= length else { return }
@@ -5105,6 +5043,22 @@ private final class BolttyAIMarkView: NSImageView {
     mascot.emotion = emotion
     mascot.reduceMotion = MotionPreferences.reduceMotion
     needsLayout = true
+  }
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    sharpenMascot()
+  }
+
+  override func viewDidChangeBackingProperties() {
+    super.viewDidChangeBackingProperties()
+    sharpenMascot()
+  }
+
+  private func sharpenMascot() {
+    guard let window else { return }
+    let scale = window.backingScaleFactor * AgentPaletteMetrics.promptMascotSupersampling
+    if mascot.renderScale != scale { mascot.renderScale = scale }
   }
 
   func pokeMascot() {

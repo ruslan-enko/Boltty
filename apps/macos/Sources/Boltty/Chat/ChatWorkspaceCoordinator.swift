@@ -53,8 +53,6 @@ final class ChatWorkspaceCoordinator {
     )
   }
 
-  // MARK: - Limits under the menu-bar mark
-
   func usageGlanceRows() -> [UsageGlanceRow] {
     let listed = listedProviderIDs().compactMap(AgentId.init(rawValue:))
     let next = routesAutomatically() && listed.count > 1 ? routingOrder().first : nil
@@ -79,8 +77,6 @@ final class ChatWorkspaceCoordinator {
   func refreshUsageForGlance() async {
     await engine.refreshUsage()
   }
-
-  // MARK: - Conversations
 
   func resolvedDefaultModel(for providerID: String) -> ModelSelection? {
     guard let stored = defaultModelID(providerID), !stored.isEmpty else { return nil }
@@ -134,13 +130,9 @@ final class ChatWorkspaceCoordinator {
     return readyEnabled.first?.provider.rawValue
   }
 
-  // MARK: - Routing by what is left of each plan
-
   private var spentUntil: [String: Date] = [:]
   static let spentWithoutReset: TimeInterval = 15 * 60
 
-  /// An agent that hit its limit here counts as spent until it comes back,
-  /// whatever the last usage read said.
   func markSpent(_ providerID: String, until reset: Date?, now: Date = Date()) {
     spentUntil[providerID] = reset.flatMap { $0 > now ? $0 : nil }
       ?? now.addingTimeInterval(Self.spentWithoutReset)
@@ -169,8 +161,6 @@ final class ChatWorkspaceCoordinator {
       preferred: preferredProviderID())
   }
 
-  // MARK: - Handing a failed first turn over
-
   private struct AutomaticSend {
     var prompt: String
     var pictures: [ConversationAttachment]
@@ -180,8 +170,6 @@ final class ChatWorkspaceCoordinator {
   private var automaticSends: [UUID: AutomaticSend] = [:]
   private(set) var handOvers: [UUID: AgentHandOver] = [:]
 
-  /// A chat nobody chose the agent for, whose first turn failed before the agent
-  /// said or did anything, goes to the next agent, each tried once.
   @discardableResult
   private func handOverIfDue(_ id: UUID) -> Bool {
     guard let send = automaticSends[id], let conversation = store.conversation(id: id) else { return false }
@@ -246,8 +234,6 @@ final class ChatWorkspaceCoordinator {
     return (model, effort, autoApprove)
   }
 
-  // MARK: - Ask Boltty
-
   func prepareAskBolttyConversation(
     providerID: String, model: ModelSelection?, effort: String?, readOnly: Bool,
     workingDirectory: String? = nil
@@ -272,8 +258,6 @@ final class ChatWorkspaceCoordinator {
     forgetAskBolttyChat(id)
   }
 
-  /// Ask Boltty chats are kept, their sessions let go; one nothing was asked in,
-  /// and one from before they were marked, goes.
   func settleAskBolttyChats(except kept: UUID? = nil) {
     for conversation in store.conversations
     where conversation.id != kept && Self.isAskBoltty(conversation)
@@ -302,8 +286,6 @@ final class ChatWorkspaceCoordinator {
       for picture in pictures { try? FileManager.default.removeItem(at: picture) }
     }
   }
-
-  // MARK: - Boltty AI
 
   @discardableResult
   func startConversationInBackground(
@@ -397,8 +379,6 @@ final class ChatWorkspaceCoordinator {
     return true
   }
 
-  /// An answer whose ask is gone goes as the chat's next message, by the path any
-  /// message takes: refused or failed, its words come back to the composer.
   func deliverLateAnswer(
     _ answers: [[String]],
     to prompt: QuestionPrompt,
@@ -431,8 +411,6 @@ final class ChatWorkspaceCoordinator {
     }
   }
 
-  // MARK: - Sending
-
   private func sendPanelPrompt(
     _ request: String, pictures: [ConversationAttachment] = [], to id: UUID
   ) {
@@ -463,8 +441,6 @@ final class ChatWorkspaceCoordinator {
     }
   }
 
-  /// `/plan` opening a request is Boltty's, not the agent's: the chat plans
-  /// first, and the words go without it.
   private func takePlanRequest(_ prompt: String, in id: UUID) -> String {
     guard let (name, rest) = AgentCommand.leading(in: prompt), name == AgentCommand.plan.name,
           let conversation = store.conversation(id: id),
@@ -519,8 +495,6 @@ final class ChatWorkspaceCoordinator {
       handler()
     }
   }
-
-  // MARK: - Notifications
 
   private func observe() {
     previousStates = Dictionary(
@@ -600,8 +574,6 @@ final class ChatWorkspaceCoordinator {
     if !sendFollowUp(trimmed, to: id) { queueFollowUp(trimmed, to: id) }
     return true
   }
-
-  // MARK: - Lifecycle
 
   func prepareForTermination() async {
     await engine.requestStopForAll()

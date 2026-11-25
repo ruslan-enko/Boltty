@@ -35,7 +35,6 @@ enum PaletteAnswerText {
   private static let setCacheLimit = 512
   nonisolated(unsafe) private static var setCache: [SetKey: NSAttributedString] = [:]
 
-  /// Kept out of the caches: a paragraph still streaming is new text on every delta.
   static func growing(_ markdown: String, color: NSColor) -> NSAttributedString {
     if let last = lastGrowing, last.text == markdown, last.color == color { return last.set }
     let set = NSMutableAttributedString(attributedString: setUncached(blocks: [.prose(markdown)], color: color))
@@ -70,8 +69,6 @@ enum PaletteAnswerText {
     append(markdown: markdown, color: color, to: out)
     return out
   }
-
-  // MARK: - Blocks
 
   private static func append(plain text: String, color: NSColor, to out: NSMutableAttributedString) {
     separate(out)
@@ -161,7 +158,6 @@ enum PaletteAnswerText {
     )
   }
 
-  /// In markdown a single newline is a space; an agent writing one item a line means a line.
   static func keepingLineBreaks(_ markdown: String) -> String {
     let lines = markdown.components(separatedBy: "\n")
     var out: [String] = []
@@ -214,8 +210,6 @@ enum PaletteAnswerText {
     if let start, let end { result.append(parsed[start..<end]) }
     return result
   }
-
-  // MARK: - A table
 
   private static func table(
     _ cells: [AttributedSubstring],
@@ -281,8 +275,6 @@ enum PaletteAnswerText {
     style.textBlocks = [block]
     return style
   }
-
-  // MARK: - One block
 
   private static func set(
     _ block: AttributedSubstring, color: NSColor, before next: Kind?
@@ -366,8 +358,6 @@ enum PaletteAnswerText {
     return attributes
   }
 
-  // MARK: - Fonts
-
   private static func font(
     size: CGFloat,
     weight: NSFont.Weight,
@@ -396,8 +386,6 @@ enum PaletteAnswerText {
   private static func paragraphStyle() -> NSParagraphStyle {
     Kind.paragraph.paragraphStyle
   }
-
-  // MARK: - What a block is
 
   enum Kind: Equatable {
     case paragraph
@@ -601,8 +589,6 @@ extension NSAttributedString.Key {
   static let paletteInlineCode = NSAttributedString.Key("boltty.answer.inlineCode")
 }
 
-/// A question's words in its bubble, with items of Boltty's after the label's
-/// own on a right click.
 final class PaletteBubbleField: NSTextField {
   var extraMenuItems: (() -> [NSMenuItem])?
 
@@ -623,8 +609,6 @@ final class PaletteAnswerTextView: NSTextView {
     let storage = NSTextStorage()
     let layout = PaletteAnswerLayoutManager()
     storage.addLayoutManager(layout)
-    // Contiguous: this view's height is forced, so with non-contiguous layout a
-    // long answer first shown at its foot finds no glyph and draws blank.
     layout.allowsNonContiguousLayout = false
     let container = NSTextContainer(size: NSSize(width: 1, height: CGFloat.greatestFiniteMagnitude))
     container.lineFragmentPadding = 0
@@ -684,7 +668,27 @@ final class PaletteAnswerTextView: NSTextView {
 
   var stringValue: String { string }
 
-  /// Items after the text view's own (Copy and the rest) on a right click.
+  override func clicked(onLink link: Any, at charIndex: Int) {
+    guard let file = Self.file(ofLink: link) else { return super.clicked(onLink: link, at: charIndex) }
+    var isFolder: ObjCBool = false
+    if FileManager.default.fileExists(atPath: file.path, isDirectory: &isFolder), isFolder.boolValue {
+      NSWorkspace.shared.activateFileViewerSelecting([file])
+    } else {
+      FileQuickLookStore.shared.show(url: file, from: self, grows: false)
+    }
+  }
+
+  static func file(ofLink link: Any) -> URL? {
+    guard let url = link as? URL ?? (link as? String).flatMap(URL.init(string:)),
+          url.isFileURL || (url.scheme == nil && url.path.hasPrefix("/")) else { return nil }
+    let path = url.path
+    if !FileManager.default.fileExists(atPath: path),
+       let line = path.range(of: #"(:\d+)+$"#, options: .regularExpression) {
+      return URL(fileURLWithPath: String(path[..<line.lowerBound]))
+    }
+    return URL(fileURLWithPath: path)
+  }
+
   var extraMenuItems: (() -> [NSMenuItem])?
 
   override func menu(for event: NSEvent) -> NSMenu? {
@@ -702,7 +706,6 @@ final class PaletteAnswerTextView: NSTextView {
   }
 }
 
-/// Filled, never stroked: wide strokes go to CA's wide-line renderer, which can issue a zero-instance Metal draw.
 final class PaletteEdgeTextBlock: NSTextBlock {
   override func drawBackground(
     withFrame frameRect: NSRect, in controlView: NSView?,

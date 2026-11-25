@@ -99,8 +99,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var historyTidying: Timer?
   private static let historyTidyingEvery: TimeInterval = 6 * 60 * 60
 
-  /// Chats past Settings' keeping go to the Trash; pasted files no chat shows
-  /// any more go after a week.
   private func tidyHistory() {
     guard let store = chat?.store, !store.isReadOnly else { return }
     if let cutoff = HistoryRetention.cutoff(days: model?.settings.keepsChatsDays ?? 0) {
@@ -411,7 +409,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     show.onSend = { [weak self] in self?.sounds?.playSend() }
     show.onMusic = { [weak self] playing in
       if playing {
-        self?.sounds?.startMusic()
+        self?.sounds?.startMusic(at: FirstRunShowController.musicStart)
       } else {
         self?.sounds?.stopMusic(fade: 1.2)
         self?.sounds?.stopEnding(fade: 4)
@@ -622,9 +620,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       appliedHotkey = fallback
       model.hotkeyRegistrationFailed = false
       lastHotkeyAttempt = (fallback, enabled)
-      // Beside another Boltty, ⌥Space is held by that copy, not by someone
-      // the person would want to give way to: borrow the fallback for this
-      // run, but keep the stored chord theirs.
+      // Another Boltty holds ⌥Space: borrow the fallback for this run, keep the stored chord.
       if !Self.anotherCopyIsRunning {
         model.updateSettings { $0.bolttyAIHotkey = fallback }
       }

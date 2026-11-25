@@ -2,8 +2,6 @@ import AppKit
 import ImageIO
 import SwiftUI
 
-// MARK: - General
-
 struct GeneralSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -278,8 +276,6 @@ struct GeneralSettingsPage: View {
   }
 }
 
-// MARK: - Agents
-
 struct AgentsSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
   @ObservedObject var navigation: SettingsNavigation
@@ -369,8 +365,6 @@ extension AgentSettingsRow {
 
 }
 
-// MARK: - Who takes a new chat
-
 private struct NewChatsPicker: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -406,8 +400,6 @@ private struct NewChatsPicker: View {
   }
 }
 
-/// The agents' faces gathered round one, as the chat list's All tab wears them. It
-/// reaches past `diameter`, into the room the strip leaves round a picture.
 struct FaceCluster: View {
   let looks: [MascotLook]
   let diameter: CGFloat
@@ -472,7 +464,6 @@ private struct AgentSettingsListRow: View {
       .buttonStyle(SettingsRowPressStyle())
       .accessibilityHidden(true)
     }
-    // The row's own padding and the gaps between its parts open it too.
     .padding(.vertical, Self.reach)
     .contentShape(Rectangle())
     .onTapGesture(perform: open)
@@ -616,7 +607,6 @@ private struct AgentSettingsDetail: View {
   }
 }
 
-/// An agent that is not here has nothing to switch: it is installed instead.
 private struct AgentPresence: View {
   @ObservedObject var model: BolttyAISettingsModel
   let row: AgentSettingsRow
@@ -656,8 +646,6 @@ private struct SettingsRowPressStyle: ButtonStyle {
       .animation(configuration.isPressed ? nil : SettingsMotion.quick, value: configuration.isPressed)
   }
 }
-
-// MARK: - Usage
 
 struct UsageSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
@@ -811,8 +799,6 @@ struct UsageMeter: View {
   }
 }
 
-// MARK: - Voice
-
 struct VoiceSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -825,8 +811,6 @@ struct VoiceSettingsPage: View {
     }
     .settingsGroupedPage()
   }
-
-  // MARK: Dictation
 
   private var dictation: some View {
     Section {
@@ -903,8 +887,6 @@ struct VoiceSettingsPage: View {
     }
   }
 
-  // MARK: Reading aloud
-
   @ViewBuilder
   private func reading(_ speech: SpeechOutput) -> some View {
     if model.localModels != nil {
@@ -968,8 +950,6 @@ struct AskBolttySettingsPage: View {
     .settingsGroupedPage()
   }
 }
-
-// MARK: - Shortcuts
 
 struct ShortcutsSettingsPage: View {
   @ObservedObject var model: BolttyAISettingsModel
@@ -1159,8 +1139,6 @@ struct LocalModelProgress: View {
   }
 }
 
-// MARK: - Voice picker
-
 struct VoicePicker: View {
   @ObservedObject var model: BolttyAISettingsModel
 
@@ -1187,9 +1165,6 @@ struct VoicePicker: View {
   }
 }
 
-/// Each voice a colour field of its own, mixed from Boltty's gradients, the
-/// mascots' retired ones included: the faces' own gradients alone read as one
-/// pale family of ten circles.
 private struct VoiceSwatch: View {
   let id: String
 
@@ -1206,8 +1181,6 @@ private struct VoiceSwatch: View {
     "M5": ("slate", "sunset", 280),
   ]
 
-  /// The stops worth seeing: the palest middle of a gradient is left out, and
-  /// what stays is deepened a little, since a small circle shows little light.
   private static func inks(_ id: String) -> [Color] {
     let palette = MascotPalette.palette(withID: id) ?? .standard
     return palette.colors.compactMap { color -> Color? in
@@ -1246,10 +1219,8 @@ private struct VoiceSwatch: View {
 }
 
 struct ChoiceStrip<Choices: View>: View {
-  /// `nil` where the section's header already names the choice.
   let title: String?
   let identifier: String
-  /// Scrolled into view as the strip appears.
   var chosen: String? = nil
   @ViewBuilder let choices: () -> Choices
   @State private var more = Ends()
@@ -1257,7 +1228,6 @@ struct ChoiceStrip<Choices: View>: View {
   private static var rowInset: CGFloat { SettingsStageMetrics.rowInset }
   private static var fade: CGFloat { 28 }
 
-  /// Which ends have more past them.
   struct Ends: Equatable {
     var leading = false
     var trailing = false
@@ -1295,7 +1265,6 @@ struct ChoiceStrip<Choices: View>: View {
     .padding(.vertical, title == nil ? 0 : 8)
   }
 
-  /// The ends dissolve only where there is more to scroll to.
   private var mask: some View {
     HStack(spacing: 0) {
       LinearGradient(colors: [.black.opacity(more.leading ? 0 : 1), .black], startPoint: .leading, endPoint: .trailing)
@@ -1312,7 +1281,6 @@ struct RingedChoice<Picture: View>: View {
   let isChosen: Bool
   var help: String?
   var diameter: CGFloat = 52
-  /// A tile's size and corner; `nil` is a circle of `diameter`.
   var tile: (size: CGSize, corner: CGFloat)?
   var isRinged = true
   let action: () -> Void
@@ -1373,7 +1341,6 @@ struct RingedChoice<Picture: View>: View {
     }
   }
 
-  /// About three points of growth whatever the size, so a tile does not swell past its neighbours.
   private var scale: CGFloat {
     guard !MotionPreferences.reduceMotion, isHovered, !isChosen else { return 1 }
     return 1 + 3 / max(size.width, size.height)

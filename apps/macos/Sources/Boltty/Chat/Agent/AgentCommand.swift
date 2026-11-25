@@ -1,7 +1,5 @@
 import Foundation
 
-/// A skill or command the agent's CLI runs when the request starts with
-/// `/<name>`: the CLI's own list, never one Boltty writes down.
 struct AgentCommand: Sendable, Equatable, Hashable {
   let name: String
   let summary: String
@@ -9,15 +7,11 @@ struct AgentCommand: Sendable, Equatable, Hashable {
 
   var invocation: String { "/" + name }
 
-  /// Boltty's own: the chat plans first and changes nothing until the plan is
-  /// approved. Offered first where the agent declares `.planMode`.
   static let plan = AgentCommand(
     name: "plan", summary: String(localized: "Plan first, change nothing until you approve"), argumentHint: nil)
 }
 
 extension AgentCommand {
-  /// The name starting with the query, then holding it, then its letters in
-  /// order, then the description holding it; otherwise the CLI's own order.
   static func rank(_ commands: [AgentCommand], query: String, limit: Int) -> [AgentCommand] {
     let needle = query.lowercased()
     guard !needle.isEmpty else { return Array(commands.prefix(limit)) }
@@ -47,7 +41,6 @@ extension AgentCommand {
 }
 
 extension AgentCommand {
-  /// The command a request opens with, and the words after it.
   static func leading(in text: String) -> (name: String, rest: String)? {
     guard text.hasPrefix("/") else { return nil }
     let body = text.dropFirst()

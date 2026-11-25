@@ -13,8 +13,6 @@ final class LocalVoiceModelTests: XCTestCase {
   }
 
   func testTheSizesAreWhatSettingsWillSay() {
-    // Measured on Hugging Face when pinned (2026-11-01). A new revision that
-    // moves these far is a different download to ask the person for.
     XCTAssertEqual(Double(LocalVoiceCatalog.parakeetUltra.size), 632_162_964, accuracy: 1_000_000)
     XCTAssertEqual(Double(LocalVoiceCatalog.supertonic3.size), 267_820_864, accuracy: 1_000_000)
   }

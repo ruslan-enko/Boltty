@@ -1,19 +1,7 @@
 #!/bin/sh
-# Installs Boltty from the latest GitHub release:
-#
-#   curl -fsSL https://raw.githubusercontent.com/ruslan-enko/Boltty/main/install.sh | sh
-#
-# Gatekeeper judges only what carries the quarantine mark, and a browser puts
-# it on the DMG; curl does not. So a copy installed this way opens without
-# System Settings › Privacy & Security › Open Anyway. What keeps it honest is
-# done here instead: the DMG must match the release's Boltty.dmg.sha256, and
-# the app must be signed by the identity every release is signed with — the
-# requirement below, the same one UpdateInstaller holds an update to. Change
-# it in the same commit as the signing identity.
-#
+# Gatekeeper judges only what carries the quarantine mark; curl sets none.
 #   BOLTTY_DMG=<path>          install that DMG (and its .sha256 beside it)
 #   BOLTTY_INSTALL_DIR=<dir>   install there and do not open it
-#
 # Everything is inside main, called on the last line, so a download cut short
 # runs nothing.
 
@@ -68,7 +56,6 @@ main() {
   mkdir -p "$dir"
   app="$dir/Boltty.app"
 
-  # An agent may be working inside it; quitting is the person's call.
   if pgrep -f "^$app/Contents/MacOS/Boltty" >/dev/null 2>&1; then
     die "Boltty is running. Choose Quit Boltty in its menu, or use Check for Updates… in it, then run this again."
   fi
@@ -79,7 +66,6 @@ main() {
   staged="$dir/.Boltty.app.installing"
   rm -rf "$staged"
   ditto "$source_app" "$staged" || die "could not copy Boltty into $dir."
-  # curl leaves no quarantine; this is for a DMG that came another way.
   xattr -dr com.apple.quarantine "$staged" 2>/dev/null || true
   if [ -e "$app" ]; then
     rm -rf "$work/old" && mv "$app" "$work/old"

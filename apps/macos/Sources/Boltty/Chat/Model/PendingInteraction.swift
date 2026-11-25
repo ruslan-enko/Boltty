@@ -31,9 +31,6 @@ struct PendingInteraction: Identifiable, Codable, Equatable, Sendable {
   var acceptsInput: Bool { resolution == nil && !isSubmitting }
   var isLate: Bool { resolution == .askGone }
 
-  /// What becomes of this ask when what held it is gone. A permission or a plan
-  /// goes with it, since a late yes to a tool no longer waiting means nothing. A
-  /// question still stands for the person: it can be answered in words.
   var goneResolution: Resolution {
     if case .question = kind { return .askGone }
     return .expired
@@ -52,8 +49,6 @@ struct PendingInteraction: Identifiable, Codable, Equatable, Sendable {
     case plan(PlanDecision)
     case resolvedElsewhere
     case expired
-    /// A question whose ask went with its process or server (a quit, a crash).
-    /// Its card stays, and the answer goes as the chat's next message.
     case askGone
   }
 }
@@ -62,9 +57,6 @@ struct QuestionPrompt: Codable, Equatable, Sendable {
   var items: [QuestionItem]
   var toolCallID: String?
 
-  /// An answer that can only go as a message: the agent has no ask left to tie
-  /// it to, so it says what it answers. Each line is a question and its answer,
-  /// by the labels the person chose among.
   func lateAnswer(_ answers: [[String]]) -> String {
     zip(items, answers).map { item, values in
       let said = values.map { value in
@@ -120,11 +112,8 @@ struct PermissionPrompt: Codable, Equatable, Sendable {
   var resources: [String]
   var savePatterns: [String]
   var toolCallID: String?
-  /// `false` where the CLI has no "always" for this ask. Absent is yes.
   var offersAlways: Bool? = nil
 
-  /// What an MCP server asks, when yes or no answers it: `nil` for a form with
-  /// fields or a link.
   static func elicitation(
     server: String, mode: String?, message: String?, schema: JSONObject?, toolCallID: String?
   ) -> PermissionPrompt? {
@@ -145,9 +134,7 @@ enum PermissionDecision: String, Codable, Equatable, Sendable {
 struct PlanPrompt: Codable, Equatable, Sendable {
   var markdown: String
   var toolCallID: String?
-  /// The turn ended with the plan (Codex, OpenCode): nothing waits on it, and
-  /// its answer goes as the chat's next message. Optional so plans stored
-  /// before it still read.
+  /// Optional so plans stored before it still read.
   var endedTurn: Bool?
 
   var isAnsweredByMessage: Bool { endedTurn == true }

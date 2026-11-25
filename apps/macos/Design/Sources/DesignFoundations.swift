@@ -22,7 +22,6 @@ enum DesignFoundations {
         swatch("previewUserBubbleFill", AgentPaletteMetrics.previewUserBubbleFill),
         swatch("failureDetailsFill", AgentPaletteMetrics.failureDetailsFill),
         swatch("helpDensity", AgentPaletteMetrics.helpDensity),
-        swatch("keyHintsProgressFill", AgentPaletteMetrics.keyHintsProgressFill),
         swatch("sendFill", ComposerControlGroup.sendFill),
       ]),
       DesignSection(title: "Signals", note: "AgentPaletteMetrics", specimens: [
@@ -208,8 +207,6 @@ enum DesignFoundations {
     }
   }
 
-  // MARK: - Parts
-
   static func number(_ value: CGFloat) -> String {
     String(format: "%g", (Double(value) * 100).rounded() / 100)
   }
@@ -251,7 +248,6 @@ enum DesignFoundations {
 }
 
 extension DesignSpecimen {
-  /// The sample takes its whole tile.
   func filling() -> DesignSpecimen {
     var copy = self
     copy.width = tile.width

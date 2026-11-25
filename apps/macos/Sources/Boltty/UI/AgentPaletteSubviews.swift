@@ -1,7 +1,5 @@
 import AppKit
 
-// MARK: - Notification lifetime
-
 final class NotificationTokenBag {
   private var tokens: [NSObjectProtocol] = []
 
@@ -16,8 +14,6 @@ final class NotificationTokenBag {
 
   deinit { releaseAll() }
 }
-
-// MARK: - Results scrolling
 
 final class FlippedStackView: NSStackView {
   override var isFlipped: Bool { true }
@@ -225,8 +221,6 @@ final class ResultsListView: NSView {
     return low
   }
 }
-
-// MARK: - Empty results
 
 final class BolttyAIEmptyResultsView: NSView, FillsResultsViewport {
   private let label = NSTextField(labelWithString: "")

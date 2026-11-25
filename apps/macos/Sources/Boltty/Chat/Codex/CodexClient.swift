@@ -56,10 +56,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     var model: ModelSelection?
     var effort: String?
     var autoApprove = false
-    /// What the chat asks for, and the collaboration mode the thread last ran in.
     var planning = false
     var lastMode: String?
-    /// The model the server chose when the chat named none: a plan turn must name one.
     var serverModel: String?
     var currentTurnID: String?
     /// The last turn the server said is over, which can come before the answer to
@@ -92,8 +90,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     var persistsForSession = false
     var permissions: [String: Any] = [:]
   }
-
-  // MARK: - Availability
 
   func probe() async -> AgentAvailability {
     guard let executable = locate() else { return .notInstalled }
@@ -133,8 +129,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return AgentUsage.codex(result)
   }
 
-  // MARK: - Threads
-
   func createSession(
     id: String,
     options: AgentSessionOptions
@@ -151,8 +145,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     let server = try await server()
     let response: JSONObject
     if let fork = options.forkFrom {
-      // A branch is `thread/fork`, through the turn that holds the message
-      // (`lastTurnId`, 0.169); its rollout names the source for the rest.
       params["threadId"] = fork.sessionID
       params["excludeTurns"] = true
       if let message = fork.messageID,
@@ -249,8 +241,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  // MARK: - Context
-
   func contextUsage(sessionID: String) async -> AgentContextUsage? {
     if let live = lock.withLock({ contextByThread[sessionID] }) { return live }
     return CodexRolloutTranscript.contextUsage(threadID: sessionID, codexHome: codexHome)
@@ -261,8 +251,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     try await ensureThread(id: sessionID, on: server)
     _ = try await request("thread/compact/start", params: ["threadId": sessionID], on: server)
   }
-
-  // MARK: - Steering
 
   func steer(messageID: String, text: String, to sessionID: String) async throws {
     guard let turnID = lock.withLock({ threads[sessionID]?.currentTurnID }) else {
@@ -295,8 +283,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return home
   }
 
-  // MARK: - Letting a thread go
-
   private func scheduleUnload(_ threadID: String) {
     let token = UUID()
     lock.withLock { unloadTokens[threadID] = token }
@@ -321,8 +307,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       if unloadTokens[threadID] == token { threads[threadID]?.loadedOn = nil }
     }
   }
-
-  // MARK: - Sending
 
   private func ensureThread(id: String, on server: JSONLineProcess) async throws {
     guard !lock.withLock({ threads[id]?.loadedOn === server }) else { return }
@@ -423,8 +407,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     emit(.executionStateChanged(sessionID: sessionID, state: .working))
   }
 
-  /// A request opening with a skill's `/name` sends the skill as its own input,
-  /// as Codex's own composer does; the words follow.
   private func turnInput(
     text: String, attachments: [OutgoingAttachment], in sessionID: String
   ) async -> [[String: Any]] {
@@ -436,10 +418,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       + Self.turnInput(text: rest, attachments: attachments)
   }
 
-  // MARK: - Plans
-
-  /// A plan ends its turn; nothing waits on it. The card's answer goes as the
-  /// chat's next message (`ConversationEngine.reply(planID:…)`).
   private func askAboutPlan(_ markdown: String, id: String, in threadID: String) {
     guard let conversationID = lock.withLock({ conversationResolver })?(threadID) else { return }
     emit(.interactionAsked(PendingInteraction(
@@ -449,8 +427,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       kind: .plan(PlanPrompt(markdown: markdown, toolCallID: id, endedTurn: true))
     )))
   }
-
-  // MARK: - Skills
 
   struct Skill: Equatable, Sendable {
     let name: String
@@ -475,7 +451,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     return found
   }
 
-  /// `skills/list` names a skill once per place it is found (0.169): the first stands.
   static func skills(in response: JSONObject) -> [Skill] {
     var seen = Set<String>()
     return response.array("data").flatMap { $0.array("skills") }.compactMap { skill in
@@ -487,9 +462,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// Plan mode is a turn's (`collaborationMode`, 0.169, experimental), and it
-  /// holds for the turns after: so a turn after a planning one says `default`.
-  /// It must name a model.
   private static func collaborationMode(for thread: ThreadState) -> [String: Any]? {
     let wanted = thread.planning ? "plan" : "default"
     guard thread.planning || thread.lastMode == "plan",
@@ -508,8 +480,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     guard let turnID = lock.withLock({ threads[sessionID]?.currentTurnID }) else { return }
     _ = try await request("turn/interrupt", params: ["threadId": sessionID, "turnId": turnID])
   }
-
-  // MARK: - Interactions
 
   func answerQuestion(requestID: String, sessionID: String, answers: [[String]]) async throws {
     guard let pending = takeApproval(requestID) else {
@@ -565,8 +535,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     lock.withLock { threads[sessionID]?.autoApprove = enabled }
   }
 
-  /// `never` also refuses an MCP server's own asks, Computer Use's among them,
-  /// without showing them.
   static func approvalPolicy(autoApprove: Bool) -> Any {
     guard autoApprove else { return "on-request" }
     return ["granular": [
@@ -585,7 +553,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     (asked?.raw ?? [:]).filter { ["fileSystem", "network"].contains($0.key) && !($0.value is NSNull) }
   }
 
-  /// Only an ask that yes or no answers: `nil` for a form with fields or a link.
   static func elicitationPrompt(_ params: JSONObject) -> PermissionPrompt? {
     let meta = params.object("_meta")
     let message = params.string("message") ?? ""
@@ -618,8 +585,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  // MARK: - Events
-
   func events() -> AsyncStream<AgentEventEnvelope> {
     AsyncStream { continuation in
       lock.withLock { self.eventContinuation = continuation }
@@ -639,8 +604,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   }
 
   func restartIdleProcess() async { await shutdown() }
-
-  // MARK: - The server
 
   private func locate() -> String? {
     executableOverride ?? JSONLineProcess.locate(provider.program)
@@ -674,7 +637,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           "initialize",
           params: [
             "clientInfo": ["name": "Boltty", "title": "Boltty", "version": Self.bolttyVersion],
-            // Plan mode (`collaborationMode`) is experimental in 0.169.
             "capabilities": [
               "optOutNotificationMethods": Self.unreadNotifications, "experimentalApi": true,
             ],
@@ -713,9 +675,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
   }
 
-  /// A turn already started has no request left waiting, so nothing else
-  /// would say it ended: the chat stood at Working, and Stop asked a new server
-  /// about a turn it never had.
+  /// Nothing else would say the turn ended: it has no request left waiting.
   private func serverExited(_ server: JSONLineProcess, status: Int32, stderr: String) {
     let (waiting, cutOff, unanswered) = lock.withLock {
       () -> ([CheckedContinuation<JSONObject, Error>], [String], [(String, String)]) in
@@ -750,8 +710,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       ))
     }
   }
-
-  // MARK: - JSON-RPC
 
   private struct RPCFailure: Error {
     let code: Int?
@@ -796,7 +754,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         stored?.resume(throwing: error)
         return
       }
-      // A deadline, so a server that stops answering cannot hold Stop or a send.
       DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.requestDeadline) {
         [weak self] in
         let stored: CheckedContinuation<JSONObject, Error>? = self?.lock.withLock {
@@ -1117,7 +1074,6 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  /// Codex let go of an elicitation nobody answered here (a Stop, a time limit).
   private func requestResolved(_ params: JSONObject, on server: JSONLineProcess) {
     guard let rpcID = params.int("requestId"), let threadID = params.string("threadId") else { return }
     let gone = lock.withLock {

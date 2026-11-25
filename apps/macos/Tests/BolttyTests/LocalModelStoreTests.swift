@@ -196,8 +196,6 @@ final class LocalModelStoreTests: XCTestCase {
     XCTAssertEqual(prepared.count, 1)
   }
 
-  // MARK: - Support
-
   private var partial: URL { root.appendingPathComponent(model.folderName + ".partial") }
 
   private func makeStore(

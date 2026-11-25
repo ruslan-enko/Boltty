@@ -122,8 +122,6 @@ final class LocalModelStore: ObservableObject {
     states[id] = .notInstalled
   }
 
-  // MARK: - Installing
-
   private func run(_ model: LocalVoiceModel) async {
     guard canWrite() else {
       states[model.id] = .failed(Failure.secondCopy(model.name).localizedDescription)
@@ -217,8 +215,6 @@ final class LocalModelStore: ObservableObject {
     model.size > 0 ? min(1, Double(bytes) / Double(model.size)) : 1
   }
 
-  // MARK: - Disk
-
   private func model(_ id: LocalVoiceModel.ID) -> LocalVoiceModel? {
     models.first { $0.id == id }
   }
@@ -264,8 +260,6 @@ final class LocalModelStore: ObservableObject {
     }.value
   }
 
-  // MARK: - Defaults
-
   nonisolated static func compileModels(in folder: URL) throws {
     let configuration = MLModelConfiguration()
     configuration.computeUnits = .cpuAndNeuralEngine
@@ -309,8 +303,7 @@ struct URLSessionModelFetcher: LocalModelFetching {
   }
 }
 
-/// Watches one download's bytes. Reports at most once a megabyte: a 600 MB
-/// file would otherwise wake the main actor tens of thousands of times.
+/// At most once a megabyte, or a
 private final class DownloadProgressWatcher: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
   private let report: @Sendable (Int64) -> Void
   private var observation: NSKeyValueObservation?
