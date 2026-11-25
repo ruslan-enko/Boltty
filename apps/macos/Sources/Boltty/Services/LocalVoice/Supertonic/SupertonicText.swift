@@ -1,3 +1,8 @@
+// The text cleaning and chunking are ported from FluidAudio's
+// Supertonic3UnicodeProcessor and Supertonic3TextChunker
+// (github.com/FluidInference/FluidAudio, Apache-2.0), which follow Supertone's
+// reference `Helper.swift`. Splitting by script is Boltty's own.
+
 import Foundation
 
 enum SupertonicText {

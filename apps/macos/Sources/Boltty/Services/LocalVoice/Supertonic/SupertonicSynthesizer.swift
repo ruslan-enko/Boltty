@@ -1,3 +1,8 @@
+// The inference flow is ported from FluidAudio's Supertonic3Synthesizer,
+// Supertonic3LatentSampler and Supertonic3ModelStore
+// (github.com/FluidInference/FluidAudio, Apache-2.0), which follow Supertone's
+// reference implementation (github.com/supertone-inc/supertonic).
+
 import CoreML
 import Foundation
 

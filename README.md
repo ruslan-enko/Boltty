@@ -110,7 +110,8 @@ macOS will refuse to open it. Go to **System Settings › Privacy & Security**,
 scroll down and press **Open Anyway**. You only do this once.
 
 You need **macOS 26 or later** and at least one of the agents installed and
-signed in. Don't have one yet? `npm install -g opencode-ai` is the quickest start.
+signed in. Don't have one yet? Boltty can install it for you, and you
+sign in.
 
 When a new version is out, Boltty tells you in the menu bar and in Settings. It
 installs it only when you say so.

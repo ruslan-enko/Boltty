@@ -1,6 +1,7 @@
 # Third-Party Notices
 
-Boltty is licensed under the MIT License (`LICENSE`). What it ships from others is below, with
+Except where a file or a notice here states otherwise, everything in this repository is
+licensed under the MIT License (`LICENSE`). What Boltty ships from others is below, with
 each licence as its authors wrote it. This file and `LICENSE` are copied into
 `Boltty.app/Contents/Resources/`, so every copy of the app carries them.
 
