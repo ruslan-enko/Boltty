@@ -85,7 +85,7 @@ else
       "hide() завершує процеси ($hf:$hl)" \
       "Приховування панелі ≠ скасування задачі. Єдиний шлях завершення — applicationShouldTerminate." \
       "$kill"
-    if ! printf '%s' "$body" | grep -q 'orderOut'; then
+    if [[ "$body" != *orderOut* ]]; then
       die_unverifiable "hide() у $hf:$hl більше не робить orderOut" \
         "Перевірка спирається на те, що вікно прибирається саме так. Спосіб змінився — перевірку теж треба змінити."
     fi
