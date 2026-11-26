@@ -430,6 +430,12 @@ implementation first. Versions say what was measured.
   a command also offers always-allow / reject-always. `reject_once` ends the
   turn (`stopReason: cancelled`), so a refusal in words is reject,
   `session/cancel`, and the words as the next message.
+  A picture (`image_gen`, `image_edit`, kind `other`) offers allow-once / reject-once
+  only (1.0.92), so its "Always Allow" is Boltty's: every picture of that chat is
+  answered "allow once" while Boltty runs, never a video, never in a read-only chat.
+  Anything else Grok offers no always for has no such button. The card is named by
+  `_meta["x.ai/tool"].label`. An answer Grok did not offer is never sent as a refusal:
+  "Always Allow" was, and three pictures were denied.
 - Permission mode is process-wide; Auto Mode is Boltty answering `edit` asks, and
   `execute` asks `AutoModeCommands` passes, "allow once".
 - Extension methods arrive with a leading `_` (`_x.ai/exit_plan_mode`, 1.0.88);

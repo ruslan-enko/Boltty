@@ -56,6 +56,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   private var personalCommands: [AgentCommand] = []
   private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var permissions: [String: PendingPermission] = [:]
+  private var picturesAllowed: Set<String> = []
   private var plans: [String: PendingPlan] = [:]
   private var asks: [String: PendingAsk] = [:]
   private var conversationResolver: (@Sendable (String) -> UUID?)?
@@ -95,6 +96,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let optionsByDecision: [PermissionDecision: String]
     let rejectOptionID: String?
     var isElicitation = false
+    var isPicture = false
   }
 
   private struct PendingPlan {
@@ -441,7 +443,14 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     decision: PermissionDecision,
     message: String?
   ) async throws {
-    guard let waiting = lock.withLock({ permissions.removeValue(forKey: requestID) }) else {
+    guard let waiting = lock.withLock({ permissions[requestID] }) else {
+      throw AgentClientError.requestGone
+    }
+    let option = waiting.isElicitation ? nil : Self.option(for: decision, among: waiting.optionsByDecision)
+    guard waiting.isElicitation || option != nil else {
+      throw AgentClientError.transport("\(agent.displayName) offered no option for that answer.")
+    }
+    guard lock.withLock({ permissions.removeValue(forKey: requestID) }) != nil else {
       throw AgentClientError.requestGone
     }
     if waiting.isElicitation {
@@ -450,11 +459,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         sessionID: sessionID, requestID: requestID, resolution: .permission(decision)))
       return
     }
-    guard let optionID = waiting.optionsByDecision[decision] ?? waiting.rejectOptionID else {
-      throw AgentClientError.transport("\(agent.displayName) offered no option for that answer.")
+    if decision == .always, waiting.isPicture {
+      lock.withLock { _ = picturesAllowed.insert(waiting.sessionID) }
     }
     respond(to: waiting.rpcID, result: [
-      "outcome": ["outcome": "selected", "optionId": optionID]
+      "outcome": ["outcome": "selected", "optionId": option ?? ""]
     ])
     emit(.interactionResolved(
       sessionID: sessionID,
@@ -482,6 +491,12 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       requestID: requestID,
       resolution: .plan(decision)
     ))
+  }
+
+  static func option(
+    for decision: PermissionDecision, among offered: [PermissionDecision: String]
+  ) -> String? {
+    offered[decision] ?? (decision == .always ? offered[.once] : nil)
   }
 
   static func elicitationResult(_ decision: PermissionDecision) -> [String: Any] {
@@ -649,7 +664,10 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       switch option.string("kind") {
       case "allow_once": byDecision[.once] = optionID
       case "allow_always": byDecision[.always] = optionID
-      case "reject_once", "reject_always":
+      case "reject_once":
+        byDecision[.reject] = optionID
+        reject = optionID
+      case "reject_always" where reject == nil:
         byDecision[.reject] = optionID
         reject = optionID
       default: continue
@@ -673,7 +691,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       } ?? false
     default: false
     }
-    if passes, auto?.on == true, let allow = byDecision[.once] {
+    let isPicture = Self.makesPicture(call)
+    let pictureAllowed = isPicture && lock.withLock {
+      picturesAllowed.contains(sessionID) && wantedOptions[sessionID]?.readOnly != true
+    }
+    if pictureAllowed || (passes && auto?.on == true), let allow = byDecision[.once] {
       respond(to: id, result: ["outcome": ["outcome": "selected", "optionId": allow]])
       return
     }
@@ -684,7 +706,8 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         rpcID: id,
         sessionID: sessionID,
         optionsByDecision: byDecision,
-        rejectOptionID: reject
+        rejectOptionID: reject,
+        isPicture: isPicture
       )
     }
 
@@ -703,16 +726,24 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         action: asked.action,
         resources: asked.resources,
         savePatterns: [],
-        toolCallID: tool?.string("toolCallId")
+        toolCallID: tool?.string("toolCallId"),
+        offersAlways: byDecision[.always] != nil || (isPicture && byDecision[.once] != nil)
       ))
     )))
+  }
+
+  static func makesPicture(_ tool: JSONObject?) -> Bool {
+    let name = tool?.object("_meta")?.object("x.ai/tool")?.string("name")
+    return name == "image_gen" || name == "image_edit"
   }
 
   static func permissionSubject(of tool: JSONObject?) -> (action: String, resources: [String]) {
     let command = tool?.object("rawInput")?.string("command")
     let paths = (tool?.array("locations") ?? []).compactMap { $0.string("path") }
     let title = tool?.string("title")
-    let action = tool?.string("kind") ?? (command == nil ? title : "execute") ?? "run a tool"
+    let kind = tool?.string("kind")
+    let label = tool?.object("_meta")?.object("x.ai/tool")?.string("label")
+    let action = (kind == "other" ? label : nil) ?? kind ?? (command == nil ? title : "execute") ?? "run a tool"
     if let command { return (action, [command]) }
     if !paths.isEmpty { return (action, paths) }
     if let title, title != action { return (action, [title]) }

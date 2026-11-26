@@ -47,5 +47,28 @@ final class GrokLaunchTests: XCTestCase {
       "kind": "edit", "title": "Edit notes.md", "locations": [["path": "/tmp/notes.md"]],
     ]))
     XCTAssertEqual(edit.resources, ["/tmp/notes.md"])
+
+    let picture = ACPClient.permissionSubject(of: JSONObject([
+      "kind": "other", "title": "imagine: a red circle",
+      "_meta": ["x.ai/tool": ["name": "image_gen", "label": "Generate Image"]],
+    ]))
+    XCTAssertEqual(picture.action, "Generate Image")
+    XCTAssertEqual(picture.resources, ["imagine: a red circle"])
+  }
+
+  func testOnlyPicturesAreRememberedForTheChat() {
+    func tool(_ name: String) -> JSONObject {
+      JSONObject(["kind": "other", "_meta": ["x.ai/tool": ["name": name]]])
+    }
+    XCTAssertTrue(ACPClient.makesPicture(tool("image_gen")))
+    XCTAssertTrue(ACPClient.makesPicture(tool("image_edit")))
+    XCTAssertFalse(ACPClient.makesPicture(tool("reference_to_video")))
+    XCTAssertFalse(ACPClient.makesPicture(JSONObject(["kind": "other", "title": "image_gen"])))
+  }
+
+  func testAllowIsNeverSentAsARefusal() {
+    let offered: [PermissionDecision: String] = [.once: "allow-once", .reject: "reject-once"]
+    XCTAssertEqual(ACPClient.option(for: .always, among: offered), "allow-once")
+    XCTAssertNil(ACPClient.option(for: .once, among: [.reject: "reject-once"]))
   }
 }
