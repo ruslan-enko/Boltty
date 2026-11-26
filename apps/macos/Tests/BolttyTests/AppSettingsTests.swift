@@ -64,14 +64,17 @@ final class AppSettingsTests: XCTestCase {
     let fresh = AppSettings.load(defaults: suite)
     XCTAssertTrue(fresh.askBolttyReadOnly)
     XCTAssertNil(fresh.askBolttyProviderID)
+    XCTAssertFalse(fresh.askBolttyTakesTyping)
 
     var settings = fresh
     settings.askBolttyReadOnly = false
+    settings.askBolttyTakesTyping = true
     settings.askBolttyProviderID = "codex"
     settings.askBolttyModelID = "gpt-6-luna"
     settings.save(defaults: suite)
     let loaded = AppSettings.load(defaults: suite)
     XCTAssertFalse(loaded.askBolttyReadOnly)
+    XCTAssertTrue(loaded.askBolttyTakesTyping)
     XCTAssertEqual(loaded.askBolttyProviderID, "codex")
     XCTAssertEqual(loaded.askBolttyModelID, "gpt-6-luna")
   }

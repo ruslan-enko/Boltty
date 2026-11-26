@@ -1082,19 +1082,26 @@ stood over the page each time the panel opened.
 
 Once a region is drawn the shell is the face, the words and the microphone:
 no folder chip or usage ring, and ↓ ↑ Tab do nothing (↓ used to open the
-list over the region). ⇧Tab still changes the agent; it wears Ask
+list over the region), but for ↑ ↓ in a question being typed (below). ⇧Tab still changes the agent; it wears Ask
 Boltty's (`regionAgent`) from the selection's first frame, and the first
 screen gets its agent back afterwards. **Escape or a click off the region lets
 go of the whole question** (`letGoOfRegion`): the microphone stops first (left
 running, its silence sent the words as a chat with the first screen's agent),
 what was said goes, the prompt is as it was before the region, and the panel
-closes. The microphone opens by itself — select, then
-speak. **The question is only ever spoken** (`asksByVoice`): the shell is the
-orb for as long as the region stands, keys that would type, paste or drop do
-nothing, and ⌘D is the one composer chord left. A typed key used to take over
-from the microphone and left a text field beside the region. Return, ✓, a
-silence after speech sends; Return or ✓ with nothing said is the system alert
-and the listening goes on, and the take's × lets go of the question as Escape
+closes. The microphone opens by itself — select, then speak. **The question is
+spoken, unless Settings › Ask Boltty › "Questions can be typed" is on**
+(`boltty.talk.takesTyping`, off). Off (`asksByVoice`), the shell is the orb for as
+long as the region stands and keys that would type or paste do nothing. On
+(`regionTakesTyping`), the microphone still opens, and the first key that says
+something (a paste too; not a space or a Backspace over nothing) stops it and the
+orb becomes the first screen's field, with the words already heard in it
+(`regionIsTyped`, `takesRegionEdit`): no folder chip or ring, always 540 wide (at
+680 it could change sides of the region), ↑ ↓ walk its lines, ⌘D dictates into it
+as on the first screen. A microphone that fails leaves that field, in place of
+letting go (`typeAboutRegion`). Either way only words are sent: a paste is plain
+text, nothing is dropped, and ⌘D is the one composer chord left. Return, ✓, a
+silence after speech sends; Return or ✓ with nothing said is the system alert and
+the listening goes on, and the take's × lets go of the question as Escape
 does. So the orb is never left with a microphone that is not listening
 (`listenForRegion`): a redrawn region listens again, an engine that ends its
 take with nothing heard is started again, a microphone slow to start says
@@ -1251,8 +1258,8 @@ so in the orb ("No sound is reaching the microphone…",
   minute with no click (`guideIdleLimit`): the face holds Escape while it is up.
 - **What the keys do is said where they act** (`PaletteKeyHints`, a capsule of
   the shell's glass and ramp, always frosted, its keycaps round and concentric): under the region's orb "esc Cancel" while the
-  microphone starts, "Speak your question · esc Cancel" while it listens, "⏎ Ask
-  · esc Cancel" once something was said, filling from the left in the face's light under black words, its first fifth shown as nothing and what is
+  microphone starts, "Speak your question · esc Cancel" while it listens ("Speak or
+  type your question" where it can be typed), "⏎ Ask · esc Cancel" once something was said, filling from the left in the face's light under black words, its first fifth shown as nothing and what is
   drawn easing after it (`PaletteKeyHints.follow`: levels come in steps and fall at every word), as a pause runs
   toward sending by itself (`setRegionSilence`, the silence watcher's progress;
   speech empties it), and "Asking…" from Return or that pause until the face

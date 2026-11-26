@@ -7,6 +7,11 @@ extension BolttyAISettingsModel {
     set { appModel.updateSettings { $0.askBolttyReadOnly = newValue } }
   }
 
+  var askBolttyTakesTyping: Bool {
+    get { appModel.settings.askBolttyTakesTyping }
+    set { appModel.updateSettings { $0.askBolttyTakesTyping = newValue } }
+  }
+
   var askBolttyAgents: [AgentId] {
     AgentHistory.tabOrder.filter { agent in
       guard appModel.settings.isProviderEnabled(agent.rawValue),
@@ -73,6 +78,18 @@ struct AskBolttySettingsSection: View {
       SettingsSectionHeader(String(localized: "Who answers"))
     } footer: {
       SettingsNote(answererNote)
+    }
+
+    Section {
+      Toggle(isOn: Binding(
+        get: { model.askBolttyTakesTyping }, set: { model.askBolttyTakesTyping = $0 }
+      )) {
+        Text("Questions can be typed")
+        Text("Start typing once an area is selected and the microphone gives way to a text field. Off, a question is only spoken.")
+      }
+      .accessibilityIdentifier("boltty.settings.talkTakesTyping")
+    } header: {
+      SettingsSectionHeader(String(localized: "Questions"))
     }
 
     Section {

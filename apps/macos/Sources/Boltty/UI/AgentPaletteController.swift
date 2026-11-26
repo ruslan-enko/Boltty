@@ -343,6 +343,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       .sink { [weak self] settings in
         self?.applyDictationLanguage(settings)
         self?.panelView.shellUsesClearGlass = settings.panelClearGlass
+        self?.panelView.regionTakesTyping = settings.askBolttyTakesTyping
       }
       .store(in: &cancellables)
 
@@ -695,6 +696,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     onHide?()
     panelView.releasePointerCursor()
     if panelView.screenSelectionPhase != .idle {
+      if panelView.addressedSessionID == nil {
+        panelView.setChatDraft(draftBeforeRegion)
+        draftIsDictated = false
+      }
       panelView.endScreenSelection()
       finishScreenSelection()
       onRegionDropped?()
@@ -1432,7 +1437,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       }
       return
     }
-    panelView.cancelScreenSelection()
+    if !panelView.typeAboutRegion() { panelView.cancelScreenSelection() }
     panelView.showError(message)
   }
 
@@ -1472,7 +1477,6 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       }
       self.draftIsDictated = false
       self.newPromptDraft = self.draftBeforeRegion
-      self.panelView.setChatDraft(self.draftBeforeRegion)
       self.isHandingRegionOver = true
       self.regionFaceFlies = true
       self.isSubmitting = true
@@ -1486,6 +1490,8 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     let face = regionFaceFlies ? panelView.promptFaceOnScreen : nil
     let flies = regionFaceFlies
     window?.orderOut(nil)
+    newPromptDraft = draftBeforeRegion
+    panelView.setChatDraft(draftBeforeRegion)
     panelView.endScreenSelection()
     finishScreenSelection()
     if regionChoseAgent {
@@ -1507,7 +1513,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
   private func letGoOfRegion() {
     guard isShowing, !isHandingRegionOver else { return }
     dropRegionAsk()
-    dropRegionWords()
+    stopRegionVoice()
     onRegionDropped?()
     isHandingRegionOver = true
     regionFaceFlies = false
@@ -1516,12 +1522,16 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.setVoiceListening(false, ending: .cancelled)
   }
 
-  private func dropRegionWords() {
+  private func stopRegionVoice() {
     cancelPendingVoiceSubmit()
     silenceWatcher.reset()
     voiceDictation.cancel()
-    panelView.discardVoiceTranscript()
     draftIsDictated = false
+  }
+
+  private func dropRegionWords() {
+    stopRegionVoice()
+    panelView.discardVoiceTranscript()
     newPromptDraft = draftBeforeRegion
     panelView.setChatDraft(draftBeforeRegion)
   }

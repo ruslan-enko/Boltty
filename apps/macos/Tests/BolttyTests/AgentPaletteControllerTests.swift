@@ -655,6 +655,29 @@ final class AgentPaletteControllerTests: XCTestCase {
     XCTAssertTrue(conversations.startedPrompts.isEmpty, "what was said goes with the region")
   }
 
+  func testARegionsQuestionIsTypedOnlyWhereTheSettingLetsIt() throws {
+    let (_, _, view) = try makeSelectingController()
+    view.selectScreenRegionForTesting(CGRect(x: 120, y: 200, width: 300, height: 180))
+    let end = NSRange(location: NSNotFound, length: 0)
+
+    view.field.insertText("W", replacementRange: end)
+    XCTAssertEqual(view.field.string, "")
+    XCTAssertTrue(view.isCompactListeningForTesting)
+
+    view.regionTakesTyping = true
+    view.field.insertText(" ", replacementRange: end)
+    XCTAssertTrue(view.isCompactListeningForTesting, "a space is not yet a question")
+    view.field.insertText("W", replacementRange: end)
+    view.field.insertText("hat", replacementRange: end)
+    XCTAssertEqual(view.field.string, "What")
+    XCTAssertFalse(view.isCompactListeningForTesting, "the orb is the field now")
+
+    view.pressEscapeForTesting()
+    RunLoop.current.run(until: Date().addingTimeInterval(AgentPaletteMetrics.regionHandOverDuration + 0.2))
+    XCTAssertEqual(view.screenSelectionPhase, .idle)
+    XCTAssertEqual(view.field.string, "", "what was typed goes with the region")
+  }
+
   func testARegionOverAnOpenChatIsAChipInItsComposer() throws {
     let (controller, conversations, view) = try makeSelectingController()
     let chat = conversations.addConversation(title: "Saved chat")

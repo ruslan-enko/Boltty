@@ -107,7 +107,8 @@ replay it.
 
 ## Ask Boltty
 
-Ask Boltty is one gesture: select an area of the screen, then speak. It starts
+Ask Boltty is one gesture: select an area of the screen, then speak (or type,
+where Settings › Ask Boltty lets it). It starts
 with a drag on the panel's first screen, which freezes the screen. Once a region
 is drawn the panel listens, and the agent's session warms up. The words, the
 region and a picture of the screen (only the window under the region and the menu

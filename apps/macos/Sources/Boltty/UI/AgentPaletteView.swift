@@ -891,7 +891,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   private func layoutRegionKeyHints(under shell: CGRect) {
-    guard asksByVoice, !isHandingOver, window?.isVisible == true else {
+    guard asksInRegion, !isHandingOver, window?.isVisible == true, !regionIsTyped || notice.isHidden else {
       regionKeyHints.hide()
       return
     }
@@ -914,15 +914,21 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     typealias Hint = PaletteKeyHints.Hint
     let cancel = Hint(key: "esc", words: String(localized: "Cancel"))
     if regionIsAsking || holdsQuestionWords { return [Hint(key: nil, words: String(localized: "Asking…"))] }
+    guard field.draft.isEffectivelyEmpty else {
+      return isVoiceListening || regionIsTyped ? [Hint(key: "⏎", words: String(localized: "Ask")), cancel] : [cancel]
+    }
     guard isVoiceListening else { return [cancel] }
-    if regionHearsNothing, field.draft.isEffectivelyEmpty { return [cancel] }
-    return field.draft.isEffectivelyEmpty
-      ? [Hint(key: nil, words: String(localized: "Speak your question")), cancel]
-      : [Hint(key: "⏎", words: String(localized: "Ask")), cancel]
+    let types = regionTakesTyping && !regionIsTyped
+    if regionHearsNothing {
+      return types ? [Hint(key: nil, words: String(localized: "Type your question")), cancel] : [cancel]
+    }
+    let words = types
+      ? String(localized: "Speak or type your question") : String(localized: "Speak your question")
+    return [Hint(key: nil, words: words), cancel]
   }
 
   func setRegionSilence(_ progress: CGFloat) {
-    guard asksByVoice else { return }
+    guard asksInRegion, isVoiceListening else { return }
     regionKeyHints.progress = regionHints.contains(where: { $0.key == "⏎" }) ? progress : 0
   }
 
@@ -1311,6 +1317,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     notice.isHidden = false
     anchorNotice()
     syncLatestPill()
+    if regionIsTyped { needsLayout = true }
     layoutSubtreeIfNeeded()
 
     if wasHidden, let window, window.isVisible {
@@ -1574,7 +1581,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   private var isOpenChat: Bool { addressedPreview != nil && !showsCompactListening }
 
   private var promptSurfaceWidth: CGFloat {
-    isDraftExpanded ? AgentPaletteMetrics.promptGrownWidth : AgentPaletteMetrics.promptSize.width
+    isDraftExpanded && !asksAboutRegion
+      ? AgentPaletteMetrics.promptGrownWidth : AgentPaletteMetrics.promptSize.width
   }
 
   private var isHistoryOpen: Bool { isResultsExpanded && addressedPreview == nil }
@@ -2435,7 +2443,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private func pressComposerChord(_ chord: ComposerChord) -> Bool {
     guard mode == .prompt else { return false }
-    if asksByVoice || dictatesInChat, chord != .dictate { return true }
+    if asksInRegion || dictatesInChat, chord != .dictate { return true }
     let button: NSButton = switch chord {
     case .dictate: micButton
     case .folder: directoryChip
@@ -2458,7 +2466,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   private var trailingHintKeys: [PromptKeyHint] {
-    guard mode == .prompt, !isVoiceListening, !field.isEmptyPrompt else { return [] }
+    guard mode == .prompt, !isVoiceListening, !asksInRegion, !field.isEmptyPrompt else { return [] }
     guard !fileMention.isOpen, !commandPicker.isOpen else { return [] }
     if let preview = addressedPreview {
       if let question = previewCard.pendingQuestion, question.takesWordsAsRefusal, draftHasWords {
@@ -2486,11 +2494,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-    asksByVoice ? [] : .copy
+    asksInRegion ? [] : .copy
   }
 
   override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-    guard !asksByVoice else { return false }
+    guard !asksInRegion else { return false }
     applyIngest(PasteboardIngest.read(sender.draggingPasteboard, into: field.draft))
     return true
   }
@@ -3264,7 +3272,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       }
     }
     listeningFace.reduceMotion = MotionPreferences.reduceMotion
-    promptCapsule.alphaValue = (list && !searching) || listening ? 0 : 1
+    if !isHandingOver { promptCapsule.alphaValue = (list && !searching) || listening ? 0 : 1 }
     previewCapsule.alphaValue = listening ? 0 : 1
     resultsCapsule.alphaValue = 1
     syncDirectoryChipVisibility()
@@ -3853,8 +3861,34 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     screenSelectionPhase == .editing ? screenSelectionGlobal : nil
   }
 
-  private var asksByVoice: Bool {
+  private var asksInRegion: Bool {
     screenSelectionPhase == .editing && addressedPreview == nil
+  }
+
+  var regionTakesTyping = false
+  private var regionIsTyped = false {
+    didSet { if regionIsTyped != oldValue { needsLayout = true } }
+  }
+  private var regionTypingBegins = false
+
+  private var asksByVoice: Bool { asksInRegion && !regionIsTyped }
+
+  func typeAboutRegion() -> Bool {
+    guard regionTakesTyping, asksByVoice, !isHandingOver else { return false }
+    regionIsTyped = true
+    layoutSubtreeIfNeeded()
+    syncTrailingHint()
+    return true
+  }
+
+  private func takesRegionEdit(_ replacement: String?) -> Bool {
+    guard !regionIsAsking, !holdsQuestionWords, !isHandingOver else { return false }
+    guard !regionIsTyped else { return true }
+    let says = replacement?.contains { !$0.isWhitespace } == true
+    guard regionTakesTyping, says || !field.draft.isEffectivelyEmpty else { return false }
+    regionIsTyped = true
+    regionTypingBegins = true
+    return true
   }
 
   private var acceptsScreenSelection: Bool {
@@ -4024,6 +4058,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     isHandingOver = false
     holdsQuestionWords = false
     regionIsAsking = false
+    regionIsTyped = false
+    regionTypingBegins = false
     regionKeyHints.progress = 0
     screenOutlines.alphaValue = 1
     regionAnnounced = false
@@ -4091,6 +4127,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       context.duration = duration
       context.timingFunction = Motion.standardCurve
       screenOutlines.animator().alphaValue = 0
+      promptCapsule.animator().alphaValue = 0
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: done)
   }
@@ -4590,7 +4627,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     let gap = AgentPaletteMetrics.restingControlsSpacing
     let target = composerControlDiameter
     let folder = chat || directorySlotWidth.constant == 0 ? 0 : directorySlotWidth.constant + gap
-    let plan = planRing.hasReading ? target + gap : 0
+    let plan = planRing.hasReading && !asksAboutRegion ? target + gap : 0
     let send = composerIsUp && composerGlyphsAreChat
       ? ComposerControlGroup.sendGap + ComposerControlGroup.sendDisc : 0
     let words = chat
@@ -4670,7 +4707,9 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 extension AgentPaletteView: NSTextViewDelegate {
   func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange,
                 replacementString: String?) -> Bool {
-    if asksByVoice, !isApplyingVoiceTranscript, !isRestoringChatDraft { return false }
+    if asksInRegion, !isApplyingVoiceTranscript, !isRestoringChatDraft, !takesRegionEdit(replacementString) {
+      return false
+    }
     if composerKeyTarget != .text {
       if replacementString == " " {
         activateComposerKeyTarget()
@@ -4700,9 +4739,11 @@ extension AgentPaletteView: NSTextViewDelegate {
     if !isTab, !isBacktab, composerKeyTarget != .text {
       setComposerKeyTarget(.text)
     }
-    if screenSelectionPhase != .idle, isTab
-      || commandSelector == #selector(moveDown(_:)) || commandSelector == #selector(moveUp(_:)) {
-      return true
+    if screenSelectionPhase != .idle {
+      if isTab { return true }
+      if commandSelector == #selector(moveDown(_:)) || commandSelector == #selector(moveUp(_:)) {
+        return !regionIsTyped || isVoiceListening
+      }
     }
     if commandSelector == #selector(moveLeft(_:)) || commandSelector == #selector(moveRight(_:)) {
       if addressedPreview != nil, field.isWhollyEmpty,
@@ -4781,7 +4822,7 @@ extension AgentPaletteView: NSTextViewDelegate {
       return true
     }
     if commandSelector == #selector(deleteBackward(_:)) {
-      if asksByVoice { return true }
+      if asksByVoice, !regionTakesTyping || field.draft.isEffectivelyEmpty { return true }
       if mode != .prompt, field.searchQuery.isEmpty {
         closeSwitcher()
         return true
@@ -4837,8 +4878,11 @@ extension AgentPaletteView: NSTextViewDelegate {
     }
     if !isRestoringChatDraft { onDraftChange?() }
     if !isRestoringChatDraft, !isApplyingVoiceTranscript { hideNotice() }
-    if !voiceTranscriptWasInterrupted, !isApplyingVoiceTranscript, let expected = voiceExpectedText,
-       field.string != expected {
+    let editsHeardWords = !voiceTranscriptWasInterrupted && !isApplyingVoiceTranscript
+      && voiceExpectedText.map { field.string != $0 } == true
+    if editsHeardWords || regionTypingBegins {
+      regionTypingBegins = false
+      regionKeyHints.progress = 0
       voiceTranscriptWasInterrupted = true
       onVoiceEditingInterrupted?()
       setVoiceListening(false)
@@ -4919,12 +4963,12 @@ extension AgentPaletteView: NSTextViewDelegate {
   }
 
   private func handlePaste(forcePlainText: Bool) {
-    guard !asksByVoice else { return }
+    guard !asksByVoice || regionTakesTyping else { return }
     applyIngest(
       PasteboardIngest.read(
         .general,
         into: field.draft,
-        forcePlainText: forcePlainText
+        forcePlainText: forcePlainText || asksInRegion
       )
     )
   }

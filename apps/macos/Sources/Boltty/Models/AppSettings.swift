@@ -22,6 +22,7 @@ struct AppSettings: Equatable, Sendable {
   var askBolttyModelID: String?
   var askBolttyReadOnly: Bool
   var askBolttySpeaksAloud: Bool
+  var askBolttyTakesTyping: Bool
   var playsSounds: Bool
   var keepsChatsDays: Int
   var attachesFinderSelection: Bool
@@ -51,6 +52,7 @@ struct AppSettings: Equatable, Sendable {
   private static let askBolttyModelIDKey = "boltty.talk.model"
   private static let askBolttyReadOnlyKey = "boltty.talk.readOnly"
   private static let askBolttySpeaksAloudKey = "boltty.talk.speaksAloud"
+  private static let askBolttyTakesTypingKey = "boltty.talk.takesTyping"
   private static let playsSoundsKey = "boltty.sounds.enabled"
   private static let keepsChatsDaysKey = "boltty.history.keepDays"
   private static let checksForUpdatesKey = "boltty.updates.automaticChecks"
@@ -82,6 +84,7 @@ struct AppSettings: Equatable, Sendable {
     askBolttyModelID: String? = nil,
     askBolttyReadOnly: Bool = true,
     askBolttySpeaksAloud: Bool = false,
+    askBolttyTakesTyping: Bool = false,
     playsSounds: Bool = true,
     keepsChatsDays: Int = 0,
     attachesFinderSelection: Bool = true,
@@ -108,6 +111,7 @@ struct AppSettings: Equatable, Sendable {
     self.askBolttyModelID = askBolttyModelID
     self.askBolttyReadOnly = askBolttyReadOnly
     self.askBolttySpeaksAloud = askBolttySpeaksAloud
+    self.askBolttyTakesTyping = askBolttyTakesTyping
     self.playsSounds = playsSounds
     self.keepsChatsDays = HistoryRetention.choices.contains(keepsChatsDays) ? keepsChatsDays : 0
     self.attachesFinderSelection = attachesFinderSelection
@@ -185,6 +189,7 @@ struct AppSettings: Equatable, Sendable {
       askBolttyModelID: defaults.string(forKey: Self.askBolttyModelIDKey),
       askBolttyReadOnly: askBolttyReadOnly,
       askBolttySpeaksAloud: defaults.bool(forKey: Self.askBolttySpeaksAloudKey),
+      askBolttyTakesTyping: defaults.bool(forKey: Self.askBolttyTakesTypingKey),
       playsSounds: playsSounds,
       keepsChatsDays: defaults.integer(forKey: Self.keepsChatsDaysKey),
       attachesFinderSelection: attachesFinderSelection,
@@ -242,6 +247,7 @@ struct AppSettings: Equatable, Sendable {
     defaults.set(askBolttyModelID, forKey: Self.askBolttyModelIDKey)
     defaults.set(askBolttyReadOnly, forKey: Self.askBolttyReadOnlyKey)
     defaults.set(askBolttySpeaksAloud, forKey: Self.askBolttySpeaksAloudKey)
+    defaults.set(askBolttyTakesTyping, forKey: Self.askBolttyTakesTypingKey)
     defaults.set(playsSounds, forKey: Self.playsSoundsKey)
     if keepsChatsDays == 0 {
       defaults.removeObject(forKey: Self.keepsChatsDaysKey)
