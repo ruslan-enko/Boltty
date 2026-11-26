@@ -5,29 +5,17 @@ struct AppearancePicker: View {
   @ObservedObject var model: BolttyAISettingsModel
   @AppStorage(ChatBackdrop.storageKey) private var stored = ChatBackdrop.standard.rawValue
 
-  static let tile = (size: CGSize(width: 62, height: 42), corner: CGFloat(12))
-  private static var gap: CGFloat { 4 }
+  static let tile = (size: CGSize(width: 96, height: 60), corner: CGFloat(14))
+  private static var gap: CGFloat { 10 }
 
   private var chosen: ChatBackdrop { ChatBackdrop(rawValue: stored) ?? .standard }
   private var look: MascotLook { model.mascotLook(for: model.mascotRoster.restingAgent) }
 
   var body: some View {
-    ViewThatFits(in: .horizontal) {
-      HStack(alignment: .top, spacing: 12) {
-        glass
-        Rectangle()
-          .fill(Color.primary.opacity(0.1))
-          .frame(width: 1)
-          .padding(.vertical, 2)
-        backdrop
-      }
-      .fixedSize(horizontal: false, vertical: true)
-      VStack(alignment: .leading, spacing: 16) {
-        glass
-        backdrop
-      }
+    Group {
+      glass.padding(.vertical, 4)
+      backdrop.padding(.vertical, 4)
     }
-    .padding(.vertical, 4)
   }
 
   private var glass: some View {

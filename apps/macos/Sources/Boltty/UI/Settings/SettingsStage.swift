@@ -163,8 +163,8 @@ struct GlassSwatch: NSViewRepresentable {
 }
 
 final class GlassSwatchView: NSView {
-  private static let shell = CGSize(width: 64, height: 30)
-  private static let face: CGFloat = 20
+  private static let shell = CGSize(width: 76, height: 32)
+  private static let face: CGFloat = 22
 
   private let host: PaletteGlassHost
   private let face: MascotNSView

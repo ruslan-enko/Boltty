@@ -90,7 +90,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Boltty's icons | `UI/BolttyIcon.swift`, `Resources/Icons`, drawn by `scripts/render-icons.py` and judged by `scripts/check-icons.py` |
 | Brand colours | `UI/Appearance/BolttyBrand.swift`, [BRAND.md](BRAND.md) |
 | Shader effects | `UI/Effects/` |
-| Backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, chosen beside the panel's glass in `UI/Settings/ChatBackdropPicker.swift` (`AppearancePicker`) |
+| Backdrops | `UI/Backdrop/`, `Models/ChatBackdrop.swift`, chosen under the panel's glass in `UI/Settings/ChatBackdropPicker.swift` (`AppearancePicker`) |
 | First run | `UI/FirstRunShowController.swift`, `UI/Settings/SetupWindow.swift` |
 | Permissions window | `Services/AccessPermissions.swift`, `UI/Settings/AccessPermissionsWindow.swift` |
 | Who takes a new chat | `Models/AgentRouting.swift` (`AgentRouting`, `AgentHandOver`), `ChatWorkspaceCoordinator.routingOrder` / `handOverIfDue` |
@@ -1510,9 +1510,10 @@ processes, so it is Boltty's to give.
   dictation's words (`DictationSample`) and Ask Boltty's answer beside the face
   (`AskAnswerSample`). Or the choice itself is tiles, each the thing in small
   (`AppearancePicker`, on `RingedChoice` with a `tile`): Panel glass's Clear and
-  Frosted (`GlassSwatch`) beside Backdrop's Standard, Sky, Space and Black
-  (`BackdropSwatch`, the sky a still from the backdrop's own renderer,
-  `AgentBackdropRenderer.still`). A slider and three large stages there made
+  Frosted (`GlassSwatch`), then on a row of its own Backdrop's Standard, Sky,
+  Space and Black (`BackdropSwatch`, the sky a still from the backdrop's own
+  renderer, `AgentBackdropRenderer.still`); side by side in one row the tiles
+  were too small to hold the panel. A slider and three large stages there made
   General three screens long. A switch of behaviour with nothing to see has
   none; New Chats and an agent's model had one and lost it.
 - **App icon**: one, `AppIcon.icon` (Icon Composer); `.github/icon.png` is it
@@ -1687,8 +1688,8 @@ processes, so it is Boltty's to give.
   out. It was a choice per agent for open chats only;
   `boltty.chatBackdrop.<agent>` is retired, inert. Matrix was removed; a stored
   `matrix` reads as Standard. Standard is the default, and nothing stores
-  another for the person. Settings chooses it on tiles beside the panel's
-  glass, each an open chat in small over the person's desktop wearing that
+  another for the person. Settings chooses it on tiles in the row under the
+  panel's glass, each an open chat in small over the person's desktop wearing that
   backdrop (`BackdropSwatch`): the backdrop's own renderer, not a mock-up. It
   was `GlassSegments` over a large live chat; the segments are Usage's now (a
   dark capsule with one thumb of the system's glass, untinted, stretching toward
