@@ -1404,9 +1404,8 @@ so in the orb ("No sound is reaching the microphone…",
   the segments are drawn here, since a `List`'s selection and a segmented
   `Picker` take the person's accent. The sidebar wears the page's grey: the
   system's sidebar glass took the wallpaper's tint beside it. A row (`SettingsSidebarRow`) leads with its page's
-  tile (`SettingsPageTile`, 24 pt, as System Settings' are): a square picture, the maintainer's own, in
-  `Resources/Icons/Settings/<page raw value>.png`, given its continuous corner
-  (26 % of its side) in code so all six agree; the chosen row a
+  icon (`SettingsPage.icon`, 18 in secondary ink, no tile: the maintainer's pictures
+  on 24 pt tiles were tried and removed); the chosen row a
   quiet grey fill with semibold words: a yellow fill there shouted over the
   page. Every segmented choice is `GlassSegments` (one glass thumb on a grey
   track); a yellow one was drawn beside it on Usage and was retired. The sidebar
@@ -1665,7 +1664,7 @@ so in the orb ("No sound is reaching the microphone…",
   a blob of it. So nothing is sharp or nearly so, no curve is by hand, and a shape's
   two sides are one number. An icon is changed in `scripts/render-icons.py`, never in its file,
   and `scripts/check-icons.py` then judges the files: lines and arcs only, no kink at
-  a joint, the ink clear of the edge. One colour, outlines only: no icon is a filled version of another. On a tile of its own colour (the permission window) it stands in white; Settings' sidebar tiles are pictures of their own. An icon is sized by its box (a chat's composer
+  a joint, the ink clear of the edge. One colour, outlines only: no icon is a filled version of another. On a tile of its own colour (the permission window) it stands in white. An icon is sized by its box (a chat's composer
   `ComposerControlGroup.iconSize`, a point over `glyph`; elsewhere about a
   fifth over the point size its symbol had, since the ink stops short of the
   box), and its stroke grows with the box. In the panel every icon's box then
@@ -1736,8 +1735,7 @@ so in the orb ("No sound is reaching the microphone…",
   a flat fill; nothing is finished with a stroke or a hairline round it. The
   glass's own edge is the system's. Left on purpose: table rules, a quote's bar,
   the work thread, the screen selection's edge, the Ask pointer's white edge
-  (it stands on any screen), `RingedChoice`'s ring, and the 1-point inner edge
-  of white at 20% on Settings' sidebar tiles (`SettingsPageTile`).
+  (it stands on any screen), and `RingedChoice`'s ring.
 - **Spacing**: numbers read off a mock go through `fromMock` / `fromHistoryMock`,
   snapped to the half-point grid. The shell's inset is 12, and nested corners are
   concentric (`outer = inner + inset`), in Settings too: a stage that fills its

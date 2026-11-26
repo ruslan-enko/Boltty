@@ -32,12 +32,6 @@ struct DesignSettingsSamples: View {
         } label: { Text(verbatim: "bolttyProminentButton") }
       }
       Section {
-        HStack(spacing: 14) {
-          ForEach(SettingsPage.allCases) { SettingsPageTile(page: $0, side: 48) }
-        }
-        .frame(maxWidth: .infinity)
-      }
-      Section {
         HStack(spacing: 20) {
           ForEach(0..<3, id: \.self) { index in
             RingedChoice(title: "Choice", isChosen: tile == index, action: { tile = index }) { _ in

@@ -123,23 +123,27 @@ private struct SettingsSidebarRow: View {
   let action: () -> Void
   @State private var isHovered = false
 
-  private static let tile: CGFloat = 24
-  private static let inset: CGFloat = 4
+  private static let icon: CGFloat = 18
+  private static let height: CGFloat = 32
+  private static let inset: CGFloat = 8
+  private static let corner: CGFloat = 10
 
   var body: some View {
     Button(action: action) {
       HStack(spacing: 8) {
-        SettingsPageTile(page: page, side: Self.tile)
+        BolttyIconView(icon: page.icon, size: Self.icon)
+          .foregroundStyle(.secondary)
+          .accessibilityHidden(true)
         Text(page.title)
           .fontWeight(isSelected ? .semibold : .regular)
           .foregroundStyle(.primary)
         Spacer(minLength: 0)
       }
       .padding(.horizontal, Self.inset)
-      .frame(height: Self.tile + 2 * Self.inset)
+      .frame(height: Self.height)
       .background(
         Color.primary.opacity(isSelected ? 0.08 : (isHovered ? 0.04 : 0)),
-        in: RoundedRectangle(cornerRadius: SettingsPageTile.corner(Self.tile) + Self.inset, style: .continuous)
+        in: RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
       )
       .contentShape(Rectangle())
     }
@@ -148,44 +152,6 @@ private struct SettingsSidebarRow: View {
     .animation(SettingsMotion.quick, value: isHovered)
     .accessibilityAddTraits(isSelected ? .isSelected : [])
     .accessibilityIdentifier("boltty.settings.page.\(page.rawValue)")
-  }
-}
-
-struct SettingsPageTile: View {
-  let page: SettingsPage
-  var side: CGFloat = 24
-
-  static func corner(_ side: CGFloat) -> CGFloat { side * 0.26 }
-
-  @MainActor private static var images: [SettingsPage: NSImage] = [:]
-
-  @MainActor private var image: NSImage? {
-    if let kept = Self.images[page] { return kept }
-    guard let url = Bundle.main.url(forResource: page.rawValue, withExtension: "png", subdirectory: "Icons/Settings"),
-          let made = NSImage(contentsOf: url)
-    else {
-      assertionFailure("No tile \(page.rawValue) in Resources/Icons/Settings")
-      return nil
-    }
-    Self.images[page] = made
-    return made
-  }
-
-  var body: some View {
-    Group {
-      if let image {
-        Image(nsImage: image).resizable().interpolation(.high)
-      } else {
-        Color.clear
-      }
-    }
-    .frame(width: side, height: side)
-    .clipShape(RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous))
-    .overlay(
-      RoundedRectangle(cornerRadius: Self.corner(side), style: .continuous)
-        .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-    )
-    .accessibilityHidden(true)
   }
 }
 

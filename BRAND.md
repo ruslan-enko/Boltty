@@ -99,11 +99,10 @@ set.
 The panel's Send disc is the exception on purpose: white, with Return in black,
 the composer's one pure-white fill.
 
-Permission tiles (microphone, Screen Recording, notifications, Finder) and
-Settings' sidebar tiles (pictures in `Resources/Icons/Settings`) keep their own
+Permission tiles (microphone, Screen Recording, notifications, Finder) keep their own
 colours so they can be told apart at a glance. They are
-icons, not accents. The selected page in the sidebar is a quiet grey fill with
-semibold words, not yellow: beside six coloured tiles a yellow row shouted.
+icons, not accents. Settings' sidebar icons are grey, with no tile. The selected
+page is a quiet grey fill with semibold words, not yellow.
 
 ### In code
 

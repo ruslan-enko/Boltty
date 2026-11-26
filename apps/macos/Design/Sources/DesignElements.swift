@@ -99,8 +99,7 @@ enum DesignElements {
 
   static func cards() -> [DesignSection] {
     let home = NSHomeDirectory()
-    let picture = Bundle.main.url(forResource: "general", withExtension: "png", subdirectory: "Icons/Settings")
-      ?? URL(fileURLWithPath: home)
+    let picture = URL(fileURLWithPath: "/System/Library/CoreServices/DefaultDesktop.heic")
     let attachments: [(String, PromptAttachment)] = [
       ("Picture", .file(picture, label: "image1")),
       ("Video", .file(URL(fileURLWithPath: home + "/Desktop/Upload 1.mp4"), label: "file1")),
