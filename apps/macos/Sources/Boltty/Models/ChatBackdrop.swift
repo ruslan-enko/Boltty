@@ -4,6 +4,7 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
   case standard
   case sky
   case space
+  case black
 
   var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
     case .standard: String(localized: "Standard")
     case .sky: String(localized: "Sky")
     case .space: String(localized: "Space")
+    case .black: String(localized: "Black")
     }
   }
 
@@ -20,8 +22,11 @@ enum ChatBackdrop: String, CaseIterable, Identifiable, Sendable {
     case .standard: 0
     case .sky: 1
     case .space: 2
+    case .black: 3
     }
   }
+
+  var isStill: Bool { self == .black }
 
   func pixelsPerPoint(backing: CGFloat) -> CGFloat {
     self == .space ? backing : 0.5

@@ -194,7 +194,7 @@ enum DesignFoundations {
     AgentHistory.tabOrder.map { agent in
       let palette = MascotPalette.face(for: agent)
       return DesignSection(title: agent.shortDisplayName, note: palette.displayName, specimens:
-        [ChatBackdrop.sky, .space].map { backdrop in
+        [ChatBackdrop.sky, .space, .black].map { backdrop in
           let view = NSView()
           view.wantsLayer = true
           view.layer?.contentsGravity = .resizeAspectFill

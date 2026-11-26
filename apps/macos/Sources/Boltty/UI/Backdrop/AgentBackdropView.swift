@@ -63,7 +63,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
 
   private func syncClock() {
     let onScreen = window?.occlusionState.contains(.visible) == true
-    if onScreen, !isHidden { startClock() } else { stopClock() }
+    if onScreen, !isHidden, !backdrop.isStill { startClock() } else { stopClock() }
   }
 
   static let pace: CGFloat = 1.6
@@ -78,7 +78,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
         self.backdrop = backdrop
         self.palette = palette
         let next = AgentBackdropSky.slots(for: palette)
-        if recolours, showing, !MotionPreferences.reduceMotion {
+        if recolours, showing, !backdrop.isStill, !MotionPreferences.reduceMotion {
           blend = (ramp, next, Motion.now)
           startClock()
         } else {
@@ -86,6 +86,7 @@ final class AgentBackdropView: MTKView, MTKViewDelegate {
           ramp = next
           if !isHidden { draw() }
         }
+        syncClock()
       }
     }
     guard target != targetOpacity else { return }

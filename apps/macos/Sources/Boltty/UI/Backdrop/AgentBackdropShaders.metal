@@ -208,6 +208,7 @@ fragment float4 agentBackdropFragment(
   constant AgentBackdropUniforms &u [[buffer(AgentBackdropBufferIndexUniforms)]]
 ) {
   if (u.opacity <= 0.0) { return float4(0.0); }
+  if (u.scene > 2.5) { return float4(0.0, 0.0, 0.0, u.opacity); }
   const float2 size = max(u.size, float2(1.0));
   const float h = in.local.y / size.y;
   const float t = u.clock;

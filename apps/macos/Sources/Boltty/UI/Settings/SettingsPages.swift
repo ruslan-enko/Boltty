@@ -12,7 +12,7 @@ struct GeneralSettingsPage: View {
       } header: {
         SettingsSectionHeader(String(localized: "Appearance"))
       } footer: {
-        SettingsNote(String(localized: "Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats, in the colours of the face shown."))
+        SettingsNote(String(localized: "Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats: Sky and Space are in the colours of the face shown."))
       }
 
       Section {

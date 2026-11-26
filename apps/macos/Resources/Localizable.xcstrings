@@ -9651,6 +9651,58 @@
         }
       }
     },
+    "Black" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schwarz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Negro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noir"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "黒"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "검정"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preto"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чорне"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "黑色"
+          }
+        }
+      }
+    },
     "Blossom" : {
       "localizations" : {
         "de" : {
@@ -13725,54 +13777,54 @@
         }
       }
     },
-    "Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats, in the colours of the face shown." : {
+    "Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats: Sky and Space are in the colours of the face shown." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klares Glas lässt die Farbe hinter dem Panel durch; mattes dämpft sie. Der Hintergrund liegt hinter der Chatliste und offenen Chats, in den Farben des gezeigten Gesichts."
+            "value" : "Klares Glas lässt die Farbe hinter dem Panel durch; mattes dämpft sie. Der Hintergrund liegt hinter der Chatliste und offenen Chats: „Himmel“ und „Weltraum“ in den Farben des gezeigten Gesichts."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El cristal transparente deja pasar el color detrás del panel; el esmerilado lo suaviza. El fondo está detrás de la lista de chats y de los chats abiertos, con los colores de la cara mostrada."
+            "value" : "El cristal transparente deja pasar el color detrás del panel; el esmerilado lo suaviza. El fondo está detrás de la lista de chats y de los chats abiertos: Cielo y Espacio llevan los colores de la cara mostrada."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le verre transparent laisse passer la couleur derrière le panneau ; le dépoli l’adoucit. L’arrière-plan se trouve derrière la liste et les discussions ouvertes, aux couleurs du visage affiché."
+            "value" : "Le verre transparent laisse passer la couleur derrière le panneau ; le dépoli l’adoucit. L’arrière-plan se trouve derrière la liste et les discussions ouvertes : Ciel et Espace prennent les couleurs du visage affiché."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クリアなガラスはパネルの後ろの色を通し、すりガラスはやわらげます。背景はチャットリストと開いたチャットの後ろにあり、表示中の顔の色になります。"
+            "value" : "クリアなガラスはパネルの後ろの色を通し、すりガラスはやわらげます。背景はチャットリストと開いたチャットの後ろにあります。空と宇宙は表示中の顔の色になります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "투명한 유리는 패널 뒤의 색을 비추고, 반투명 유리는 부드럽게 합니다. 배경은 채팅 목록과 열린 채팅 뒤에 있으며 표시된 얼굴의 색을 띱니다."
+            "value" : "투명한 유리는 패널 뒤의 색을 비추고, 반투명 유리는 부드럽게 합니다. 배경은 채팅 목록과 열린 채팅 뒤에 있으며, 하늘과 우주는 표시된 얼굴의 색을 띱니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O vidro transparente deixa passar a cor atrás do painel; o fosco a suaviza. O fundo fica atrás da lista de chats e dos chats abertos, nas cores do rosto exibido."
+            "value" : "O vidro transparente deixa passar a cor atrás do painel; o fosco a suaviza. O fundo fica atrás da lista de chats e dos chats abertos: Céu e Espaço ficam nas cores do rosto exibido."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Прозоре скло пропускає колір позаду панелі; матове його пом’якшує. Тло — позаду списку чатів і відкритих чатів, у кольорах показаного обличчя."
+            "value" : "Прозоре скло пропускає колір позаду панелі; матове його пом’якшує. Тло — позаду списку чатів і відкритих чатів: «Небо» й «Космос» — у кольорах показаного обличчя."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "透明玻璃会透出面板后面的颜色；磨砂玻璃会柔化它。背景位于聊天列表和打开的聊天后面，采用当前所示表情的颜色。"
+            "value" : "透明玻璃会透出面板后面的颜色；磨砂玻璃会柔化它。背景位于聊天列表和打开的聊天后面：天空和太空采用当前所示表情的颜色。"
           }
         }
       }

@@ -1436,7 +1436,7 @@ so in the orb ("No sound is reaching the microphone…",
   dictation's words (`DictationSample`) and Ask Boltty's answer beside the face
   (`AskAnswerSample`). Or the choice itself is tiles, each the thing in small
   (`AppearancePicker`, on `RingedChoice` with a `tile`): Panel glass's Clear and
-  Frosted (`GlassSwatch`) beside Backdrop's Standard, Sky and Space
+  Frosted (`GlassSwatch`) beside Backdrop's Standard, Sky, Space and Black
   (`BackdropSwatch`, the sky a still from the backdrop's own renderer,
   `AgentBackdropRenderer.still`). A slider and three large stages there made
   General three screens long. A switch of behaviour with nothing to see has
@@ -1603,7 +1603,8 @@ so in the orb ("No sound is reaching the microphone…",
 - The listening orb is the shell's glass and draws no light of its own.
 - **Backdrops** (`AgentBackdropView`): what the chat list and the open chat
   wear behind their content, one choice for every agent in Settings › General ›
-  Appearance (`boltty.backdrop`): Standard (the glass), Sky, Space. The first
+  Appearance (`boltty.backdrop`): Standard (the glass), Sky, Space, Black (solid, no
+  glass through it, its clock stopped). The first
   screen and the listening orb stay glass: a sky squeezed into them read as
   flattened. Its colours are the face shown (the chat's agent, the list tab's);
   the list's All tab wears a neutral grey sky (`AgentBackdropSky.slots(for: nil)`),
