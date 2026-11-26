@@ -172,7 +172,10 @@ struct AgentActivity: Identifiable, Codable, Equatable, Sendable {
   }
 
   var headline: String {
-    if let summary, !summary.isEmpty { return summary }
+    if let line = summary?.split(whereSeparator: \.isNewline)
+      .first(where: { !$0.allSatisfy(\.isWhitespace) }) {
+      return line.trimmingCharacters(in: .whitespaces)
+    }
     if let file = files.first { return "\(spokenName) \((file as NSString).lastPathComponent)" }
     return spokenName
   }

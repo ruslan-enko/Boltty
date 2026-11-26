@@ -94,7 +94,7 @@ enum AgentActivityGroup {
   static func progress(for activity: AgentActivity) -> String {
     let kind = kind(of: activity)
     if kind == .command {
-      let line = activity.headline.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+      let line = activity.headline
       if let first = line.first, first.isUppercase { return line }
       if line.contains(where: { $0 == " " || $0 == "/" }) { return String(localized: "Running \(line)") }
     }
