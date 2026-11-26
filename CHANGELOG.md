@@ -2,6 +2,29 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.13.0
+
+**Computer Use**
+- Agents can use the apps on your Mac. Write `@computer` in a request (it is the
+  first row of the `@` list) and from then on, in that chat, the agent can read a
+  window, click, type, press keys and scroll, in the background. Claude Code, Codex,
+  Grok, Antigravity and OpenCode all can.
+- Boltty asks before each app, on the chat's own card. Terminals, password managers
+  and System Settings stay closed to it, and it never types into a password field.
+- While it works, the foot of the screen says so, and Escape stops it.
+- The first time, macOS asks to let Boltty use Accessibility.
+
+**Ask Boltty**
+- A question can be typed as well as spoken, where Settings › Ask Boltty says so.
+
+**Grok**
+- Always Allow on a picture no longer refuses it, and the rest of the chat's pictures
+  go without asking.
+
+**Settings**
+- The sidebar has Boltty's own grey icons.
+- Backdrop has a Black choice: solid, with no glass through it.
+
 ## 0.12.10
 
 **Ask Boltty**

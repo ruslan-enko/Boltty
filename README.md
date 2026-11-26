@@ -92,6 +92,14 @@ be asked every time, turn on Auto Mode for that agent or just for one chat.
   <img src=".github/readme/permission.webp" width="100%" alt="Codex asking before it runs a command">
 </p>
 
+### Let it use your apps
+
+Write `@computer` in a request (it's the first row of the `@` list) and the agent can
+use the apps on your Mac in that chat: read a window, click, type, scroll, in the
+background while you keep working. It works with every agent. Boltty asks before
+each app, keeps terminals, password managers and System Settings closed to it, and
+**Escape** stops it.
+
 ## Install
 
 Paste this into Terminal:
@@ -126,6 +134,7 @@ installs it only when you say so.
 | Switch the agent | `⇧Tab` |
 | Recent chats | `↓`, then type to search |
 | Stop the agent | `⌘.` |
+| Let the agent use apps | `@computer` in a request; `Escape` stops it |
 | Add to what it's doing / queue for later | `⌘Return` / `Return` |
 | Back, then close | `Escape` |
 | Settings | `⌘,` |
@@ -153,6 +162,10 @@ macOS asks for permissions only when something needs them:
 - **Screen Recording** to ask about the screen
 - **Automation (Finder)** to see the folder and files you have open in Finder
 - **Input Monitoring** only if you set ⌥⌘ alone as the key that opens the panel
+- **Accessibility** only if you let an agent use your apps (`@computer`)
+
+When an agent uses your apps, it gets a picture of the window it works in and the
+words in it, and that goes to the agent like anything else in the chat.
 
 An agent started from Boltty can do whatever the same CLI can do from your
 terminal. Boltty isn't a sandbox. What it adds is the approval step and the folder
