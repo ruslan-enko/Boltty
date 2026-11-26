@@ -212,7 +212,7 @@ enum DesignElements {
     let mentions = ComposerSuggestionList(label: "Files")
     mentions.show([
       ComposerSuggestion(
-        icon: .pointerRays, title: "Computer Use", detail: "Let the agent use apps on this Mac", detailLeads: true),
+        icon: .pointerRays, title: "Computer Use", detail: "Let the agent use apps on this Mac", detailKind: .note),
       ComposerSuggestion(icon: .doc, title: "README.md", detail: "~/Projects/boltty"),
       ComposerSuggestion(icon: .folder, title: "Sources", detail: "~/Projects/boltty/apps/macos"),
     ], keeping: nil)

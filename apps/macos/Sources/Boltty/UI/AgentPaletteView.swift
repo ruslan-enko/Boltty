@@ -521,7 +521,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       case .computerUse:
         return ComposerSuggestion(
           icon: .pointerRays, title: String(localized: "Computer Use"),
-          detail: String(localized: "Let the agent use apps on this Mac"), detailLeads: true)
+          detail: String(localized: "Let the agent use apps on this Mac"), detailKind: .note)
       case let .file(candidate):
         let parent = (candidate.relativePath as NSString).deletingLastPathComponent
         return ComposerSuggestion(
@@ -547,7 +547,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       host: self, field: field, label: String(localized: "Skills and commands"), token: ComposerToken.command(in:caret:)
     ) { command in
       ComposerSuggestion(icon: .sparkles, title: command.invocation, detail: command.summary,
-                         detailLeads: true)
+                         detailKind: .leadingNote)
     }
     picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
     picker.onPick = { [weak self] command, range in self?.useCommand(command, replacing: range) }

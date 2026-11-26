@@ -4,7 +4,13 @@ struct ComposerSuggestion: Equatable {
   let icon: BolttyIcon
   let title: String
   let detail: String
-  var detailLeads = false
+  var detailKind = DetailKind.place
+
+  enum DetailKind {
+    case place
+    case note
+    case leadingNote
+  }
 }
 
 @MainActor
@@ -268,11 +274,11 @@ private final class ComposerSuggestionRowView: NSView {
   private let place = NSTextField(labelWithString: "")
   private var hoverArea: NSTrackingArea?
 
-  private let detailLeads: Bool
+  private let detailKind: ComposerSuggestion.DetailKind
   private let detail: String
 
   init(_ suggestion: ComposerSuggestion) {
-    detailLeads = suggestion.detailLeads
+    detailKind = suggestion.detailKind
     detail = suggestion.detail
     super.init(frame: .zero)
     wantsLayer = true
@@ -287,9 +293,9 @@ private final class ComposerSuggestionRowView: NSView {
     place.stringValue = suggestion.detail
     place.font = font
     place.textColor = PaletteInk.secondary
-    place.lineBreakMode = suggestion.detailLeads ? .byTruncatingTail : .byTruncatingHead
+    place.lineBreakMode = suggestion.detailKind == .place ? .byTruncatingHead : .byTruncatingTail
     place.isSelectable = false
-    place.alignment = suggestion.detailLeads ? .left : .right
+    place.alignment = suggestion.detailKind == .leadingNote ? .left : .right
     for view in [icon, name, place] as [NSView] { addSubview(view) }
     setAccessibilityElement(true)
     setAccessibilityRole(.row)
@@ -318,14 +324,16 @@ private final class ComposerSuggestionRowView: NSView {
     let available = bounds.width - nameX - padding
     let gap = AgentPaletteMetrics.mentionPlaceGap
     let room = max(0, available - Self.width(of: name) - gap)
-    if detailLeads {
+    if detailKind == .leadingNote {
       let nameWidth = min(Self.width(of: name), available)
       name.frame = NSRect(x: nameX, y: textY, width: nameWidth, height: textHeight)
       place.frame = NSRect(x: name.frame.maxX + gap, y: textY, width: room, height: textHeight)
       return
     }
-    place.stringValue = SuggestionPlace.folders(of: detail, fitting: room) { [place] words in
-      Self.width(of: words, font: place.font)
+    if detailKind == .place {
+      place.stringValue = SuggestionPlace.folders(of: detail, fitting: room) { [place] words in
+        Self.width(of: words, font: place.font)
+      }
     }
     let placeWidth = place.stringValue.isEmpty ? 0 : min(Self.width(of: place), room)
     let nameWidth = placeWidth > 0 ? available - placeWidth - gap : available
