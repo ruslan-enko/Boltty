@@ -48,6 +48,8 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let fileUndo = AgentCapabilities(rawValue: 1 << 26)
 
+  static let computerUse = AgentCapabilities(rawValue: 1 << 27)
+
   var canEndTurn: Bool { contains(.interrupt) || contains(.terminableTurn) }
 
   var endingTurnIsAbrupt: Bool { !contains(.interrupt) && contains(.terminableTurn) }

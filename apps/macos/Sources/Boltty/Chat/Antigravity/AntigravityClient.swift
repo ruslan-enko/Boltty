@@ -6,7 +6,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
     .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
-    .usageLimits, .folderMoving, .commands, .planMode,
+    .usageLimits, .folderMoving, .commands, .planMode, .computerUse,
   ]
 
   static let initDeadline: TimeInterval = 25
@@ -64,6 +64,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     var granted: Set<String> = []
     var planning = false
     var planFile: String?
+    var computerUseSocket: String?
 
     init(id: String?, directory: String, model: ModelSelection?, effort: String?, autoApprove: Bool) {
       self.id = id
@@ -182,6 +183,7 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
       autoApprove: options.autoApprove
     )
     session.planning = options.planMode
+    session.computerUseSocket = options.computerUseSocket
     let remoteID = try await start(session, executable: executable)
     lock.withLock { sessions[remoteID] = session }
     return RemoteSessionInfo(
@@ -233,7 +235,9 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
         || session.directory != options.directory
         || (gate == nil && session.autoApprove != options.autoApprove)
         || session.planning != options.planMode
+        || session.computerUseSocket != options.computerUseSocket
       session.planning = options.planMode
+      session.computerUseSocket = options.computerUseSocket
       session.directory = options.directory
       session.model = options.model
       session.effort = options.effort
@@ -302,14 +306,19 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
 
   private func start(_ session: LiveSession, executable: String) async throws -> String {
     let gate = preparedGate()
-    let (arguments, directory) = lock.withLock {
-      (Self.arguments(for: session, gated: gate != nil), session.directory)
+    let (arguments, directory, socket) = lock.withLock {
+      (Self.arguments(for: session, gated: gate != nil), session.directory, session.computerUseSocket)
+    }
+    var environment = gate.map { [AntigravityPermissionGate.environmentKey: $0.directory.path] } ?? [:]
+    if let socket {
+      AntigravityComputerUse.installIfNeeded()
+      environment[AntigravityComputerUse.environmentKey] = socket
     }
     let process = JSONLineProcess(
       executable: executable,
       arguments: arguments,
       directory: directory,
-      environment: gate.map { [AntigravityPermissionGate.environmentKey: $0.directory.path] } ?? [:],
+      environment: environment,
       category: "antigravity"
     )
     lock.withLock {

@@ -131,6 +131,7 @@ struct AgentSessionOptions: Equatable, Sendable {
   var readOnly: Bool
   var planMode: Bool
   var forkFrom: ForkPoint?
+  var computerUseSocket: String?
 
   init(
     directory: String,
@@ -139,7 +140,8 @@ struct AgentSessionOptions: Equatable, Sendable {
     autoApprove: Bool = false,
     readOnly: Bool = false,
     planMode: Bool = false,
-    forkFrom: ForkPoint? = nil
+    forkFrom: ForkPoint? = nil,
+    computerUseSocket: String? = nil
   ) {
     self.directory = directory
     self.model = model
@@ -148,6 +150,7 @@ struct AgentSessionOptions: Equatable, Sendable {
     self.readOnly = readOnly
     self.planMode = planMode
     self.forkFrom = forkFrom
+    self.computerUseSocket = computerUseSocket
   }
 }
 

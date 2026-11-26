@@ -195,6 +195,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       self?.panelView.setVoiceGlowPhase(.cancelled)
     }
     panelView.onDraftChange = { [weak self] in self?.saveCurrentDraft() }
+    panelView.usesComputer = { [weak self] agent in
+      self?.conversations?.usesComputer(providerID: agent?.rawValue) ?? false
+    }
     panelView.commandSource = { [weak self] folder in
       guard let self, let conversations = self.conversations,
             let providerID = self.panelView.addressedSessionID

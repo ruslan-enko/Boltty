@@ -30,6 +30,7 @@ protocol BolttyAIConversations: AnyObject {
 
 
   func acceptsAttachments(providerID: String) -> Bool
+  func usesComputer(providerID: String?) -> Bool
 
   func routingFallback() -> AgentRoutingFallback?
 
@@ -102,6 +103,8 @@ protocol BolttyAIConversations: AnyObject {
 }
 
 extension BolttyAIConversations {
+  func usesComputer(providerID: String?) -> Bool { false }
+
   func finderLocation(forRow id: UUID) -> URL? { nil }
   func canDeleteChat(_ id: UUID) -> Bool { false }
   func deleteChat(id: UUID) async {}
@@ -248,6 +251,11 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
 
   func acceptsAttachments(providerID: String) -> Bool {
     engine.registry.capabilities(forProviderID: providerID).contains(.attachments)
+  }
+
+  func usesComputer(providerID: String?) -> Bool {
+    let providers = providerID.map { [$0] } ?? engine.registry.ready.map(\.provider.rawValue)
+    return providers.contains { engine.registry.capabilities(forProviderID: $0).contains(.computerUse) }
   }
 
   func recordSentFiles(_ files: [SentFile], in id: UUID) {

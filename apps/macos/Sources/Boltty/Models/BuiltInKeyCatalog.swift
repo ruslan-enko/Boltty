@@ -53,6 +53,10 @@ enum BuiltInKeyCatalog {
           detail: String(localized: "At the start of a word: type its name, ↑ ↓ to choose, ↩ or ⇥ to add it, Esc to let go")
         ),
         BuiltInKey(
+          id: "computerUse", title: String(localized: "Let the agent use apps"), keys: "@computer",
+          detail: String(localized: "The first row of the @ list; from that request on, for the whole chat")
+        ),
+        BuiltInKey(
           id: "command", title: String(localized: "Use a skill or command"), keys: "/",
           detail: String(localized: "As the first character, where the agent lists them: type its name, ↩ or ⇥ to use it")
         ),
@@ -90,6 +94,10 @@ enum BuiltInKeyCatalog {
           detail: String(localized: "Where the agent takes words mid-turn")
         ),
         BuiltInKey(id: "stop", title: String(localized: "Stop the running turn"), keys: "⌘.", detail: nil),
+        BuiltInKey(
+          id: "computerStop", title: String(localized: "Stop an agent using apps"), keys: "Esc",
+          detail: String(localized: "While the foot of the screen says it is using one, and the panel is closed")
+        ),
         BuiltInKey(id: "chatNewline", title: String(localized: "New line"), keys: String(localized: "⇧↩ or ⌥↩"), detail: nil),
         BuiltInKey(
           id: "attach", title: String(localized: "Attach a file"), keys: "⇧⌘A",

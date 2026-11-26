@@ -20,7 +20,7 @@ struct ACPAgent: Sendable {
     capabilities: [
       .modelSelection, .modelSwitching, .permissions, .attachments, .images, .interrupt, .resumeSession,
       .workingDirectory, .reasoningEffort, .autoApproval, .usageReporting,
-      .rereadableTranscript, .usageLimits, .questions, .commands, .planMode,
+      .rereadableTranscript, .usageLimits, .questions, .commands, .planMode, .computerUse,
     ],
     history: { try GrokChatHistoryTranscript.transcript(sessionID: $0) },
     recordedName: { GrokChatHistoryTranscript.recordedName(sessionID: $0) },
@@ -178,7 +178,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     _ = try await connect()
     let result = try await request("session/new", params: [
       "cwd": options.directory,
-      "mcpServers": []
+      "mcpServers": ComputerUseServer.acpServers(options.computerUseSocket)
     ])
     guard let sessionID = result.string("sessionId") else {
       throw AgentClientError.transport("\(agent.displayName) did not return a session id.")
@@ -227,7 +227,12 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
-    lock.withLock { wantedOptions[id] = options }
+    lock.withLock {
+      if wantedOptions[id]?.computerUseSocket != options.computerUseSocket, sessions[id]?.pendingMessageID == nil {
+        sessions[id] = nil
+      }
+      wantedOptions[id] = options
+    }
     _ = try await connect()
     try await ensureLoaded(id)
     let current = lock.withLock { () -> (model: ModelSelection?, effort: String?, planning: Bool) in
@@ -304,7 +309,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     let directory = wanted?.directory ?? FileManager.default.currentDirectoryPath
     do {
       _ = try await request("session/load", params: [
-        "sessionId": id, "cwd": directory, "mcpServers": []
+        "sessionId": id, "cwd": directory, "mcpServers": ComputerUseServer.acpServers(wanted?.computerUseSocket)
       ])
     } catch {
       log.debug("session/load refused \(id, privacy: .public): \(String(describing: error), privacy: .public)")

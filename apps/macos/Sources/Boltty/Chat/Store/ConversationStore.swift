@@ -261,6 +261,14 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.planMode = enabled }
   }
 
+  func isRunning(_ id: UUID) -> Bool {
+    conversation(id: id)?.lastKnownState.blocksSending == true
+  }
+
+  func setComputerUse(_ enabled: Bool, for id: UUID) {
+    update(id) { $0.computerUse = enabled }
+  }
+
   func setReadOnly(_ readOnly: Bool, for id: UUID) {
     update(id) { $0.readOnly = readOnly }
   }
@@ -452,7 +460,8 @@ final class ConversationStore: ObservableObject {
 
     let openIDs = Set(openInteractions.map(\.id))
     for index in transcript.interactions.indices where transcript.interactions[index].isOpen {
-      if !openIDs.contains(transcript.interactions[index].id) {
+      let id = transcript.interactions[index].id
+      if !openIDs.contains(id), !ConversationEngine.isBolttyAsk(id) {
         transcript.interactions[index].resolution = .resolvedElsewhere
         transcript.interactions[index].isSubmitting = false
       }

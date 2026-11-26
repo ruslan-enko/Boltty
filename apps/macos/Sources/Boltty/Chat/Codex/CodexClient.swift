@@ -9,7 +9,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
     .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
     .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands, .planMode,
-    .forking,
+    .forking, .computerUse,
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "codex-client")
@@ -48,7 +48,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     lock.withLock { conversationResolver = resolve }
   }
 
-  private var wantedDirectories: [String: String] = [:]
+  private var wanted: [String: (directory: String?, computerUseSocket: String?)] = [:]
 
   private final class ThreadState {
     let id: String
@@ -141,6 +141,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       "sandbox": options.readOnly ? "read-only" : "workspace-write"
     ]
     if let model { params["model"] = model.modelID }
+    if let socket = options.computerUseSocket { params["config"] = ComputerUseServer.codexConfig(socket) }
 
     let server = try await server()
     let response: JSONObject
@@ -157,6 +158,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     }
     guard let threadID = response.object("thread")?.string("id") ?? response.string("threadId")
     else { throw AgentClientError.transport(String(localized: "Codex did not return a thread id.")) }
+    lock.withLock { wanted[threadID] = (options.directory, options.computerUseSocket) }
 
     lock.withLock {
       threads[threadID] = ThreadState(
@@ -181,8 +183,18 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   }
 
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
-    lock.withLock { wantedDirectories[id] = options.directory }
+    let reload = lock.withLock { () -> JSONLineProcess? in
+      defer { wanted[id] = (options.directory, options.computerUseSocket) }
+      guard wanted[id]?.computerUseSocket != options.computerUseSocket, threads[id]?.currentTurnID == nil else {
+        return nil
+      }
+      return threads[id]?.loadedOn
+    }
     let server = try await server()
+    if let reload {
+      _ = try? await requestUnchecked("thread/unsubscribe", params: ["threadId": id], on: reload)
+      lock.withLock { threads[id]?.loadedOn = nil }
+    }
     try await ensureThread(id: id, on: server)
     lock.withLock {
       threads[id]?.directory = options.directory
@@ -317,7 +329,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   private func resumeThread(id: String, on server: JSONLineProcess) async throws -> JSONObject {
     let resumed: JSONObject
     var params: [String: Any] = ["threadId": id, "excludeTurns": true]
-    if let directory = lock.withLock({ wantedDirectories[id] }) { params["cwd"] = directory }
+    let wanted = lock.withLock { self.wanted[id] }
+    if let directory = wanted?.directory { params["cwd"] = directory }
+    if let socket = wanted?.computerUseSocket { params["config"] = ComputerUseServer.codexConfig(socket) }
     do {
       resumed = try await requestUnchecked("thread/resume", params: params, on: server)
     } catch let error as RPCFailure {

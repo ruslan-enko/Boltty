@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var attentionNotifications: SystemAttentionNotificationService?
   private var sounds: InterfaceSounds?
   private var askBoltty: AskBolttyController?
+  private var computerUse: ComputerUseController?
   private lazy var speech = SpeechOutput { [weak self] in
     let settings = self?.model?.settings ?? AppSettings()
     var local: SpeechOutput.Local?
@@ -168,6 +169,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     askBoltty.onNeedsYou = { [weak self] id in self?.requirePalette()?.addressConversation(id) }
     askBoltty.launchKeyName = { [weak self] in self?.appliedHotkey?.displayName }
     self.askBoltty = askBoltty
+    computerUse = ComputerUseController(engine: engine, store: store) { [weak coordinator] id in
+      await coordinator?.stopConversation(id: id)
+    }
     if CGPreflightScreenCaptureAccess() {
       DispatchQueue.main.asyncAfter(deadline: .now() + 4) { ScreenTextReader.warmUp() }
     }
@@ -271,6 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     palette.onVisibilityChange = { [weak notch, weak self] visible, screen, conversationID in
       notch?.setPanelVisible(visible, screen: screen, conversationID: conversationID)
       self?.askBoltty?.setPanelVisible(visible)
+      self?.computerUse?.setPanelVisible(visible)
     }
     notchMascot = notch
     palette.onOpenSettings = { [weak self] in self?.showSettings(page: .agents) }
@@ -705,6 +710,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private func finishTermination() {
     beginApplicationTermination()
     askBoltty?.shutDown()
+    computerUse?.shutDown()
     guard let chat else {
       NSApp.reply(toApplicationShouldTerminate: true)
       return

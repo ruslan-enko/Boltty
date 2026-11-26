@@ -8,7 +8,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
-    .folderMoving, .commands, .planMode, .planInReply, .forking, .fileUndo
+    .folderMoving, .commands, .planMode, .planInReply, .forking, .fileUndo, .computerUse
   ]
 
   private let server: OpenCodeServer
@@ -38,6 +38,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
 
   private var formFields: [String: [OpenCodeDTO.FormRequest.Field]] = [:]
   private var runsOnOwnServer: [String: Bool] = [:]
+  private var usesComputer: Set<String> = []
 
   private let urlSession: URLSession
   private let log = Logger(subsystem: "com.boltty", category: "opencode-client")
@@ -189,13 +190,14 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: options.effort)
       }
     )
-    let own = await needsOwnServer(directory: directory)
+    let own = await needsOwnServer(directory: directory, computer: options.computerUseSocket != nil)
     do {
       let response: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await perform(
         path: "/api/session", method: "POST", body: body, on: own ? ownServer : server
       )
       lock.withLock {
         runsOnOwnServer[response.data.id] = own
+        if options.computerUseSocket != nil { usesComputer.insert(response.data.id) }
         sessionFolders[response.data.id] = response.data.location?.directory ?? directory
         if options.autoApprove, !options.readOnly { autoApproved.insert(response.data.id) }
       }
@@ -208,6 +210,15 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   }
 
   func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let wantsComputer = options.computerUseSocket != nil
+    let movesToOwn = lock.withLock { () -> Bool in
+      if wantsComputer { usesComputer.insert(id) } else { usesComputer.remove(id) }
+      return wantsComputer && runsOnOwnServer[id] != true
+    }
+    if movesToOwn, (try? await server.start())?.isService == true {
+      lock.withLock { runsOnOwnServer[id] = true }
+      startOwnStreamIfNeeded()
+    }
     lock.withLock {
       sessionFolders[id] = options.directory
       if options.autoApprove, !options.readOnly {
@@ -253,8 +264,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  private func needsOwnServer(directory: String) async -> Bool {
-    guard Self.isPrivacyProtected(directory) else { return false }
+  private func needsOwnServer(directory: String, computer: Bool = false) async -> Bool {
+    guard computer || Self.isPrivacyProtected(directory) else { return false }
     return (try? await server.start())?.isService == true
   }
 
@@ -263,7 +274,9 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     guard let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try? await perform(
       path: "/api/session/\(sessionID)", method: "GET", body: Optional<EmptyBody>.none, on: server
     ) else { return server }
-    let own = await needsOwnServer(directory: session.data.location?.directory ?? NSHomeDirectory())
+    let own = await needsOwnServer(
+      directory: session.data.location?.directory ?? NSHomeDirectory(),
+      computer: lock.withLock { usesComputer.contains(sessionID) })
     lock.withLock { runsOnOwnServer[sessionID] = own }
     if own { startOwnStreamIfNeeded() }
     return own ? ownServer : server
@@ -516,7 +529,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   }
 
   private func move(_ id: String, to directory: String) async throws {
-    let own = await needsOwnServer(directory: directory)
+    let own = await needsOwnServer(directory: directory, computer: lock.withLock { usesComputer.contains(id) })
     do {
       let _: JSONValue = try await perform(
         path: "/api/session/\(id)/move", method: "POST",

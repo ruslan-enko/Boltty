@@ -360,8 +360,8 @@ final class ChatWorkspaceCoordinator {
   @discardableResult
   func refuse(permissionID: String, in id: UUID, saying words: String) async -> Bool {
     guard let conversation = store.conversation(id: id) else { return false }
-    let carried = engine.registry.capabilities(forProviderID: conversation.providerID)
-      .contains(.permissionMessage)
+    let carried = ConversationEngine.isBolttyAsk(permissionID)
+      || engine.registry.capabilities(forProviderID: conversation.providerID).contains(.permissionMessage)
     let delivered = await engine.reply(
       permissionID: permissionID, in: id, decision: .reject, message: words
     )
@@ -416,6 +416,7 @@ final class ChatWorkspaceCoordinator {
   ) {
     let prompt = takePlanRequest(request, in: id)
     guard !prompt.isEmpty || !pictures.isEmpty else { return }
+    takeComputerUse(prompt, in: id)
     pendingPanelPrompts[id] = (prompt, store.transcript(id: id).messages.count, Date())
     failedPanelPrompts[id] = nil
     store.setDraft(prompt, for: id)
@@ -448,6 +449,14 @@ final class ChatWorkspaceCoordinator {
     else { return prompt }
     store.setPlanMode(true, for: id)
     return rest
+  }
+
+  private func takeComputerUse(_ prompt: String, in id: UUID) {
+    guard ComputerUseMention.isAsked(in: prompt),
+          let conversation = store.conversation(id: id), !conversation.computerUse,
+          engine.mayUseComputer(conversation)
+    else { return }
+    store.setComputerUse(true, for: id)
   }
 
   func setPlanMode(_ enabled: Bool, for id: UUID) {

@@ -209,6 +209,13 @@ enum DesignElements {
       view.show()
       return view
     }
+    let mentions = ComposerSuggestionList(label: "Files")
+    mentions.show([
+      ComposerSuggestion(
+        icon: .pointerRays, title: "Computer Use", detail: "Let the agent use apps on this Mac", detailLeads: true),
+      ComposerSuggestion(icon: .doc, title: "README.md", detail: "~/Projects/boltty"),
+      ComposerSuggestion(icon: .folder, title: "Sources", detail: "~/Projects/boltty/apps/macos"),
+    ], keeping: nil)
     let button = icon(.mic)
     ComposerControlGroup.style(button)
     button.toolTip = "Dictate"
@@ -226,6 +233,14 @@ enum DesignElements {
           name: "About to ask", view: hints(
             [.init(key: "⏎", words: "Ask"), .init(key: "esc", words: "Cancel")], progress: 0.6),
           tile: CGSize(width: 260, height: 110)),
+        DesignSpecimen(
+          name: "Computer Use", view: hints([.init(key: nil, words: "Claude is using TextEdit"), .init(key: "esc", words: "Stop")]),
+          tile: CGSize(width: 360, height: 110)),
+      ]),
+      DesignSection(title: "@ list", note: "ComposerSuggestionList: Computer Use, then files", specimens: [
+        DesignSpecimen(
+          name: "@", view: mentions, width: mentions.fittingSize.width, height: mentions.fittingSize.height,
+          tile: CGSize(width: AgentPaletteMetrics.mentionWidth + 40, height: mentions.fittingSize.height + 40)),
       ]),
     ]
   }

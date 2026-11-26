@@ -118,6 +118,16 @@ it (`<point>`, `<circle>`, `<arrow>`, …) make the face fly to a spot or draw o
 the screen. These chats are read-only by default, and are forgotten ten minutes
 after the last answer unless you go on with them in the panel.
 
+## Computer Use
+
+An agent can see and work the Mac's apps, in a chat where a request carried
+`@computer` (the first row of the `@` list). Boltty is the tool: an MCP server inside
+Boltty, one Unix socket per chat, that each CLI joins through `nc`, and that answers
+only processes Boltty started. Every app is asked on the chat's permission card;
+terminals, password managers and System Settings are closed to it. The work goes
+through Accessibility in the background (`MacControl`), with a picture of the window
+for the agent. While it runs, the foot of the screen says so and Escape stops it.
+
 ## Rules that hold it together
 
 - **Capabilities are declared, not guessed.** Each adapter says what it can do
@@ -161,6 +171,7 @@ after the last answer unless you go on with them in the panel.
 | Reading a CLI's history | `Chat/Native/` |
 | Settings | `UI/Settings/` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift` |
+| Computer Use | `Services/ComputerUse/`, `Chat/ComputerUseController.swift`, `Chat/Antigravity/AntigravityComputerUse.swift` |
 | The mascot | `Chat/UI/ConversationAvatar.swift`, `MascotRenderer.swift`, `MascotShaders.metal` |
 | Boltty Design, the design tool (its own app) | `apps/macos/Design/` |
 | Releases and updates | `scripts/release.sh`, `Services/AppUpdater.swift` |

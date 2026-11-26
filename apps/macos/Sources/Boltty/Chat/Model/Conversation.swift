@@ -38,6 +38,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var autoApprove: Bool
   var readOnly: Bool = false
   var planMode: Bool = false
+  var computerUse: Bool = false
   var forkedFrom: ForkPoint?
   var isAskBoltty: Bool = false
   var createdAt: Date
@@ -84,7 +85,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey {
     case id, providerID, remoteSessionID, title, workingDirectory, model
     case reasoningEffort, autoApprove, readOnly, createdAt, updatedAt, draft, draftAttachments
-    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode, forkedFrom
+    case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode, forkedFrom, computerUse
     case isAskBoltty = "isTalk"
   }
 
@@ -102,6 +103,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     autoApprove = try container.decodeIfPresent(Bool.self, forKey: .autoApprove) ?? false
     readOnly = try container.decodeIfPresent(Bool.self, forKey: .readOnly) ?? false
     planMode = try container.decodeIfPresent(Bool.self, forKey: .planMode) ?? false
+    computerUse = try container.decodeIfPresent(Bool.self, forKey: .computerUse) ?? false
     forkedFrom = try container.decodeIfPresent(ForkPoint.self, forKey: .forkedFrom)
     isAskBoltty = try container.decodeIfPresent(Bool.self, forKey: .isAskBoltty) ?? false
     createdAt = try container.decode(Date.self, forKey: .createdAt)

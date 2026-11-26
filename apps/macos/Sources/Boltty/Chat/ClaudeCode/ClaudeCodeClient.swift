@@ -8,7 +8,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
     .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
-    .permissionMessage, .steering, .folderMoving, .commands, .planMode, .forking, .fileUndo
+    .permissionMessage, .steering, .folderMoving, .commands, .planMode, .forking, .fileUndo, .computerUse
   ]
 
   private let log = Logger(subsystem: "com.boltty", category: "claude-code-client")
@@ -103,7 +103,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     }
     guard let live, live.process.isRunning else { return }
     guard live.options.effort == options.effort, live.options.readOnly == options.readOnly,
-          live.options.directory == options.directory else {
+          live.options.directory == options.directory, live.options.computerUseSocket == options.computerUseSocket else {
       endProcess(of: id)
       return
     }
@@ -146,6 +146,11 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     // them, never the prompt.
     if options.readOnly {
       arguments += ["--tools", readOnlyTools, "--allowedTools", readOnlyAllowedTools]
+    } else if let socket = options.computerUseSocket {
+      arguments += [
+        "--mcp-config", ComputerUseServer.claudeConfig(socket),
+        "--allowedTools", "mcp__\(ComputerUseServer.serverName)",
+      ]
     }
     arguments += resuming ? ["--resume", id] : ["--session-id", id]
     if let model = options.model { arguments += ["--model", model.modelID] }

@@ -508,18 +508,35 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
   private var addressedPreview: BolttyAISessionPreview?
 
-  private lazy var fileMention: ComposerSuggestionPicker<FileMention.Candidate> = {
-    let picker = ComposerSuggestionPicker<FileMention.Candidate>(
+  private enum Mention {
+    case computerUse
+    case file(FileMention.Candidate)
+  }
+
+  private lazy var mentionPicker: ComposerSuggestionPicker<Mention> = {
+    let picker = ComposerSuggestionPicker<Mention>(
       host: self, field: field, label: String(localized: "Files"), token: ComposerToken.mention(in:caret:)
-    ) { candidate in
-      let parent = (candidate.relativePath as NSString).deletingLastPathComponent
-      return ComposerSuggestion(
-        icon: candidate.isDirectory ? .folder : .doc,
-        title: candidate.url.lastPathComponent,
-        detail: parent.hasPrefix("/") ? (parent as NSString).abbreviatingWithTildeInPath : parent)
+    ) { mention in
+      switch mention {
+      case .computerUse:
+        return ComposerSuggestion(
+          icon: .pointerRays, title: String(localized: "Computer Use"),
+          detail: String(localized: "Let the agent use apps on this Mac"), detailLeads: true)
+      case let .file(candidate):
+        let parent = (candidate.relativePath as NSString).deletingLastPathComponent
+        return ComposerSuggestion(
+          icon: candidate.isDirectory ? .folder : .doc,
+          title: candidate.url.lastPathComponent,
+          detail: parent.hasPrefix("/") ? (parent as NSString).abbreviatingWithTildeInPath : parent)
+      }
     }
     picker.shellFrame = { [weak self] in self?.surfaceFrame ?? .zero }
-    picker.onPick = { [weak self] candidate, range in self?.attachMentioned(candidate.url, replacing: range) }
+    picker.onPick = { [weak self] mention, range in
+      switch mention {
+      case .computerUse: self?.askForComputerUse(replacing: range)
+      case let .file(candidate): self?.attachMentioned(candidate.url, replacing: range)
+      }
+    }
     picker.onOpenChange = { [weak self] in self?.syncTrailingHint() }
     return picker
   }()
@@ -539,6 +556,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }()
 
   var commandSource: ((_ folder: String) async -> (agent: AgentId, commands: [AgentCommand])?)?
+  var usesComputer: ((AgentId?) -> Bool)?
   private var commandList: (key: String, agent: AgentId, commands: [AgentCommand])?
   private var commandRead: (key: String, task: Task<(agent: AgentId, commands: [AgentCommand])?, Never>)?
 
@@ -745,7 +763,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   func reset(error: String? = nil) {
     PaletteHelpPresenter.shared.dismiss()
-    fileMention.reset()
+    mentionPicker.reset()
     commandPicker.reset()
     endScreenSelection()
     leaveAddressing(animated: false)
@@ -1419,7 +1437,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }
 
   func prepareForPresentation(resumingChat: Bool = false) {
-    fileMention.reset()
+    mentionPicker.reset()
     commandPicker.reset()
     commandList = nil
     if !resumingChat { returnToSessionID = nil }
@@ -2280,7 +2298,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   func openSwitcher() {
     guard mode == .prompt else { return }
-    fileMention.reset()
+    mentionPicker.reset()
     commandPicker.reset()
     setComposerKeyTarget(.text)
     leaveAddressing(animated: false)
@@ -2467,7 +2485,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private var trailingHintKeys: [PromptKeyHint] {
     guard mode == .prompt, !isVoiceListening, !asksInRegion, !field.isEmptyPrompt else { return [] }
-    guard !fileMention.isOpen, !commandPicker.isOpen else { return [] }
+    guard !mentionPicker.isOpen, !commandPicker.isOpen else { return [] }
     if let preview = addressedPreview {
       if let question = previewCard.pendingQuestion, question.takesWordsAsRefusal, draftHasWords {
         return [PromptKeyHint(words: question.refusalWords, key: "↵")]
@@ -4726,11 +4744,11 @@ extension AgentPaletteView: NSTextViewDelegate {
   }
 
   func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-    if fileMention.isOpen || commandPicker.isOpen {
+    if mentionPicker.isOpen || commandPicker.isOpen {
       let modifiers = (commandModifierFlagsForTesting ?? NSApp.currentEvent?.modifierFlags ?? [])
         .intersection(.deviceIndependentFlagsMask)
       let isPlainKey = modifiers.isDisjoint(with: [.shift, .option, .command, .control])
-      if isPlainKey, fileMention.handle(commandSelector) || commandPicker.handle(commandSelector) {
+      if isPlainKey, mentionPicker.handle(commandSelector) || commandPicker.handle(commandSelector) {
         return true
       }
     }
@@ -4904,8 +4922,12 @@ extension AgentPaletteView: NSTextViewDelegate {
       && screenSelectionPhase == .idle && !isRestoringChatDraft && !isApplyingVoiceTranscript
       && window?.isVisible == true
     let folder = workingDirectory?.path ?? NSHomeDirectory()
-    fileMention.update(allowed: allowed, context: folder) { [weak self] query, deliver in
-      self?.fileSearch.search(query, in: folder, deliver: deliver)
+    let offersComputer = offersComputerUse
+    mentionPicker.update(allowed: allowed, context: folder) { [weak self] query, deliver in
+      self?.fileSearch.search(query, in: folder) { files in
+        let lead: [Mention] = offersComputer && ComputerUseMention.matches(query) ? [.computerUse] : []
+        deliver(lead + files.prefix(FileMentionSearch.resultLimit - lead.count).map(Mention.file))
+      }
     }
     let key = commandKey(folder: folder)
     commandPicker.update(allowed: allowed && commandSource != nil, context: key) { [weak self] query, deliver in
@@ -4952,6 +4974,19 @@ extension AgentPaletteView: NSTextViewDelegate {
     let end = range.location + (command.invocation as NSString).length + 1
     field.setSelectedRange(NSRange(location: end, length: 0))
     if addressedPreview == nil, let agent = commandList?.agent { holdAgent(agent) }
+  }
+
+  private var offersComputerUse: Bool {
+    usesComputer?(addressedPreview?.agent ?? agentForNewPrompt) ?? false
+  }
+
+  private func askForComputerUse(replacing range: NSRange) {
+    let length = (field.string as NSString).length
+    guard NSMaxRange(range) <= length else { return }
+    let rest = (field.string as NSString).substring(from: NSMaxRange(range))
+    let word = ComputerUseMention.word
+    field.insertText(rest.first == " " ? word : word + " ", replacementRange: range)
+    field.setSelectedRange(NSRange(location: range.location + (word as NSString).length + 1, length: 0))
   }
 
   private func attachMentioned(_ url: URL, replacing range: NSRange) {

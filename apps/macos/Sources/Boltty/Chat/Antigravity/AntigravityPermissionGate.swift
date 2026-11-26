@@ -194,6 +194,9 @@ enum AntigravityToolPolicy {
     autoApprove: Bool,
     granted: Set<String>
   ) -> Verdict {
+    if tool == "call_mcp_tool", arguments.string("ServerName") == AntigravityComputerUse.serverName {
+      return .allow
+    }
     let paths = absolutePaths(in: arguments, base: arguments.string("Cwd") ?? directory)
     let outside = paths.filter { !inside($0, directory) && !inside($0, agentHome) }
 

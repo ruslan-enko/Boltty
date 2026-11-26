@@ -151,6 +151,9 @@ actor OpenCodeServer {
     var environment = ProcessInfo.processInfo.environment
     environment["OPENCODE_SERVER_PASSWORD"] = password
     environment["CI"] = environment["CI"] ?? "1"
+    if environment["OPENCODE_CONFIG_CONTENT"] == nil, let socket = ComputerUseServer.openCodeSocket {
+      environment["OPENCODE_CONFIG_CONTENT"] = ComputerUseServer.openCodeConfig(socket)
+    }
     process.environment = environment
 
     let stdout = Pipe()

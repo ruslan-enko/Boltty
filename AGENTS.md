@@ -97,6 +97,7 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Settings | `UI/Settings/`; what a setting changes, shown live: `UI/Settings/SettingsStage.swift` |
 | Boltty Design, the design tool | `apps/macos/Design/` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyDrawingLayer.swift`; the region is the panel's (`AgentPaletteController.beginScreenAsk`) |
+| Computer Use | `Services/ComputerUse/` (`ComputerUseServer`, `MacControl`), `Chat/ComputerUseController.swift`, `Chat/Antigravity/AntigravityComputerUse.swift`, `UI/ComputerUseIndicator.swift`, `Models/ComputerUseMention.swift` |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
 | Strings and translations | `Resources/Localizable.xcstrings`, `Resources/InfoPlist.xcstrings`, `scripts/sync-strings.sh` (*Languages*) |
@@ -356,6 +357,9 @@ implementation first. Versions say what was measured.
   `mcp_elicitations` on (0.171; `approvals_reviewer = "auto_review"` did not take
   it). Shown as a permission when its schema has no fields, else declined.
   "Always Allow" sends `_meta.persist: session`, never `always`.
+- Codex's own Computer Use comes with the ChatGPT app and answers only OpenAI's own
+  processes ("Sender process is not authenticated" to any other MCP client). Boltty's
+  is beside it (*Computer Use*), not in its place.
 - `item/permissions/requestApproval` is granted only by sending the asked
   `permissions` back; an empty object grants nothing. The card shows them.
 - `item/tool/requestUserInput` is a real multiple-choice question; the answer
@@ -778,7 +782,9 @@ The loop that must keep working:
   stays words, drawn as a link. Dropped anywhere on the panel it goes through
   `PasteboardIngest`: the field takes no drags of its own, or a file dropped on
   the words became its path in words.
-- **`@` brings a file** (`ComposerSuggestionPicker`, `ComposerToken`, `FileMention`, `FileMentionSearch`),
+- **`@` brings a file** (`ComposerSuggestionPicker`, `ComposerToken`, `FileMention`, `FileMentionSearch`;
+  its first row, where the agent declares `.computerUse`, is Computer Use, which writes
+  `@computer`, *Computer Use*),
   the same for every agent, since no CLI offers a search all five share: an `@`
   at the start of a word (never inside one, `me@site.com`) opens a list of up to
   eight at the `@`, above the line where there is room inside the shell (a
@@ -1375,6 +1381,65 @@ so in the orb ("No sound is reaching the microphone…",
   panel is not up**: for that time Escape does not reach other apps, which is
   why the face does not stay for good. Before sending, Escape is the panel's: it
   closes the question (*Selecting the screen*).
+
+## Computer Use
+
+Boltty's own, for every agent (`.computerUse`), an experiment turned on per chat by
+`@computer` in a request: the first row of the `@` list ("Computer Use"), kept in the
+words, read by `ChatWorkspaceCoordinator.takeComputerUse` into `Conversation.computerUse`,
+which the engine carries to the session (`AgentSessionOptions.computerUse`, the socket).
+Never in a read-only or Ask Boltty chat. Claude Code's own is not offered to `--print`
+(its docs), Grok 1.0.92 and OpenCode 2.3.2 have none, and Codex's answers only OpenAI's
+processes, so it is Boltty's to give.
+
+- **An MCP server in Boltty, a Unix socket per chat** (`ComputerUseServer`,
+  `$TMPDIR/boltty-cu/<chat>.sock`, 0600), joined by each CLI through `/usr/bin/nc -U
+  <socket>`. Claude Code: `--mcp-config` and `--allowedTools mcp__boltty` (turned on
+  mid-chat, the process is let go). Codex: `config.mcp_servers.boltty` on `thread/start`
+  and `thread/resume` (`default_tools_approval_mode: approve`, `tool_timeout_sec: 600`:
+  without them Boltty's on-request policy held the call); turned on mid-chat the thread
+  is unsubscribed and resumed. Grok: `mcpServers` of `session/new` and `session/load`;
+  loading a loaded session again in the same process brings them (1.0.92).
+  Antigravity takes MCP servers only from its config, never per run (`--settings` refuses
+  them, and a plugin cannot be enabled per run): Boltty installs a plugin of its own,
+  `~/.gemini/config/plugins/boltty`, whose server is `computer-use-bridge.sh` in
+  Application Support: it joins the socket `BOLTTY_COMPUTER_USE` names and, run by agy
+  anywhere else, answers with no tools. Calls come as `call_mcp_tool` with `ServerName`
+  `boltty_computer`, which the gate lets through (agy 1.5.17). OpenCode adds MCP
+  servers to a whole server, so Boltty's own OpenCode servers start with the tool
+  (`OPENCODE_CONFIG_CONTENT`, one socket, `openCodeSocket`) and a chat with Computer Use
+  runs on Boltty's own server beside the person's service, like a protected folder.
+  A call is the chat whose session `_meta` names; naming none, it is the OpenCode
+  chat whose request runs only when one runs at all, so another chat (read-only, Ask
+  Boltty, or without `@computer`) never borrows a chat's apps. All five saw the window's picture and typed in TextEdit
+  but Grok, whose turn was not seen (its balance was spent).
+- **Only what Boltty started is answered**: the peer's pid (`LOCAL_PEERPID`) must
+  descend from Boltty's (`ComputerUseServer.descends`). The socket is a way into
+  Boltty's Accessibility grant, which must not open to anything else on the Mac. `nc`
+  under every CLI descends. A second, read-only Boltty opens no socket: it would take
+  the first one's place.
+- **Who may act** (`ComputerUseController`): a chat with Computer Use on whose request is
+  running, one chat at a time. Each app is asked on the chat's own permission card
+  (`ConversationEngine.ask`, ids `boltty-ask-…`, which a re-read never takes away):
+  Allow Once is that app for the request, Always Allow for the chat while Boltty runs.
+  Words typed on that card refuse it and go back in the tool's answer ("They said: …"),
+  for every agent, so nothing is stopped or queued for them.
+  Terminals, password managers, System Settings, script runners and Boltty itself are
+  refused (`MacControl.refusedBundles`); password fields are never typed into.
+  Accessibility is asked the first time a tool finds it missing.
+- While a chat holds the Mac, "<agent> is using <app> · esc Stop" stands at the foot of
+  the screen (`ComputerUseIndicator`; under the menu bar it stood behind the panel).
+  Escape is Boltty's (`GlobalHotkeyService` number 3) only while the panel is closed,
+  as Ask Boltty's is, and the "esc Stop" there only while Boltty holds the key: it stops
+  the turn as ⌘. does (`stopConversation`) and refuses the rest of it. Both go when the
+  turn ends.
+- **Accessibility first, then pixels** (`MacControl`, its own queue, 1.5 s per AX
+  call): a reading is the front window's elements, numbered, with their place in a
+  picture of that window (ScreenCaptureKit, 1280 on the long side, JPEG). A click on a
+  field puts the caret in it (`AXFocused`), on anything else presses it (`AXPress`,
+  `AXShowMenu`, up to five parents); only a point with neither brings the app forward
+  for a real click, and the pointer goes back. Typing sets `AXSelectedText`, else
+  keystrokes to the app's pid. Every action reads the app again 0.45 s later.
 
 ## Other surfaces
 

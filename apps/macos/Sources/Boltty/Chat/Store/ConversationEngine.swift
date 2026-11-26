@@ -32,6 +32,15 @@ final class ConversationEngine: ObservableObject {
   private var modelsReadAtByProvider: [String: Date] = [:]
   private var modelReads: [String: Task<Void, Never>] = [:]
   private var settingsInForce: [String: AgentSessionOptions] = [:]
+  var computerUseEndpoint: ((UUID) -> String?)?
+  private var bolttyAsks: [String: (conversationID: UUID, answer: CheckedContinuation<BolttyAnswer?, Never>)] = [:]
+  nonisolated static let bolttyAskPrefix = "boltty-ask-"
+  static let bolttyAskLifetime: TimeInterval = 300
+
+  struct BolttyAnswer: Sendable {
+    var decision: PermissionDecision
+    var words: String?
+  }
   private var seenVersions: [String: String] = [:]
   nonisolated static let modelListLifetime: TimeInterval = 60 * 60
   private static let modelReadDelay: UInt64 = 1_000_000_000
@@ -661,7 +670,7 @@ final class ConversationEngine: ObservableObject {
     }
 
     do {
-      if let wanted = store.conversation(id: conversationID).map(Self.sessionOptions(for:)),
+      if let wanted = store.conversation(id: conversationID).map(sessionOptions(for:)),
          settingsInForce[remote] != wanted {
         try await client.prepareSession(remote, options: wanted)
         settingsInForce[remote] = wanted
@@ -812,7 +821,7 @@ final class ConversationEngine: ObservableObject {
     let client = try requireClient(for: conversationID)
 
     let sessionID = client.makeSessionID()
-    var options = Self.sessionOptions(for: conversation)
+    var options = sessionOptions(for: conversation)
     options.forkFrom = conversation.forkedFrom
     let info = try await client.createSession(id: sessionID, options: options)
     // A chat forgotten while its session started (Ask Boltty let go before the
@@ -829,15 +838,52 @@ final class ConversationEngine: ObservableObject {
     return info.id
   }
 
-  private static func sessionOptions(for conversation: Conversation) -> AgentSessionOptions {
-    AgentSessionOptions(
+  func mayUseComputer(_ conversation: Conversation) -> Bool {
+    !conversation.readOnly && !conversation.isAskBoltty
+      && registry.capabilities(forProviderID: conversation.providerID).contains(.computerUse)
+  }
+
+  private func sessionOptions(for conversation: Conversation) -> AgentSessionOptions {
+    let usesComputer = conversation.computerUse && mayUseComputer(conversation)
+    return AgentSessionOptions(
       directory: conversation.workingDirectory,
       model: conversation.model,
       effort: conversation.reasoningEffort,
       autoApprove: conversation.autoApprove,
       readOnly: conversation.readOnly,
-      planMode: conversation.planMode && !conversation.readOnly
+      planMode: conversation.planMode && !conversation.readOnly,
+      computerUseSocket: usesComputer ? computerUseEndpoint?(conversation.id) : nil
     )
+  }
+
+  func ask(_ prompt: PermissionPrompt, in conversationID: UUID) async -> BolttyAnswer? {
+    guard let remote = store.conversation(id: conversationID)?.remoteSessionID else { return nil }
+    let id = Self.bolttyAskPrefix + UUID().uuidString
+    store.recordInteraction(PendingInteraction(
+      id: id, conversationID: conversationID, remoteSessionID: remote, kind: .permission(prompt)))
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(Self.bolttyAskLifetime))
+      self?.endBolttyAsk(id, with: nil)
+    }
+    return await withCheckedContinuation { answer in
+      bolttyAsks[id] = (conversationID, answer)
+    }
+  }
+
+  static func isBolttyAsk(_ permissionID: String) -> Bool { permissionID.hasPrefix(bolttyAskPrefix) }
+
+  private func endBolttyAsk(_ id: String, with answer: BolttyAnswer?) {
+    guard let ask = bolttyAsks.removeValue(forKey: id) else { return }
+    if let decision = answer?.decision {
+      store.resolveInteraction(id: id, in: ask.conversationID, with: .permission(decision))
+    } else {
+      store.expireInteraction(id: id, in: ask.conversationID)
+      if store.transcript(id: ask.conversationID).openInteraction == nil,
+         store.conversation(id: ask.conversationID)?.lastKnownState == .waiting {
+        store.setExecutionState(.working, for: ask.conversationID)
+      }
+    }
+    ask.answer.resume(returning: answer)
   }
 
   func setPlanMode(_ enabled: Bool, for conversationID: UUID) {
@@ -957,6 +1003,7 @@ final class ConversationEngine: ObservableObject {
   }
 
   func stop(conversationID: UUID) async {
+    for (id, ask) in bolttyAsks where ask.conversationID == conversationID { endBolttyAsk(id, with: nil) }
     guard let remote = store.conversation(id: conversationID)?.remoteSessionID,
           let client = client(for: conversationID)
     else { return }
@@ -1072,6 +1119,10 @@ final class ConversationEngine: ObservableObject {
     decision: PermissionDecision,
     message: String? = nil
   ) async -> Bool {
+    if bolttyAsks[permissionID] != nil {
+      endBolttyAsk(permissionID, with: BolttyAnswer(decision: decision, words: message))
+      return true
+    }
     guard let remote = store.conversation(id: conversationID)?.remoteSessionID,
           let client = client(for: conversationID),
           store.beginSubmitting(interactionID: permissionID, in: conversationID)
