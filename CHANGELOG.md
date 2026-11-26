@@ -2,6 +2,18 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.13.1
+
+**Boltty AI**
+- In the `@` list, Computer Use's description stands on the right, in line with
+  where the files are.
+- A command written over several lines no longer spills its script over the
+  answer: its row says only the first line.
+
+**Settings**
+- Appearance shows Panel glass and Backdrop as two rows, with larger tiles that
+  hold the whole panel.
+
 ## 0.13.0
 
 **Computer Use**
