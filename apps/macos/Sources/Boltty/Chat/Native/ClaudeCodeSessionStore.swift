@@ -36,7 +36,7 @@ struct ClaudeCodeSessionStore: NativeSessionStore {
       return []
     }
 
-    let keys: [URLResourceKey] = [.contentModificationDateKey, .isRegularFileKey]
+    let keys: [URLResourceKey] = [.contentModificationDateKey, .isRegularFileKey, .isDirectoryKey]
     guard let walk = FileManager.default.enumerator(
       at: root, includingPropertiesForKeys: keys
     ) else {
@@ -47,8 +47,9 @@ struct ClaudeCodeSessionStore: NativeSessionStore {
 
     var found: [(url: URL, id: String, modified: Date)] = []
     for case let url as URL in walk {
-      guard url.pathExtension == "jsonl" else { continue }
       let values = try? url.resourceValues(forKeys: Set(keys))
+      if walk.level >= 2, values?.isDirectory == true { walk.skipDescendants() }
+      guard walk.level == 2, url.pathExtension == "jsonl" else { continue }
       guard values?.isRegularFile == true else { continue }
       found.append(
         (url, url.deletingPathExtension().lastPathComponent,

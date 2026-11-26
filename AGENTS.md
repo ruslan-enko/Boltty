@@ -303,7 +303,9 @@ implementation first. Versions say what was measured.
   opens a turn of its own (`system init` while idle, a reply, a `result`).
   Fixture: `Fixtures/claude-background-wake.jsonl`.
 - History is `~/.claude/projects/<mangled-cwd>/<session-id>.jsonl`. The folder
-  name is lossy; take `cwd` from the records.
+  name is lossy; take `cwd` from the records. Only that depth is a session:
+  `<session-id>/subagents/agent-….jsonl` are its subagents', and one can sit in two
+  sessions' folders (2.1.331), so reading deeper listed one id twice.
 - `initialize`'s `commands` are skills, plugin commands (`figma:…`) and the
   person's own beside the CLI's (`builtin: true`, which steer its session and
   screen and are left out); a folder's own `.claude/skills` show only to a

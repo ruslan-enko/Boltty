@@ -618,6 +618,17 @@ final class NativeSessionStoreTests: XCTestCase {
     XCTAssertEqual(try claudeSessions()[0].title, "now make it green")
   }
 
+  func testASubagentsTranscriptIsNotASession() throws {
+    let session = try writeClaudeSession(
+      id: "aaaaaaaa-0000-0000-0000-000000000006", entries: [claudeUserLine("review the branch")])
+    let subagents = session.deletingPathExtension().appendingPathComponent("subagents")
+    try FileManager.default.createDirectory(at: subagents, withIntermediateDirectories: true)
+    try (claudeUserLine("read the docs") + "\n")
+      .write(to: subagents.appendingPathComponent("agent-a1.jsonl"), atomically: true, encoding: .utf8)
+
+    XCTAssertEqual(try claudeSessions().map(\.id), ["aaaaaaaa-0000-0000-0000-000000000006"])
+  }
+
   func testNoClaudeProjectsDirectoryIsAnEmptyList() throws {
     let store = ClaudeCodeSessionStore(root: root.appendingPathComponent("nope"))
     XCTAssertEqual(try store.sessions(limit: 10), [])
