@@ -300,6 +300,11 @@ enum AgentPaletteMetrics {
     return onPixelGrid(cardCornerRadius - fromArcCentre / 2.squareRoot() - radius)
   }
   static var historyFootDiscInset: CGFloat { live(18) }
+  static var historyLimitsWidth: CGFloat { live(80) }
+  static var historyLimitsBarWidth: CGFloat { live(48) }
+  static var historyLimitsBarHeight: CGFloat { live(3) }
+  static var historyLimitsBarGap: CGFloat { live(5) }
+  static let historyLimitsMaxBars = 2
   static var historyFootHeight: CGFloat { historyFootDiscInset + previewCloseDiameter + previewContentVerticalPadding }
 
   static var previewHeaderHeight: CGFloat { previewCloseInset + previewCloseDiameter + previewContentVerticalPadding }

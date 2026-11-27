@@ -1061,7 +1061,12 @@ The loop that must keep working:
   say they act on one thing): **New Chat** (+, ⌘N) lower right opens the first
   screen on the chosen tab's agent — All on automatic routing; a tab whose
   agent cannot take a prompt keeps it disabled — and **Settings** (hex nut) lower
-  left, 18 from the foot and side (`historyFootDiscInset`). They stand inside
+  left, 18 from the foot and side (`historyFootDiscInset`). Between them, alone in the middle,
+  a glass capsule of the discs' height holds the plan's thin bars
+  (`HistoryLimitsCapsule`): the chosen tab's agent, on All the one a new chat
+  goes to; one bar, its most pressing window, or one per group where windows
+  come in groups (Antigravity's two). Used, not left, in the accent; no words,
+  the windows on its help tag, pinned by a press. None without a reading. They stand inside
   the corner resize grips, which give way on a disc; the rows dissolve under
   them, gone by the discs' middle (faded only to the foot, a day's heading read
   beside a disc, cut by it).

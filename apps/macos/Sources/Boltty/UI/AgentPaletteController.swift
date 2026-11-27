@@ -157,6 +157,9 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.onSelectSession = { [weak self] sessionID in
       self?.selectExistingSession(sessionID)
     }
+    panelView.usageForAgent = { [weak self] agent in
+      self?.conversations?.usage(providerID: agent.rawValue)
+    }
     panelView.onOpenSettings = { [weak self] in
       self?.yieldToAppWindow()
       self?.onOpenSettings?()
@@ -359,6 +362,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
         guard let self, self.isShowing else { return }
         self.syncUsageToPanel()
         self.syncContextToPanel()
+        self.panelView.syncHistoryLimits()
       }
       .store(in: &cancellables)
 

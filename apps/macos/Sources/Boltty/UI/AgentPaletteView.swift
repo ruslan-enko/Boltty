@@ -137,6 +137,8 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     diameter: AgentPaletteMetrics.previewCloseDiameter,
     size: AgentPaletteMetrics.previewCloseGlyphPointSize
   )
+  private let historyLimits = HistoryLimitsCapsule()
+  var usageForAgent: ((AgentId) -> AgentUsage?)?
   private var showsHistoryFoot: Bool { !historyNewChatButton.isHidden }
   private var acceptsAttachments = false
   private var stopTooltip = String(localized: "Stop response")
@@ -1866,6 +1868,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     let stops = AgentHistory.stops(for: listed)
     if !stops.contains(activeHistoryAgent) { activeHistoryAgent = stops.first ?? nil }
     syncHistoryNewChat()
+    syncHistoryLimits()
     if isResultsExpanded { refreshResults(keepingSelection: true) }
   }
 
@@ -1873,6 +1876,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     guard agent != activeHistoryAgent else { return }
     activeHistoryAgent = agent
     syncBackdropPalette()
+    syncHistoryLimits()
     resultsScroll.contentView.setBoundsOrigin(.zero)
     resultsScroll.reflectScrolledClipView(resultsScroll.contentView)
     refreshResults(keepingSelection: false)
@@ -2006,7 +2010,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private func isOnHistoryFoot(_ pointInWindow: NSPoint) -> Bool {
     guard showsHistoryFoot else { return false }
-    return [historyNewChatButton, historySettingsButton].contains {
+    return [historyNewChatButton, historySettingsButton, historyLimits].contains {
       $0.bounds.contains($0.convert(pointInWindow, from: nil))
     }
   }
@@ -2016,12 +2020,21 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     guard visible != showsHistoryFoot else { return }
     historyNewChatButton.isHidden = !visible
     historySettingsButton.isHidden = !visible
+    syncHistoryLimits()
     var insets = resultsStack.edgeInsets
     insets.bottom = AgentPaletteMetrics.resultsVerticalInset
       + (visible ? AgentPaletteMetrics.historyFootHeight : 0)
     resultsStack.edgeInsets = insets
     updateResultsTopEdge()
   }
+
+  func syncHistoryLimits() {
+    let agent = activeHistoryAgent ?? plannedAgent
+    historyLimits.apply(agent.flatMap { usageForAgent?($0) }, agent: agent)
+    historyLimits.isHidden = !showsHistoryFoot || !historyLimits.hasReading
+  }
+
+  var historyLimitsForTesting: HistoryLimitsCapsule { historyLimits }
 
   private func syncHistoryNewChat() {
     let button = historyNewChatButton.button
@@ -2342,6 +2355,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
     let changed = agents != agentChoices
     agentChoices = agents
     plannedAgent = planned
+    syncHistoryLimits()
     if let chosen = chosenAgent, !agents.contains(chosen) { chosenAgent = nil }
     syncHistoryNewChat()
     if changed, isResultsExpanded { refreshResults(keepingSelection: true) }
@@ -2898,6 +2912,14 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       resultsForeground.addSubview(disc)
     }
     historySettingsButton.button.toolTip = String(localized: "Settings")
+    historyLimits.setAccessibilityIdentifier("boltty.ask.history.limits")
+    historyLimits.isHidden = true
+    resultsForeground.addSubview(historyLimits)
+    NSLayoutConstraint.activate([
+      historyLimits.centerXAnchor.constraint(equalTo: resultsForeground.centerXAnchor),
+      historyLimits.bottomAnchor.constraint(
+        equalTo: resultsForeground.bottomAnchor, constant: -footInset),
+    ])
     NSLayoutConstraint.activate([
       historyNewChatButton.trailingAnchor.constraint(
         equalTo: resultsForeground.trailingAnchor, constant: -footInset),
