@@ -76,8 +76,6 @@ struct AskBolttySettingsSection: View {
       if !model.askBolttyIsAutomatic, !model.askBolttyModels.isEmpty { modelPicker }
     } header: {
       SettingsSectionHeader(String(localized: "Who answers"))
-    } footer: {
-      SettingsNote(answererNote)
     }
 
     Section {
@@ -85,7 +83,6 @@ struct AskBolttySettingsSection: View {
         get: { model.askBolttyTakesTyping }, set: { model.askBolttyTakesTyping = $0 }
       )) {
         Text("Questions can be typed")
-        Text("Start typing once an area is selected and the microphone gives way to a text field. Off, a question is only spoken.")
       }
       .accessibilityIdentifier("boltty.settings.talkTakesTyping")
     } header: {
@@ -111,7 +108,7 @@ struct AskBolttySettingsSection: View {
     } header: {
       SettingsSectionHeader(String(localized: "Answers"))
     } footer: {
-      SettingsNote(String(localized: "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the windows in that area and the menu bar; the rest of the screen is hidden from it unless you select all of it."))
+      SettingsNote(String(localized: "Only the windows in the area and the menu bar are sent."))
     }
   }
 
@@ -141,7 +138,6 @@ struct AskBolttySettingsSection: View {
         get: { model.askBolttySpeaksAloud }, set: { model.askBolttySpeaksAloud = $0 }
       )) {
         Text("Say answers aloud")
-        Text("In the voice chosen under Voice. Off, the face answers in blips.")
       }
       .accessibilityIdentifier("boltty.settings.talkSpeaksAloud")
     } else {
@@ -161,15 +157,6 @@ struct AskBolttySettingsSection: View {
             .currentModel?.selection.displayName
     else { return String(localized: "Agent default") }
     return String(localized: "Agent default (\(name))")
-  }
-
-  private var answererNote: String {
-    let quick = String(localized: "Every model thinks as little as it can, so answers come quickly.")
-    guard model.askBolttyAgents.count > 1 else { return quick }
-    let automatic = model.routesAutomatically
-      ? String(localized: "Automatic gives a question to whoever has the most of their plan left.")
-      : String(localized: "Automatic gives a question to the agent new chats go to.")
-    return "\(automatic) \(quick)"
   }
 }
 

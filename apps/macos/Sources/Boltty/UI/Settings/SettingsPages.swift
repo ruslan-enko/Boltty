@@ -11,8 +11,6 @@ struct GeneralSettingsPage: View {
         AppearancePicker(model: model)
       } header: {
         SettingsSectionHeader(String(localized: "Appearance"))
-      } footer: {
-        SettingsNote(String(localized: "Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats: Sky and Space are in the colours of the face shown."))
       }
 
       Section {
@@ -36,8 +34,6 @@ struct GeneralSettingsPage: View {
             Button("Relaunch Boltty") { model.language.relaunch() }
               .accessibilityIdentifier("boltty.settings.relaunch")
           }
-        } else {
-          SettingsNote(String(localized: "The same choice as System Settings › General › Language & Region › Applications."))
         }
       }
 
@@ -90,7 +86,6 @@ struct GeneralSettingsPage: View {
           set: { model.attachesFinderSelection = $0 }
         )) {
           Text("Use what's open in Finder")
-          Text("Opening Boltty AI over Finder starts the chat in that folder, with the files selected there in the prompt.")
         }
         .accessibilityIdentifier("boltty.settings.attachesFinderSelection")
 
@@ -99,7 +94,6 @@ struct GeneralSettingsPage: View {
           set: { model.playsSounds = $0 }
         )) {
           Text("Play sounds")
-          Text("When a message is sent, a reply is ready, or an agent needs you.")
         }
         .accessibilityIdentifier("boltty.settings.playsSounds")
       } header: {
@@ -119,7 +113,6 @@ struct GeneralSettingsPage: View {
           }
         } label: {
           Text("Conversations")
-          Text("Transcripts stay on this Mac. Nothing is re-run when Boltty restarts.")
         }
 
         Picker(selection: Binding(
@@ -140,7 +133,6 @@ struct GeneralSettingsPage: View {
             .accessibilityIdentifier("boltty.settings.reviewAccess")
         } label: {
           Text("Permissions")
-          Text("The microphone, Screen Recording, notifications and Finder.")
         }
       } header: {
         SettingsSectionHeader(String(localized: "Privacy"))
@@ -173,8 +165,8 @@ struct GeneralSettingsPage: View {
       } header: {
         SettingsSectionHeader(String(localized: "Updates"))
       } footer: {
-        if let updater = model.updater {
-          SettingsNote(updatesNote(updater))
+        if let updater = model.updater, let note = updatesNote(updater) {
+          SettingsNote(note)
         }
       }
     }
@@ -194,10 +186,6 @@ struct GeneralSettingsPage: View {
         SettingsNote(String(localized: "macOS is waiting for you to allow Boltty in System Settings › General › Login Items."), color: .orange)
         Button("Open Login Items") { model.loginItem.openSystemSettings() }
       }
-    } else if model.bolttyAIHotkeyEnabled {
-      SettingsNote(String(localized: "So \(model.bolttyAIHotkey.displayName) works right after a restart, with nothing to open first."))
-    } else {
-      SettingsNote(String(localized: "Boltty starts in the menu bar, with nothing on screen."))
     }
   }
 
@@ -207,16 +195,14 @@ struct GeneralSettingsPage: View {
     return release.isInstallable ? String(localized: "Install Boltty \(release.version)…") : String(localized: "Download Boltty \(release.version)…")
   }
 
-  private func updatesNote(_ updater: AppUpdater) -> String {
+  private func updatesNote(_ updater: AppUpdater) -> String? {
     if let release = updater.available, release.isInstallable {
       return String(localized: "Boltty \(release.version) is out; you have \(updater.currentVersion). Install puts it in place of this copy and opens it again.")
     }
     if let release = updater.available {
       return String(localized: "Boltty \(release.version) is out; you have \(updater.currentVersion). Download it, quit Boltty from the menu bar, and drag the new one into Applications.")
     }
-    let telling = String(localized: "Boltty asks GitHub once a day and tells you; it installs only when you say so.")
-    guard let checked = updater.lastUpdateCheckDate else { return telling }
-    return String(localized: "Last checked \(AppUpdater.checkedPhrase(checked)). \(telling)")
+    return nil
   }
 
   @ViewBuilder
@@ -231,8 +217,6 @@ struct GeneralSettingsPage: View {
       SettingsNote(String(localized: "\(model.bolttyAIHotkey.displayName) needs Input Monitoring: allow Boltty in System Settings › Privacy & Security › Input Monitoring. Until then, \(standIn.displayName) opens Boltty."), color: .red)
     } else if model.bolttyAIHotkey.isModifierOnly {
       SettingsNote(String(localized: "Press \(model.bolttyAIHotkey.displayName) together and let go. Uses Input Monitoring, which only this shortcut needs."))
-    } else {
-      SettingsNote(String(localized: "Works while Boltty is in the background. No extra permission needed."))
     }
   }
 
@@ -502,7 +486,6 @@ private struct AgentSettingsDetail: View {
         SettingsSectionHeader(String(localized: "Face"))
       } footer: {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-          SettingsNote(String(localized: "\(row.agent.shortDisplayName) wears it on its tab, above the prompt and in the notch. No two agents share one."))
           Spacer(minLength: 0)
           Button("Restore Default") { model.restoreDefaultMascot(for: row.agent) }
             .disabled(!model.canRestoreDefaultMascot(for: row.agent))
@@ -654,27 +637,21 @@ struct UsageSettingsPage: View {
   var body: some View {
     let rows = model.usageRows
     Group {
-      if rows.isEmpty, model.statistics?.sessions.isEmpty == true {
+      if rows.isEmpty, model.engine.store.conversations.isEmpty {
         ContentUnavailableView {
           Label {
             Text("No usage yet")
           } icon: {
             BolttyIconView(icon: SettingsPage.usage.icon, size: 40)
           }
-        } description: {
-          Text("Nothing any agent wrote down yet. Plan limits show here where an agent reports them, and every chat is counted.")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       } else {
         Form {
-          UsageOverviewSection(model: model)
+          UsageOverviewSection(store: model.engine.store)
           ForEach(rows) { row in
             Section {
               usageRow(row)
-            } footer: {
-              if row.id == rows.last?.id {
-                SettingsNote(String(localized: "Read from each agent's own account. OpenCode reports Go and Console limits once signed in to its Console; how many free steps a day allows it never says, only when they come back."))
-              }
             }
           }
         }
@@ -766,7 +743,7 @@ private struct UsageLimitCard: View {
       }
       .font(BolttyInterfaceTypography.callout)
       .monospacedDigit()
-      UsageMeter(fraction: Double(used) / 100)
+      UsageMeter(fraction: Double(used) / 100, segments: UsageSegments.count(for: window.kind))
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
@@ -781,18 +758,33 @@ private struct UsageLimitCard: View {
 
 struct UsageMeter: View {
   let fraction: Double
+  var segments = 1
   var height: CGFloat = 4
 
   var body: some View {
-    GeometryReader { proxy in
-      let filled = proxy.size.width * min(max(fraction, 0), 1)
-      ZStack(alignment: .leading) {
-        Capsule().fill(Color.primary.opacity(0.08))
-        if filled > 0 {
-          Capsule()
-            .fill(Color.bolttyAccent)
-            .frame(width: max(filled, height))
+    Canvas { context, size in
+      let whole = CGRect(origin: .zero, size: size)
+      let shapes = UsageSegments.rects(in: whole, count: segments).map {
+        Path(roundedRect: $0, cornerRadius: UsageSegments.cornerRadius(of: $0))
+      }
+      for shape in shapes { context.fill(shape, with: .color(.primary.opacity(0.08))) }
+      let used = CGFloat(min(max(fraction, 0), 1))
+      guard used > 0 else { return }
+      let reach = max(size.width * used, size.height)
+      let fade = UsageSegments.fade(reach: reach, length: size.width)
+      var inside = context
+      inside.clip(to: shapes.reduce(into: Path()) { $0.addPath($1) })
+      inside.fill(Path(CGRect(x: 0, y: 0, width: reach - fade, height: size.height)), with: .color(.bolttyAccent))
+      if fade > 0 {
+        let stops = UsageSegments.fadeLocations.map {
+          Gradient.Stop(color: .bolttyAccent.opacity(UsageSegments.opacity(at: $0)), location: $0)
         }
+        inside.fill(
+          Path(CGRect(x: reach - fade, y: 0, width: fade, height: size.height)),
+          with: .linearGradient(
+            Gradient(stops: stops),
+            startPoint: CGPoint(x: reach - fade, y: size.height / 2),
+            endPoint: CGPoint(x: reach, y: size.height / 2)))
       }
     }
     .frame(height: height)
@@ -878,12 +870,6 @@ struct VoiceSettingsPage: View {
       }
     } header: {
       SettingsSectionHeader(String(localized: "Dictation"))
-    } footer: {
-      if model.usesLocalDictation {
-        SettingsNote(String(localized: "Hears 25 languages and tells them apart itself."))
-      } else if model.dictationSecondLocaleIdentifier != DictationLanguageCatalog.noSecondLanguageIdentifier {
-        SettingsNote(String(localized: "Both listen at once; each phrase is written in the one that heard it."))
-      }
     }
   }
 
@@ -1004,10 +990,6 @@ struct ShortcutsSettingsPage: View {
           }
         } header: {
           SettingsSectionHeader(section.title)
-        } footer: {
-          if query.isEmpty, section.id == builtIn.last?.id {
-            SettingsNote(String(localized: "The keys above, from Boltty AI down, are built in and cannot be changed."))
-          }
         }
       }
     }
@@ -1021,7 +1003,6 @@ struct ShortcutsSettingsPage: View {
 
   private var footer: some View {
     HStack(alignment: .firstTextBaseline, spacing: 12) {
-      SettingsNote(String(localized: "Click a grey key, then type the new one — Delete removes it, Esc cancels."))
       Spacer(minLength: 0)
       if model.hasCustomizedShortcuts {
         Button("Restore Defaults") { model.restoreAllDefaultShortcuts() }

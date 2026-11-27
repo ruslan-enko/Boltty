@@ -104,16 +104,13 @@ private final class HistoryLimitsBars: NSView {
     var y = AgentPaletteMetrics.onPixelGrid(bounds.midY - whole / 2)
     let ordered = isFlipped ? windows : windows.reversed()
     for window in ordered {
-      let track = NSRect(x: x, y: y, width: width, height: height)
-      AgentPaletteMetrics.planRingTrack.setFill()
-      NSBezierPath(roundedRect: track, xRadius: height / 2, yRadius: height / 2).fill()
-      let used = CGFloat(min(100, max(0, window.usedPercent))) / 100
-      if used > 0 {
-        var fill = track
-        fill.size.width = max(height, width * used)
-        BolttyBrand.accentOnGlass.setFill()
-        NSBezierPath(roundedRect: fill, xRadius: height / 2, yRadius: height / 2).fill()
-      }
+      SegmentedUsageMeter.draw(
+        in: NSRect(x: x, y: y, width: width, height: height),
+        segments: UsageSegments.count(for: window.kind),
+        used: Double(min(100, max(0, window.usedPercent))) / 100,
+        fill: BolttyBrand.accentOnGlass,
+        track: AgentPaletteMetrics.planRingTrack
+      )
       y += height + gap
     }
   }
