@@ -84,6 +84,11 @@ enum DesignElements {
         AgentUsage(windows: [AgentUsageWindow(kind: .weekly, usedPercent: percent, resetsAt: nil)]), agent: .claude)
       return view
     }
+    func limits(_ windows: [AgentUsageWindow]) -> NSView {
+      let view = HistoryLimitsCapsule(frame: .zero)
+      view.apply(AgentUsage(windows: windows), agent: .codex)
+      return view
+    }
     return [
       DesignSection(title: "Folder", note: "WorkingDirectoryChipView", specimens: [
         DesignSpecimen(name: "Home", view: folder(NSHomeDirectory())),
@@ -94,6 +99,19 @@ enum DesignElements {
       DesignSection(title: "Plan ring", note: "PlanUsageRingView", specimens: [0, 25, 79, 80, 100].map { percent in
         DesignSpecimen(name: "\(percent)% used", view: ring(percent))
       }),
+      DesignSection(title: "List limits", note: "HistoryLimitsCapsule", specimens: [
+        DesignSpecimen(name: "One window", view: limits([
+          AgentUsageWindow(kind: .session, usedPercent: 42, resetsAt: nil),
+          AgentUsageWindow(kind: .weekly, usedPercent: 18, resetsAt: nil),
+        ])),
+        DesignSpecimen(name: "Two groups", view: limits([
+          AgentUsageWindow(kind: .weekly, usedPercent: 38, resetsAt: nil, label: "Gemini"),
+          AgentUsageWindow(kind: .weekly, usedPercent: 84, resetsAt: nil, label: "Claude"),
+        ])),
+        DesignSpecimen(name: "Spent", view: limits([
+          AgentUsageWindow(kind: .session, usedPercent: 100, resetsAt: nil),
+        ])),
+      ]),
     ]
   }
 

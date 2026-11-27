@@ -221,6 +221,7 @@
 		9208E044D4E27F61AB98899D /* ScreenTextReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB290B9A1EE802540B1188CC /* ScreenTextReader.swift */; };
 		9218F5245907A7F7E953D6C4 /* FirstRunShowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA12ED1E33F83D8CD3FD6D5 /* FirstRunShowController.swift */; };
 		9247FE733D36D8CEB5B20E75 /* SystemAttentionNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A295D064E180753EC63C2009 /* SystemAttentionNotificationService.swift */; };
+		934B620C846CA0E8DE0BD98A /* HistoryLimitsCapsule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133BB04B372E63818A1F85FD /* HistoryLimitsCapsule.swift */; };
 		93933692FB43FB0C230AE56F /* ScreenRegionCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF3961E3BA3BF9EFA0F477D /* ScreenRegionCaptureTests.swift */; };
 		948278AE62DD8CACAF668139 /* SettingsNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA5F15940EBC37D16E7D4972 /* SettingsNavigation.swift */; };
 		966C728E43240BBE2C5553F5 /* Icons in Resources */ = {isa = PBXBuildFile; fileRef = B19B08993C3FDFCF15F7E902 /* Icons */; };
@@ -405,6 +406,7 @@
 		10E3FCBC3EEE7ACA65EC2151 /* AgentRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRoutingTests.swift; sourceTree = "<group>"; };
 		11B4B58194D09A60952BF3D9 /* AgentStatisticsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentStatisticsReader.swift; sourceTree = "<group>"; };
 		12C25ED4E6C89BC193C19E2C /* CodexSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexSessionStore.swift; sourceTree = "<group>"; };
+		133BB04B372E63818A1F85FD /* HistoryLimitsCapsule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryLimitsCapsule.swift; sourceTree = "<group>"; };
 		1382E5F2E82B2E628C96D74F /* BolttyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BolttyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		13C08A32ED63560E9804C2C6 /* AgentAdapterLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentAdapterLiveTests.swift; sourceTree = "<group>"; };
 		14100488D233FA342B0CDF0A /* ModifierHotkeyMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierHotkeyMonitor.swift; sourceTree = "<group>"; };
@@ -1300,6 +1302,7 @@
 				C038304FB66D8591A96B1BAC /* BolttyIcon.swift */,
 				227ADF41DFE89B8DC1BA2482 /* ComputerUseIndicator.swift */,
 				5AA12ED1E33F83D8CD3FD6D5 /* FirstRunShowController.swift */,
+				133BB04B372E63818A1F85FD /* HistoryLimitsCapsule.swift */,
 				CCF0B04B7E2F1122C29A2E7A /* KeyablePanel.swift */,
 				7F3308BBE6914BBA6F932CBB /* ListeningWordsView.swift */,
 				EE4E9F8FD3664BCC76A5FC58 /* ModelMenu.swift */,
@@ -1641,6 +1644,7 @@
 				1C747CE305746503C55676F6 /* GrokChatHistoryTranscript.swift in Sources */,
 				AE6924139F699EF1A2E2EFAA /* GrokClient.swift in Sources */,
 				D1215D8ABEBDF663E72E5035 /* GrokSessionStore.swift in Sources */,
+				934B620C846CA0E8DE0BD98A /* HistoryLimitsCapsule.swift in Sources */,
 				CFFB378A217FEDC181F7BF85 /* HotkeyBinding.swift in Sources */,
 				9C0E1CEF7593902E2E01AD6A /* HotkeyRecorderField.swift in Sources */,
 				C17BA2F80E0EA07EC2467D93 /* HotkeySuggestions.swift in Sources */,
