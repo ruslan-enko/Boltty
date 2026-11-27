@@ -377,8 +377,7 @@ final class AgentAdapterLiveTests: XCTestCase {
     let info = try await client.createSession(id: UUID().uuidString, options: AgentSessionOptions(
       directory: NSTemporaryDirectory(),
       model: model.selection,
-      effort: model.effortOptions.first(where: { $0.value == "low" })?.value,
-      autoApprove: false
+      effort: model.effortOptions.first(where: { $0.value == "low" })?.value
     ))
 
     let answer = Task { () -> String in

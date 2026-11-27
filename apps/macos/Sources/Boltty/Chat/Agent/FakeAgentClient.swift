@@ -38,7 +38,7 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
 
   @Locked private(set) var createdSessions: [RemoteSessionInfo] = []
   @Locked private(set) var createdOptions: [AgentSessionOptions] = []
-  @Locked private(set) var autoApprovalChanges: [(sessionID: String, enabled: Bool)] = []
+  @Locked private(set) var permissionModeChanges: [(sessionID: String, mode: String?)] = []
   @Locked private(set) var sentMessages: [(id: String, text: String, sessionID: String)] = []
   @Locked private(set) var stopped: [String] = []
   @Locked private(set) var released: [String] = []
@@ -126,8 +126,8 @@ final class FakeAgentClient: AgentClient, @unchecked Sendable {
     return info
   }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    lock.withLock { autoApprovalChanges.append((sessionID, enabled)) }
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {
+    lock.withLock { permissionModeChanges.append((sessionID, mode)) }
   }
 
   func missedAnything(sessionID: String) async -> Bool? { missedAnythingAnswer }

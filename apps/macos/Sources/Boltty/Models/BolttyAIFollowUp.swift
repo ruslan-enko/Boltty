@@ -55,10 +55,11 @@ enum BolttyAIFollowUp {
 struct BolttyAIModelChip: Equatable, Sendable {
   let name: String
   var effort: String? = nil
+  var mode: String? = nil
   var isGone = false
   var help: String
 
-  var title: String { [name, effort].compactMap { $0 }.joined(separator: " · ") }
+  var title: String { [name, effort, mode].compactMap { $0 }.joined(separator: " · ") }
 }
 
 struct BolttyAIModelMenu: Equatable, Sendable {
@@ -69,7 +70,8 @@ struct BolttyAIModelMenu: Equatable, Sendable {
   let efforts: [AgentEffortOption]
   let effort: String?
   var canResetEffort = true
-  let autoMode: Bool?
+  var permissionModes: [PermissionMode] = []
+  var permissionMode: PermissionMode? = nil
   var planMode: Bool? = nil
 }
 
@@ -85,7 +87,6 @@ struct BolttyAISessionPreview: Equatable, Sendable {
   var canStop = false
   var stopIsAbrupt = false
   var canSteer = false
-  var autoMode: Bool? = nil
   var modelChip: BolttyAIModelChip? = nil
   var notice: String? = nil
   var folderIsGone = false

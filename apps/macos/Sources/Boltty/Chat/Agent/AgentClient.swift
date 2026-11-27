@@ -57,7 +57,7 @@ protocol AgentClient: AnyObject, Sendable {
 
   func events() -> AsyncStream<AgentEventEnvelope>
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws
 
   /// nil means "cannot tell": the caller must re-read.
   func missedAnything(sessionID: String) async -> Bool?
@@ -116,7 +116,7 @@ extension AgentClient {
   ) async throws {
     throw AgentClientError.requestGone
   }
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {}
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {}
   func missedAnything(sessionID: String) async -> Bool? { nil }
   func release(sessionID: String) async {}
   func restartIdleProcess() async {}
@@ -127,7 +127,7 @@ struct AgentSessionOptions: Equatable, Sendable {
   var directory: String
   var model: ModelSelection?
   var effort: String?
-  var autoApprove: Bool
+  var permissionMode: String?
   var readOnly: Bool
   var planMode: Bool
   var forkFrom: ForkPoint?
@@ -137,7 +137,7 @@ struct AgentSessionOptions: Equatable, Sendable {
     directory: String,
     model: ModelSelection? = nil,
     effort: String? = nil,
-    autoApprove: Bool = false,
+    permissionMode: String? = nil,
     readOnly: Bool = false,
     planMode: Bool = false,
     forkFrom: ForkPoint? = nil,
@@ -146,7 +146,7 @@ struct AgentSessionOptions: Equatable, Sendable {
     self.directory = directory
     self.model = model
     self.effort = effort
-    self.autoApprove = autoApprove
+    self.permissionMode = permissionMode
     self.readOnly = readOnly
     self.planMode = planMode
     self.forkFrom = forkFrom

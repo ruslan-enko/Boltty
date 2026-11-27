@@ -132,8 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       coordinator.defaultEffortID = { [weak appModel] id in
         appModel?.settings.defaultEffortByProvider[id]
       }
-      coordinator.defaultAutoApprove = { [weak appModel] id in
-        appModel?.settings.autoApproveProviderIDs.contains(id) ?? false
+      coordinator.defaultPermissionMode = { [weak appModel] id in
+        appModel?.settings.permissionModeByProvider[id]
       }
     }
     let notifications = SystemAttentionNotificationService()

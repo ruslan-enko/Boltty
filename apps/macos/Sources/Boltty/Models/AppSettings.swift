@@ -11,7 +11,7 @@ struct AppSettings: Equatable, Sendable {
   var defaultModelByProvider: [String: String]
   var mascotSelections: [String: MascotSelection]
   var defaultEffortByProvider: [String: String]
-  var autoApproveProviderIDs: Set<String>
+  var permissionModeByProvider: [String: String]
   var dictationLocaleIdentifier: String
   var dictationSecondLocaleIdentifier: String
   var dictationEngine: String
@@ -35,7 +35,8 @@ struct AppSettings: Equatable, Sendable {
   private static let enabledProviderIDsKey = "boltty.enabledProviderIDs"
   private static let defaultModelByProviderKey = "boltty.defaultModelByProvider"
   private static let defaultEffortByProviderKey = "boltty.defaultEffortByProvider"
-  private static let autoApproveProviderIDsKey = "boltty.autoApproveByProvider"
+  private static let permissionModeByProviderKey = "boltty.permissionModeByProvider"
+  private static let legacyAutoApproveProviderIDsKey = "boltty.autoApproveByProvider"
   private static let bolttyAIHotkeyKeyCodeKey = "boltty.askBolttyHotkey.keyCode"
   private static let bolttyAIHotkeyModifiersKey = "boltty.askBolttyHotkey.modifiers"
   private static let bolttyAIHotkeyEnabledKey = "boltty.askBolttyHotkey.enabled"
@@ -69,7 +70,7 @@ struct AppSettings: Equatable, Sendable {
     enabledProviderIDs: Set<String> = AppSettings.allAdapterProviderIDs,
     defaultModelByProvider: [String: String] = [:],
     defaultEffortByProvider: [String: String] = [:],
-    autoApproveProviderIDs: Set<String> = [],
+    permissionModeByProvider: [String: String] = [:],
     mascotSelections: [String: MascotSelection] = [:],
     bolttyAIHotkey: HotkeyBinding = .optionSpace,
     bolttyAIHotkeyIsChosen: Bool = false,
@@ -99,7 +100,7 @@ struct AppSettings: Equatable, Sendable {
     self.enabledProviderIDs = enabledProviderIDs
     self.defaultModelByProvider = defaultModelByProvider
     self.defaultEffortByProvider = defaultEffortByProvider
-    self.autoApproveProviderIDs = autoApproveProviderIDs
+    self.permissionModeByProvider = permissionModeByProvider
     self.mascotSelections = mascotSelections
     self.dictationLocaleIdentifier = dictationLocaleIdentifier
     self.dictationSecondLocaleIdentifier = dictationSecondLocaleIdentifier
@@ -174,7 +175,7 @@ struct AppSettings: Equatable, Sendable {
       enabledProviderIDs: enabledProviderIDs,
       defaultModelByProvider: defaultModelByProvider,
       defaultEffortByProvider: defaultEffortByProvider,
-      autoApproveProviderIDs: Set(defaults.stringArray(forKey: autoApproveProviderIDsKey) ?? []),
+      permissionModeByProvider: permissionModes(defaults),
       mascotSelections: MascotRoster.load(defaults: defaults).selections,
       bolttyAIHotkey: hotkey,
       bolttyAIHotkeyIsChosen: defaults.bool(forKey: Self.bolttyAIHotkeyChosenKey),
@@ -219,6 +220,15 @@ struct AppSettings: Equatable, Sendable {
     }
   }
 
+  private static func permissionModes(_ defaults: UserDefaults) -> [String: String] {
+    if let data = defaults.data(forKey: permissionModeByProviderKey),
+       let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
+      return decoded
+    }
+    let legacy = defaults.stringArray(forKey: legacyAutoApproveProviderIDsKey) ?? []
+    return Dictionary(uniqueKeysWithValues: legacy.map { ($0, PermissionMode.legacyAuto) })
+  }
+
   func save(defaults: UserDefaults = .standard) {
     defaults.set(agentPreset?.rawValue, forKey: Self.agentPresetKey)
     defaults.set(routesAutomatically ? "automatic" : Self.fixedRouting, forKey: Self.agentRoutingKey)
@@ -229,7 +239,9 @@ struct AppSettings: Equatable, Sendable {
     if let data = try? JSONEncoder().encode(defaultEffortByProvider) {
       defaults.set(data, forKey: Self.defaultEffortByProviderKey)
     }
-    defaults.set(Array(autoApproveProviderIDs).sorted(), forKey: Self.autoApproveProviderIDsKey)
+    if let data = try? JSONEncoder().encode(permissionModeByProvider) {
+      defaults.set(data, forKey: Self.permissionModeByProviderKey)
+    }
     if let data = try? JSONEncoder().encode(mascotSelections) {
       defaults.set(data, forKey: MascotRoster.storageKey)
     }

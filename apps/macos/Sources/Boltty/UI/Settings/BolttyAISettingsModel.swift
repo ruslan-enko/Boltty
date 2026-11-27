@@ -288,8 +288,8 @@ final class BolttyAISettingsModel: ObservableObject {
         selectedModelID: selectedModelID,
         effortOptions: selectedModel?.effortOptions ?? [],
         selectedEffort: appModel.settings.defaultEffortByProvider[agent.rawValue],
-        offersAutoApproval: installation?.capabilities.contains(.autoApproval) == true,
-        autoApprove: appModel.settings.autoApproveProviderIDs.contains(agent.rawValue)
+        permissionModes: PermissionMode.ladder(for: agent),
+        permissionMode: PermissionMode.resolved(appModel.settings.permissionModeByProvider[agent.rawValue], for: agent)
       )
     }
   }
@@ -339,12 +339,12 @@ final class BolttyAISettingsModel: ObservableObject {
     }
   }
 
-  func setAutoApprove(_ enabled: Bool, for agent: AgentId) {
+  func setPermissionMode(_ mode: String, for agent: AgentId) {
     appModel.updateSettings { settings in
-      if enabled {
-        settings.autoApproveProviderIDs.insert(agent.rawValue)
+      if mode == PermissionMode.ladder(for: agent).first?.id {
+        settings.permissionModeByProvider.removeValue(forKey: agent.rawValue)
       } else {
-        settings.autoApproveProviderIDs.remove(agent.rawValue)
+        settings.permissionModeByProvider[agent.rawValue] = mode
       }
     }
   }
@@ -662,6 +662,6 @@ struct AgentSettingsRow: Identifiable, Equatable {
   }
   let effortOptions: [AgentEffortOption]
   let selectedEffort: String?
-  var offersAutoApproval = false
-  var autoApprove = false
+  var permissionModes: [PermissionMode] = []
+  var permissionMode: PermissionMode? = nil
 }

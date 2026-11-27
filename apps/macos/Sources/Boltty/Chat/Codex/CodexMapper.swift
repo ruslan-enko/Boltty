@@ -1,6 +1,34 @@
 import Foundation
 
 enum CodexMapper {
+  /// Codex's reviewer decides an ask in Approve for Me; its rollout keeps no record of it,
+  /// so the row is the live chat's alone.
+  static func review(_ params: JSONObject) -> ConversationPart? {
+    guard let id = params.string("reviewId"), let review = params.object("review") else { return nil }
+    let approved = review.string("status") == "approved"
+    let risk = review.string("riskLevel").map(riskWords)
+    let verdict = approved ? String(localized: "Auto-review approved") : String(localized: "Auto-review refused")
+    let command = params.object("action")?.string("command")
+    return .activity(AgentActivity(
+      id: "review-" + id,
+      name: "review",
+      summary: [verdict, risk].compactMap { $0 }.joined(separator: " · "),
+      state: approved ? .completed : .failed,
+      detail: [command, review.string("rationale")].compactMap { $0 }.joined(separator: "\n\n"),
+      endedAt: Date()
+    ))
+  }
+
+  private static func riskWords(_ level: String) -> String {
+    switch level {
+    case "low": String(localized: "low risk")
+    case "medium": String(localized: "medium risk")
+    case "high": String(localized: "high risk")
+    case "critical": String(localized: "critical risk")
+    default: level
+    }
+  }
+
   static func part(from item: JSONObject, completed: Bool) -> ConversationPart? {
     guard let id = item.string("id") else { return nil }
     switch item.string("type") {

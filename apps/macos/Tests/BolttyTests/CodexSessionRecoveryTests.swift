@@ -58,7 +58,7 @@ final class CodexSessionRecoveryTests: XCTestCase {
   func testExistingThreadIsResumedAgainAfterServerRestart() async throws {
     let info = try await client.createSession(id: "local", options: AgentSessionOptions(
       directory: "/tmp", model: ModelSelection(providerID: "codex", modelID: "chosen-model"),
-      effort: "high", autoApprove: true
+      effort: "high", permissionMode: "approveForMe"
     ))
     await client.shutdown()
     try await send(to: info.id)
@@ -67,7 +67,7 @@ final class CodexSessionRecoveryTests: XCTestCase {
     XCTAssertEqual(calls.filter { $0.string("method") == "thread/resume" }.count, 1)
     XCTAssertEqual(calls.last?.object("params")?.string("model"), "chosen-model")
     XCTAssertEqual(calls.last?.object("params")?.string("effort"), "high")
-    XCTAssertTrue(CodexClient.isAutoApproved(calls.last?.object("params")?["approvalPolicy"]))
+    XCTAssertEqual(calls.last?.object("params")?.string("approvalsReviewer"), "auto_review")
   }
 
   func testLoadedThreadDoesNotResumeOnEverySend() async throws {
@@ -78,15 +78,41 @@ final class CodexSessionRecoveryTests: XCTestCase {
     XCTAssertEqual(methods.filter { $0 == "turn/start" }.count, 2)
   }
 
-  func testAutoApprovalChangeOnSavedThreadIsNotLost() async throws {
-    try await client.setAutoApproval(true, sessionID: "saved")
+  func testAPermissionModeChangeOnSavedThreadIsNotLost() async throws {
+    try await client.setPermissionMode("fullAccess", sessionID: "saved")
     try await send()
-    XCTAssertTrue(CodexClient.isAutoApproved(try requests().last?.object("params")?["approvalPolicy"]))
+    XCTAssertEqual(try requests().last?.object("params")?.string("permissions"), ":danger-full-access")
+  }
+
+  func testOnlyTheAnswersCodexOfferedAreSent() throws {
+    let listed: [Any] = ["accept", ["acceptWithExecpolicyAmendment": ["execpolicy_amendment": ["curl", "-sI"]]], "cancel"]
+    let offered = CodexClient.offeredDecisions(listed)
+    XCTAssertEqual(offered.decisions[.once] as? String, "accept")
+    XCTAssertEqual(offered.decisions[.reject] as? String, "cancel", "no decline was offered")
+    XCTAssertNotNil(offered.decisions[.always] as? [String: Any])
+    XCTAssertEqual(offered.reach, "always, for commands that start with curl -sI")
+  }
+
+  func testClaudeCodesAlwaysGoesWhereItsSuggestionSays() {
+    let suggestion: [String: Any] = [
+      "type": "addRules", "behavior": "allow", "destination": "localSettings",
+      "rules": [["toolName": "Bash", "ruleContent": "git status:*"]],
+    ]
+    let rules = ClaudeCodeClient.sessionRules(suggestions: [suggestion], tool: "Bash", input: [:])
+    XCTAssertEqual(rules.first?["destination"] as? String, "localSettings")
+    XCTAssertEqual(ClaudeCodeClient.reach(of: rules), "this project, for Bash(git status:*)")
+    XCTAssertTrue(ClaudeCodeClient.sessionRules(suggestions: [], tool: "Bash", input: [:]).isEmpty)
+  }
+
+  func testEveryModeTellsCodexWhoReviewsItsAsks() {
+    XCTAssertEqual(CodexClient.permissionSettings(mode: nil, readOnly: false)["approvalsReviewer"] as? String, "user")
+    XCTAssertEqual(
+      CodexClient.permissionSettings(mode: "approveForMe", readOnly: false)["approvalsReviewer"] as? String, "auto_review")
+    XCTAssertEqual(
+      CodexClient.permissionSettings(mode: "fullAccess", readOnly: true)["permissions"] as? String, ":read-only")
   }
 
   func testComputerUseAsksAndAFormIsNotShown() throws {
-    XCTAssertFalse(CodexClient.isAutoApproved("on-request"))
-    XCTAssertTrue(CodexClient.isAutoApproved("never"))
     let ask = #"{"serverName":"cua_repl","mode":"form","_meta":{"callId":"c1","connector_name":"Computer Use","persist":["session","always"],"tool_params_display":[{"display_name":"App","name":"app","value":"OrcaSlicer"}]},"message":"Allow Computer Use to use \"OrcaSlicer\"?","requestedSchema":{"type":"object","properties":{}}}"#
     let prompt = try XCTUnwrap(CodexClient.elicitationPrompt(XCTUnwrap(JSONObject(line: ask))))
     XCTAssertEqual(prompt.action, "Computer Use")
@@ -181,7 +207,7 @@ final class CodexSessionRecoveryTests: XCTestCase {
 
   func testAThreadRunningHereButNotYetWrittenIsNotReportedGone() async throws {
     let info = try await client.createSession(id: "local", options: AgentSessionOptions(
-      directory: "/tmp", model: nil, effort: nil, autoApprove: false
+      directory: "/tmp", model: nil, effort: nil
     ))
 
     let snapshot = try await client.loadSession(id: info.id)

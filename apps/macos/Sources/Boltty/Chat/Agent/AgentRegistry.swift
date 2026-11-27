@@ -24,11 +24,16 @@ final class AgentRegistry: ObservableObject {
   }
 
   static func live() -> AgentRegistry {
-    AgentRegistry(clients: [
+    AntigravityClient.removeOldGate()
+    return AgentRegistry(clients: [
       OpenCodeClient(),
       ClaudeCodeClient(),
       CodexClient(),
-      ACPClient(agent: .grok),
+      ModeSplitClient(
+        main: ACPClient(agent: .grok),
+        second: ACPClient(agent: .grokAutoReview),
+        runsInSecond: { $0 == "auto" }
+      ),
       AntigravityClient(),
     ])
   }

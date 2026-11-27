@@ -107,6 +107,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   }()
   private var shownModelChip: BolttyAIModelChip?
   var onModelMenu: (() -> Void)?
+  var onCyclePermissionMode: (() -> Void)?
   private lazy var latestPillConstraints: [NSLayoutConstraint] = [
     latestPill.centerXAnchor.constraint(equalTo: promptCapsule.centerXAnchor),
     latestPill.bottomAnchor.constraint(
@@ -4857,7 +4858,11 @@ extension AgentPaletteView: NSTextViewDelegate {
       return true
     }
     if isBacktab {
-      guard isFirstScreen else { return false }
+      guard isFirstScreen else {
+        guard addressedPreview != nil, composerIsUp, !isVoiceListening else { return false }
+        onCyclePermissionMode?()
+        return true
+      }
       if screenSelectionFrame != nil || (composerIsUp && !isVoiceListening) { cycleAgent(by: 1) }
       return true
     }

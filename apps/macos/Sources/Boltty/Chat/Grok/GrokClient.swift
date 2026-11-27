@@ -4,7 +4,7 @@ import os
 struct ACPAgent: Sendable {
   let provider: AgentId
   let displayName: String
-  let arguments: [String]
+  var arguments: [String]
   let capabilities: AgentCapabilities
   var history: (@Sendable (String) throws -> DiskTranscript?)?
   var recordedName: (@Sendable (String) -> String?)? = nil
@@ -12,6 +12,13 @@ struct ACPAgent: Sendable {
   var planMethod: String? = nil
   var askMethods: Set<String> = []
   var elicitMethods: Set<String> = []
+  var alwaysApproveCommand = false
+  var effortConfigID = "reasoning_effort"
+  /// Set where the agent takes its model as a config option (`session/set_config_option`).
+  var modelConfigID: String? = nil
+  var modeID: @Sendable (AgentSessionOptions) -> String = { $0.planMode && !$0.readOnly ? "plan" : "default" }
+  /// A plan the agent writes to a file rather than asks about; becomes the plan card when its turn ends.
+  var planFile: (@Sendable (JSONObject) -> String?)? = nil
 
   static let grok = ACPAgent(
     provider: .grok,
@@ -19,7 +26,7 @@ struct ACPAgent: Sendable {
     arguments: ["--permission-mode", "default", "agent", "stdio"],
     capabilities: [
       .modelSelection, .modelSwitching, .permissions, .attachments, .images, .interrupt, .resumeSession,
-      .workingDirectory, .reasoningEffort, .autoApproval, .usageReporting,
+      .workingDirectory, .reasoningEffort, .usageReporting,
       .rereadableTranscript, .usageLimits, .questions, .commands, .planMode, .computerUse,
     ],
     history: { try GrokChatHistoryTranscript.transcript(sessionID: $0) },
@@ -27,8 +34,16 @@ struct ACPAgent: Sendable {
     usage: ("_x.ai/billing", { AgentUsage.grok($0) }),
     planMethod: "x.ai/exit_plan_mode",
     askMethods: ["x.ai/ask_user_question", "_x.ai/ask_user_question"],
-    elicitMethods: ["x.ai/mcp/elicit", "_x.ai/mcp/elicit"]
+    elicitMethods: ["x.ai/mcp/elicit", "_x.ai/mcp/elicit"],
+    alwaysApproveCommand: true
   )
+
+  /// Grok's Auto-review is a launch flag for the whole process, so its chats run in a second one.
+  static let grokAutoReview: ACPAgent = {
+    var agent = ACPAgent.grok
+    agent.arguments = ["--permission-mode", "auto", "agent", "stdio"]
+    return agent
+  }()
 }
 
 final class ACPClient: AgentClient, @unchecked Sendable {
@@ -56,7 +71,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   private var personalCommands: [AgentCommand] = []
   private var wantedOptions: [String: AgentSessionOptions] = [:]
   private var permissions: [String: PendingPermission] = [:]
-  private var picturesAllowed: Set<String> = []
   private var plans: [String: PendingPlan] = [:]
   private var asks: [String: PendingAsk] = [:]
   private var conversationResolver: (@Sendable (String) -> UUID?)?
@@ -80,8 +94,10 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     var messages: [ConversationMessage] = []
     var textSegment = 0
     var planToolCalls: Set<String> = []
-    var autoApprove = false
+    var alwaysApproves: Bool?
     var planning = false
+    var modeID = "default"
+    var planFile: String?
 
     init(id: String, directory: String, model: ModelSelection?) {
       self.id = id
@@ -185,14 +201,14 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
 
     let session = LiveSession(id: sessionID, directory: options.directory, model: options.model)
-    session.autoApprove = options.autoApprove
     session.effort = options.effort
     lock.withLock {
       sessions[sessionID] = session
       wantedOptions[sessionID] = options
     }
     await applyLeniently(model: options.model, effort: options.effort, to: sessionID)
-    if options.planMode { try? await set(planning: true, on: sessionID) }
+    if agent.modeID(options) != "default" { try? await set(mode: agent.modeID(options), on: sessionID) }
+    try? await set(alwaysApproving: Self.alwaysApproves(options), on: sessionID)
 
     return RemoteSessionInfo(
       id: sessionID,
@@ -208,21 +224,47 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   private func set(model: ModelSelection, on sessionID: String) async throws {
+    if let config = agent.modelConfigID {
+      _ = try await request("session/set_config_option", params: [
+        "sessionId": sessionID, "configId": config, "value": model.modelID
+      ])
+      return
+    }
     _ = try await request("session/set_model", params: [
       "sessionId": sessionID, "modelId": model.modelID
     ])
   }
 
-  private func set(planning: Bool, on sessionID: String) async throws {
-    _ = try await request("session/set_mode", params: [
-      "sessionId": sessionID, "modeId": planning ? "plan" : "default"
+  private func set(mode: String, on sessionID: String) async throws {
+    _ = try await request("session/set_mode", params: ["sessionId": sessionID, "modeId": mode])
+    lock.withLock {
+      sessions[sessionID]?.modeID = mode
+      sessions[sessionID]?.planning = mode == "plan"
+    }
+  }
+
+  static let alwaysApproveMode = "alwaysApprove"
+
+  static func alwaysApproves(_ options: AgentSessionOptions) -> Bool {
+    options.permissionMode == alwaysApproveMode && !options.readOnly
+  }
+
+  /// Grok's `/always-approve` is a command of the session it is sent to: no model
+  /// turn, and other sessions in the process still ask.
+  private func set(alwaysApproving: Bool, on sessionID: String) async throws {
+    guard agent.alwaysApproveCommand,
+          lock.withLock({ sessions[sessionID]?.alwaysApproves }) != alwaysApproving
+    else { return }
+    _ = try await request("session/prompt", params: [
+      "sessionId": sessionID,
+      "prompt": [["type": "text", "text": "/always-approve " + (alwaysApproving ? "on" : "off")]],
     ])
-    lock.withLock { sessions[sessionID]?.planning = planning }
+    lock.withLock { sessions[sessionID]?.alwaysApproves = alwaysApproving }
   }
 
   private func set(effort: String, on sessionID: String) async throws {
     _ = try await request("session/set_config_option", params: [
-      "sessionId": sessionID, "configId": "reasoning_effort", "value": effort
+      "sessionId": sessionID, "configId": agent.effortConfigID, "value": effort
     ])
   }
 
@@ -235,16 +277,15 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
     _ = try await connect()
     try await ensureLoaded(id)
-    let current = lock.withLock { () -> (model: ModelSelection?, effort: String?, planning: Bool) in
+    let current = lock.withLock { () -> (model: ModelSelection?, effort: String?, mode: String) in
       let session = sessions[id]
       defer {
         session?.directory = options.directory
-        session?.autoApprove = options.autoApprove
       }
-      return (session?.model, session?.effort, session?.planning ?? false)
+      return (session?.model, session?.effort, session?.modeID ?? "default")
     }
-    if options.planMode != current.planning {
-      try await set(planning: options.planMode, on: id)
+    if agent.modeID(options) != current.mode {
+      try await set(mode: agent.modeID(options), on: id)
     }
     if let model = options.model, model.modelID != current.model?.modelID {
       try await set(model: model, on: id)
@@ -254,13 +295,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       try await set(effort: effort, on: id)
     }
     lock.withLock { sessions[id]?.effort = options.effort }
+    try await set(alwaysApproving: Self.alwaysApproves(options), on: id)
   }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    lock.withLock {
-      wantedOptions[sessionID]?.autoApprove = enabled
-      sessions[sessionID]?.autoApprove = enabled
-    }
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {
+    lock.withLock { wantedOptions[sessionID]?.permissionMode = mode }
   }
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
@@ -319,7 +358,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       if sessions[id] == nil {
         let session = LiveSession(id: id, directory: directory, model: wanted?.model)
         session.effort = wanted?.effort
-        session.autoApprove = wanted?.autoApprove ?? false
         sessions[id] = session
       }
     }
@@ -386,6 +424,19 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   private func finishTurn(sessionID: String, stopReason: String?) {
+    let planFile = lock.withLock { () -> String? in
+      defer { sessions[sessionID]?.planFile = nil }
+      return sessions[sessionID]?.planning == true ? sessions[sessionID]?.planFile : nil
+    }
+    if stopReason == "end_turn", let planFile,
+       let markdown = try? String(contentsOfFile: planFile, encoding: .utf8),
+       !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+       let conversationID = lock.withLock({ conversationResolver })?(sessionID) {
+      emit(.interactionAsked(PendingInteraction(
+        id: "plan-\(UUID().uuidString)", conversationID: conversationID, remoteSessionID: sessionID,
+        kind: .plan(PlanPrompt(markdown: markdown, toolCallID: nil, endedTurn: true))
+      )))
+    }
     let reply: ConversationMessage? = lock.withLock {
       guard let session = sessions[sessionID], let messageID = session.pendingMessageID
       else { return nil }
@@ -464,9 +515,6 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         sessionID: sessionID, requestID: requestID, resolution: .permission(decision)))
       return
     }
-    if decision == .always, waiting.isPicture {
-      lock.withLock { _ = picturesAllowed.insert(waiting.sessionID) }
-    }
     respond(to: waiting.rpcID, result: [
       "outcome": ["outcome": "selected", "optionId": option ?? ""]
     ])
@@ -488,8 +536,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     }
     try deliver(to: waiting.rpcID, result: Self.planResult(decision, feedback: feedback))
     lock.withLock { _ = plans.removeValue(forKey: requestID) }
-    if decision == .approved, lock.withLock({ sessions[sessionID]?.planning ?? false }) {
-      try? await set(planning: false, on: sessionID)
+    if decision == .approved, var options = lock.withLock({ wantedOptions[sessionID] }),
+       lock.withLock({ sessions[sessionID]?.planning ?? false }) {
+      options.planMode = false
+      lock.withLock { wantedOptions[sessionID] = options }
+      try? await set(mode: agent.modeID(options), on: sessionID)
     }
     emit(.interactionResolved(
       sessionID: sessionID,
@@ -501,7 +552,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   static func option(
     for decision: PermissionDecision, among offered: [PermissionDecision: String]
   ) -> String? {
-    offered[decision] ?? (decision == .always ? offered[.once] : nil)
+    offered[decision]
   }
 
   static func elicitationResult(_ decision: PermissionDecision) -> [String: Any] {
@@ -537,6 +588,13 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   }
 
   func restartIdleProcess() async { await shutdown() }
+
+  func release(sessionID: String) async {
+    lock.withLock {
+      sessions[sessionID] = nil
+      wantedOptions[sessionID] = nil
+    }
+  }
 
   @discardableResult
   private func connect() async throws -> JSONObject {
@@ -672,38 +730,14 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       case "reject_once":
         byDecision[.reject] = optionID
         reject = optionID
-      case "reject_always" where reject == nil:
-        byDecision[.reject] = optionID
-        reject = optionID
+      case "reject_always":
+        byDecision[.rejectAlways] = optionID
+        if reject == nil { reject = optionID }
       default: continue
       }
     }
 
-    let auto = lock.withLock { () -> (on: Bool, directory: String)? in
-      sessions[sessionID].map { ($0.autoApprove, $0.directory) }
-    }
-    let call = params.object("toolCall")
-    let passes = switch call?.string("kind") {
-    case "edit": auto.map { auto in
-        let paths = (call?.array("locations") ?? []).compactMap { $0.string("path") }
-        return !paths.isEmpty && paths.allSatisfy { AutoModeCommands.isEditable($0, in: auto.directory) }
-      } ?? false
-    case "execute": call?.object("rawInput")?.string("command").map { command in
-        AutoModeCommands.allows(
-          command, in: auto?.directory ?? NSHomeDirectory(),
-          cwd: call?.object("rawInput")?.string("cwd"), autoMode: true
-        )
-      } ?? false
-    default: false
-    }
-    let isPicture = Self.makesPicture(call)
-    let pictureAllowed = isPicture && lock.withLock {
-      picturesAllowed.contains(sessionID) && wantedOptions[sessionID]?.readOnly != true
-    }
-    if pictureAllowed || (passes && auto?.on == true), let allow = byDecision[.once] {
-      respond(to: id, result: ["outcome": ["outcome": "selected", "optionId": allow]])
-      return
-    }
+    let isPicture = Self.makesPicture(params.object("toolCall"))
 
     let requestID = params.object("toolCall")?.string("toolCallId") ?? UUID().uuidString
     lock.withLock {
@@ -732,9 +766,20 @@ final class ACPClient: AgentClient, @unchecked Sendable {
         resources: asked.resources,
         savePatterns: [],
         toolCallID: tool?.string("toolCallId"),
-        offersAlways: byDecision[.always] != nil || (isPicture && byDecision[.once] != nil)
+        offersAlways: byDecision[.always] != nil,
+        alwaysReach: byDecision[.always] == nil ? nil : Self.alwaysReach(of: tool),
+        offersRejectAlways: byDecision[.rejectAlways] != nil
       ))
     )))
+  }
+
+  /// Measured on 1.0.92: whatever its label says, Grok's "always" remembers that exact
+  /// command, in every Grok chat, past a restart of the process.
+  static func alwaysReach(of tool: JSONObject?) -> String {
+    guard let command = tool?.object("rawInput")?.string("command"), !command.isEmpty else {
+      return String(localized: "every Grok chat")
+    }
+    return String(localized: "every Grok chat, for \(command)")
   }
 
   static func makesPicture(_ tool: JSONObject?) -> Bool {
@@ -912,8 +957,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
           let update = params.object("update") else { return }
 
     if update.string("sessionUpdate") == "current_mode_update" {
-      let planning = update.string("currentModeId") == "plan"
-      lock.withLock { sessions[sessionID]?.planning = planning }
+      let mode = update.string("currentModeId") ?? "default"
+      lock.withLock {
+        sessions[sessionID]?.modeID = mode
+        sessions[sessionID]?.planning = mode == "plan"
+      }
       return
     }
     if update.string("sessionUpdate") == "available_commands_update" {
@@ -938,10 +986,19 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       case "failed": .failed
       default: .running
       }
+      if let path = update.object("rawInput").flatMap({ agent.planFile?($0) }) {
+        lock.withLock { sessions[sessionID]?.planFile = path }
+      }
+      let id = "\(replyID)-\(toolID)"
+      let known = lock.withLock { () -> AgentActivity? in
+        guard let parts = sessions[sessionID]?.messages.first(where: { $0.id == replyID })?.parts else { return nil }
+        for case let .activity(activity) in parts where activity.id == id { return activity }
+        return nil
+      }
       let activity = AgentActivity(
-        id: "\(replyID)-\(toolID)",
-        name: update.string("title") ?? update.string("kind") ?? "tool",
-        summary: update.string("kind"),
+        id: id,
+        name: update.string("title") ?? known?.name ?? update.string("kind") ?? "tool",
+        summary: update.string("kind") ?? known?.summary,
         state: state
       )
       upsert(.activity(activity), in: sessionID, replyID: replyID)
@@ -1082,5 +1139,156 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     return answer.output
       .trimmingCharacters(in: .whitespacesAndNewlines)
       .components(separatedBy: .newlines).first
+  }
+}
+
+/// One CLI run as two processes, where a permission mode is a launch flag for the whole
+/// process: each chat runs in the process of its mode and moves before its next send.
+final class ModeSplitClient: AgentClient, @unchecked Sendable {
+  private let main: AgentClient
+  private let second: AgentClient
+  private let runsInSecond: @Sendable (String?) -> Bool
+  private let lock = NSLock()
+  private var placedInSecond: Set<String> = []
+
+  init(main: AgentClient, second: AgentClient, runsInSecond: @escaping @Sendable (String?) -> Bool) {
+    self.main = main
+    self.second = second
+    self.runsInSecond = runsInSecond
+  }
+
+  var provider: AgentId { main.provider }
+  var capabilities: AgentCapabilities { main.capabilities }
+  var modelListLifetime: TimeInterval { main.modelListLifetime }
+
+  private func wantsSecond(_ options: AgentSessionOptions) -> Bool {
+    !options.readOnly && runsInSecond(options.permissionMode)
+  }
+
+  private func client(for sessionID: String) -> AgentClient {
+    lock.withLock { placedInSecond.contains(sessionID) } ? second : main
+  }
+
+  func probe() async -> AgentAvailability { await main.probe() }
+  func availableModels() async throws -> [AgentModelOption] { try await main.availableModels() }
+  func makeSessionID() -> String { main.makeSessionID() }
+
+  func createSession(id: String, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
+    let inSecond = wantsSecond(options)
+    let info = try await (inSecond ? second : main).createSession(id: id, options: options)
+    lock.withLock { placedInSecond.toggle(info.id, on: inSecond) }
+    return info
+  }
+
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    let inSecond = wantsSecond(options)
+    let wasInSecond = lock.withLock { placedInSecond.contains(id) }
+    if inSecond != wasInSecond {
+      await (wasInSecond ? second : main).release(sessionID: id)
+      lock.withLock { placedInSecond.toggle(id, on: inSecond) }
+    }
+    try await (inSecond ? second : main).prepareSession(id, options: options)
+  }
+
+  func loadSession(id: String) async throws -> RemoteSessionSnapshot {
+    try await client(for: id).loadSession(id: id)
+  }
+
+  func send(messageID: String, text: String, attachments: [OutgoingAttachment], to sessionID: String) async throws {
+    try await client(for: sessionID).send(messageID: messageID, text: text, attachments: attachments, to: sessionID)
+  }
+
+  func messageExists(id: String, in sessionID: String) async throws -> Bool {
+    try await client(for: sessionID).messageExists(id: id, in: sessionID)
+  }
+
+  func stop(sessionID: String) async throws { try await client(for: sessionID).stop(sessionID: sessionID) }
+
+  func answerQuestion(requestID: String, sessionID: String, answers: [[String]]) async throws {
+    try await client(for: sessionID).answerQuestion(requestID: requestID, sessionID: sessionID, answers: answers)
+  }
+
+  func rejectQuestion(requestID: String, sessionID: String) async throws {
+    try await client(for: sessionID).rejectQuestion(requestID: requestID, sessionID: sessionID)
+  }
+
+  func answerPermission(
+    requestID: String, sessionID: String, decision: PermissionDecision, message: String?
+  ) async throws {
+    try await client(for: sessionID).answerPermission(
+      requestID: requestID, sessionID: sessionID, decision: decision, message: message)
+  }
+
+  func answerPlan(requestID: String, sessionID: String, decision: PlanDecision, feedback: String?) async throws {
+    try await client(for: sessionID).answerPlan(
+      requestID: requestID, sessionID: sessionID, decision: decision, feedback: feedback)
+  }
+
+  func events() -> AsyncStream<AgentEventEnvelope> {
+    let streams = [main.events(), second.events()]
+    return AsyncStream { continuation in
+      let tasks = streams.map { stream in
+        Task {
+          for await event in stream { continuation.yield(event) }
+        }
+      }
+      continuation.onTermination = { _ in tasks.forEach { $0.cancel() } }
+    }
+  }
+
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {
+    try await client(for: sessionID).setPermissionMode(mode, sessionID: sessionID)
+  }
+
+  func missedAnything(sessionID: String) async -> Bool? { await client(for: sessionID).missedAnything(sessionID: sessionID) }
+  func usageLimits() async -> AgentUsage? { await main.usageLimits() }
+  func contextUsage(sessionID: String) async -> AgentContextUsage? {
+    await client(for: sessionID).contextUsage(sessionID: sessionID)
+  }
+  func compact(sessionID: String) async throws { try await client(for: sessionID).compact(sessionID: sessionID) }
+  func commands(folder: String) async -> [AgentCommand] { await main.commands(folder: folder) }
+
+  func previewUndo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    try await client(for: sessionID).previewUndo(sessionID: sessionID, question: question, directory: directory)
+  }
+
+  func undo(sessionID: String, question: Int, directory: String) async throws -> FileUndo {
+    try await client(for: sessionID).undo(sessionID: sessionID, question: question, directory: directory)
+  }
+
+  func steer(messageID: String, text: String, to sessionID: String) async throws {
+    try await client(for: sessionID).steer(messageID: messageID, text: text, to: sessionID)
+  }
+
+  func activityHistory() async -> AgentActivityHistory? { await main.activityHistory() }
+
+  func shutdown() async {
+    await main.shutdown()
+    await second.shutdown()
+  }
+
+  func release(sessionID: String) async {
+    await client(for: sessionID).release(sessionID: sessionID)
+    lock.withLock { _ = placedInSecond.remove(sessionID) }
+  }
+
+  func restartIdleProcess() async {
+    await main.restartIdleProcess()
+    await second.restartIdleProcess()
+  }
+
+  func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
+    await client(for: sessionID).chatTitle(sessionID: sessionID, material: material)
+  }
+
+  func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?) {
+    main.setConversationResolver(resolve)
+    second.setConversationResolver(resolve)
+  }
+}
+
+extension Set {
+  mutating func toggle(_ member: Element, on: Bool) {
+    if on { insert(member) } else { remove(member) }
   }
 }

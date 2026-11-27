@@ -4,7 +4,7 @@ import XCTest
 final class PlanModeTests: XCTestCase {
   func testClaudeCodePlansInPlanModeAndOtherwiseInTheChatsOwn() {
     XCTAssertEqual(ClaudeCodeClient.permissionMode(for: AgentSessionOptions(directory: "/", planMode: true)), "plan")
-    XCTAssertEqual(ClaudeCodeClient.permissionMode(for: AgentSessionOptions(directory: "/", autoApprove: true)), "auto")
+    XCTAssertEqual(ClaudeCodeClient.permissionMode(for: AgentSessionOptions(directory: "/", permissionMode: "acceptEdits")), "acceptEdits")
     XCTAssertEqual(ClaudeCodeClient.permissionMode(for: AgentSessionOptions(directory: "/")), "default")
   }
 
@@ -24,23 +24,19 @@ final class PlanModeTests: XCTestCase {
   }
 
   func testAntigravityPlanIsMarkdownInItsBrain() {
-    let brain = AntigravityToolPolicy.brain
+    let brain = AntigravityClient.brain
     XCTAssertTrue(AntigravityClient.isPlanFile(brain + "/c1/implementation_plan.md"))
     XCTAssertTrue(AntigravityClient.isPlanFile(brain + "/c1/plan.md"))
     XCTAssertFalse(AntigravityClient.isPlanFile(brain + "/c1/notes.txt"))
     XCTAssertFalse(AntigravityClient.isPlanFile("/tmp/plan.md"))
   }
 
-  func testTheGateLetsAntigravityWriteItsOwnNotesOnly() {
-    let brain = AntigravityToolPolicy.brain
-    let ownNote = AntigravityToolPolicy.verdict(
-      tool: "write_file", arguments: JSONObject(["Path": brain + "/c1/plan.md", "Content": "x\ny"]),
-      directory: "/work", autoApprove: false, granted: [])
-    XCTAssertEqual(ownNote, .allow)
-    let elsewhere = AntigravityToolPolicy.verdict(
-      tool: "write_to_file", arguments: JSONObject(["TargetFile": "/elsewhere/a.txt"]),
-      directory: "/work", autoApprove: false, granted: [])
-    XCTAssertNotEqual(elsewhere, .allow)
+  func testAntigravityRunsTheChatsModeAndPlansInPlan() {
+    let agent = ACPAgent.antigravity(transcriptRoot: URL(fileURLWithPath: "/tmp"), skipsPermissions: false)
+    XCTAssertEqual(agent.modeID(AgentSessionOptions(directory: "/", permissionMode: "accept-edits")), "accept-edits")
+    XCTAssertEqual(agent.modeID(AgentSessionOptions(directory: "/", permissionMode: "skip")), "default")
+    XCTAssertEqual(agent.modeID(AgentSessionOptions(directory: "/", permissionMode: "auto", planMode: true)), "plan")
+    XCTAssertEqual(agent.modeID(AgentSessionOptions(directory: "/", permissionMode: "auto", readOnly: true)), "default")
   }
 }
 

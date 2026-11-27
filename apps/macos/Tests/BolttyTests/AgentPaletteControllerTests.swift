@@ -58,9 +58,11 @@ final class AgentPaletteControllerTests: XCTestCase {
       selection: ModelSelection(providerID: "claude", modelID: "opus", displayName: "Opus"), isDefault: true)
     conversations.modelMenus[id] = BolttyAIModelMenu(
       agent: .claude, models: [opus], current: opus, goneName: nil,
-      efforts: [AgentEffortOption(value: "high")], effort: "high", autoMode: true)
+      efforts: [AgentEffortOption(value: "high")], effort: "high",
+      permissionModes: PermissionMode.ladder(for: .claude),
+      permissionMode: PermissionMode.resolved("auto", for: .claude))
     conversations.previews[id] = BolttyAISessionPreview(
-      id: id, title: chat.title, agent: .claude, state: .finished, body: "Done.", autoMode: true,
+      id: id, title: chat.title, agent: .claude, state: .finished, body: "Done.",
       modelChip: BolttyAIModelChip(name: "Opus", effort: "High", help: ""))
     controller.show()
     defer { controller.hide() }
@@ -72,11 +74,12 @@ final class AgentPaletteControllerTests: XCTestCase {
     let menu = try XCTUnwrap(controller.modelMenu())
     XCTAssertEqual(menu.items.first?.title, "Opus")
     XCTAssertEqual(menu.items.first?.state, .on)
-    let auto = try XCTUnwrap(menu.items.first { $0.title == "Auto Mode" })
-    XCTAssertEqual(auto.state, .on, "a chat started in Auto Mode shows it")
-    _ = auto.target?.perform(auto.action)
-    XCTAssertEqual(conversations.autoApproveChanges.map(\.id), [id])
-    XCTAssertEqual(conversations.autoApproveChanges.map(\.enabled), [false])
+    let auto = try XCTUnwrap(menu.items.first { $0.title == "Auto" })
+    XCTAssertEqual(auto.state, .on, "a chat in Claude Code's Auto shows it")
+    let ask = try XCTUnwrap(menu.items.first { $0.title == "Ask" })
+    _ = ask.target?.perform(ask.action)
+    XCTAssertEqual(conversations.permissionModeChanges.map(\.id), [id])
+    XCTAssertEqual(conversations.permissionModeChanges.map(\.mode), ["default"])
   }
 
   func testTheFirstChatOpenedAfterLaunchShowsItsTranscript() throws {

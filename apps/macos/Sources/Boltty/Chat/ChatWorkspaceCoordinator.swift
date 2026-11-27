@@ -24,7 +24,7 @@ final class ChatWorkspaceCoordinator {
   var routesAutomatically: () -> Bool = { false }
   var defaultModelID: (String) -> String? = { _ in nil }
   var defaultEffortID: (String) -> String? = { _ in nil }
-  var defaultAutoApprove: (String) -> Bool = { _ in false }
+  var defaultPermissionMode: (String) -> String? = { _ in nil }
 
   init(
     store: ConversationStore,
@@ -217,7 +217,7 @@ final class ChatWorkspaceCoordinator {
     let start = newChatSettings(for: next)
     engine.handOver(
       conversationID: id, to: next, model: start.model, effort: start.effort,
-      autoApprove: start.autoApprove)
+      permissionMode: start.permissionMode)
     previousStates[id] = .idle
     sendPanelPrompt(send.prompt, pictures: send.pictures, to: id)
     return true
@@ -225,13 +225,11 @@ final class ChatWorkspaceCoordinator {
 
   private func newChatSettings(
     for provider: String
-  ) -> (model: ModelSelection?, effort: String?, autoApprove: Bool) {
+  ) -> (model: ModelSelection?, effort: String?, permissionMode: String?) {
     var model = resolvedDefaultModel(for: provider)
     let effort = resolvedDefaultEffort(for: provider, model: model)
     if model == nil, effort != nil { model = modelOption(for: provider, model: nil)?.selection }
-    let autoApprove = engine.registry.capabilities(forProviderID: provider).contains(.autoApproval)
-      && defaultAutoApprove(provider)
-    return (model, effort, autoApprove)
+    return (model, effort, defaultPermissionMode(provider))
   }
 
   func prepareAskBolttyConversation(
@@ -306,7 +304,7 @@ final class ChatWorkspaceCoordinator {
       providerID: provider,
       model: start.model,
       reasoningEffort: start.effort,
-      autoApprove: start.autoApprove
+      permissionMode: start.permissionMode
     )
     if handsOver {
       automaticSends[conversation.id] = AutomaticSend(prompt: prompt, pictures: pictures, tried: [provider])

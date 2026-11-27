@@ -313,20 +313,6 @@ struct AgentsSettingsPage: View {
     .task { await model.refreshRouting() }
   }
 
-  static func autoModeNote(for agent: AgentId) -> String {
-    String(localized: "Auto Mode: \(autoModeReach(for: agent)) Applies to new chats.")
-  }
-
-  static func autoModeReach(for agent: AgentId) -> String {
-    switch agent {
-    case .codex:
-      String(localized: "Codex works inside its workspace sandbox without asking; its plugins' own requests, such as controlling an app, still ask.")
-    case .claude:
-      String(localized: "Claude Code decides what is safe to run and asks only about the rest.")
-    default:
-      String(localized: "edits in the chat's folder, and commands that only read, build, test or change files there, go through without asking. Running a script by itself, and anything else, asks. A build or a test runs the folder's own code.")
-    }
-  }
 }
 
 extension AgentSettingsRow {
@@ -339,7 +325,7 @@ extension AgentSettingsRow {
     if let selectedEffort, let effort = effortOptions.first(where: { $0.value == selectedEffort }) {
       parts.append(effort.label)
     }
-    if offersAutoApproval, autoApprove { parts.append(String(localized: "Auto Mode")) }
+    if let permissionMode, permissionMode != permissionModes.first { parts.append(permissionMode.title) }
     return parts.isEmpty ? String(localized: "Ready") : parts.joined(separator: " · ")
   }
 
@@ -472,10 +458,10 @@ private struct AgentSettingsDetail: View {
       if row.enabled {
         Section {
           if row.isReady, row.offersModels { modelRows }
-          if row.isReady, row.offersAutoApproval { permissions }
+          if row.isReady, !row.permissionModes.isEmpty { permissions }
         } footer: {
-          if row.isReady, row.offersAutoApproval {
-            SettingsNote(AgentsSettingsPage.autoModeNote(for: row.agent))
+          if row.isReady, let mode = row.permissionMode, mode != row.permissionModes.first {
+            SettingsNote(mode.summary)
           }
         }
       }
@@ -578,12 +564,13 @@ private struct AgentSettingsDetail: View {
     Picker(
       "Permissions",
       selection: Binding(
-        get: { row.autoApprove },
-        set: { model.setAutoApprove($0, for: row.agent) }
+        get: { row.permissionMode?.id ?? row.permissionModes.first?.id ?? "" },
+        set: { model.setPermissionMode($0, for: row.agent) }
       )
     ) {
-      Text("Ask").tag(false)
-      Text("Auto Mode").tag(true)
+      ForEach(row.permissionModes) { mode in
+        Text(mode.title).tag(mode.id)
+      }
     }
     .pickerStyle(.menu)
     .accessibilityIdentifier("boltty.settings.permissions.\(row.agent.rawValue)")
@@ -637,7 +624,7 @@ struct UsageSettingsPage: View {
   var body: some View {
     let rows = model.usageRows
     Group {
-      if rows.isEmpty, model.engine.store.conversations.isEmpty {
+      if rows.isEmpty {
         ContentUnavailableView {
           Label {
             Text("No usage yet")
@@ -648,7 +635,6 @@ struct UsageSettingsPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       } else {
         Form {
-          UsageOverviewSection(store: model.engine.store)
           ForEach(rows) { row in
             Section {
               usageRow(row)

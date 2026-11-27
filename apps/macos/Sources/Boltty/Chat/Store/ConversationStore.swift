@@ -95,7 +95,7 @@ final class ConversationStore: ObservableObject {
     providerID: String = AgentId.opencode.rawValue,
     model: ModelSelection? = nil,
     reasoningEffort: String? = nil,
-    autoApprove: Bool = false,
+    permissionMode: String? = nil,
     readOnly: Bool = false,
     isAskBoltty: Bool = false
   ) -> Conversation {
@@ -107,7 +107,7 @@ final class ConversationStore: ObservableObject {
       workingDirectory: workingDirectory,
       model: model,
       reasoningEffort: reasoningEffort,
-      autoApprove: autoApprove,
+      permissionMode: permissionMode,
       createdAt: clock(),
       updatedAt: clock()
     )
@@ -249,8 +249,8 @@ final class ConversationStore: ObservableObject {
     update(id) { $0.reasoningEffort = effort }
   }
 
-  func setAutoApprove(_ enabled: Bool, for id: UUID) {
-    update(id) { $0.autoApprove = enabled }
+  func setPermissionMode(_ mode: String?, for id: UUID) {
+    update(id) { $0.permissionMode = mode }
   }
 
   func setForkedFrom(_ point: ForkPoint?, for id: UUID) {
@@ -285,7 +285,7 @@ final class ConversationStore: ObservableObject {
   }
 
   func moveToProvider(
-    _ providerID: String, model: ModelSelection?, effort: String?, autoApprove: Bool, for id: UUID
+    _ providerID: String, model: ModelSelection?, effort: String?, permissionMode: String?, for id: UUID
   ) {
     guard conversation(id: id) != nil else { return }
     update(id) {
@@ -293,7 +293,7 @@ final class ConversationStore: ObservableObject {
       $0.remoteSessionID = nil
       $0.model = model
       $0.reasoningEffort = effort
-      $0.autoApprove = autoApprove
+      $0.permissionMode = permissionMode
       $0.lastKnownState = .idle
     }
     transcripts[id] = ConversationTranscript()

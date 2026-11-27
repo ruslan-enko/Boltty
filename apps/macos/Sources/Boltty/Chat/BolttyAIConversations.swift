@@ -58,7 +58,9 @@ protocol BolttyAIConversations: AnyObject {
 
   func canSteer(_ id: UUID) -> Bool
 
-  func setAutoApprove(_ enabled: Bool, for id: UUID)
+  func setPermissionMode(_ mode: String?, for id: UUID)
+
+  func cyclePermissionMode(for id: UUID)
 
   func modelMenu(for id: UUID) -> BolttyAIModelMenu?
 
@@ -138,7 +140,8 @@ extension BolttyAIConversations {
     queueFollowUp(prompt, to: id)
   }
   func canSteer(_ id: UUID) -> Bool { false }
-  func setAutoApprove(_ enabled: Bool, for id: UUID) {}
+  func setPermissionMode(_ mode: String?, for id: UUID) {}
+  func cyclePermissionMode(for id: UUID) {}
   func modelMenu(for id: UUID) -> BolttyAIModelMenu? { nil }
   func chooseModel(_ option: AgentModelOption, for id: UUID) {}
   func chooseEffort(_ effort: String?, for id: UUID) {}
@@ -303,8 +306,16 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     Task { @MainActor [engine] in await engine.compact(conversationID: id) }
   }
 
-  func setAutoApprove(_ enabled: Bool, for id: UUID) {
-    Task { @MainActor [engine] in await engine.setAutoApprove(enabled, for: id) }
+  func setPermissionMode(_ mode: String?, for id: UUID) {
+    Task { @MainActor [engine] in await engine.setPermissionMode(mode, for: id) }
+  }
+
+  func cyclePermissionMode(for id: UUID) {
+    let ladder = engine.permissionModes(for: id)
+    guard ladder.count > 1, let current = engine.permissionMode(for: id),
+          let index = ladder.firstIndex(of: current)
+    else { return }
+    setPermissionMode(ladder[(index + 1) % ladder.count].id, for: id)
   }
 
   func modelMenu(for id: UUID) -> BolttyAIModelMenu? {
@@ -322,7 +333,8 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       efforts: capabilities.contains(.modelSwitching) ? engine.effortOptions(for: id) : [],
       effort: conversation.reasoningEffort,
       canResetEffort: capabilities.contains(.effortReset),
-      autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil,
+      permissionModes: engine.permissionModes(for: id),
+      permissionMode: engine.permissionMode(for: id),
       planMode: capabilities.contains(.planMode) && !conversation.readOnly ? conversation.planMode : nil
     )
   }
@@ -345,7 +357,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
 
   private func modelChip(for conversation: Conversation) -> BolttyAIModelChip? {
     guard let menu = modelMenu(for: conversation.id),
-          !menu.models.isEmpty || conversation.model != nil || menu.autoMode != nil
+          !menu.models.isEmpty || conversation.model != nil || !menu.permissionModes.isEmpty
     else { return nil }
     let name = menu.goneName ?? menu.current?.selection.displayName
       ?? conversation.model?.displayName ?? String(localized: "Default")
@@ -355,10 +367,12 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
     var help = menu.goneName == nil
       ? String(localized: "Model and permissions for this chat")
       : String(localized: "\(menu.agent.shortDisplayName) no longer offers this model. Choose another.")
-    if menu.autoMode == true { help += "\n" + String(localized: "Auto Mode is on") }
+    let mode = menu.permissionMode.flatMap { $0 == menu.permissionModes.first ? nil : $0 }
+    if let mode { help += "\n" + mode.summary }
     return BolttyAIModelChip(
       name: name,
       effort: effort,
+      mode: mode?.title,
       isGone: menu.goneName != nil,
       help: help
     )
@@ -452,7 +466,6 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         || (conversation.remoteSessionID != nil && capabilities.canEndTurn),
       stopIsAbrupt: capabilities.endingTurnIsAbrupt,
       canSteer: pending == nil && engine.canSteer(id),
-      autoMode: capabilities.contains(.autoApproval) ? conversation.autoApprove : nil,
       modelChip: modelChip(for: conversation),
       notice: engine.notices[id]?.text,
       folderIsGone: engine.notices[id]?.folderIsGone == true,
@@ -606,15 +619,23 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
           ),
           AgentQuestion.Option(
             label: String(localized: "Always Allow"),
-            detail: AgentQuestion.alwaysAllowScope(savePatterns: prompt.savePatterns),
+            detail: prompt.alwaysReach ?? AgentQuestion.alwaysAllowScope(savePatterns: prompt.savePatterns),
             value: PermissionDecision.always.rawValue
           ),
           AgentQuestion.Option(
             label: String(localized: "Deny"),
             detail: nil,
             value: PermissionDecision.reject.rawValue
-          )
-        ].filter { prompt.offersAlways != false || $0.value != PermissionDecision.always.rawValue },
+          ),
+          AgentQuestion.Option(
+            label: String(localized: "Never Allow"),
+            detail: nil,
+            value: PermissionDecision.rejectAlways.rawValue
+          ),
+        ].filter {
+          ($0.value != PermissionDecision.always.rawValue || prompt.offersAlways != false)
+            && ($0.value != PermissionDecision.rejectAlways.rawValue || prompt.offersRejectAlways == true)
+        },
         allowsMultiple: false,
         allowsCustom: false
       )
