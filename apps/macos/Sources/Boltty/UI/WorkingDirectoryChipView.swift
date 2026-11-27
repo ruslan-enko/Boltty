@@ -342,23 +342,14 @@ final class PlanUsageRingView: PaletteIconButton {
     let stroke = ringOuterDiameter * AgentPaletteMetrics.planRingStrokeRatio
     let diameter = ringOuterDiameter - stroke
     let center = NSPoint(x: bounds.midX, y: bounds.midY)
-    let rect = NSRect(x: center.x - diameter / 2, y: center.y - diameter / 2,
-                      width: diameter, height: diameter)
-    let track = NSBezierPath(ovalIn: rect)
-    track.lineWidth = stroke
-    AgentPaletteMetrics.planRingTrack.setStroke()
-    track.stroke()
     let percent = shownPercent
-    guard percent > 0 else { return }
-    let top: CGFloat = isFlipped ? 270 : 90
-    let sweep = CGFloat(percent) * 3.6
-    let arc = NSBezierPath()
-    arc.lineWidth = stroke
-    arc.lineCapStyle = .round
-    arc.appendArc(withCenter: center, radius: diameter / 2, startAngle: top,
-                  endAngle: isFlipped ? top + sweep : top - sweep, clockwise: !isFlipped)
     let nearlySpent = percent >= AgentPaletteMetrics.planRingWarningPercent
-    (nearlySpent ? BolttyBrand.accentOnGlass : contentTintColor ?? tintForTesting).setStroke()
-    arc.stroke()
+    SegmentedUsageMeter.drawRing(
+      center: center, radius: diameter / 2, stroke: stroke, flipped: isFlipped,
+      segments: showsContext ? 1 : (usage?.pressing).map { UsageSegments.count(for: $0.kind) } ?? 1,
+      used: Double(percent) / 100,
+      fill: nearlySpent ? BolttyBrand.accentOnGlass : contentTintColor ?? tintForTesting,
+      track: AgentPaletteMetrics.planRingTrack
+    )
   }
 }

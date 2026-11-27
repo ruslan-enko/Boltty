@@ -1476,14 +1476,17 @@ processes, so it is Boltty's to give.
   shell (TCC would attribute the request to the shell's app).
 - **The menu-bar mark** (`StatusBarIconRenderer`, the hexagon with soft corners)
   stands still. Moves of its own, blinks and glances, were tried and removed; work is
-  the notch face's to show. A click opens **Limits** under it
-  (`UsageGlanceController`, rows from `ChatWorkspaceCoordinator.usageGlanceRows`):
-  each listed agent's face and plan windows on frosted panel glass (clear let the
-  window behind read through), straight on the glass with a gap between agents
-  (a filled well round each took room and said nothing), read again as it opens; a click outside or Escape
-  closes it. On the automatic route the agent a new chat would go to now says
-  "Next chat" beside its name. Its foot has Settings › Usage and More, which is the old menu; a right
-  or Control-click on the mark opens that menu at once.
+  the notch face's to show. Any click opens one system menu (`StatusBarController`):
+  **Limits** first (`LimitsMenu`, rows from `ChatWorkspaceCoordinator.usageGlanceRows`),
+  each listed agent one line: its face (a still, `MascotSnapshotCache`), its name (semibold for the agent a new chat
+  would go to on the automatic route, "Next chat" on its help tag) and a segmented
+  meter with the percent used per plan window (title and reset on its help tag),
+  read again as it opens and redrawn while open; an agent with no plan window to
+  show (signed out, none reported, OpenCode's free models) is left out, and with
+  none the Limits heading goes too; then Usage in Settings, and below
+  them Boltty AI, working chats, unread, updates, Settings and Quit. A panel of its
+  own on panel glass with the menu behind a More disc was there and was removed:
+  two layers to reach Quit.
 - **Settings**: a sidebar of pages (General, Agents, Usage, Voice, Ask Boltty,
   Shortcuts), standard parts but for what is selected: the sidebar's rows and
   the segments are drawn here, since a `List`'s selection and a segmented
@@ -1505,6 +1508,11 @@ processes, so it is Boltty's to give.
   either way so its row does not jump), and a built-in key is plain text, so what
   can be clicked shows; Shortcuts has a filter over its sections
   (`SettingsFilterField`). A whole agent row opens its page, its padding too.
+- **Settings says only what matters**: a row's title, its control, and a note
+  only where something is wrong, waits on the person, costs something (a relaunch,
+  deleted chats) or leaves the Mac (what Ask Boltty sends, what Auto Mode lets
+  through). Notes explaining what a switch obviously does were everywhere and were
+  removed: they read as written by a machine.
 - **A setting that changes what is seen shows it** (`SettingsStage`): the thing
   itself, a real view of the product in an `NSViewRepresentable`, over the
   person's own desktop (`DesktopPicture`, read once), changing as the control
@@ -1546,14 +1554,27 @@ processes, so it is Boltty's to give.
   (2026-11). It runs on the person's own PATH, since the installers add their folder
   to the shell's profile only when PATH lacks it. `opencode.ai/install` is
   OpenCode 1; Boltty takes `/v2/install`. Signing in stays the person's, in a terminal.
+- **A plan window's meter is segmented** wherever it stands (the tray menu, Usage,
+  the list's capsule, the composer's ring, cut into arcs by its most pressing window
+  and whole for the chat's context): one segment per hour of a window shorter than a day, per day
+  otherwise (5-hour 5, weekly 7, 30-day 30), each a capsule (a ring's arcs with round
+  ends), the fill running across them and fading out over its last 30% (48 pt at
+  most) on a smootherstep, across segment edges (`UsageSegments`, `SegmentedUsageMeter`, `UsageMeter(segments:)`).
+  Segments shorter than 3 pt give way to one bar; a window of no length (OpenCode's
+  named ones, a budget) is one bar.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar
   4 high and flat in the accent, `UsageMeter`; in black it read as no brand at
-  all), and an overview counted
-  off every CLI's own records (`AgentStatisticsReader`, cached per file in
-  `Application Support/Boltty/Usage/statistics.json`); a chart of 14 days under
-  each agent was there and was removed. Never summed across
-  agents' different units. Signing in happens in a terminal, so the page asks
+  all; never summed across agents' different units), and **Activity**: this
+  week in Boltty's own chats (`BolttyWeek`, off `ConversationStore`): how many
+  chats, in the headline size, over the week's days, each a stack of the faces of
+  the agents that took that day's chats (26, overlapping, newest on top, five then
+  "+N"; the stacks as tall as the week's busiest day), a face growing under the
+  pointer with the chat's name on its help tag. No subtitle and no footnote. An overview of every CLI's
+  history on the Mac (sessions, messages, tokens, a year of days, models, a book
+  comparison; `AgentStatisticsReader`) was there and was removed: it counted
+  chats Boltty never ran, and read as a dashboard. `Application
+  Support/Boltty/Usage/statistics.json` is its cache, inert on disk. Signing in happens in a terminal, so the page asks
   every CLI again whether it is signed in before reading limits: when shown,
   when its window comes forward (at most every 30 s), and on Refresh. A
   signed-out agent's row is its face, name and `AgentId.signInCommand`

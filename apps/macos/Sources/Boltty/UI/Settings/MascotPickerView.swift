@@ -76,10 +76,6 @@ struct MascotPickerView: View {
           .frame(width: 96, height: 96)
         Text(current.displayName)
           .font(BolttyInterfaceTypography.headline)
-        Text("\(agent.displayName) wears this on its tab, above the prompt and in the notch.")
-          .font(BolttyInterfaceTypography.callout)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)
       }
 

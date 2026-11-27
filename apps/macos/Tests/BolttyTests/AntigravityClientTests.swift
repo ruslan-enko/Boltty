@@ -61,36 +61,6 @@ final class AntigravityClientTests: XCTestCase {
     XCTAssertEqual(try AntigravityTranscript.read(at: file).map(\.plainText), ["still here"])
   }
 
-  func testUsageCountsThePersonAndEachModelCallWithItsModelsName() throws {
-    let stamp = Proto.bytes(5, Proto.join(
-      Proto.bytes(1, Proto.varint(1, 1_792_100_573)),
-      Proto.bytes(9, Proto.join(
-        Proto.varint(1, 1319), Proto.varint(2, 100), Proto.varint(3, 20), Proto.varint(5, 300),
-        Proto.varint(9, 7)
-      ))
-    ))
-    let file = try makeConversation(id: "used", steps: [
-      (14, 3, Proto.bytes(19, Proto.string(2, "hello"))),
-      (15, 3, Proto.join(stamp, Proto.bytes(20, Proto.string(1, "hi")))),
-      (132, 3, Proto.bytes(5, Proto.bytes(4, Proto.string(1, "call")))),
-    ], generations: [Proto.bytes(1, Proto.join(
-      Proto.varint(3, 1319), Proto.string(19, "gemini-3.8-flash")
-    ))])
-
-    let sessions = AgentStatisticsReader.antigravitySessions(at: file)
-    XCTAssertEqual(sessions.map(\.agent), ["agy"])
-    XCTAssertEqual(sessions.first?.id, "used")
-    let samples = sessions.first?.samples ?? []
-    XCTAssertEqual(samples.reduce(0) { $0 + $1.messages }, 2, "the person and one reply")
-    XCTAssertEqual(samples.reduce(0) { $0 + $1.tokens }, 420, "input, output and cached input")
-    XCTAssertTrue(samples.contains { $0.model == "gemini-3.8-flash" && $0.tokens == 420 })
-  }
-
-  func testAConversationWithNothingSaidCountsNothing() throws {
-    let file = try makeConversation(id: "empty", steps: [], generations: [])
-    XCTAssertEqual(AgentStatisticsReader.antigravitySessions(at: file), [])
-  }
-
   func testEffortSuffixesFoldIntoOneModel() {
     let listing = """
       Fetching available models...

@@ -16,8 +16,6 @@ final class BolttyAISettingsModel: ObservableObject {
   @Published private(set) var modelsByProvider: [String: [AgentModelOption]] = [:]
   @Published private(set) var isLoadingModels = false
   @Published private(set) var isRefreshingUsage = false
-  @Published private(set) var statistics: AgentStatistics?
-  var statisticsReader = AgentStatisticsReader()
 
   var probeHotkey: ((HotkeyBinding) -> HotkeyAvailability)?
   var onReviewAccess: (() -> Void)?
@@ -148,10 +146,8 @@ final class BolttyAISettingsModel: ObservableObject {
       isRefreshingUsage = false
       usageReadAt = Date()
     }
-    async let statistics: Void = refreshStatistics()
     await refreshAgents()
     await engine.refreshActivityHistory()
-    await statistics
   }
 
   func refreshUsageIfStale() async {
@@ -162,12 +158,6 @@ final class BolttyAISettingsModel: ObservableObject {
   private var usageReadAt: Date?
   private var agentsRefresh: Task<Void, Never>?
   static let usageStaleAfter: TimeInterval = 30
-
-  func refreshStatistics() async {
-    let reader = statisticsReader
-    let read = await Task.detached(priority: .utility) { reader.read() }.value
-    if read != statistics { statistics = read }
-  }
 
   var bolttyAIHotkey: HotkeyBinding {
     get { appModel.settings.bolttyAIHotkey }

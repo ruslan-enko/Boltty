@@ -2383,58 +2383,6 @@
         }
       }
     },
-    "%@ share of tokens" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Token-Anteil von %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parte de tokens de %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Part de jetons de %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@のトークンの割合"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@의 토큰 비중"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parcela de tokens de %@"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Частка токенів %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 的 token 占比"
-          }
-        }
-      }
-    },
     "%@ shortcut" : {
       "localizations" : {
         "de" : {
@@ -2541,58 +2489,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ 在这台 Mac 上占用 %2$@。"
-          }
-        }
-      }
-    },
-    "%@ tokens" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ Tokens"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ tokens"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ jetons"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@トークン"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 토큰"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ tokens"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ токенів"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 个 token"
           }
         }
       }
@@ -2755,110 +2651,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未能安装 %1$@：%2$@"
-          }
-        }
-      }
-    },
-    "%@ wears it on its tab, above the prompt and in the notch. No two agents share one." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ trägt es auf seinem Tab, über der Eingabe und an der Notch. Keine zwei Agenten teilen eines."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ lo lleva en su pestaña, sobre el campo y junto a la muesca. No hay dos agentes con el mismo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ le porte sur son onglet, au-dessus de la saisie et près de l’encoche. Deux agents n’ont jamais le même."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@はタブ、入力欄の上、ノッチの横でこれを使います。同じものを使うエージェントはいません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@이(가) 탭, 입력란 위, 노치 옆에서 이 얼굴을 씁니다. 같은 얼굴을 쓰는 에이전트는 없습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ o usa na aba, acima do campo e junto ao entalhe. Dois agentes nunca têm o mesmo."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ носить його на вкладці, над рядком запиту й біля виїмки. Двох однакових немає."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 在它的标签、输入框上方和刘海旁使用它。没有两个智能体使用同一个。"
-          }
-        }
-      }
-    },
-    "%@ wears this on its tab, above the prompt and in the notch." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ trägt dies auf seinem Tab, über der Eingabe und an der Notch."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ lo lleva en su pestaña, sobre el campo y junto a la muesca."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ le porte sur son onglet, au-dessus de la saisie et près de l’encoche."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@はタブ、入力欄の上、ノッチの横でこれを使います。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@이(가) 탭, 입력란 위, 노치 옆에서 이 얼굴을 씁니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ o usa na aba, acima do campo e junto ao entalhe."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ носить його на вкладці, над рядком запиту й біля виїмки."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ 在它的标签、输入框上方和刘海旁使用它。"
           }
         }
       }
@@ -3257,58 +3049,6 @@
         }
       }
     },
-    "%@: nothing" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: nichts"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: nada"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ : rien"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: なし"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: 없음"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: nada"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: нічого"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@：无"
-          }
-        }
-      }
-    },
     "%lld %% of %@" : {
       "localizations" : {
         "de" : {
@@ -3527,7 +3267,7 @@
         }
       }
     },
-    "%lld active days" : {
+    "%lld chats" : {
       "localizations" : {
         "de" : {
           "variations" : {
@@ -3535,13 +3275,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld aktiver Tag"
+                  "value" : "%lld Chat"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld aktive Tage"
+                  "value" : "%lld Chats"
                 }
               }
             }
@@ -3553,13 +3293,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld active day"
+                  "value" : "%lld chat"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld active days"
+                  "value" : "%lld chats"
                 }
               }
             }
@@ -3571,19 +3311,19 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld días activos"
+                  "value" : "%lld chats"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld día activo"
+                  "value" : "%lld chat"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld días activos"
+                  "value" : "%lld chats"
                 }
               }
             }
@@ -3595,34 +3335,46 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld jours actifs"
+                  "value" : "%lld conversations"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld jour actif"
+                  "value" : "%lld conversation"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld jours actifs"
+                  "value" : "%lld conversations"
                 }
               }
             }
           }
         },
         "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld日アクティブ"
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 件のチャット"
+                }
+              }
+            }
           }
         },
         "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "활동한 날 %lld일"
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "채팅 %lld개"
+                }
+              }
+            }
           }
         },
         "pt-BR" : {
@@ -3631,19 +3383,19 @@
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld dias ativos"
+                  "value" : "%lld conversas"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld dia ativo"
+                  "value" : "%lld conversa"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld dias ativos"
+                  "value" : "%lld conversas"
                 }
               }
             }
@@ -3655,34 +3407,218 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld активні дні"
+                  "value" : "%lld чати"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld активних днів"
+                  "value" : "%lld чатів"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld активний день"
+                  "value" : "%lld чат"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld активного дня"
+                  "value" : "%lld чату"
                 }
               }
             }
           }
         },
         "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld 个活跃日"
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 个对话"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld chats this week" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Chat diese Woche"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Chats diese Woche"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld chat this week"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld chats this week"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld chats esta semana"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld chat esta semana"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld chats esta semana"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conversations cette semaine"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conversation cette semaine"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conversations cette semaine"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "今週のチャット %lld 件"
+                }
+              }
+            }
+          }
+        },
+        "ko" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "이번 주 채팅 %lld개"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conversas nesta semana"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conversa nesta semana"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conversas nesta semana"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld чати цього тижня"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld чатів цього тижня"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld чат цього тижня"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld чату цього тижня"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "本周 %lld 个对话"
+                }
+              }
+            }
           }
         }
       }
@@ -3843,166 +3779,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 天"
-          }
-        }
-      }
-    },
-    "%lld messages" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Nachricht"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Nachrichten"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld message"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld messages"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld mensajes"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld mensaje"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld mensajes"
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld messages"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld message"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld messages"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld件のメッセージ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "메시지 %lld개"
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld mensagens"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld mensagem"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld mensagens"
-                }
-              }
-            }
-          }
-        },
-        "uk" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld повідомлення"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld повідомлень"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld повідомлення"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld повідомлення"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld 条消息"
           }
         }
       }
@@ -4363,326 +4139,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已用百分之 %lld"
-          }
-        }
-      }
-    },
-    "%lld replies" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Antwort"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Antworten"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld reply"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld replies"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld respuestas"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld respuesta"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld respuestas"
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld réponses"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld réponse"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld réponses"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld件の返信"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "답장 %lld개"
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld respostas"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld resposta"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld respostas"
-                }
-              }
-            }
-          }
-        },
-        "uk" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld відповіді"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld відповідей"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld відповідь"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld відповіді"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld 条回复"
-          }
-        }
-      }
-    },
-    "%lld sessions" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Sitzung"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Sitzungen"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld session"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sessions"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sesiones"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sesión"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sesiones"
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sessions"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld session"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sessions"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld件のセッション"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "세션 %lld개"
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sessões"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sessão"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld sessões"
-                }
-              }
-            }
-          }
-        },
-        "uk" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld сеанси"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld сеансів"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld сеанс"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld сеансу"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld 个会话"
           }
         }
       }
@@ -6109,58 +5565,6 @@
         }
       }
     },
-    "Active days" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktive Tage"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Días activos"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jours actifs"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクティブな日"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "활동한 날"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dias ativos"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Активні дні"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "活跃天数"
-          }
-        }
-      }
-    },
     "Activity" : {
       "localizations" : {
         "de" : {
@@ -6209,58 +5613,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "活动"
-          }
-        }
-      }
-    },
-    "Activity by day" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktivität pro Tag"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actividad por día"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activité par jour"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "日ごとのアクティビティ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "일별 활동"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Atividade por dia"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Активність за днями"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "每日活动"
           }
         }
       }
@@ -6681,58 +6033,6 @@
         }
       }
     },
-    "All Agents" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle Agenten"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todos los agentes"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tous les agents"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "すべてのエージェント"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "모든 에이전트"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todos os agentes"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Усі агенти"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "所有智能体"
-          }
-        }
-      }
-    },
     "Allow" : {
       "localizations" : {
         "de" : {
@@ -6949,22 +6249,10 @@
     },
     "Allow the agent to use “%@”?" : {
       "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дозволити агентові працювати в «%@»?"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dem Agenten erlauben, „%@“ zu verwenden?"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Autoriser l’agent à utiliser « %@ » ?"
           }
         },
         "es" : {
@@ -6973,10 +6261,10 @@
             "value" : "¿Permitir que el agente use «%@»?"
           }
         },
-        "pt-BR" : {
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permitir que o agente use “%@”?"
+            "value" : "Autoriser l’agent à utiliser « %@ » ?"
           }
         },
         "ja" : {
@@ -6985,16 +6273,28 @@
             "value" : "エージェントに「%@」の操作を許可しますか？"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "允许代理使用“%@”？"
-          }
-        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "에이전트가 “%@”을(를) 사용하도록 허용할까요?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permitir que o agente use “%@”?"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дозволити агентові працювати в «%@»?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许代理使用“%@”？"
           }
         }
       }
@@ -7463,58 +6763,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "始终允许"
-          }
-        }
-      }
-    },
-    "Animal Farm" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„Farm der Tiere“"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Rebelión en la granja»"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« La Ferme des animaux »"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『動物農場』"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『동물농장』"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“A Revolução dos Bichos”"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Колгосп тварин»"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "《动物农场》"
           }
         }
       }
@@ -9455,110 +8703,6 @@
         }
       }
     },
-    "Automatic gives a question to the agent new chats go to." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„Automatisch“ gibt eine Frage dem Agenten, an den neue Chats gehen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Automático» da una pregunta al agente al que van los chats nuevos."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« Automatique » confie une question à l’agent qui reçoit les nouvelles discussions."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「自動」は質問を新しいチャットの送り先のエージェントに渡します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "'자동'은 질문을 새 채팅이 가는 에이전트에게 줍니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“Automático” dá uma pergunta ao agente que recebe os novos chats."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Автоматично» віддає запитання агентові, до якого йдуть нові чати."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“自动”会把问题交给接收新聊天的智能体。"
-          }
-        }
-      }
-    },
-    "Automatic gives a question to whoever has the most of their plan left." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„Automatisch“ gibt eine Frage dem, der am meisten von seinem Tarif übrig hat."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Automático» da una pregunta a quien le quede más plan."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« Automatique » confie une question à celui à qui il reste le plus de forfait."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「自動」は質問をプランの残りが最も多いエージェントに渡します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "'자동'은 질문을 요금제가 가장 많이 남은 에이전트에게 줍니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“Automático” dá uma pergunta a quem tem mais plano sobrando."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Автоматично» віддає запитання тому, в кого лишилося найбільше плану."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“自动”会把问题交给套餐剩余最多的智能体。"
-          }
-        }
-      }
-    },
     "Back" : {
       "localizations" : {
         "de" : {
@@ -10403,58 +9547,6 @@
         }
       }
     },
-    "Boltty AI, chats, updates and Quit" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI, Chats, Updates und Beenden"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI, chats, actualizaciones y Salir"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI, discussions, mises à jour et Quitter"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI、チャット、アップデート、終了"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI, 채팅, 업데이트 및 종료"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI, chats, atualizações e Encerrar"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI, чати, оновлення й вихід"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI、聊天、更新和退出"
-          }
-        }
-      }
-    },
     "Boltty Chat – %@" : {
       "localizations" : {
         "de" : {
@@ -10607,58 +9699,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Boltty 历史记录，较早的聊天"
-          }
-        }
-      }
-    },
-    "Boltty asks GitHub once a day and tells you; it installs only when you say so." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty fragt einmal am Tag bei GitHub nach und sagt es dir; installiert wird nur, wenn du es sagst."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty consulta GitHub una vez al día y te avisa; solo instala cuando tú lo dices."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty interroge GitHub une fois par jour et vous prévient ; il n’installe que si vous le demandez."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bolttyは1日1回GitHubを確認してお知らせします。インストールはあなたが指示したときだけです。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty는 하루에 한 번 GitHub를 확인하고 알려줍니다. 설치는 사용자가 원할 때만 합니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Boltty consulta o GitHub uma vez por dia e avisa você; só instala quando você mandar."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty раз на день питає GitHub і каже вам; установлює лише тоді, коли ви скажете."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty 每天查询一次 GitHub 并告诉你；只有你同意时才会安装。"
           }
         }
       }
@@ -11547,58 +10587,6 @@
         }
       }
     },
-    "Boltty starts in the menu bar, with nothing on screen." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty startet in der Menüleiste, ohne etwas anzuzeigen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty se inicia en la barra de menús, sin nada en pantalla."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty démarre dans la barre des menus, sans rien afficher."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bolttyは何も表示せずにメニューバーで起動します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty는 화면에 아무것도 띄우지 않고 메뉴 막대에서 시작합니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Boltty inicia na barra de menus, sem nada na tela."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty запускається в рядку меню, нічого не показуючи."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty 在菜单栏中启动，屏幕上不显示任何内容。"
-          }
-        }
-      }
-    },
     "Boltty works with the CLI agents on this Mac. Install one in Settings." : {
       "localizations" : {
         "de" : {
@@ -11699,58 +10687,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Boltty — 未读对话"
-          }
-        }
-      }
-    },
-    "Both listen at once; each phrase is written in the one that heard it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beide hören gleichzeitig zu; jeder Satz wird in der Sprache geschrieben, die ihn gehört hat."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los dos escuchan a la vez; cada frase la escribe el que la oyó."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les deux écoutent en même temps ; chaque phrase est écrite par celui qui l’a entendue."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "両方が同時に聞き取り、それぞれのフレーズは聞き取った方が書き起こします。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "둘이 동시에 듣고, 각 문장은 그것을 들은 쪽이 적습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os dois escutam ao mesmo tempo; cada frase é escrita pelo que a ouviu."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Слухають обидва одночасно; кожну фразу записує той, хто її почув."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "两者同时聆听；每句话由听到它的那一个写下。"
           }
         }
       }
@@ -13945,58 +12881,6 @@
         }
       }
     },
-    "Clear glass lets the colour behind the panel through; frosted softens it. The backdrop is behind the chat list and open chats: Sky and Space are in the colours of the face shown." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Klares Glas lässt die Farbe hinter dem Panel durch; mattes dämpft sie. Der Hintergrund liegt hinter der Chatliste und offenen Chats: „Himmel“ und „Weltraum“ in den Farben des gezeigten Gesichts."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El cristal transparente deja pasar el color detrás del panel; el esmerilado lo suaviza. El fondo está detrás de la lista de chats y de los chats abiertos: Cielo y Espacio llevan los colores de la cara mostrada."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le verre transparent laisse passer la couleur derrière le panneau ; le dépoli l’adoucit. L’arrière-plan se trouve derrière la liste et les discussions ouvertes : Ciel et Espace prennent les couleurs du visage affiché."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "クリアなガラスはパネルの後ろの色を通し、すりガラスはやわらげます。背景はチャットリストと開いたチャットの後ろにあります。空と宇宙は表示中の顔の色になります。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "투명한 유리는 패널 뒤의 색을 비추고, 반투명 유리는 부드럽게 합니다. 배경은 채팅 목록과 열린 채팅 뒤에 있으며, 하늘과 우주는 표시된 얼굴의 색을 띱니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O vidro transparente deixa passar a cor atrás do painel; o fosco a suaviza. O fundo fica atrás da lista de chats e dos chats abertos: Céu e Espaço ficam nas cores do rosto exibido."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прозоре скло пропускає колір позаду панелі; матове його пом’якшує. Тло — позаду списку чатів і відкритих чатів: «Небо» й «Космос» — у кольорах показаного обличчя."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "透明玻璃会透出面板后面的颜色；磨砂玻璃会柔化它。背景位于聊天列表和打开的聊天后面：天空和太空采用当前所示表情的颜色。"
-          }
-        }
-      }
-    },
     "Clear the filter" : {
       "localizations" : {
         "de" : {
@@ -14045,58 +12929,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除过滤条件"
-          }
-        }
-      }
-    },
-    "Click a grey key, then type the new one — Delete removes it, Esc cancels." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Klick auf eine graue Taste und tippe die neue – die Rückschritttaste löscht sie, Esc bricht ab."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Haz clic en una tecla gris y escribe la nueva: Suprimir la quita, Esc cancela."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cliquez sur une touche grise puis tapez la nouvelle — Supprimer l’efface, Échap annule."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "グレーのキーをクリックして新しいキーを入力します。Deleteで削除、Escでキャンセル。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "회색 키를 클릭한 다음 새 키를 입력하세요 — Delete는 제거, Esc는 취소."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clique numa tecla cinza e digite a nova — Delete a remove, Esc cancela."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Клацніть сіру клавішу й наберіть нову — Delete прибирає її, Esc скасовує."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "点按灰色按键，然后输入新的按键 — Delete 删除，Esc 取消。"
           }
         }
       }
@@ -16073,110 +14905,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法注册这个快捷键 — 另一个 App 刚刚占用了它。"
-          }
-        }
-      }
-    },
-    "Counted from each CLI’s own history on this Mac: what you sent and every reply, and the tokens each CLI wrote down." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gezählt aus dem eigenen Verlauf jedes CLI auf diesem Mac: was du gesendet hast, jede Antwort und die Tokens, die jedes CLI notiert hat."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contado a partir del historial de cada CLI en este Mac: lo que enviaste, cada respuesta y los tokens que anotó cada CLI."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Compté à partir de l’historique de chaque CLI sur ce Mac : ce que vous avez envoyé, chaque réponse et les jetons que chaque CLI a notés."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このMac上の各CLI自身の履歴から集計: 送信した内容、すべての返信、各CLIが記録したトークン。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 Mac에 있는 각 CLI 자체 기록에서 셌습니다: 보낸 내용, 모든 답장, 각 CLI가 기록한 토큰."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contado a partir do histórico de cada CLI neste Mac: o que você enviou, cada resposta e os tokens que cada CLI anotou."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пораховано з власної історії кожного CLI на цьому Маку: що ви надсилали, кожна відповідь і токени, які записав кожен CLI."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "根据这台 Mac 上每个 CLI 自己的历史记录统计：你发送的内容、每条回复，以及每个 CLI 记下的 token。"
-          }
-        }
-      }
-    },
-    "Counting every agent’s history…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verlauf jedes Agenten wird gezählt …"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contando el historial de cada agente…"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Calcul de l’historique de chaque agent…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "各エージェントの履歴を集計中…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "각 에이전트의 기록을 세는 중…"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contando o histórico de cada agente…"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Рахуємо історію кожного агента…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在统计每个智能体的历史记录…"
           }
         }
       }
@@ -18526,58 +17254,6 @@
         }
       }
     },
-    "Every model thinks as little as it can, so answers come quickly." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jedes Modell denkt so wenig wie möglich, damit Antworten schnell kommen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cada modelo piensa lo menos posible, para que las respuestas lleguen rápido."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chaque modèle réfléchit le moins possible, pour des réponses rapides."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "どのモデルもできるだけ短く考えるので、すぐに答えが返ります。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "모든 모델이 최대한 짧게 생각해 답이 빨리 옵니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cada modelo pensa o mínimo possível, para as respostas chegarem rápido."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Кожна модель думає якомога менше, тож відповіді приходять швидко."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "每个模型都尽量少思考，让回答来得更快。"
-          }
-        }
-      }
-    },
     "Every new chat goes to %@. %@" : {
       "localizations" : {
         "de" : {
@@ -18893,58 +17569,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "失败"
-          }
-        }
-      }
-    },
-    "Favorite model" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lieblingsmodell"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modelo favorito"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modèle préféré"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "よく使うモデル"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "가장 많이 쓴 모델"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modelo favorito"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Улюблена модель"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最常用的模型"
           }
         }
       }
@@ -20769,58 +19393,6 @@
         }
       }
     },
-    "Hears 25 languages and tells them apart itself." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hört 25 Sprachen und unterscheidet sie selbst."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oye 25 idiomas y los distingue por sí mismo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entend 25 langues et les distingue tout seul."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "25の言語を聞き取り、自分で区別します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "25개 언어를 듣고 스스로 구별합니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ouve 25 idiomas e os distingue sozinho."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Чує 25 мов і сам їх розрізняє."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "能听 25 种语言，并自行区分。"
-          }
-        }
-      }
-    },
     "Hide" : {
       "localizations" : {
         "de" : {
@@ -21545,58 +20117,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在聊天中"
-          }
-        }
-      }
-    },
-    "In the voice chosen under Voice. Off, the face answers in blips." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In der unter „Stimme“ gewählten Stimme. Aus: Das Gesicht antwortet mit Pieptönen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Con la voz elegida en Voz. Desactivado, la cara responde con pitidos."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Avec la voix choisie dans Voix. Désactivé, le visage répond par des bips."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「声」で選んだ声で。オフのときは顔が電子音で答えます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "'음성'에서 고른 목소리로. 끄면 얼굴이 신호음으로 답합니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Na voz escolhida em Voz. Desativado, o rosto responde com bipes."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Голосом, вибраним у розділі «Голос». Вимкнено — обличчя відповідає звуками."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用在“语音”中选择的声音。关闭时，表情会用提示音回答。"
           }
         }
       }
@@ -22381,64 +20901,6 @@
         }
       }
     },
-    "Last checked %@. %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuletzt geprüft %1$@. %2$@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Last checked %1$@. %2$@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Última comprobación %1$@. %2$@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dernière vérification %1$@. %2$@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最終確認 %1$@。%2$@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "마지막 확인 %1$@. %2$@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Última verificação %1$@. %2$@"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Востаннє перевірено %1$@. %2$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "上次检查于 %1$@。%2$@"
-          }
-        }
-      }
-    },
     "Later" : {
       "localizations" : {
         "de" : {
@@ -22545,22 +21007,10 @@
     },
     "Let the agent use apps" : {
       "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дозволити агентові працювати в застосунках"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Den Agenten Apps bedienen lassen"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Laisser l’agent utiliser les apps"
           }
         },
         "es" : {
@@ -22569,10 +21019,10 @@
             "value" : "Dejar que el agente use apps"
           }
         },
-        "pt-BR" : {
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deixar o agente usar apps"
+            "value" : "Laisser l’agent utiliser les apps"
           }
         },
         "ja" : {
@@ -22581,16 +21031,28 @@
             "value" : "エージェントに App を操作させる"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "允许代理使用 App"
-          }
-        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "에이전트가 앱을 사용하도록 허용"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deixar o agente usar apps"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дозволити агентові працювати в застосунках"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许代理使用 App"
           }
         }
       }
@@ -23739,58 +22201,6 @@
         }
       }
     },
-    "Messages" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nachrichten"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mensajes"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Messages"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メッセージ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "메시지"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mensagens"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Повідомлення"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "消息"
-          }
-        }
-      }
-    },
     "Microphone" : {
       "localizations" : {
         "de" : {
@@ -24207,58 +22617,6 @@
         }
       }
     },
-    "Moby-Dick" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„Moby-Dick“"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Moby Dick»"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« Moby Dick »"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『白鯨』"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『모비 딕』"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“Moby Dick”"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Мобі Дік»"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "《白鲸》"
-          }
-        }
-      }
-    },
     "Model" : {
       "localizations" : {
         "de" : {
@@ -24411,110 +22769,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "模型默认"
-          }
-        }
-      }
-    },
-    "Models" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modelle"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modelos"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modèles"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "モデル"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "모델"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modelos"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Моделі"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "模型"
-          }
-        }
-      }
-    },
-    "More" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mehr"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Más"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plus"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "その他"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "더 보기"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mais"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Більше"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更多"
           }
         }
       }
@@ -25721,58 +23975,6 @@
         }
       }
     },
-    "Nineteen Eighty-Four" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„1984“"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«1984»"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« 1984 »"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『一九八四年』"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『1984』"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“1984”"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«1984»"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "《一九八四》"
-          }
-        }
-      }
-    },
     "No" : {
       "localizations" : {
         "de" : {
@@ -26085,58 +24287,6 @@
         }
       }
     },
-    "No agents are switched on." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein Agent ist eingeschaltet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No hay agentes activados."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun agent n’est activé."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オンになっているエージェントはありません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "켜진 에이전트가 없습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nenhum agente está ativado."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не ввімкнено жодного агента."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "没有开启任何智能体。"
-          }
-        }
-      }
-    },
     "No agents found" : {
       "localizations" : {
         "de" : {
@@ -26185,6 +24335,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未找到智能体"
+          }
+        }
+      }
+    },
+    "No chats this week yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Woche noch keine Chats"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No chats this week yet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay chats esta semana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune conversation cette semaine"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今週のチャットはまだありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이번 주에는 아직 채팅이 없습니다"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma conversa nesta semana ainda"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цього тижня чатів ще не було"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本周还没有对话"
           }
         }
       }
@@ -26653,58 +24861,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有可用的麦克风输入。"
-          }
-        }
-      }
-    },
-    "No model answered in this range." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In diesem Zeitraum hat kein Modell geantwortet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ningún modelo respondió en este periodo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun modèle n’a répondu sur cette période."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この期間に答えたモデルはありません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 기간에 답한 모델이 없습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nenhum modelo respondeu neste período."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У цьому проміжку жодна модель не відповідала."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这个时段没有模型回答。"
           }
         }
       }
@@ -27443,58 +25599,6 @@
         }
       }
     },
-    "Nothing any agent wrote down yet. Plan limits show here where an agent reports them, and every chat is counted." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch hat kein Agent etwas notiert. Tariflimits erscheinen hier, wo ein Agent sie meldet, und jeder Chat wird gezählt."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ningún agente ha anotado nada todavía. Los límites del plan aparecen aquí cuando un agente los comunica, y cada chat se cuenta."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun agent n’a encore rien noté. Les limites de forfait s’affichent ici quand un agent les communique, et chaque discussion est comptée."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "まだどのエージェントも記録していません。エージェントが報告すればプラン上限がここに表示され、すべてのチャットが集計されます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "아직 어떤 에이전트도 기록하지 않았습니다. 에이전트가 보고하면 요금제 한도가 여기에 표시되고, 모든 채팅이 집계됩니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nenhum agente anotou nada ainda. Os limites do plano aparecem aqui quando um agente os informa, e cada chat é contado."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Жоден агент ще нічого не записав. Ліміти плану з’являться тут, де агент їх повідомляє, а кожен чат рахується."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "还没有智能体记下任何内容。智能体报告套餐限额后会显示在这里，每个聊天都会计入。"
-          }
-        }
-      }
-    },
     "Nothing is downloaded. Both can be added later in Settings › Voice." : {
       "localizations" : {
         "de" : {
@@ -27963,6 +26067,64 @@
         }
       }
     },
+    "Only the windows in the area and the menu bar are sent." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesendet werden nur die Fenster im Bereich und die Menüleiste."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the windows in the area and the menu bar are sent."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se envían las ventanas del área y la barra de menús."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seules les fenêtres de la zone et la barre des menus sont envoyées."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "送信されるのは、その範囲のウインドウとメニューバーだけです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "영역 안의 윈도우와 메뉴 막대만 전송됩니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Só as janelas da área e a barra de menus são enviadas."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Надсилаються лише вікна в цій області та рядок меню."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只发送该区域内的窗口和菜单栏。"
+          }
+        }
+      }
+    },
     "Open" : {
       "localizations" : {
         "de" : {
@@ -28219,58 +26381,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开 Boltty AI，拖过一个区域，然后说话"
-          }
-        }
-      }
-    },
-    "Open Boltty AI, drag across what you mean, and ask out loud. The face answers beside the pointer in a sentence or two. It is sent the windows in that area and the menu bar; the rest of the screen is hidden from it unless you select all of it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffne Boltty AI, zieh über das, was du meinst, und frag laut. Das Gesicht antwortet neben dem Zeiger in ein, zwei Sätzen. Es bekommt die Fenster in dem Bereich und die Menüleiste; der Rest des Bildschirms bleibt verborgen, außer du wählst alles aus."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abre Boltty AI, arrastra sobre lo que quieres decir y pregunta en voz alta. La cara responde junto al puntero en una o dos frases. Se le envía las ventanas de esa zona y la barra de menús; el resto de la pantalla queda oculto salvo que lo selecciones todo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ouvrez Boltty AI, glissez sur ce qui vous intéresse et posez votre question à voix haute. Le visage répond près du pointeur en une ou deux phrases. Il reçoit les fenêtres de cette zone et la barre des menus ; le reste de l’écran lui est caché, sauf si vous sélectionnez tout."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AIを開き、知りたい部分をドラッグして声で質問します。顔がポインタの横で1〜2文で答えます。送られるのはその範囲にあるウインドウとメニューバーで、画面の残りはすべてを選ばない限り隠されます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty AI를 열고 궁금한 부분을 드래그한 다음 소리 내어 물어보세요. 얼굴이 포인터 옆에서 한두 문장으로 답합니다. 그 영역에 있는 윈도우와 메뉴 막대만 전송되며, 전체를 선택하지 않는 한 화면의 나머지는 가려집니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abra o Boltty AI, arraste sobre o que você quer dizer e pergunte em voz alta. O rosto responde ao lado do ponteiro em uma ou duas frases. Ele recebe as janelas dessa área e a barra de menus; o resto da tela fica escondido, a menos que você selecione tudo."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Відкрийте Boltty AI, проведіть по тому, про що йдеться, і спитайте вголос. Обличчя відповідає біля вказівника одним-двома реченнями. Йому надсилаються вікна в цій області й рядок меню; решту екрана від нього сховано, якщо не вибрати його весь."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开 Boltty AI，拖过你想问的内容，然后大声提问。表情会在指针旁用一两句话回答。它会收到该区域内的窗口和菜单栏；除非你全选，屏幕其余部分都对它隐藏。"
           }
         }
       }
@@ -28951,58 +27061,6 @@
         }
       }
     },
-    "Opening Boltty AI over Finder starts the chat in that folder, with the files selected there in the prompt." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird Boltty AI über dem Finder geöffnet, beginnt der Chat in diesem Ordner, mit den dort ausgewählten Dateien in der Eingabe."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir Boltty AI sobre el Finder empieza el chat en esa carpeta, con los archivos seleccionados allí en la petición."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ouvrir Boltty AI au-dessus du Finder démarre la discussion dans ce dossier, avec les fichiers sélectionnés dans la demande."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finderの上でBoltty AIを開くと、そのフォルダでチャットが始まり、そこで選択中のファイルがリクエストに入ります。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finder 위에서 Boltty AI를 열면 그 폴더에서 채팅이 시작되고, 거기서 선택한 파일이 요청에 들어갑니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir o Boltty AI sobre o Finder começa o chat naquela pasta, com os arquivos selecionados lá no pedido."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Якщо відкрити Boltty AI над Finder, чат почнеться в тій теці, а вибрані там файли будуть у запиті."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在 Finder 上方打开 Boltty AI 时，聊天会在该文件夹中开始，并把在那里选中的文件放进请求。"
-          }
-        }
-      }
-    },
     "Opens Boltty AI" : {
       "localizations" : {
         "de" : {
@@ -29363,58 +27421,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "兰花"
-          }
-        }
-      }
-    },
-    "Overview" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Übersicht"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resumen"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vue d’ensemble"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "概要"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "개요"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visão Geral"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Огляд"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "概览"
           }
         }
       }
@@ -29889,58 +27895,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已粘贴文本 · %@"
-          }
-        }
-      }
-    },
-    "Peak hour" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spitzenstunde"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hora punta"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Heure de pointe"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ピークの時間帯"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "가장 활발한 시간"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Horário de pico"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пікова година"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "高峰时段"
           }
         }
       }
@@ -31831,58 +29785,6 @@
         }
       }
     },
-    "Range" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeitraum"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Periodo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Période"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "期間"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기간"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Período"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Проміжок"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "时段"
-          }
-        }
-      }
-    },
     "Rate limited" : {
       "localizations" : {
         "de" : {
@@ -32299,58 +30201,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "朗读回答"
-          }
-        }
-      }
-    },
-    "Read from each agent's own account. OpenCode reports Go and Console limits once signed in to its Console; how many free steps a day allows it never says, only when they come back." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus dem eigenen Konto jedes Agenten gelesen. OpenCode meldet Go- und Console-Limits, sobald es in seiner Console angemeldet ist; wie viele kostenlose Schritte ein Tag erlaubt, sagt es nie – nur, wann sie wiederkommen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leído de la cuenta de cada agente. OpenCode indica los límites de Go y Console cuando inicia sesión en su Console; cuántos pasos gratis permite al día no lo dice nunca, solo cuándo vuelven."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lu depuis le compte de chaque agent. OpenCode indique les limites Go et Console une fois connecté à sa Console ; combien d’étapes gratuites par jour, il ne le dit jamais — seulement quand elles reviennent."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "各エージェント自身のアカウントから取得しています。OpenCodeはConsoleにサインインするとGoとConsoleの上限を報告します。無料ステップが1日に何回使えるかは言わず、いつ戻るかだけを伝えます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "각 에이전트의 자체 계정에서 읽었습니다. OpenCode는 Console에 로그인하면 Go와 Console 한도를 알려 줍니다. 하루에 무료 단계가 몇 번인지는 말하지 않고, 언제 다시 채워지는지만 알려 줍니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lido da conta de cada agente. O OpenCode informa os limites do Go e do Console quando entra no Console; quantos passos grátis por dia ele nunca diz — só quando voltam."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прочитано з власного облікового запису кожного агента. OpenCode показує ліміти Go і Console, щойно увійде у свою Console; скільки безплатних кроків на день, він ніколи не каже — лише коли вони повернуться."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "从每个智能体自己的账户读取。OpenCode 登录其 Console 后会报告 Go 和 Console 限额；它从不说明每天允许多少免费步骤，只说何时恢复。"
           }
         }
       }
@@ -36155,58 +34005,6 @@
         }
       }
     },
-    "Sessions" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sitzungen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sesiones"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sessions"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "セッション"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "세션"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sessões"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сеанси"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "会话"
-          }
-        }
-      }
-    },
     "Set Up Boltty AI" : {
       "localizations" : {
         "de" : {
@@ -37407,58 +35205,6 @@
         }
       }
     },
-    "Signed out. Run %@ in a terminal." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgemeldet. Führe %@ im Terminal aus."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sesión cerrada. Ejecuta %@ en un terminal."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Déconnecté. Lancez %@ dans un terminal."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "サインアウトしています。ターミナルで%@を実行してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "로그아웃됨. 터미널에서 %@을(를) 실행하세요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sessão encerrada. Execute %@ num terminal."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вхід не виконано. Запустіть %@ у терміналі."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已退出登录。请在终端中运行 %@。"
-          }
-        }
-      }
-    },
     "Signed out. Run `%@` in a terminal, then refresh." : {
       "localizations" : {
         "de" : {
@@ -37663,58 +35409,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "天空"
-          }
-        }
-      }
-    },
-    "So %@ works right after a restart, with nothing to open first." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Damit %@ direkt nach einem Neustart funktioniert, ohne erst etwas zu öffnen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Para que %@ funcione justo después de reiniciar, sin abrir nada antes."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pour que %@ fonctionne dès le redémarrage, sans rien ouvrir d’abord."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "再起動直後から、何も開かずに%@が使えるように。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "재시동 직후에도 아무것도 열지 않고 %@을(를) 쓸 수 있도록."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Para que %@ funcione logo após reiniciar, sem abrir nada antes."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Щоб %@ працювало одразу після перезапуску, нічого не відкриваючи."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "让 %@ 在重启后立即可用，无需先打开任何东西。"
           }
         }
       }
@@ -38551,58 +36245,6 @@
         }
       }
     },
-    "Start typing once an area is selected and the microphone gives way to a text field. Off, a question is only spoken." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tippe los, sobald ein Bereich ausgewählt ist, und das Mikrofon macht einem Textfeld Platz. Aus: Fragen werden nur gesprochen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Empieza a escribir con una zona seleccionada y el micrófono deja paso a un campo de texto. Desactivado, las preguntas solo se dicen en voz alta."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Commencez à taper une fois la zone sélectionnée et le micro laisse place à un champ de texte. Désactivé, une question se pose seulement à voix haute."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "範囲を選択してから入力を始めると、マイクがテキスト欄に切り替わります。オフのときは声でのみ質問します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "영역을 선택한 뒤 입력을 시작하면 마이크 대신 텍스트 필드가 나타납니다. 끄면 질문은 말로만 합니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comece a digitar com uma área selecionada e o microfone dá lugar a um campo de texto. Desativado, as perguntas são apenas faladas."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Почніть друкувати, щойно виділено область, і мікрофон поступиться текстовому полю. Вимкнено — запитання лише голосом."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选定区域后开始打字，麦克风就会换成文本框。关闭时只能用语音提问。"
-          }
-        }
-      }
-    },
     "Starts a new chat with %@" : {
       "localizations" : {
         "de" : {
@@ -38871,22 +36513,10 @@
     },
     "Stop an agent using apps" : {
       "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зупинити агента, що працює в застосунках"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Einen Agenten stoppen, der Apps bedient"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrêter un agent qui utilise des apps"
           }
         },
         "es" : {
@@ -38895,10 +36525,10 @@
             "value" : "Detener a un agente que usa apps"
           }
         },
-        "pt-BR" : {
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Parar um agente que está usando apps"
+            "value" : "Arrêter un agent qui utilise des apps"
           }
         },
         "ja" : {
@@ -38907,16 +36537,28 @@
             "value" : "App を操作中のエージェントを止める"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "停止正在使用 App 的代理"
-          }
-        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "앱을 사용 중인 에이전트 멈추기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar um agente que está usando apps"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зупинити агента, що працює в застосунках"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止正在使用 App 的代理"
           }
         }
       }
@@ -40637,58 +38279,6 @@
         }
       }
     },
-    "The Great Gatsby" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„Der große Gatsby“"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«El gran Gatsby»"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« Gatsby le Magnifique »"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『グレート・ギャツビー』"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『위대한 개츠비』"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“O Grande Gatsby”"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Великий Гетсбі»"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "《了不起的盖茨比》"
-          }
-        }
-      }
-    },
     "The agent" : {
       "localizations" : {
         "de" : {
@@ -40847,22 +38437,10 @@
     },
     "The agent is using %@" : {
       "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Агент працює в %@"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Agent verwendet %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "L’agent utilise %@"
           }
         },
         "es" : {
@@ -40871,10 +38449,10 @@
             "value" : "El agente está usando %@"
           }
         },
-        "pt-BR" : {
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O agente está usando %@"
+            "value" : "L’agent utilise %@"
           }
         },
         "ja" : {
@@ -40883,16 +38461,28 @@
             "value" : "エージェントが%@を操作中"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "代理正在使用 %@"
-          }
-        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "에이전트가 %@ 사용 중"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O agente está usando %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Агент працює в %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代理正在使用 %@"
           }
         }
       }
@@ -41471,22 +39061,10 @@
     },
     "The first row of the @ list; from that request on, for the whole chat" : {
       "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перший рядок списку @; від цього запиту — на весь чат"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die erste Zeile der @-Liste; ab dieser Anfrage für den ganzen Chat"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La première ligne de la liste @ ; à partir de cette demande, pour toute la discussion"
           }
         },
         "es" : {
@@ -41495,10 +39073,10 @@
             "value" : "La primera fila de la lista @; desde esa solicitud, para todo el chat"
           }
         },
-        "pt-BR" : {
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A primeira linha da lista @; a partir desse pedido, para o chat inteiro"
+            "value" : "La première ligne de la liste @ ; à partir de cette demande, pour toute la discussion"
           }
         },
         "ja" : {
@@ -41507,16 +39085,28 @@
             "value" : "@ リストの最初の行。そのリクエスト以降、チャット全体で有効"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "@ 列表的第一行；从该请求起对整个聊天有效"
-          }
-        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "@ 목록의 첫 행. 그 요청부터 채팅 전체에 적용"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A primeira linha da lista @; a partir desse pedido, para o chat inteiro"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перший рядок списку @; від цього запиту — на весь чат"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "@ 列表的第一行；从该请求起对整个聊天有效"
           }
         }
       }
@@ -41677,110 +39267,6 @@
         }
       }
     },
-    "The keys above, from Boltty AI down, are built in and cannot be changed." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Tasten oben, ab Boltty AI abwärts, sind eingebaut und lassen sich nicht ändern."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las teclas de arriba, desde Boltty AI hacia abajo, son fijas y no se pueden cambiar."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les touches ci-dessus, à partir de Boltty AI, sont intégrées et ne peuvent pas être modifiées."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "上のキー（Boltty AIから下）は組み込みで、変更できません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "위의 키(Boltty AI부터 아래)는 내장되어 있어 바꿀 수 없습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As teclas acima, do Boltty AI para baixo, são fixas e não podem ser mudadas."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Клавіші вище, від Boltty AI донизу, вбудовані й не змінюються."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "以上按键（从 Boltty AI 往下）是内置的，无法更改。"
-          }
-        }
-      }
-    },
-    "The microphone, Screen Recording, notifications and Finder." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mikrofon, Bildschirmaufnahme, Mitteilungen und Finder."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El micrófono, la grabación de pantalla, las notificaciones y el Finder."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le micro, l’Enregistrement de l’écran, les notifications et le Finder."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マイク、画面収録、通知、Finder。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "마이크, 화면 기록, 알림, Finder."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O microfone, a Gravação de Tela, as notificações e o Finder."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Мікрофон, Запис екрана, сповіщення й Finder."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "麦克风、屏幕录制、通知和 Finder。"
-          }
-        }
-      }
-    },
     "The new Boltty is not signed the way this one is (%@)." : {
       "localizations" : {
         "de" : {
@@ -41881,58 +39367,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "套餐限额拒绝了这个回合。"
-          }
-        }
-      }
-    },
-    "The same choice as System Settings › General › Language & Region › Applications." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieselbe Wahl wie Systemeinstellungen › Allgemein › Sprache & Region › Apps."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La misma opción que Ajustes del Sistema › General › Idioma y región › Apps."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le même choix que Réglages Système › Général › Langue et région › Apps."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "システム設定 › 一般 › 言語と地域 › アプリケーションと同じ設定です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "시스템 설정 › 일반 › 언어 및 지역 › 응용 프로그램과 같은 설정입니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A mesma opção que Ajustes do Sistema › Geral › Idioma e Região › Apps."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Те саме, що Системні параметри › Загальні › Мова й регіон › Програми."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "与“系统设置” › “通用” › “语言与地区” › “应用程序”中的选择相同。"
           }
         }
       }
@@ -43025,110 +40459,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "文件太多 — 一次最多粘贴 %lld 个。"
-          }
-        }
-      }
-    },
-    "Total tokens" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tokens insgesamt"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tokens totales"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jetons au total"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "合計トークン"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "총 토큰"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Total de tokens"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Усього токенів"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "token 总数"
-          }
-        }
-      }
-    },
-    "Transcripts stay on this Mac. Nothing is re-run when Boltty restarts." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transkripte bleiben auf diesem Mac. Nach einem Neustart von Boltty wird nichts erneut ausgeführt."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las transcripciones se quedan en este Mac. Nada se vuelve a ejecutar al reiniciar Boltty."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les transcriptions restent sur ce Mac. Rien n’est relancé au redémarrage de Boltty."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "記録はこのMacに残ります。Bolttyを再起動しても何も再実行されません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기록은 이 Mac에 남습니다. Boltty를 다시 시작해도 아무것도 다시 실행되지 않습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "As transcrições ficam neste Mac. Nada é executado de novo quando o Boltty reinicia."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Записи розмов лишаються на цьому Маку. Після перезапуску Boltty нічого не запускається знову."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "记录保留在这台 Mac 上。Boltty 重启时不会重新运行任何内容。"
           }
         }
       }
@@ -44802,58 +42132,6 @@
         }
       }
     },
-    "View" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Darstellung"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visualización"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Présentation"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "表示"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "보기"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visualizar"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перегляд"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "显示"
-          }
-        }
-      }
-    },
     "Viewed %@" : {
       "localizations" : {
         "de" : {
@@ -45378,58 +42656,6 @@
         }
       }
     },
-    "War and Peace" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "„Krieg und Frieden“"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Guerra y paz»"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "« Guerre et Paix »"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『戦争と平和』"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "『전쟁과 평화』"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“Guerra e Paz”"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«Війна і мир»"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "《战争与和平》"
-          }
-        }
-      }
-    },
     "Weekly" : {
       "localizations" : {
         "de" : {
@@ -45530,58 +42756,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当我用语音提问时"
-          }
-        }
-      }
-    },
-    "When a message is sent, a reply is ready, or an agent needs you." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wenn eine Nachricht gesendet ist, eine Antwort bereitsteht oder ein Agent dich braucht."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuando se envía un mensaje, hay una respuesta lista o un agente te necesita."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quand un message est envoyé, qu’une réponse est prête ou qu’un agent a besoin de vous."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メッセージを送信したとき、返信の準備ができたとき、エージェントが待っているとき。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "메시지를 보냈을 때, 답장이 준비되었을 때, 에이전트가 필요로 할 때."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quando uma mensagem é enviada, uma resposta fica pronta ou um agente precisa de você."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Коли повідомлення надіслано, відповідь готова або агент вас чекає."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "消息发送、回复就绪或智能体需要你时。"
           }
         }
       }
@@ -45848,22 +43022,10 @@
     },
     "While the foot of the screen says it is using one, and the panel is closed" : {
       "localizations" : {
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Поки внизу екрана написано, що він працює в застосунку, а панель закрита"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Solange unten auf dem Bildschirm steht, dass er eine App verwendet, und das Panel geschlossen ist"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tant que le bas de l’écran indique qu’il en utilise une et que le panneau est fermé"
           }
         },
         "es" : {
@@ -45872,10 +43034,10 @@
             "value" : "Mientras la parte inferior de la pantalla indique que está usando una y el panel esté cerrado"
           }
         },
-        "pt-BR" : {
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enquanto a parte de baixo da tela diz que ele está usando um e o painel está fechado"
+            "value" : "Tant que le bas de l’écran indique qu’il en utilise une et que le panneau est fermé"
           }
         },
         "ja" : {
@@ -45884,16 +43046,28 @@
             "value" : "画面下部に App を操作中と表示され、パネルが閉じている間"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "当屏幕底部显示它正在使用某个 App 且面板已关闭时"
-          }
-        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "화면 아래에 앱을 사용 중이라고 표시되고 패널이 닫혀 있는 동안"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enquanto a parte de baixo da tela diz que ele está usando um e o painel está fechado"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поки внизу екрана написано, що він працює в застосунку, а панель закрита"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当屏幕底部显示它正在使用某个 App 且面板已关闭时"
           }
         }
       }
@@ -46678,58 +43852,6 @@
         }
       }
     },
-    "Works while Boltty is in the background. No extra permission needed." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Funktioniert, während Boltty im Hintergrund ist. Keine zusätzliche Erlaubnis nötig."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Funciona con Boltty en segundo plano. No hace falta ningún permiso adicional."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fonctionne quand Boltty est en arrière-plan. Aucune autorisation supplémentaire."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bolttyがバックグラウンドにあっても使えます。追加の許可は不要です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty가 백그라운드에 있어도 작동합니다. 추가 권한이 필요 없습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Funciona com o Boltty em segundo plano. Nenhuma permissão extra necessária."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Працює, поки Boltty у фоні. Додаткового дозволу не треба."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Boltty 在后台时也能用。无需额外权限。"
-          }
-        }
-      }
-    },
     "Worn by %@" : {
       "localizations" : {
         "de" : {
@@ -47302,122 +44424,6 @@
         }
       }
     },
-    "You’ve used ~%@× more tokens than %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du hast ~%1$@× mehr Tokens verbraucht als %2$@."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "You’ve used ~%1$@× more tokens than %2$@."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Has usado ~%1$@× más tokens que %2$@."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vous avez utilisé ~%1$@× plus de jetons que %2$@."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%2$@の約%1$@倍のトークンを使いました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%2$@보다 약 %1$@배 많은 토큰을 썼습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Você usou ~%1$@× mais tokens que %2$@."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ви використали в ~%1$@ раза більше токенів, ніж %2$@."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你用掉的 token 约为 %2$@ 的 %1$@ 倍。"
-          }
-        }
-      }
-    },
-    "You’ve used ~%lld%% of the tokens in %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du hast ~%1$lld %% der Tokens von %2$@ verbraucht."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "You’ve used ~%1$lld%% of the tokens in %2$@."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Has usado ~%1$lld %% de los tokens de %2$@."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vous avez utilisé ~%1$lld %% des jetons de %2$@."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%2$@のトークンの約%1$lld%%を使いました。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%2$@ 토큰의 약 %1$lld%%를 썼습니다."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Você usou ~%1$lld%% dos tokens de %2$@."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ви використали ~%1$lld%% токенів, які має %2$@."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你用掉的 token 约为 %2$@ 的 %1$lld%%。"
-          }
-        }
-      }
-    },
     "Zoom" : {
       "localizations" : {
         "de" : {
@@ -47778,58 +44784,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "聊天文件夹中的编辑，以及只在那里读取、构建、测试或更改文件的命令，无需询问即可通过。单独运行脚本以及其他任何操作都会询问。构建或测试会运行该文件夹自己的代码。"
-          }
-        }
-      }
-    },
-    "every Harry Potter book" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "alle Harry-Potter-Bücher"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "todos los libros de Harry Potter"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "tous les livres Harry Potter"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ハリー・ポッターの全巻"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "해리 포터 전권"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "todos os livros de Harry Potter"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "усі книжки про Гаррі Поттера"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "全套《哈利·波特》"
           }
         }
       }

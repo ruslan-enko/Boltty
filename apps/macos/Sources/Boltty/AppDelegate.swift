@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var firstRunShow: FirstRunShowController?
   private var hotkey: GlobalHotkeyService?
   private var statusBar: StatusBarController?
-  private let usageGlance = UsageGlanceController()
+  private let limits = LimitsMenu()
   private var attentionNotifications: SystemAttentionNotificationService?
   private var sounds: InterfaceSounds?
   private var askBoltty: AskBolttyController?
@@ -181,9 +181,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     engine.start()
     statusBar?.attach(coordinator)
-    usageGlance.rows = { [weak coordinator] in coordinator?.usageGlanceRows() ?? [] }
-    usageGlance.refresh = { [weak coordinator] in await coordinator?.refreshUsageForGlance() }
-    usageGlance.changes = coordinator.usageChanged
+    limits.rows = { [weak coordinator] in coordinator?.usageGlanceRows() ?? [] }
+    limits.refresh = { [weak coordinator] in await coordinator?.refreshUsageForGlance() }
+    limits.changes = coordinator.usageChanged
     if ProcessInfo.processInfo.arguments.contains(Self.uiTestingFlag) {
       requireSettingsWindow()?.present(activating: false)
     }
@@ -458,15 +458,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     statusBar.onSettings = { [weak self] in self?.showSettings() }
     statusBar.onQuit = { [weak self] in self?.requestQuit() }
-    statusBar.onLimits = { [weak self] anchor, window in
-      self?.usageGlance.toggle(under: anchor, statusWindow: window)
-    }
-    statusBar.onMenuWillOpen = { [weak self] in self?.usageGlance.close() }
-    usageGlance.onOpenSettings = { [weak self] in self?.showSettings(page: .usage) }
-    usageGlance.onMore = { [weak self] in self?.statusBar?.showMenu() }
-    usageGlance.onVisibilityChange = { [weak statusBar] visible in
-      DispatchQueue.main.async { statusBar?.setHighlighted(visible) }
-    }
+    limits.onOpenUsage = { [weak self] in self?.showSettings(page: .usage) }
+    statusBar.limits = limits
     statusBar.install()
     self.statusBar = statusBar
     refreshHotkeyHint()

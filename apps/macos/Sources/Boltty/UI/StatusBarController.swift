@@ -1,13 +1,12 @@
 import AppKit
 
 @MainActor
-final class StatusBarController {
+final class StatusBarController: NSObject, NSMenuDelegate {
   private var item: NSStatusItem?
   private var menu: NSMenu?
   private(set) var snapshot = StatusBarSnapshot.idle
 
-  var onLimits: ((NSRect, NSWindow?) -> Void)?
-  var onMenuWillOpen: (() -> Void)?
+  var limits: LimitsMenu?
 
   var onBolttyAI: (() -> Void)?
   var onSelectAgent: ((UUID) -> Void)?
@@ -74,25 +73,21 @@ final class StatusBarController {
 
   func showMenu() {
     guard let item, let menu else { return }
-    onMenuWillOpen?()
     item.menu = menu
     item.button?.performClick(nil)
     item.menu = nil
   }
 
-  func setHighlighted(_ highlighted: Bool) {
-    item?.button?.highlight(highlighted)
+  @objc private func pressed() {
+    showMenu()
   }
 
-  @objc private func pressed() {
-    guard let button = item?.button, let window = button.window else { return }
-    let event = NSApp.currentEvent
-    let wantsMenu = event?.type == .rightMouseDown || event?.modifierFlags.contains(.control) == true
-    guard !wantsMenu, let onLimits else {
-      showMenu()
-      return
-    }
-    onLimits(window.convertToScreen(button.convert(button.bounds, to: nil)), window)
+  func menuWillOpen(_ menu: NSMenu) {
+    limits?.open(in: menu)
+  }
+
+  func menuDidClose(_ menu: NSMenu) {
+    limits?.close()
   }
 
   func remove() {
@@ -115,6 +110,7 @@ final class StatusBarController {
   private func buildMenu(snapshot: StatusBarSnapshot) -> NSMenu {
     let menu = NSMenu(title: "Boltty")
     menu.autoenablesItems = false
+    menu.delegate = self
     let ask = addItem(
       to: menu, title: "Boltty AI", action: #selector(bolttyAI), icon: .sparkles
     )

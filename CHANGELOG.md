@@ -2,6 +2,27 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.14.0
+
+**Menu bar**
+- One click on Boltty's mark opens one menu: plan limits at the top, then
+  Boltty AI, your chats, updates, Settings and Quit. Each agent with limits is
+  one line, with its face and a meter for each plan window; agents with nothing
+  to show are left out.
+
+**Plan limits**
+- Every plan meter is split into segments, one per hour or day of the window
+  (five for the 5-hour limit, seven for the week), and its fill fades out
+  softly. The ring in the composer is drawn in arcs, and the bars under the chat
+  list are thicker.
+
+**Settings**
+- Activity in Usage shows this week in Boltty: how many chats, and each day's
+  chats as a stack of the agents' faces. It no longer counts every CLI's
+  history on the Mac.
+- Explanations under most settings are gone; what remains says something has
+  gone wrong, needs you, or has a cost.
+
 ## 0.13.1
 
 **Boltty AI**
