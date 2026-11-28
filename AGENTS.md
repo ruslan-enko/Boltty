@@ -1923,7 +1923,8 @@ processes, so it is Boltty's to give.
 - `scripts/release.sh` builds the **last commit** in a temporary worktree,
   universal, into `.release/DerivedData`, signs inside out, and writes
   `Boltty.dmg` and its `.sha256` to `apps/macos/.release/<version>/`. It refuses
-  an uncommitted version bump and a version not above the latest release. It
+  an uncommitted version bump, a version not above the latest release, and a
+  commit whose CI run has not passed (`--without-ci` only when GitHub cannot say). It
   **publishes nothing**: it prints the `git tag` and `gh release create` for the
   maintainer to run. `--local` builds the working tree for this Mac and installs it
   into /Applications. Before a build only the old binary goes, not the bundle: with
@@ -1984,13 +1985,17 @@ processes, so it is Boltty's to give.
 
 1. Read this file, and `.scratch/<feature>/` if work is in flight (gitignored).
 2. TDD for pure logic.
-3. **Run no tests until the maintainer asks.** Build to check it compiles,
-   install with `release.sh --local`, and stop; the maintainer judges by eye. When tests are
-   asked for, `apps/macos/scripts/test.sh` picks the suites that name the changed
-   types; `--all` once at the end. UI tests only when named. CI runs the unit
-   tests on every push, so a red test is heard of without taking anyone's Mac.
-   A test holds behaviour: a number kept twice (a proportion, a height) only
-   breaks when the eye has already judged.
+3. **Run no tests while working.** Build to check it compiles,
+   install with `release.sh --local`, and stop; the maintainer judges by eye.
+   **Before any push, run `make check`** (the linters, and the suites
+   that name what changed) and fix what is red in the same push. Left to CI, 13 of
+   60 runs went red, nine of them a test still holding what a change had just
+   changed on purpose (a Grok answer, ⇧Tab, a row's title, a colour's numbers),
+   and three releases were built over it. A change of behaviour changes its test in
+   the same commit; a timing test waits for its condition, never a fixed delay.
+   `--all` when asked; UI tests only when named. `release.sh` refuses a commit
+   whose CI has not passed. A test holds behaviour: a number kept twice (a
+   proportion, a height) only breaks when the eye has already judged.
 4. Commit when asked. "Push" means commit on `main` and push. Other sessions
    may be editing the same checkout: check before committing, and commit only
    your own files.

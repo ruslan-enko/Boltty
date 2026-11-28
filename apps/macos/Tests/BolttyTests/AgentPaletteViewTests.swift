@@ -659,8 +659,10 @@ final class AgentPaletteViewTests: XCTestCase {
     XCTAssertEqual(submitted?.typedText, "Fix only the first issue.")
   }
 
-  func testTabIsInertOnTheCard() {
+  func testTabIsInertAndShiftTabWalksPermissionModesOnTheCard() {
     let view = makeScreenSizedView(targets: [.claude, .codex])
+    var permissionSteps = 0
+    view.onCyclePermissionMode = { permissionSteps += 1 }
     view.enterAddressing(
       BolttyAISessionPreview(
         id: UUID(),
@@ -672,7 +674,8 @@ final class AgentPaletteViewTests: XCTestCase {
     )
 
     XCTAssertFalse(view.textView(view.field, doCommandBy: #selector(NSResponder.insertTab(_:))))
-    XCTAssertFalse(view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:))))
+    XCTAssertTrue(view.textView(view.field, doCommandBy: #selector(NSResponder.insertBacktab(_:))))
+    XCTAssertEqual(permissionSteps, 1)
     XCTAssertEqual(view.agentForNewPrompt, .claude, "the agent did not move")
     XCTAssertTrue(view.isAddressingForTesting)
   }
