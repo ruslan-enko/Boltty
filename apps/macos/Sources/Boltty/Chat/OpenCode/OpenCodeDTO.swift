@@ -71,6 +71,17 @@ enum OpenCodeDTO {
     var id: String?
     var location: LocationRef
     var model: ModelRef?
+    var permissions: [PermissionRule]? = nil
+  }
+
+  struct PermissionRule: Encodable, Equatable, Sendable {
+    var action: String
+    var resource: String
+    var effect: String
+  }
+
+  struct PermissionsRequest: Encodable {
+    var permissions: [PermissionRule]
   }
 
   struct PromptRequest: Encodable {

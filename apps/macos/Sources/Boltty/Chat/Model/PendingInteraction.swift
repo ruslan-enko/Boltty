@@ -113,6 +113,9 @@ struct PermissionPrompt: Codable, Equatable, Sendable {
   var savePatterns: [String]
   var toolCallID: String?
   var offersAlways: Bool? = nil
+  /// What the CLI's own "always" does, in its words or from its record of where it saves.
+  var alwaysReach: String? = nil
+  var offersRejectAlways: Bool? = nil
 
   static func elicitation(
     server: String, mode: String?, message: String?, schema: JSONObject?, toolCallID: String?
@@ -129,6 +132,7 @@ enum PermissionDecision: String, Codable, Equatable, Sendable {
   case once
   case always
   case reject
+  case rejectAlways
 }
 
 struct PlanPrompt: Codable, Equatable, Sendable {

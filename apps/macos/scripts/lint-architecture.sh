@@ -132,15 +132,12 @@ hits=$(code_only $(swift_files "$SRC") | grep -E '"--last"|"--continue"' || true
   "Тільки --resume <збережений id>. --last бере чужу сесію, яку ніхто не вибирав." "$hits"
 
 ran=$((ran + 1))
-GATED="$SRC/Chat/Antigravity/AntigravityClient.swift"
-hits=$(code_only $(swift_files "$SRC" | grep -v "^$GATED$") \
+AGY="$SRC/Chat/Antigravity/AntigravityClient.swift"
+MODES="$SRC/Chat/Agent/AgentCapabilities.swift|$SRC/Chat/ClaudeCode/ClaudeCodeClient.swift|$AGY"
+hits=$(code_only $(swift_files "$SRC" | grep -v -E "^($MODES)$") \
   | grep -E '\bbypassPermissions\b|--dangerously-skip-permissions' || true)
-if [[ -f "$GATED" ]] && grep -q -- '--dangerously-skip-permissions' "$GATED" \
-   && ! grep -q 'AntigravityPermissionGate' "$GATED"; then
-  hits+=$'\n'"$GATED: прапор без шлюзу"
-fi
 [[ -n "$hits" ]] && report "повний bypass дозволів" \
-  "Auto-approve — це acceptEdits або auto Claude Code, ніколи повний bypass." "$hits"
+  "Усе без питань — лише режим, який людина вибрала в чаті: таблиця PermissionMode і адаптер, що її застосовує." "$hits"
 
 ran=$((ran + 1))
 ALLOWED="$SRC/Chat/Agent/JSONLineProcess.swift|$SRC/Services/AgentInstaller.swift"

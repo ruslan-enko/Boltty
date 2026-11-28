@@ -6,7 +6,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .permissions, .attachments, .images, .interrupt,
-    .resumeSession, .workingDirectory, .reasoningEffort, .autoApproval,
+    .resumeSession, .workingDirectory, .reasoningEffort,
     .usageReporting, .rereadableTranscript, .usageLimits, .contextUsage, .compaction,
     .permissionMessage, .steering, .folderMoving, .commands, .planMode, .forking, .fileUndo, .computerUse
   ]
@@ -103,7 +103,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     }
     guard let live, live.process.isRunning else { return }
     guard live.options.effort == options.effort, live.options.readOnly == options.readOnly,
-          live.options.directory == options.directory, live.options.computerUseSocket == options.computerUseSocket else {
+          live.options.directory == options.directory, live.options.computerUseSocket == options.computerUseSocket,
+          !Self.needsBypassLaunch(options, launchedWith: live.options) else {
       endProcess(of: id)
       return
     }
@@ -117,16 +118,23 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {
     guard let (session, options) = lock.withLock({ () -> (LiveSession, AgentSessionOptions?)? in
-      wantedOptions[sessionID]?.autoApprove = enabled
+      wantedOptions[sessionID]?.permissionMode = mode
       return sessions[sessionID].map { ($0, wantedOptions[sessionID]) }
     }) else { return }
-    guard options?.planMode != true else { return }
+    guard let options, !options.planMode, !Self.needsBypassLaunch(options, launchedWith: session.options) else { return }
     _ = try await session.sendControl(
-      ["subtype": "set_permission_mode", "mode": Self.permissionMode(autoApprove: enabled)],
+      ["subtype": "set_permission_mode", "mode": Self.cliMode(mode)],
       timeout: 5
     )
+  }
+
+  static let bypassMode = "bypassPermissions"
+
+  /// The CLI switches into bypass only in a process launched to allow it.
+  static func needsBypassLaunch(_ options: AgentSessionOptions, launchedWith launch: AgentSessionOptions) -> Bool {
+    options.permissionMode == bypassMode && launch.permissionMode != bypassMode
   }
 
   static let readOnlyTools = "Read,Glob,Grep,WebSearch,WebFetch"
@@ -142,6 +150,9 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       "--permission-prompt-tool", "stdio",
       "--permission-mode", permissionMode(for: options)
     ]
+    if options.permissionMode == bypassMode, !options.readOnly {
+      arguments.append("--allow-dangerously-skip-permissions")
+    }
     // `--tools` and `--allowedTools` take several values: a flag must follow
     // them, never the prompt.
     if options.readOnly {
@@ -158,8 +169,8 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     return arguments
   }
 
-  static func permissionMode(autoApprove: Bool) -> String {
-    autoApprove ? "auto" : "default"
+  static func cliMode(_ mode: String?) -> String {
+    mode ?? "default"
   }
 
   static func forkArguments(_ arguments: [String], id: String, from source: String, at anchor: String?) -> [String] {
@@ -173,7 +184,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   }
 
   static func permissionMode(for options: AgentSessionOptions) -> String {
-    options.planMode ? "plan" : permissionMode(autoApprove: options.autoApprove)
+    options.planMode ? "plan" : cliMode(options.readOnly ? nil : options.permissionMode)
   }
 
   func loadSession(id: String) async throws -> RemoteSessionSnapshot {
@@ -328,7 +339,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
         "updatedInput": pending.input,
         "updatedPermissions": pending.sessionRules
       ]
-    case .reject:
+    case .reject, .rejectAlways:
       response = ["behavior": "deny", "message": Self.denialMessage(saying: message)]
     }
 
@@ -357,7 +368,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     guard let session = lock.withLock({ sessions[sessionID] }),
           let pending = session.takePermission(requestID)
     else { throw AgentClientError.requestGone }
-    let autoApprove = lock.withLock { wantedOptions[sessionID]?.autoApprove ?? false }
+    let mode = lock.withLock { wantedOptions[sessionID]?.permissionMode }
     lock.withLock { wantedOptions[sessionID]?.planMode = false }
     let response: [String: Any]
     switch decision {
@@ -366,7 +377,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
         "behavior": "allow",
         "updatedInput": pending.input,
         "updatedPermissions": [[
-          "type": "setMode", "mode": Self.permissionMode(autoApprove: autoApprove), "destination": "session",
+          "type": "setMode", "mode": Self.cliMode(mode), "destination": "session",
         ]],
       ]
     case .cancelled:
@@ -392,30 +403,25 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
     if decision == .abandoned { try await stop(sessionID: sessionID) }
   }
 
+  /// The CLI's own suggestions, sent back as they came: where they are saved is its call.
   static func sessionRules(
     suggestions: [[String: Any]],
     tool: String,
     input: [String: Any]
   ) -> [[String: Any]] {
-    let usable = suggestions.compactMap { suggestion -> [String: Any]? in
-      switch suggestion["type"] as? String {
-      case "addRules" where suggestion["behavior"] as? String ?? "allow" == "allow", "addDirectories":
-        break
-      case "setMode" where suggestion["mode"] as? String == "acceptEdits":
-        break
-      default:
-        return nil
-      }
-      var kept = suggestion
-      kept["destination"] = "session"
-      return kept
+    suggestions.filter { ($0["behavior"] as? String ?? "allow") == "allow" }
+  }
+
+  static func reach(of rules: [[String: Any]]) -> String? {
+    let places = Set(rules.compactMap { $0["destination"] as? String })
+    let rules = savePatterns(of: rules)
+    guard !rules.isEmpty else { return nil }
+    let what = rules.joined(separator: ", ")
+    if places.contains("userSettings") { return String(localized: "everywhere, for \(what)") }
+    if places.contains("projectSettings") || places.contains("localSettings") {
+      return String(localized: "this project, for \(what)")
     }
-    if !usable.isEmpty { return usable }
-    var rule: [String: Any] = ["toolName": tool]
-    if tool == "Bash", let command = input["command"] as? String, !command.isEmpty {
-      rule["ruleContent"] = command
-    }
-    return [["type": "addRules", "rules": [rule], "behavior": "allow", "destination": "session"]]
+    return String(localized: "this session, for \(what)")
   }
 
   static func savePatterns(of rules: [[String: Any]]) -> [String] {
@@ -443,7 +449,9 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       action: pending.toolName,
       resources: resources(forTool: pending.toolName, input: JSONObject(pending.input)),
       savePatterns: savePatterns(of: pending.sessionRules),
-      toolCallID: toolCallID
+      toolCallID: toolCallID,
+      offersAlways: !pending.sessionRules.isEmpty,
+      alwaysReach: reach(of: pending.sessionRules)
     )
   }
 

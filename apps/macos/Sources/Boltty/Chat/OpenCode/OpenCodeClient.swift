@@ -7,7 +7,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
-    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .autoApproval, .usageLimits,
+    .activityHistory, .permissionMessage, .steering, .reasoningEffort, .usageLimits,
     .folderMoving, .commands, .planMode, .planInReply, .forking, .fileUndo, .computerUse
   ]
 
@@ -29,8 +29,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
   }
 
   private var lastSequence: [String: Int] = [:]
-  private var allowances = OpenCodeAllowances()
-  private var autoApproved: Set<String> = []
+  private var readOnlySessions: Set<String> = []
   private var sessionFolders: [String: String] = [:]
   private var skillsByFolder: [String: (read: Date, skills: [AgentCommand])] = [:]
   private var historyIsAbsent = false
@@ -188,7 +187,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       location: OpenCodeDTO.LocationRef(directory: directory, workspaceID: nil),
       model: model.map {
         OpenCodeDTO.ModelRef(id: $0.modelID, providerID: $0.providerID, variant: options.effort)
-      }
+      },
+      permissions: options.readOnly ? Self.readOnlyRules : nil
     )
     let own = await needsOwnServer(directory: directory, computer: options.computerUseSocket != nil)
     do {
@@ -199,7 +199,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
         runsOnOwnServer[response.data.id] = own
         if options.computerUseSocket != nil { usesComputer.insert(response.data.id) }
         sessionFolders[response.data.id] = response.data.location?.directory ?? directory
-        if options.autoApprove, !options.readOnly { autoApproved.insert(response.data.id) }
+        if options.readOnly { readOnlySessions.insert(response.data.id) }
       }
       if own { startOwnStreamIfNeeded() }
       if options.planMode { try? await switchAgent(of: response.data.id, to: Self.planAgent) }
@@ -219,13 +219,16 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       lock.withLock { runsOnOwnServer[id] = true }
       startOwnStreamIfNeeded()
     }
-    lock.withLock {
+    let changesReadOnly = lock.withLock { () -> Bool in
       sessionFolders[id] = options.directory
-      if options.autoApprove, !options.readOnly {
-        autoApproved.insert(id)
-      } else {
-        autoApproved.remove(id)
-      }
+      return readOnlySessions.contains(id) != options.readOnly
+    }
+    if changesReadOnly {
+      let _: JSONValue = try await perform(
+        path: "/api/session/\(id)", method: "PATCH",
+        body: OpenCodeDTO.PermissionsRequest(permissions: options.readOnly ? Self.readOnlyRules : [])
+      )
+      lock.withLock { readOnlySessions.toggle(id, on: options.readOnly) }
     }
     let session: OpenCodeDTO.DataEnvelope<OpenCodeDTO.SessionInfo> = try await get("/api/session/\(id)")
     if let recorded = session.data.location?.directory, recorded != options.directory {
@@ -470,7 +473,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     lock.withLock {
       runsOnOwnServer[id] = own
       sessionFolders[id] = response.data.location?.directory ?? options.directory
-      if options.autoApprove, !options.readOnly { autoApproved.insert(id) }
     }
     let agent = options.planMode ? Self.planAgent : Self.buildAgent
     if (response.data.agent ?? Self.buildAgent) != agent { try? await switchAgent(of: id, to: agent) }
@@ -562,10 +564,10 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     try await postIgnoringResponse("/api/session/\(sessionID)/interrupt", body: EmptyBody())
   }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    lock.withLock {
-      if enabled { autoApproved.insert(sessionID) } else { autoApproved.remove(sessionID) }
-    }
+  /// Build allows everything on its own, so a read-only chat is told so in rules the
+  /// engine can then refuse.
+  static let readOnlyRules = ["edit", "write", "patch", "shell"].map {
+    OpenCodeDTO.PermissionRule(action: $0, resource: "*", effect: "deny")
   }
 
   static func answering(_ reply: () async throws -> Void) async throws {
@@ -669,8 +671,8 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     decision: PermissionDecision,
     message: String?
   ) async throws {
-    let decision = lock.withLock { allowances.decide(decision, requestID: requestID, sessionID: sessionID) }
     let path = "/api/session/\(sessionID)/permission/\(requestID)/reply"
+    let decision = decision == .rejectAlways ? .reject : decision
     let words = decision == .reject ? message : nil
     try await Self.answering {
       do {
@@ -782,20 +784,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
       lock.withLock { lastSequence[aggregate] = max(lastSequence[aggregate] ?? 0, seq) }
     }
     for domain in Self.domainEvents(from: event, resolver: conversationResolver) {
-      if case let .interactionAsked(ask) = domain, case let .permission(prompt) = ask.kind {
-        let sessionID = ask.remoteSessionID
-        let covered = lock.withLock {
-          allowances.ask(ask.id, saving: prompt.savePatterns, in: sessionID)
-            || (autoApproved.contains(sessionID) && Self.autoModePasses(prompt, in: sessionFolders[sessionID]))
-        }
-        if covered {
-          Task { [weak self] in
-            try? await self?.answerPermission(
-              requestID: ask.id, sessionID: sessionID, decision: .once, message: nil)
-          }
-          continue
-        }
-      }
       emit(
         AgentEventEnvelope(
           id: event.id ?? frame.id,
@@ -803,16 +791,6 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
           event: domain
         )
       )
-    }
-  }
-
-  static func autoModePasses(_ prompt: PermissionPrompt, in directory: String?) -> Bool {
-    switch prompt.action {
-    case "edit": return true
-    case "bash":
-      guard let directory, !prompt.resources.isEmpty else { return false }
-      return prompt.resources.allSatisfy { AutoModeCommands.allows($0, in: directory, autoMode: true) }
-    default: return false
     }
   }
 
@@ -1316,23 +1294,5 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     default:
       return false
     }
-  }
-}
-
-struct OpenCodeAllowances {
-  private var asked: [String: Set<String>] = [:]
-  private var allowed: [String: Set<String>] = [:]
-
-  mutating func ask(_ requestID: String, saving patterns: [String], in sessionID: String) -> Bool {
-    let patterns = Set(patterns.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
-    asked[requestID] = patterns
-    return !patterns.isEmpty && patterns.isSubset(of: allowed[sessionID] ?? [])
-  }
-
-  mutating func decide(_ decision: PermissionDecision, requestID: String, sessionID: String) -> PermissionDecision {
-    let patterns = asked.removeValue(forKey: requestID) ?? []
-    guard decision == .always else { return decision }
-    allowed[sessionID, default: []].formUnion(patterns)
-    return .once
   }
 }

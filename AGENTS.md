@@ -29,7 +29,7 @@ really offers:
 | **Claude Code** | one `claude --print` process per conversation, stream-json both ways, the SDK control channel for permissions |
 | **Codex** | one `codex app-server`, JSON-RPC over stdio, threads and turns |
 | **Grok** | one `grok --permission-mode default agent stdio`, ACP JSON-RPC over stdio |
-| **Antigravity** | one `agy --print=` process per conversation, stream-json, permissions through Boltty's own hook |
+| **Antigravity** | one `agy acp` (ACP JSON-RPC over stdio), a second `agy acp --dangerously-skip-permissions` for Skip Permissions chats |
 
 **Every adapter reads history from the CLI's own record** — Claude Code's
 `.jsonl`, Codex's rollout, Grok's `chat_history.jsonl`, Antigravity's
@@ -97,14 +97,14 @@ where Boltty names that agent (a picker row, a status line, an error).
 | Settings | `UI/Settings/`; what a setting changes, shown live: `UI/Settings/SettingsStage.swift` |
 | Boltty Design, the design tool | `apps/macos/Design/` |
 | Ask Boltty | `AskBolttyController.swift`, `Chat/AskBoltty/`, `UI/AskBolttyOverlayController.swift`, `UI/AskBolttyDrawingLayer.swift`; the region is the panel's (`AgentPaletteController.beginScreenAsk`) |
-| Computer Use | `Services/ComputerUse/` (`ComputerUseServer`, `MacControl`), `Chat/ComputerUseController.swift`, `Chat/Antigravity/AntigravityComputerUse.swift`, `UI/ComputerUseIndicator.swift`, `Models/ComputerUseMention.swift` |
+| Computer Use | `Services/ComputerUse/` (`ComputerUseServer`, `MacControl`), `Chat/ComputerUseController.swift`, `UI/ComputerUseIndicator.swift`, `Models/ComputerUseMention.swift` |
 | Dictation, speech, sounds | `Services/` (`BilingualDictationEngine`, `SpeechOutput`, `InterfaceSounds`), sounds rendered by `scripts/render-sounds.py` |
 | Local voice models | `Services/LocalVoice/` (`LocalModelStore`, `LocalVoiceModel`, `LocalVoiceCatalog` written by `scripts/pin-local-model.py`); Supertonic in `Supertonic/` (`SupertonicText`, `SupertonicSynthesizer`, `SupertonicSpeaker`) |
 | Strings and translations | `Resources/Localizable.xcstrings`, `Resources/InfoPlist.xcstrings`, `scripts/sync-strings.sh` (*Languages*) |
 | Updates, login item, releases | `Services/AppUpdater.swift`, `Services/LoginItem.swift`, `scripts/release.sh`, `scripts/bump-version.sh` |
 
 **A chat's model is the conversation's, and the engine applies it.**
-`Conversation.model`, `reasoningEffort`, `autoApprove` and `readOnly` are what the
+`Conversation.model`, `reasoningEffort`, `permissionMode` and `readOnly` are what the
 chat asks for; `settingsInForce` is what its session was last told. Before every send
 that differ (always, the first time after a relaunch) and
 `AgentClient.prepareSession` closes the gap, never during a turn. A refusal keeps the
@@ -186,7 +186,7 @@ no adapter; never offer a toggle for them.
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Auto-approve | Off by default; chosen on each agent's page in Settings › Agents and copied into each new chat; the menu of the composer's model chip switches it per chat. Elsewhere Boltty decides: edits in the folder, and commands `AutoModeCommands` reads as only reading, building, testing or changing files there (each part of a `&&`/`|` line, with `cd` followed); anything it cannot read asks. A path is judged both as written and as the file system follows it (`AutoModeCommands.followed`: links resolved, a link to nowhere refused), so a link in the folder does not reach out of it and `~/.ssh` linked into a dotfiles folder is still a secret; edits into `.git` ask (its hooks run). A script run by itself (`./x`, `sh x`, `python x.py`, `node x`, `bun x`), `ln`, `printenv` and `env`, and git that names a program (`grep -O`, `fetch --upload-pack`, `--ext-diff`, `--textconv`) ask; package scripts go through only by a build or test name (`npm run test:unit`). Builds and tests still run the folder's own code, which Settings says. Except Codex (its sandbox, no asking but for what its MCP servers ask) and Claude Code (its own `auto` mode: its classifier decides edits and commands). Never a full bypass (except Antigravity's flag, behind Boltty's gate) |
+| Permissions | Each agent's own modes, in its CLI's words and order (`PermissionMode.ladder`), and nothing of Boltty's: Claude Code Ask · Accept Edits · Auto · Bypass Permissions; Codex Ask for Approval · Approve for Me · Full Access (its app's own presets); Grok Ask · Auto-review · Always Approve; Antigravity Default · Skip Permissions; OpenCode none (Build does what its config says). The first asks and is the default; chosen on each agent's page in Settings › Agents, copied into each new chat, switched per chat in the model chip's menu or by ⇧Tab in an open chat. Everything-without-asking is a mode like any other: chosen, it is chosen. A read-only chat runs none of them. Plan First stays apart |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -208,8 +208,9 @@ no adapter; never offer a toggle for them.
   `CGEventTap` (`Services/ModifierHotkeyMonitor.swift`, for the opt-in ⌥⌘
   chord).
 - Resume only by stored id: `--resume <id>`; never `--last` or `--continue`.
-- No `bypassPermissions`. `--dangerously-skip-permissions` appears only in
-  `AntigravityClient`, beside its gate.
+- `bypassPermissions` and `--dangerously-skip-permissions` appear only in the
+  mode table and the adapters that apply it (`AgentCapabilities`, `ClaudeCodeClient`,
+  `AntigravityClient`).
 - The shell is called in two places: `JSONLineProcess.locate`'s `command -v`
   fallback, and `AgentInstaller`, whose script goes down stdin. Prompts go down
   stdin, never through `sh`.
@@ -281,16 +282,19 @@ implementation first. Versions say what was measured.
   reads that; `probe()` drops the cached handshake so a new sign-in is seen.
 - `--permission-prompt-tool stdio` is what makes it ask; without it print mode
   decides alone.
-- Auto is `--permission-mode auto` (and `set_permission_mode` `auto` mid-chat):
-  the CLI's classifier decides; `ls`, `rm -rf ./junk` and `git push --force`,
+- Modes are `--permission-mode` at launch and `set_permission_mode` mid-chat:
+  `default` (`manual` is its alias), `acceptEdits`, `auto`, `plan`, `dontAsk`, each
+  answered by a `system status {permissionMode}` frame (2.1.332). `bypassPermissions`
+  mid-chat is refused unless the process was launched with
+  `--allow-dangerously-skip-permissions`, so a chat entering it lets its process go.
+  In `auto` the CLI's classifier decides; `ls`, `rm -rf ./junk` and `git push --force`,
   each asked for, ran with no `can_use_tool` (2.1.296, Haiku).
 - A `deny` answer to `can_use_tool` carries a `message`, which the model reads
   as the tool's result; Boltty frames the person's words as theirs
   (`ClaudeCodeClient.denialMessage`).
-- "Always Allow" sends the CLI's own `permission_suggestions` back with every
-  destination set to `session` (`sessionRules`); with none, Bash gets a rule
-  for that exact command. A rule of the tool's name alone allowed every
-  command after the first.
+- "Always Allow" sends the CLI's own `permission_suggestions` back as they came,
+  where it chose to save them (`sessionRules`); its caption says where (`reach`).
+  With none, there is no "Always Allow".
 - An MCP server's ask is a control request `elicitation`, answered `{action,
   content}`; an error cancels it (2.1.330). Its card offers no "Always Allow".
 - An `interrupt` cancels what was asking (`control_cancel_request`, or nothing
@@ -353,10 +357,22 @@ implementation first. Versions say what was measured.
 - An MCP server's ask is `mcpServer/elicitation/request`; Computer Use asks so
   for each app ("Allow Computer Use to use "OrcaSlicer"?", `_meta.persist`
   `session`/`always`). Answered `{}` it is refused, and under `approvalPolicy:
-  never` Codex refuses it without asking, so Auto Mode is `granular` with only
-  `mcp_elicitations` on (0.171; `approvals_reviewer = "auto_review"` did not take
-  it). Shown as a permission when its schema has no fields, else declined.
+  never` Codex refuses it without asking, so Full Access is `granular` with only
+  `mcp_elicitations` on (0.171). Shown as a permission when its schema has no fields, else declined.
   "Always Allow" sends `_meta.persist: session`, never `always`.
+- A command's ask lists `availableDecisions`, and only those are sent: measured
+  `["accept", {acceptWithExecpolicyAmendment}, "cancel"]`, with no `decline` or
+  `acceptForSession` (0.171). "Always Allow" is `acceptForSession` where offered, else
+  the amendment, saved for good in Codex's rules; a refusal is `decline`, else `cancel`
+  (`offeredDecisions`).
+- Modes are Codex's own presets, sent with `thread/start`, `thread/resume` and every
+  `turn/start` (0.171, measured): Ask for Approval `permissions: ":workspace"`,
+  `on-request`, `approvalsReviewer: user`; Approve for Me the same with `auto_review`
+  (its reviewer decides and sends `item/autoApprovalReview/*` with risk and reason;
+  nothing reaches the person; each decision is a work row of the live chat,
+  `CodexMapper.review`, since the rollout keeps no record of it); Full Access `":danger-full-access"`. The reviewer is
+  always named: the person's `config.toml` may say `auto_review`, and unnamed it
+  answered for them.
 - Codex's own Computer Use comes with the ChatGPT app and answers only OpenAI's own
   processes ("Sender process is not authenticated" to any other MCP client). Boltty's
   is beside it (*Computer Use*), not in its place.
@@ -437,13 +453,17 @@ implementation first. Versions say what was measured.
   turn (`stopReason: cancelled`), so a refusal in words is reject,
   `session/cancel`, and the words as the next message.
   A picture (`image_gen`, `image_edit`, kind `other`) offers allow-once / reject-once
-  only (1.0.92), so its "Always Allow" is Boltty's: every picture of that chat is
-  answered "allow once" while Boltty runs, never a video, never in a read-only chat.
-  Anything else Grok offers no always for has no such button. The card is named by
+  only (1.0.92), so it has no "Always Allow". `allow_always` ("don't ask again for bash
+  commands") remembers that exact command in every Grok chat, past a new `agent stdio`.
+  `touch` never asks. `reject_always` is the card's Never Allow. The card is named by
   `_meta["x.ai/tool"].label`. An answer Grok did not offer is never sent as a refusal:
   "Always Allow" was, and three pictures were denied.
-- Permission mode is process-wide; Auto Mode is Boltty answering `edit` asks, and
-  `execute` asks `AutoModeCommands` passes, "allow once".
+- `session/set_mode` takes `ask`, `default` and `plan` only (1.0.92). Auto-review is
+  the launch flag `--permission-mode auto`, for the whole process, so its chats run
+  in a second process (`ModeSplitClient`, moved by `session/load` before a send);
+  `/auto-review` sent over ACP is words to the model. Always Approve is the text
+  `/always-approve on|off` as a `session/prompt`: no model turn, that session only,
+  not written to `chat_history.jsonl`.
 - Extension methods arrive with a leading `_` (`_x.ai/exit_plan_mode`, 1.0.88);
   both spellings are taken.
 - Plan mode is per session: `session/set_mode {modeId: plan|default}`, answered by
@@ -466,72 +486,34 @@ implementation first. Versions say what was measured.
 
 ### Antigravity
 
-Measured on agy 1.3.4 and 1.4.0 (`AntigravityClient`, `AntigravityTranscript`,
-`AntigravityLiveTests` with `BOLTTY_LIVE_AGY=1`).
+Measured on agy 1.5.18 over `agy acp` (`AntigravityClient` over `ACPClient`,
+`AntigravityTranscript`). Print mode with a hook of Boltty's own was used before; it
+could not ask, so Boltty decided every call.
 
-- `--print=` (empty, attached, last); a bare `-p` swallows the next flag.
-- Input is only `{"event": "user", "message": {"content": "…"}}`; output is
-  NDJSON on `event`: `init`, `step_update`*, `result`. Take text from
-  `text_delta` only; `result.response` repeats it.
-- `content` stays a string: any non-text block ends the run. So it declares
-  `.attachments` not `.images`; pictures go as paths and `agy` opens them with
-  `read_file` / `view_file`. Print mode refuses reads outside the folder, so
-  the gate lets through reads of exactly the files a message carried
-  (`AntigravityToolPolicy.readGrants`).
-- A turn can succeed with nothing said (e.g. it tried a refused command to read
-  a picture).
-- `init` arrives before any prompt and names the conversation; Antigravity mints
-  the id. `--conversation <id>` resumes.
-- **Print mode cannot ask**, so Boltty asks through a `PreToolUse` hook
-  (`AntigravityPermissionGate`). The hook can deny but not allow, so the
-  process runs with `--dangerously-skip-permissions` and the gate decides
-  every call. The flag is allowed only there (linter rule 7).
-  - The hook fails closed: crash, garbage, `{}`, timeout all block. Exit 0 with
-    empty stdout lets the call through, so the script exits 1 unless its answer
-    file is non-empty.
-  - Installed in `~/.gemini/config/hooks.json` under the key
-    `boltty-permission-gate` (other keys untouched; non-JSON files left alone),
-    on the first Antigravity start. Outside Boltty (no `BOLTTY_AGY_GATE`) it
-    answers `ask`, which changes nothing.
-  - Hand-over is files in the folder `BOLTTY_AGY_GATE` names: `<id>.req`, then
-    `<id>.ans`, watched with `DispatchSource`. Plain `sh`, no `nc` or Python.
-  - Policy (`AntigravityToolPolicy`): reads inside the chat folder, inside
-    `~/.gemini/antigravity-cli`, and of files a message carried go quietly;
-    everything else, every command, edit, browser, MCP and unknown tool asks.
-    Auto Mode lets edits inside the folder through, commands `AutoModeCommands`
-    passes, and reads outside the folder but where credentials live. "Always
-    Allow" lasts for the chat while Boltty runs; for a command it covers the
-    program and its subcommand (`git commit`, `npm test`), else the whole line.
-  - agy's own `--mode auto` is no use here (1.5.3): print mode refused even `ls`,
-    `--sandbox` too, and `agy acp` offers no auto mode.
-  - Ask Boltty's read-only prompt tells it to open the screenshot when the
-    picture did not come with the message, and that the read is allowed; told
-    only "do not use tools", `agy` answered without looking.
-- Plan mode is `--mode plan`, a launch flag (an idle process is let go to change
-  it). Behind the gate it writes its plan as markdown into
-  `~/.gemini/antigravity-cli/brain/<conversation>/` (`write_file` with
-  `ArtifactMetadata.RequestFeedback`; once `implementation_plan.md`, once
-  `plan.md`) and ends the turn linking it (1.5.11); the file becomes the plan card.
-  The gate lets writes into `brain` through quietly: agy's own notes.
-  Without the gate print mode refused even `ls` before a plan.
+- ACP as Grok's: `session/new` mints the id (the conversation's), `session/load`
+  resumes, in another folder too, `session/prompt` runs a turn, `session/cancel` stops.
+  Pictures go as `image` blocks (`promptCapabilities.image: true`).
+- Modes are `session/set_mode` per session: `default`, `accept-edits`, `auto` ("Approve
+  edits and safe commands; ask before irreversible actions"; it ran `rm` and `curl`
+  unasked, in its sandbox with no network), `plan`. Skip Permissions is the launch flag
+  `--dangerously-skip-permissions`, for the whole process, so those chats run in a second
+  one (`ModeSplitClient`).
+- It asks with `session/request_permission`: Allow / Deny only, so no "Always Allow".
+  Default asks before commands and edits, `ls` included; reads in the folder go.
+- Model and effort are config options: `set_config_option model` takes the base id
+  (`gemini-3.8-flash`), `thought_level` the level. `session/new` lists ids with the level
+  in them (`gemini-3.8-flash-high`).
+- Edits come with a `diff` in `tool_call_update`.
+- Plan mode writes its plan as markdown into `~/.gemini/antigravity-cli/brain/<conversation>/`
+  (`rawInput` `Path`, `ArtifactMetadata.RequestFeedback`) and ends the turn; the file becomes
+  the plan card (`ACPAgent.planFile`). It asks before commands even there.
 - Skills: `agy -p=/skills --output-format json` in the folder (~7 s, no model
   call, the folder's `.agents/skills` among them, 1.5.11). `/name args` in the
-  words runs the skill in print mode; the record keeps `/name args` as the
-  person's text.
+  words runs the skill; the record keeps `/name args` as the person's text.
 - Plan limits: `agy -p=/usage --output-format json` (~4 s, no model call);
   groups of weekly buckets, each labelled (`AgentUsageWindow.title`).
-- `--conversation <id> --model <other> --effort <level>` goes on in that conversation
-  on the other model (1.5.2); both are launch flags, so an idle process is let go.
-  With neither, `init` names no model. A conversation resumed after a relaunch gets
-  its folder from `prepareSession`, so a folder change lets the idle process go
-  and `--conversation` goes on in the new one. Declared `.folderMoving`, not yet
-  seen live in another folder.
-- SIGINT stops a turn (`result` with `error: "interrupted"`, exit 1): declared
-  `.interrupt`, not `.terminableTurn`.
-- Effort is part of the model id (`gemini-3.8-flash-high`); `--model` takes the
-  base and `--effort` the level.
-- The record is SQLite in WAL: open `mode=ro` while `agy` runs, `immutable=1`
-  after it exits.
+- The record is the same SQLite `conversations/<id>.db`, in WAL: open `mode=ro`
+  while `agy` runs, `immutable=1` after it exits.
 - Steps are protobuf without a schema (`ProtoFields`): `step_type` 14 is the
   person (text 19.2), 15 the reply (text 20.1, thinking 20.3 never shown, calls
   20.7), 17 an error (24.3.1); status 7 refused/failed, 3 done; call id 5.4.1,
@@ -565,9 +547,14 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
 - Permission answers are `decision` on 2.0 (`reply` on 1.18). Send 2.0's and, on
   a 400 only, retry with 1.18's. A gone permission is `404
   PermissionNotFoundError` → `requestGone`.
-- **"Always" is Boltty's rule for the chat** (`OpenCodeAllowances`): OpenCode
-  saves `always` for the whole project on a shared service, so Boltty answers
-  `once` and remembers the save patterns for the session.
+- "Always" is sent as `always`, as OpenCode's own client does: it saves the rule
+  for the whole project (`/api/permission/saved`).
+- **Build allows everything** (2.3.2): its rules are `* * allow` but `.env` reads,
+  and the last rule that matches wins; Plan denies edits but allows `shell`. A
+  session's own `permissions` (`POST /api/session`, `PATCH`) come after the agent's
+  and win. A read-only chat gets `edit`/`write`/`patch`/`shell` → `deny`
+  (`OpenCodeClient.readOnlyRules`). `POST …/permission {action, resources}` only
+  evaluates (`effect`), with no model turn.
 - Questions are forms on 2.0 (`form.created` / `form.replied` /
   `form.cancelled`, `POST …/form/{id}/reply` with `{"answer": {key: value}}`,
   `DELETE` to cancel). **A field's answer is in its type**: string, boolean,
@@ -615,9 +602,6 @@ OpenCode 2.0 renamed much of its API; one build of Boltty speaks both 2.0 and
   2.2.5); the chosen one goes as `model.variant` when the session is made.
 - An effort needs a model (`model.variant`), so a chat with a default model and a
   chosen effort names the default.
-- Auto Mode is Boltty answering `edit` asks, and `bash` asks whose every resource
-  `AutoModeCommands` passes, "once"; a file outside the folder asks
-  `external_directory` first.
 - An MCP server's ask with an empty schema OpenCode accepts itself: no form comes
   (2.3.2).
 - The record keeps no title for a tool call (2.3.2): a `shell` call is named by its
@@ -757,9 +741,9 @@ The loop that must keep working:
   group's inks; a long name gives way at its end, never the effort after it,
   and the padding in its pill holds. Its menu (`ModelMenu`) is the
   models (under their providers when there are several, in submenus past 14), the
-  chosen model's efforts, and Auto Mode with what it lets through for this agent.
-  Auto was a word of its own here and read as not working, since on most agents
-  commands still ask; it is on the chip's help tag while on. A choice waits for the
+  chosen model's efforts, and the agent's permission modes with its CLI's words for
+  each. A mode other than the first is a word on the chip ("Opus · High · Auto"), as
+  the CLIs say theirs; ⇧Tab in an open chat walks them. A choice waits for the
   next message, whatever is running. The first screen has no chip: a new chat starts
   on Settings' choice.
 - **Key hints after the typed text** read like Siri's "ds — Ask Siri": an em
@@ -1405,12 +1389,10 @@ processes, so it is Boltty's to give.
   without them Boltty's on-request policy held the call); turned on mid-chat the thread
   is unsubscribed and resumed. Grok: `mcpServers` of `session/new` and `session/load`;
   loading a loaded session again in the same process brings them (1.0.92).
-  Antigravity takes MCP servers only from its config, never per run (`--settings` refuses
-  them, and a plugin cannot be enabled per run): Boltty installs a plugin of its own,
-  `~/.gemini/config/plugins/boltty`, whose server is `computer-use-bridge.sh` in
-  Application Support: it joins the socket `BOLTTY_COMPUTER_USE` names and, run by agy
-  anywhere else, answers with no tools. Calls come as `call_mcp_tool` with `ServerName`
-  `boltty_computer`, which the gate lets through (agy 1.5.17). OpenCode adds MCP
+  Antigravity takes them in `session/new` and `session/load` over ACP, as Grok does
+  (accepted on 1.5.18; its tools not yet seen in a turn). The plugin and hook Boltty
+  installed before (`~/.gemini/config/plugins/boltty`, the `boltty-permission-gate` key)
+  are removed at launch (`AntigravityClient.removeOldGate`). OpenCode adds MCP
   servers to a whole server, so Boltty's own OpenCode servers start with the tool
   (`OPENCODE_CONFIG_CONTENT`, one socket, `openCodeSocket`) and a chat with Computer Use
   runs on Boltty's own server beside the person's service, like a protected folder.
@@ -1510,8 +1492,8 @@ processes, so it is Boltty's to give.
   (`SettingsFilterField`). A whole agent row opens its page, its padding too.
 - **Settings says only what matters**: a row's title, its control, and a note
   only where something is wrong, waits on the person, costs something (a relaunch,
-  deleted chats) or leaves the Mac (what Ask Boltty sends, what Auto Mode lets
-  through). Notes explaining what a switch obviously does were everywhere and were
+  deleted chats) or leaves the Mac (what Ask Boltty sends, what a permission mode
+  lets through). Notes explaining what a switch obviously does were everywhere and were
   removed: they read as written by a machine.
 - **A setting that changes what is seen shows it** (`SettingsStage`): the thing
   itself, a real view of the product in an `NSViewRepresentable`, over the
@@ -1543,7 +1525,7 @@ processes, so it is Boltty's to give.
   one line of what a new chat would use (or why it can't), its switch.
   A row opens the agent's own page (`SettingsLocation`, in the back/forward
   history; only the page is stored): the agent and its switch,
-  model, reasoning, permissions with the Auto Mode note once, and
+  model, reasoning, permissions (the chosen mode's words when it is not the first), and
   the face's shape, gradient and finish as rows. Never expand every agent on
   the list again. `-boltty.settings.agent claude` opens an agent's page.
 - **Installing an agent** (`AgentInstaller`): one not here has Install in place of
@@ -1565,16 +1547,11 @@ processes, so it is Boltty's to give.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar
   4 high and flat in the accent, `UsageMeter`; in black it read as no brand at
-  all; never summed across agents' different units), and **Activity**: this
-  week in Boltty's own chats (`BolttyWeek`, off `ConversationStore`): how many
-  chats, in the headline size, over the week's days, each a stack of the faces of
-  the agents that took that day's chats (26, overlapping, newest on top, five then
-  "+N"; the stacks as tall as the week's busiest day), a face growing under the
-  pointer with the chat's name on its help tag. No subtitle and no footnote. An overview of every CLI's
-  history on the Mac (sessions, messages, tokens, a year of days, models, a book
-  comparison; `AgentStatisticsReader`) was there and was removed: it counted
-  chats Boltty never ran, and read as a dashboard. `Application
-  Support/Boltty/Usage/statistics.json` is its cache, inert on disk. Signing in happens in a terminal, so the page asks
+  all; never summed across agents' different units). Nothing else: an overview of every CLI's history on the Mac
+  (`AgentStatisticsReader`), then Activity, a week of Boltty's own chats as faces
+  and then as a streak, were each there and were removed: they said nothing the
+  person acted on. `Application Support/Boltty/Usage/statistics.json` is the first
+  one's cache, inert on disk. Signing in happens in a terminal, so the page asks
   every CLI again whether it is signed in before reading limits: when shown,
   when its window comes forward (at most every 30 s), and on Refresh. A
   signed-out agent's row is its face, name and `AgentId.signInCommand`
@@ -1946,7 +1923,8 @@ processes, so it is Boltty's to give.
 - `scripts/release.sh` builds the **last commit** in a temporary worktree,
   universal, into `.release/DerivedData`, signs inside out, and writes
   `Boltty.dmg` and its `.sha256` to `apps/macos/.release/<version>/`. It refuses
-  an uncommitted version bump and a version not above the latest release. It
+  an uncommitted version bump, a version not above the latest release, and a
+  commit whose CI run has not passed (`--without-ci` only when GitHub cannot say). It
   **publishes nothing**: it prints the `git tag` and `gh release create` for the
   maintainer to run. `--local` builds the working tree for this Mac and installs it
   into /Applications. Before a build only the old binary goes, not the bundle: with
@@ -2007,13 +1985,17 @@ processes, so it is Boltty's to give.
 
 1. Read this file, and `.scratch/<feature>/` if work is in flight (gitignored).
 2. TDD for pure logic.
-3. **Run no tests until the maintainer asks.** Build to check it compiles,
-   install with `release.sh --local`, and stop; the maintainer judges by eye. When tests are
-   asked for, `apps/macos/scripts/test.sh` picks the suites that name the changed
-   types; `--all` once at the end. UI tests only when named. CI runs the unit
-   tests on every push, so a red test is heard of without taking anyone's Mac.
-   A test holds behaviour: a number kept twice (a proportion, a height) only
-   breaks when the eye has already judged.
+3. **Run no tests while working.** Build to check it compiles,
+   install with `release.sh --local`, and stop; the maintainer judges by eye.
+   **Before any push, run `make check`** (the linters, and the suites
+   that name what changed) and fix what is red in the same push. Left to CI, 13 of
+   60 runs went red, nine of them a test still holding what a change had just
+   changed on purpose (a Grok answer, ⇧Tab, a row's title, a colour's numbers),
+   and three releases were built over it. A change of behaviour changes its test in
+   the same commit; a timing test waits for its condition, never a fixed delay.
+   `--all` when asked; UI tests only when named. `release.sh` refuses a commit
+   whose CI has not passed. A test holds behaviour: a number kept twice (a
+   proportion, a height) only breaks when the eye has already judged.
 4. Commit when asked. "Push" means commit on `main` and push. Other sessions
    may be editing the same checkout: check before committing, and commit only
    your own files.

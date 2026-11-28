@@ -197,7 +197,7 @@ final class ComputerUseController {
     case .always:
       chatGrants[id, default: []].insert(app.key)
       return nil
-    case .reject, nil:
+    case .reject, .rejectAlways, nil:
       var refusal = "The person did not allow using \(app.name). Do not try it again in this request."
       if let words = answer?.words?.trimmingCharacters(in: .whitespacesAndNewlines), !words.isEmpty {
         refusal += " They said: \(words)"

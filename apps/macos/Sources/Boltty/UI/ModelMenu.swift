@@ -7,7 +7,7 @@ enum ModelMenu {
     _ content: BolttyAIModelMenu,
     chooseModel: @escaping (AgentModelOption) -> Void,
     chooseEffort: @escaping (String?) -> Void,
-    setAutoMode: @escaping (Bool) -> Void,
+    setPermissionMode: @escaping (String) -> Void,
     setPlanMode: @escaping (Bool) -> Void = { _ in }
   ) -> NSMenu {
     let menu = NSMenu(title: "Model")
@@ -42,13 +42,14 @@ enum ModelMenu {
       menu.addItem(plan)
     }
 
-    if let on = content.autoMode {
-      if menu.numberOfItems > 0, content.planMode == nil { menu.addItem(.separator()) }
-      let auto = item(title: String(localized: "Auto Mode"), isOn: on) { setAutoMode(!on) }
-      let reach = AgentsSettingsPage.autoModeReach(for: content.agent)
-      auto.subtitle = reach.prefix(1).uppercased() + reach.dropFirst()
-      auto.setAccessibilityIdentifier("boltty.ask.autoMode")
-      menu.addItem(auto)
+    if content.permissionModes.count > 1 {
+      menu.addItem(.sectionHeader(title: String(localized: "Permissions")))
+      for mode in content.permissionModes {
+        let row = item(title: mode.title, isOn: mode == content.permissionMode) { setPermissionMode(mode.id) }
+        row.subtitle = mode.summary
+        row.setAccessibilityIdentifier("boltty.ask.permissionMode.\(mode.id)")
+        menu.addItem(row)
+      }
     }
     return menu
   }
@@ -137,7 +138,7 @@ final class ModelChipButton: PaletteIconButton {
   }
 
   private static func effortWords(_ chip: BolttyAIModelChip) -> String {
-    chip.effort.map { " · " + $0 } ?? ""
+    [chip.effort, chip.mode].compactMap { $0 }.map { " · " + $0 }.joined()
   }
 
   private static func width(_ words: String) -> CGFloat {

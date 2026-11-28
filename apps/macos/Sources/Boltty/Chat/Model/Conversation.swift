@@ -35,7 +35,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
   var canChangeWorkingDirectory: Bool { remoteSessionID == nil }
   var model: ModelSelection?
   var reasoningEffort: String?
-  var autoApprove: Bool
+  var permissionMode: String?
   var readOnly: Bool = false
   var planMode: Bool = false
   var computerUse: Bool = false
@@ -58,7 +58,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     workingDirectory: String,
     model: ModelSelection? = nil,
     reasoningEffort: String? = nil,
-    autoApprove: Bool = false,
+    permissionMode: String? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
     draft: String = "",
@@ -73,7 +73,7 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     self.workingDirectory = workingDirectory
     self.model = model
     self.reasoningEffort = reasoningEffort
-    self.autoApprove = autoApprove
+    self.permissionMode = permissionMode
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.draft = draft
@@ -84,9 +84,13 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case id, providerID, remoteSessionID, title, workingDirectory, model
-    case reasoningEffort, autoApprove, readOnly, createdAt, updatedAt, draft, draftAttachments
+    case reasoningEffort, permissionMode, readOnly, createdAt, updatedAt, draft, draftAttachments
     case hasUnread, lastKnownState, panelDraft, sentFiles, hasOwnName, planMode, forkedFrom, computerUse
     case isAskBoltty = "isTalk"
+  }
+
+  private enum LegacyKeys: String, CodingKey {
+    case autoApprove
   }
 
   init(from decoder: Decoder) throws {
@@ -100,7 +104,11 @@ struct Conversation: Identifiable, Codable, Equatable, Sendable {
     workingDirectory = try container.decode(String.self, forKey: .workingDirectory)
     model = try container.decodeIfPresent(ModelSelection.self, forKey: .model)
     reasoningEffort = try container.decodeIfPresent(String.self, forKey: .reasoningEffort)
-    autoApprove = try container.decodeIfPresent(Bool.self, forKey: .autoApprove) ?? false
+    permissionMode = try container.decodeIfPresent(String.self, forKey: .permissionMode)
+    if permissionMode == nil,
+       try decoder.container(keyedBy: LegacyKeys.self).decodeIfPresent(Bool.self, forKey: .autoApprove) == true {
+      permissionMode = PermissionMode.legacyAuto
+    }
     readOnly = try container.decodeIfPresent(Bool.self, forKey: .readOnly) ?? false
     planMode = try container.decodeIfPresent(Bool.self, forKey: .planMode) ?? false
     computerUse = try container.decodeIfPresent(Bool.self, forKey: .computerUse) ?? false

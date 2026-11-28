@@ -110,11 +110,10 @@ final class FakeBolttyAIConversations: BolttyAIConversations {
   var modelMenus: [UUID: BolttyAIModelMenu] = [:]
   func modelMenu(for id: UUID) -> BolttyAIModelMenu? { modelMenus[id] }
 
-  private(set) var autoApproveChanges: [(id: UUID, enabled: Bool)] = []
-  func setAutoApprove(_ enabled: Bool, for id: UUID) {
-    autoApproveChanges.append((id, enabled))
-    conversationsByID[id]?.autoApprove = enabled
-    previews[id]?.autoMode = enabled
+  private(set) var permissionModeChanges: [(id: UUID, mode: String?)] = []
+  func setPermissionMode(_ mode: String?, for id: UUID) {
+    permissionModeChanges.append((id, mode))
+    conversationsByID[id]?.permissionMode = mode
     changes.send()
   }
 

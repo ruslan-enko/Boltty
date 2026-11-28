@@ -2,6 +2,26 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.15.0
+
+**Permissions**
+- Each agent's permission modes are its own, in its CLI's words and order:
+  Claude Code Ask · Accept Edits · Auto · Bypass Permissions; Codex Ask for
+  Approval · Approve for Me · Full Access; Grok Ask · Auto-review · Always
+  Approve; Antigravity Default · Skip Permissions. Boltty's own Auto Mode, which
+  judged commands itself, is gone.
+- The mode is chosen on each agent's page in Settings › Agents, and switched
+  per chat in the model chip's menu or with ⇧Tab in an open chat; a mode other
+  than the first shows on the chip.
+- "Always Allow" saves the rule where the CLI itself chooses, and says where.
+
+**Antigravity**
+- Antigravity runs over `agy acp`: it asks before commands and edits itself,
+  takes pictures directly, and its plan becomes the plan card.
+
+**Settings**
+- Usage shows plan limits only; Activity is gone.
+
 ## 0.14.0
 
 **Menu bar**

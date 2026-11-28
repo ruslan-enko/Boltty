@@ -3,6 +3,7 @@ set -euo pipefail
 
 #   scripts/release.sh [--arch arm64|universal]
 #   scripts/release.sh --local      # this Mac only: the files as they are now
+#   scripts/release.sh --without-ci # build a commit CI has not passed (GitHub down)
 
 repo="ruslan-enko/boltty"
 app_dir="${0:A:h}/.."
@@ -10,10 +11,12 @@ cd "$app_dir"
 
 arch=universal
 local_build=false
+check_ci=true
 while (( $# )); do
   case "$1" in
     --arch) arch="$2"; shift ;;
     --local) local_build=true ;;
+    --without-ci) check_ci=false ;;
     -h|--help) sed -n '4,40p' "${0:A}"; exit 0 ;;
     *) print -u2 "release: unknown argument $1"; exit 2 ;;
   esac
@@ -65,6 +68,13 @@ published=$(curl -fsSL --max-time 10 -H 'Accept: application/vnd.github+json' \
   | sed -nE 's/.*"tag_name": *"v?([^"]+)".*/\1/p' | head -1 || true)
 if [[ -n "$published" ]] && ! is_newer "$version" "$published"; then
   die "$version is not above the published $published — scripts/bump-version.sh"
+fi
+
+if $check_ci; then
+  sha=$(git rev-parse HEAD)
+  ci=$(gh run list --repo "$repo" --workflow CI --commit "$sha" --json status,conclusion \
+    -q 'map(select(.status == "completed")) | .[0].conclusion // ""' 2>/dev/null || true)
+  [[ "$ci" == success ]] || die "CI has not passed on $commit (${ci:-no finished run}) — push, wait for it, fix what is red; --without-ci only when GitHub cannot say"
 fi
 
 out=".release/$version"

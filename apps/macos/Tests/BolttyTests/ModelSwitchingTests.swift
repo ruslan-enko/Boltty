@@ -80,7 +80,7 @@ final class ModelSwitchingTests: XCTestCase {
     let chat = store.createConversation(
       title: "t", workingDirectory: "/tmp", providerID: client.providerID,
       model: ModelSelection(providerID: "anthropic", modelID: "opus"),
-      reasoningEffort: "high", autoApprove: true)
+      reasoningEffort: "high", permissionMode: "auto")
     store.attachRemoteSession("saved", to: chat.id, model: nil)
 
     await engine.send(text: "hello", in: chat.id)
@@ -89,7 +89,7 @@ final class ModelSwitchingTests: XCTestCase {
     XCTAssertEqual(prepared.id, "saved")
     XCTAssertEqual(prepared.options.model?.modelID, "opus")
     XCTAssertEqual(prepared.options.effort, "high")
-    XCTAssertTrue(prepared.options.autoApprove)
+    XCTAssertEqual(prepared.options.permissionMode, PermissionMode.resolved("auto", for: AgentId(rawValue: client.providerID))?.id)
     XCTAssertEqual(prepared.options.directory, "/tmp")
   }
 
@@ -123,8 +123,8 @@ final class ModelSwitchingTests: XCTestCase {
       ModelMenu.make(
         BolttyAIModelMenu(
           agent: .codex, models: [], current: nil, goneName: nil, efforts: [high],
-          effort: effort, canResetEffort: canReset, autoMode: nil),
-        chooseModel: { _ in }, chooseEffort: { _ in }, setAutoMode: { _ in }
+          effort: effort, canResetEffort: canReset),
+        chooseModel: { _ in }, chooseEffort: { _ in }, setPermissionMode: { _ in }
       ).items.map(\.title)
     }
     XCTAssertFalse(titles(effort: "high", canReset: false).contains("Default"))

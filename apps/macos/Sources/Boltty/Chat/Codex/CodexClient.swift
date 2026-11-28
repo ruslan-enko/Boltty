@@ -7,7 +7,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   let capabilities: AgentCapabilities = [
     .modelSelection, .modelSwitching, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .reasoningEffort,
-    .autoApproval, .usageReporting, .rereadableTranscript, .usageLimits,
+    .usageReporting, .rereadableTranscript, .usageLimits,
     .contextUsage, .compaction, .steering, .activityHistory, .folderMoving, .commands, .planMode,
     .forking, .computerUse,
   ]
@@ -55,7 +55,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     var directory: String
     var model: ModelSelection?
     var effort: String?
-    var autoApprove = false
+    var permissionMode: String?
+    var readOnly = false
     var planning = false
     var lastMode: String?
     var serverModel: String?
@@ -71,13 +72,15 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       directory: String,
       model: ModelSelection?,
       effort: String? = nil,
-      autoApprove: Bool = false
+      permissionMode: String? = nil,
+      readOnly: Bool = false
     ) {
       self.id = id
       self.directory = directory
       self.model = model
       self.effort = effort
-      self.autoApprove = autoApprove
+      self.permissionMode = permissionMode
+      self.readOnly = readOnly
     }
   }
 
@@ -89,6 +92,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     let server: JSONLineProcess
     var persistsForSession = false
     var permissions: [String: Any] = [:]
+    var decisions: [PermissionDecision: Any] = [:]
   }
 
   func probe() async -> AgentAvailability {
@@ -135,11 +139,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   ) async throws -> RemoteSessionInfo {
     let directory = options.directory
     let model = options.model
-    var params: [String: Any] = [
-      "cwd": directory,
-      "approvalPolicy": Self.approvalPolicy(autoApprove: options.autoApprove),
-      "sandbox": options.readOnly ? "read-only" : "workspace-write"
-    ]
+    var params: [String: Any] = ["cwd": directory]
+    params.merge(Self.permissionSettings(mode: options.permissionMode, readOnly: options.readOnly)) { _, new in new }
     if let model { params["model"] = model.modelID }
     if let socket = options.computerUseSocket { params["config"] = ComputerUseServer.codexConfig(socket) }
 
@@ -166,7 +167,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
         directory: directory,
         model: model,
         effort: options.effort,
-        autoApprove: options.autoApprove
+        permissionMode: options.permissionMode,
+        readOnly: options.readOnly
       )
       threads[threadID]?.loadedOn = server
       threads[threadID]?.planning = options.planMode
@@ -205,7 +207,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       } else if changesModel {
         threads[id]?.effort = nil
       }
-      threads[id]?.autoApprove = options.autoApprove
+      threads[id]?.permissionMode = options.permissionMode
+      threads[id]?.readOnly = options.readOnly
       threads[id]?.planning = options.planMode
     }
   }
@@ -346,8 +349,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           id: id,
           directory: resumed.string("cwd") ?? NSHomeDirectory(),
           model: resumed.string("model").map { ModelSelection(providerID: provider.rawValue, modelID: $0) },
-          effort: resumed.string("reasoningEffort"),
-          autoApprove: Self.isAutoApproved(resumed["approvalPolicy"])
+          effort: resumed.string("reasoningEffort")
         )
       }
       threads[id]?.loadedOn = server
@@ -393,7 +395,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       if let directory = thread?.directory { params["cwd"] = directory }
       if let model = thread?.model { params["model"] = model.modelID }
       if let effort = thread?.effort, !effort.isEmpty { params["effort"] = effort }
-      params["approvalPolicy"] = Self.approvalPolicy(autoApprove: thread?.autoApprove ?? false)
+      params.merge(Self.permissionSettings(mode: thread?.permissionMode, readOnly: thread?.readOnly ?? false)) { _, new in new }
       if let thread, let mode = Self.collaborationMode(for: thread) {
         params["collaborationMode"] = mode
         thread.lastMode = mode["mode"] as? String
@@ -531,36 +533,49 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     switch pending.method {
     case "item/commandExecution/requestApproval", "item/fileChange/requestApproval",
          "applyPatchApproval", "execCommandApproval":
-      try answer(pending, result: ["decision": Self.decision(for: decision)])
+      guard let chosen = pending.decisions.isEmpty
+        ? Self.decision(for: decision)
+        : pending.decisions[decision] ?? (decision == .rejectAlways ? pending.decisions[.reject] : nil)
+      else { throw AgentClientError.transport(String(localized: "Codex did not offer that answer.")) }
+      try answer(pending, result: ["decision": chosen])
     case "mcpServer/elicitation/request":
       try answer(pending, result: Self.elicitationAnswer(
         for: decision, persistsForSession: pending.persistsForSession))
     default:
       try answer(pending, result: [
-        "permissions": decision == .reject ? [:] : pending.permissions,
+        "permissions": decision == .reject || decision == .rejectAlways ? [:] : pending.permissions,
         "scope": decision == .always ? "session" : "turn",
       ])
     }
   }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {
     let server = try await server()
     try await ensureThread(id: sessionID, on: server)
-    lock.withLock { threads[sessionID]?.autoApprove = enabled }
+    lock.withLock { threads[sessionID]?.permissionMode = mode }
   }
 
-  static func approvalPolicy(autoApprove: Bool) -> Any {
-    guard autoApprove else { return "on-request" }
-    return ["granular": [
-      "sandbox_approval": false, "rules": false, "skill_approval": false,
-      "request_permissions": false, "mcp_elicitations": true,
-    ]]
-  }
-
-  static func isAutoApproved(_ policy: Any?) -> Bool {
-    if let name = policy as? String { return name == "never" }
-    let granular = (policy as? [String: Any])?["granular"] as? [String: Any]
-    return granular?["sandbox_approval"] as? Bool == false
+  /// Codex's own presets (its composer's Ask for approval / Approve for me / Full access).
+  /// Full access keeps MCP asks: under `never` Codex refuses them unasked, Computer Use's included.
+  static func permissionSettings(mode: String?, readOnly: Bool) -> [String: Any] {
+    if readOnly {
+      return ["permissions": ":read-only", "approvalPolicy": "on-request", "approvalsReviewer": "user"]
+    }
+    switch mode {
+    case "approveForMe":
+      return ["permissions": ":workspace", "approvalPolicy": "on-request", "approvalsReviewer": "auto_review"]
+    case "fullAccess":
+      return [
+        "permissions": ":danger-full-access",
+        "approvalPolicy": ["granular": [
+          "sandbox_approval": false, "rules": false, "skill_approval": false,
+          "request_permissions": false, "mcp_elicitations": true,
+        ]],
+        "approvalsReviewer": "user",
+      ]
+    default:
+      return ["permissions": ":workspace", "approvalPolicy": "on-request", "approvalsReviewer": "user"]
+    }
   }
 
   static func granted(_ asked: JSONObject?) -> [String: Any] {
@@ -585,7 +600,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   }
 
   static func elicitationAnswer(for decision: PermissionDecision, persistsForSession: Bool) -> [String: Any] {
-    guard decision != .reject else { return ["action": "decline"] }
+    guard decision != .reject, decision != .rejectAlways else { return ["action": "decline"] }
     var result: [String: Any] = ["action": "accept", "content": [String: Any]()]
     if decision == .always, persistsForSession { result["_meta"] = ["persist": "session"] }
     return result
@@ -595,8 +610,35 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     switch decision {
     case .once: return "accept"
     case .always: return "acceptForSession"
-    case .reject: return "decline"
+    case .reject, .rejectAlways: return "decline"
     }
+  }
+
+  /// The answers Codex offered for this ask (`availableDecisions`), each as it is sent back,
+  /// with what its "always" covers. None listed means an older server's three.
+  static func offeredDecisions(_ listed: Any?) -> (decisions: [PermissionDecision: Any], reach: String?) {
+    guard let listed = listed as? [Any], !listed.isEmpty else { return ([:], nil) }
+    var decisions: [PermissionDecision: Any] = [:]
+    var reach: String?
+    for item in listed {
+      if let name = item as? String {
+        switch name {
+        case "accept": decisions[.once] = name
+        case "acceptForSession":
+          decisions[.always] = name
+          reach = String(localized: "this command, for this session")
+        case "decline": decisions[.reject] = name
+        case "cancel" where decisions[.reject] == nil: decisions[.reject] = name
+        default: break
+        }
+      } else if let object = item as? [String: Any], decisions[.always] == nil,
+                let amendment = object["acceptWithExecpolicyAmendment"] as? [String: Any],
+                let prefix = amendment["execpolicy_amendment"] as? [String] {
+        decisions[.always] = object
+        reach = String(localized: "always, for commands that start with \(prefix.joined(separator: " "))")
+      }
+    }
+    return (decisions, reach)
   }
 
   func events() -> AsyncStream<AgentEventEnvelope> {
@@ -869,8 +911,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       let interactionID = params.string("approvalId")
         ?? params.string("itemId")
         ?? "approval_\(rpcID)"
+      let offered = Self.offeredDecisions(params["availableDecisions"])
       rememberApproval(interactionID, PendingApproval(
-        rpcID: rpcID, method: method, threadID: threadID, server: server
+        rpcID: rpcID, method: method, threadID: threadID, server: server, decisions: offered.decisions
       ))
       emit(.interactionAsked(PendingInteraction(
         id: interactionID,
@@ -880,7 +923,9 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           action: "shell",
           resources: [params.string("command") ?? ""].filter { !$0.isEmpty },
           savePatterns: [],
-          toolCallID: params.string("itemId")
+          toolCallID: params.string("itemId"),
+          offersAlways: offered.decisions[.always] != nil,
+          alwaysReach: offered.reach
         ))
       )))
 
@@ -1059,6 +1104,14 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       if method == "item/completed", item.string("type") == "plan", let id = item.string("id") {
         askAboutPlan(item.string("text") ?? "", id: id, in: threadID)
       }
+
+    case "item/autoApprovalReview/completed":
+      guard let threadID = params.string("threadId"), let turnID = params.string("turnId"),
+            let part = CodexMapper.review(params)
+      else { return }
+      let target = params.string("targetItemId") ?? part.id
+      emit(.partUpdated(
+        sessionID: threadID, messageID: home(forPart: target, threadID: threadID, turnID: turnID), part: part))
 
     case "thread/status/changed":
       guard let threadID = params.string("threadId"),

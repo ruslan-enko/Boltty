@@ -447,3 +447,269 @@ final class MascotPosterRender: XCTestCase {
     }
   }
 }
+
+@MainActor
+final class MascotLineupRender: XCTestCase {
+  private struct Cue {
+    var at: Double
+    var emotion: MascotEmotion?
+    var poke: MascotReaction?
+    var watch: Int?
+    var watchFor = 1.0
+  }
+
+  private struct Player {
+    let look: MascotLook
+    let center: CGPoint
+    let arrives: Double
+    let cues: [Cue]
+    let phase: Double
+    var motion: MascotMotion
+    var played = 0
+    var watching: (index: Int, until: Double)?
+  }
+
+  private static let width: CGFloat = 1920
+  private static let height: CGFloat = 1080
+  private static let fps = 60.0
+  private static let tile: CGFloat = 340
+  private static let gap: CGFloat = 14
+  private static let face: CGFloat = 264
+
+  private static func centre(_ index: Int) -> CGPoint {
+    let row = 5 * tile + 4 * gap
+    return CGPoint(x: (width - row) / 2 + tile / 2 + CGFloat(index) * (tile + gap), y: height / 2)
+  }
+
+  private static let scripts: [[Cue]] = [
+    [Cue(at: 1.6, emotion: .listening), Cue(at: 2.5, poke: .wink), Cue(at: 3.4, emotion: .thinking),
+     Cue(at: 4.7, emotion: .curious, watch: 1), Cue(at: 5.8, emotion: .sad), Cue(at: 6.9, emotion: .curious, poke: .doubleHop)],
+    [Cue(at: 1.7, poke: .spinHop), Cue(at: 2.8, emotion: .focused), Cue(at: 3.9, emotion: .concerned),
+     Cue(at: 4.8, emotion: .curious, watch: 0), Cue(at: 5.9, emotion: .sleeping), Cue(at: 7.0, emotion: .curious)],
+    [Cue(at: 1.8, emotion: .thinking), Cue(at: 3.0, emotion: .curious, poke: .flip), Cue(at: 4.0, emotion: .sad),
+     Cue(at: 5.2, emotion: .listening), Cue(at: 6.3, emotion: .curious, poke: .boing)],
+    [Cue(at: 1.9, emotion: .concerned), Cue(at: 2.9, emotion: .sleeping), Cue(at: 4.1, emotion: .curious, poke: .cartwheel),
+     Cue(at: 5.3, emotion: .focused), Cue(at: 6.4, emotion: .curious, poke: .wink)],
+    [Cue(at: 2.0, emotion: .sad), Cue(at: 3.1, emotion: .curious, poke: .doubleHop), Cue(at: 4.3, watch: 2, watchFor: 1.2),
+     Cue(at: 5.5, emotion: .thinking), Cue(at: 6.6, emotion: .curious, poke: .spinHop)],
+  ]
+
+  private func cast() throws -> [Player] {
+    let stored = UserDefaults.standard.persistentDomain(forName: "com.boltty.app")?[MascotRoster.storageKey] as? Data
+    let selections = try stored.map { try JSONDecoder().decode([String: MascotSelection].self, from: $0) } ?? [:]
+    let roster = MascotRoster(selections: selections).looks()
+    let hex = MascotLook(shape: .hex, palette: try XCTUnwrap(MascotPalette.palette(withID: "daybreak")))
+    var looks = try [AgentId.opencode, .claude, .codex, .grok].map { try XCTUnwrap(roster[$0]) }
+    looks.insert(hex, at: 2)
+    return looks.enumerated().map { index, look in
+      var stream = MascotRandom(seed: MascotSpec.seed &+ UInt32(index + 3) &* 971)
+      let phase = stream.next() * 90
+      let arrives = 0.25 + Double(index) * 0.13
+      let wake = Cue(at: arrives + 0.35, emotion: .curious)
+      return Player(
+        look: look, center: Self.centre(index), arrives: arrives,
+        cues: [wake] + Self.scripts[index], phase: phase,
+        motion: MascotMotion(random: stream, emotion: .sleeping))
+    }
+  }
+
+  private func play(_ players: inout [Player], until time: Double) {
+    for index in players.indices {
+      while players[index].played < players[index].cues.count,
+            players[index].cues[players[index].played].at <= time {
+        let cue = players[index].cues[players[index].played]
+        players[index].played += 1
+        if let emotion = cue.emotion { players[index].motion.setEmotion(emotion) }
+        if let poke = cue.poke { players[index].motion.poke(poke) }
+        if let watch = cue.watch { players[index].watching = (watch, time + cue.watchFor) }
+      }
+      if let watching = players[index].watching, watching.until > time {
+        let dx = players[watching.index].center.x - players[index].center.x
+        players[index].motion.setPointer(x: dx < 0 ? -1 : 1, y: 0.1, strength: 1)
+      } else {
+        players[index].watching = nil
+        players[index].motion.setPointer(x: 0, y: 0, strength: 0)
+      }
+    }
+  }
+
+  private func frame(of player: Player, clock: Double) -> MascotRenderer.Frame {
+    let pose = player.motion.pose
+    let bridgeY = MascotSpec.designBox / 2 - MascotSpec.eyeBridge.y
+    let eyes = (0..<2).map { index -> MascotRenderer.Eye in
+      let side = index == 0 ? -1.0 : 1.0
+      return MascotRenderer.Eye(
+        centre: CGPoint(x: side * MascotSpec.eyeSpacing / 2 + pose.gazeX, y: bridgeY + pose.gazeY),
+        turn: 0, shape: pose.eyes[index])
+    }
+    return MascotRenderer.Frame(
+      size: CGSize(width: Self.face, height: Self.face), pixelSize: 1,
+      pose: MascotRenderer.Pose(yaw: pose.yaw, pitch: pose.pitch, roll: pose.roll,
+                                sx: pose.sx, sy: pose.sy, lift: -pose.rise),
+      eyes: eyes, clock: clock, phase: player.phase,
+      palette: player.look.palette, shape: player.look.shape,
+      overscan: MascotNSView.overscan, finish: player.look.finish)
+  }
+
+  private func ground(in space: CGColorSpace) throws -> CGImage {
+    let context = try XCTUnwrap(CGContext(
+      data: nil, width: Int(Self.width), height: Int(Self.height), bitsPerComponent: 8, bytesPerRow: 0,
+      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    context.setFillColor(gray: 0.972, alpha: 1)
+    context.fill(CGRect(x: 0, y: 0, width: Self.width, height: Self.height))
+    for index in 0..<5 {
+      let c = Self.centre(index)
+      let rect = CGRect(x: c.x - Self.tile / 2, y: Self.height - c.y - Self.tile / 2, width: Self.tile, height: Self.tile)
+      context.addPath(Self.continuousRect(rect, radius: 52))
+      context.setFillColor(gray: 0.93, alpha: 1)
+      context.fillPath()
+    }
+    return try XCTUnwrap(context.makeImage())
+  }
+
+  private static func continuousRect(_ rect: CGRect, radius r: CGFloat) -> CGPath {
+    let path = CGMutablePath()
+    let corners: [(CGPoint, CGVector, CGVector)] = [
+      (CGPoint(x: rect.maxX, y: rect.minY), CGVector(dx: 1, dy: 0), CGVector(dx: 0, dy: 1)),
+      (CGPoint(x: rect.maxX, y: rect.maxY), CGVector(dx: 0, dy: 1), CGVector(dx: -1, dy: 0)),
+      (CGPoint(x: rect.minX, y: rect.maxY), CGVector(dx: -1, dy: 0), CGVector(dx: 0, dy: -1)),
+      (CGPoint(x: rect.minX, y: rect.minY), CGVector(dx: 0, dy: -1), CGVector(dx: 1, dy: 0)),
+    ]
+    for (index, (c, u, v)) in corners.enumerated() {
+      func p(_ back: CGFloat, _ on: CGFloat) -> CGPoint {
+        CGPoint(x: c.x - u.dx * back * r + v.dx * on * r, y: c.y - u.dy * back * r + v.dy * on * r)
+      }
+      if index == 0 { path.move(to: p(1.52866483, 0)) } else { path.addLine(to: p(1.52866483, 0)) }
+      path.addCurve(to: p(0.63149399, 0.07491100), control1: p(1.08849323, 0), control2: p(0.86840689, 0))
+      path.addCurve(to: p(0.07491100, 0.63149399), control1: p(0.37282392, 0.16905899),
+                    control2: p(0.16905899, 0.37282392))
+      path.addCurve(to: p(0, 1.52866483), control1: p(0, 0.86840689), control2: p(0, 1.08849323))
+    }
+    path.closeSubpath()
+    return path
+  }
+
+  private func opacity(_ image: CIImage, _ k: CGFloat) -> CIImage {
+    image.applyingFilter("CIColorMatrix", parameters: [
+      "inputRVector": CIVector(x: k, y: 0, z: 0, w: 0),
+      "inputGVector": CIVector(x: 0, y: k, z: 0, w: 0),
+      "inputBVector": CIVector(x: 0, y: 0, z: k, w: 0),
+      "inputAVector": CIVector(x: 0, y: 0, z: 0, w: k),
+    ])
+  }
+
+  private static func arrival(_ t: Double) -> (scale: Double, alpha: Double) {
+    guard t > 0 else { return (0.001, 0) }
+    let spring = 1 - exp(-7 * t) * cos(13 * t)
+    let x = min(1, t / 0.22)
+    return (max(0.001, 0.35 + 0.65 * spring), x * x * (3 - 2 * x))
+  }
+
+  func testRenderTheLineup() throws {
+    let environment = ProcessInfo.processInfo.environment
+    guard let dir = environment["BOLTTY_LINEUP"] else { throw XCTSkip("set BOLTTY_LINEUP to render") }
+    let directory = URL(fileURLWithPath: dir)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let duration = Double(environment["BOLTTY_LINEUP_SECONDS"] ?? "") ?? 8
+    let stills = (environment["BOLTTY_LINEUP_STILLS"] ?? "").split(separator: ",").compactMap { Double($0) }
+    let video = environment["BOLTTY_LINEUP_VIDEO"] == "1"
+    let supersample: CGFloat = 2
+    let renderer = try XCTUnwrap(MascotRenderer.shared)
+    let sRGB = try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB))
+    let context = CIContext(options: [
+      .workingColorSpace: try XCTUnwrap(CGColorSpace(name: CGColorSpace.extendedLinearSRGB)),
+      .workingFormat: CIFormat.RGBAh, .cacheIntermediates: false,
+    ])
+    let extent = CGRect(x: 0, y: 0, width: Self.width, height: Self.height)
+    let base = CIImage(cgImage: try ground(in: sRGB))
+    var players = try cast()
+    let step = 1 / Self.fps
+    for _ in 0..<Int(2 * Self.fps) { for i in players.indices { players[i].motion.update(step) } }
+
+    var ffmpeg: Process?
+    var input: FileHandle?
+    let output = directory.appendingPathComponent("boltty-agents-lineup.mp4")
+    if video {
+      let process = Process()
+      process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/ffmpeg")
+      process.arguments = [
+        "-y", "-f", "rawvideo", "-pix_fmt", "bgra", "-s", "\(Int(Self.width))x\(Int(Self.height))",
+        "-framerate", "\(Int(Self.fps))", "-i", "-",
+        "-vf", "scale=out_color_matrix=bt709:out_range=tv:flags=spline+accurate_rnd+full_chroma_int,format=yuv420p",
+        "-c:v", "libx264", "-preset", "slow", "-crf", "14", "-profile:v", "high", "-r", "60",
+        "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
+        "-movflags", "+faststart", output.path,
+      ]
+      let pipe = Pipe()
+      process.standardInput = pipe
+      let log = directory.appendingPathComponent("ffmpeg.log")
+      FileManager.default.createFile(atPath: log.path, contents: nil)
+      let handle = try FileHandle(forWritingTo: log)
+      process.standardOutput = handle
+      process.standardError = handle
+      try process.run()
+      ffmpeg = process
+      input = pipe.fileHandleForWriting
+    }
+
+    var pending = stills.sorted()
+    let frames = Int((duration * Self.fps).rounded())
+    for index in 0..<frames {
+      let time = Double(index) / Self.fps
+      play(&players, until: time)
+      for i in players.indices { players[i].motion.update(step) }
+      let wantsStill = pending.first.map { time + step / 2 >= $0 } ?? false
+      if !video && pending.isEmpty { break }
+      guard video || wantsStill else { continue }
+
+      var picture = base
+      for player in players {
+        let (scale, alpha) = Self.arrival(time - player.arrives)
+        guard alpha > 0 else { continue }
+        let clock = player.phase + (2 + time) * MascotSpec.speed * MascotSpec.gradientRate
+        let uniforms = MascotRenderer.uniforms(for: frame(of: player, clock: clock), rays: 4)
+        var face = CIImage(cgImage: try XCTUnwrap(renderer.image(of: uniforms, scale: supersample)))
+        let k = CGFloat(scale) / supersample
+        face = face.transformed(by: CGAffineTransform(scaleX: k, y: k))
+        let centre = CGPoint(x: player.center.x, y: Self.height - player.center.y)
+        face = face.transformed(by: CGAffineTransform(translationX: centre.x - face.extent.midX,
+                                                      y: centre.y - face.extent.midY))
+        face = opacity(face, CGFloat(alpha))
+        let shadow = face
+          .applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+            "inputGVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+            "inputBVector": CIVector(x: 0, y: 0, z: 0, w: 0),
+            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.16),
+          ])
+          .clampedToExtent().applyingGaussianBlur(sigma: Double(Self.face) * 0.04)
+          .transformed(by: CGAffineTransform(translationX: 0, y: -Self.face * 0.05))
+          .cropped(to: extent)
+        picture = face.composited(over: shadow.composited(over: picture))
+      }
+      let image = try XCTUnwrap(context.createCGImage(
+        picture.cropped(to: extent), from: extent, format: .BGRA8, colorSpace: sRGB))
+      if wantsStill {
+        let still = pending.removeFirst()
+        let url = directory.appendingPathComponent(String(format: "lineup-%05.2fs.png", still))
+        try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])).write(to: url)
+        print("BOLTTY_LINEUP_STILL \(url.path)")
+      }
+      if let input {
+        let data = try XCTUnwrap(image.dataProvider?.data) as Data
+        let rowBytes = Int(Self.width) * 4
+        var packed = Data(capacity: rowBytes * image.height)
+        for row in 0..<image.height {
+          packed.append(data[row * image.bytesPerRow ..< row * image.bytesPerRow + rowBytes])
+        }
+        try input.write(contentsOf: packed)
+      }
+    }
+    if let input, let ffmpeg {
+      try input.close()
+      ffmpeg.waitUntilExit()
+      XCTAssertEqual(ffmpeg.terminationStatus, 0)
+      print("BOLTTY_LINEUP_VIDEO \(output.path)")
+    }
+  }
+}

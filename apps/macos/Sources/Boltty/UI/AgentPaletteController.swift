@@ -238,6 +238,10 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.onModelMenu = { [weak self] in
       self?.showModelMenu()
     }
+    panelView.onCyclePermissionMode = { [weak self] in
+      guard let self, let id = self.panelView.addressedSessionID else { return }
+      self.conversations?.cyclePermissionMode(for: id)
+    }
     panelView.onCompact = { [weak self] in
       guard let self, let id = self.panelView.addressedSessionID else { return }
       self.conversations?.compact(id)
@@ -1282,7 +1286,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       content,
       chooseModel: { [weak self] option in self?.conversations?.chooseModel(option, for: id) },
       chooseEffort: { [weak self] effort in self?.conversations?.chooseEffort(effort, for: id) },
-      setAutoMode: { [weak self] enabled in self?.conversations?.setAutoApprove(enabled, for: id) },
+      setPermissionMode: { [weak self] mode in self?.conversations?.setPermissionMode(mode, for: id) },
       setPlanMode: { [weak self] enabled in self?.conversations?.setPlanMode(enabled, for: id) }
     )
   }

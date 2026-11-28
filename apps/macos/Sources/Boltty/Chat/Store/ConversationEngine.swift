@@ -92,14 +92,24 @@ final class ConversationEngine: ObservableObject {
     return modelsByProvider[providerID] ?? []
   }
 
-  func setAutoApprove(_ enabled: Bool, for conversationID: UUID) async {
-    store.setAutoApprove(enabled, for: conversationID)
+  func permissionModes(for conversationID: UUID) -> [PermissionMode] {
+    guard let conversation = store.conversation(id: conversationID), !conversation.readOnly else { return [] }
+    return PermissionMode.ladder(for: AgentId(rawValue: conversation.providerID))
+  }
+
+  func permissionMode(for conversationID: UUID) -> PermissionMode? {
+    guard let conversation = store.conversation(id: conversationID), !conversation.readOnly else { return nil }
+    return PermissionMode.resolved(conversation.permissionMode, for: AgentId(rawValue: conversation.providerID))
+  }
+
+  func setPermissionMode(_ mode: String?, for conversationID: UUID) async {
+    store.setPermissionMode(mode, for: conversationID)
     guard let remote = store.conversation(id: conversationID)?.remoteSessionID,
           let client = client(for: conversationID)
     else { return }
+    let resolved = permissionMode(for: conversationID)?.id
     do {
-      try await client.setAutoApproval(enabled, sessionID: remote)
-      settingsInForce[remote]?.autoApprove = enabled
+      try await client.setPermissionMode(resolved, sessionID: remote)
     } catch {
       notices[conversationID] = EngineNotice(
         text: String(localized: "\(agentName(for: conversationID)) did not take that change. It will apply to the next conversation."),
@@ -600,14 +610,14 @@ final class ConversationEngine: ObservableObject {
 
   func handOver(
     conversationID: UUID, to providerID: String, model: ModelSelection?, effort: String?,
-    autoApprove: Bool
+    permissionMode: String?
   ) {
     guard let conversation = store.conversation(id: conversationID) else { return }
     notices[conversationID] = nil
     contextByConversation[conversationID] = nil
     processesToRestart.remove(conversationID)
     store.moveToProvider(
-      providerID, model: model, effort: effort, autoApprove: autoApprove, for: conversationID)
+      providerID, model: model, effort: effort, permissionMode: permissionMode, for: conversationID)
     guard let remote = conversation.remoteSessionID,
           let client = registry.client(forProviderID: conversation.providerID)
     else { return }
@@ -849,7 +859,9 @@ final class ConversationEngine: ObservableObject {
       directory: conversation.workingDirectory,
       model: conversation.model,
       effort: conversation.reasoningEffort,
-      autoApprove: conversation.autoApprove,
+      permissionMode: conversation.readOnly
+        ? nil
+        : PermissionMode.resolved(conversation.permissionMode, for: AgentId(rawValue: conversation.providerID))?.id,
       readOnly: conversation.readOnly,
       planMode: conversation.planMode && !conversation.readOnly,
       computerUseSocket: usesComputer ? computerUseEndpoint?(conversation.id) : nil
@@ -965,7 +977,7 @@ final class ConversationEngine: ObservableObject {
       providerID: source.providerID,
       model: source.model,
       reasoningEffort: source.reasoningEffort,
-      autoApprove: source.autoApprove
+      permissionMode: source.permissionMode
     )
     store.setForkedFrom(point, for: copy.id)
     store.recordSentFiles(source.sentFiles, for: copy.id)

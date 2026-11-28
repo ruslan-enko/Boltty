@@ -68,7 +68,8 @@ final class GrokLaunchTests: XCTestCase {
 
   func testAllowIsNeverSentAsARefusal() {
     let offered: [PermissionDecision: String] = [.once: "allow-once", .reject: "reject-once"]
-    XCTAssertEqual(ACPClient.option(for: .always, among: offered), "allow-once")
+    XCTAssertNil(ACPClient.option(for: .always, among: offered))
+    XCTAssertEqual(ACPClient.option(for: .once, among: offered), "allow-once")
     XCTAssertNil(ACPClient.option(for: .once, among: [.reject: "reject-once"]))
   }
 }

@@ -1,78 +1,31 @@
 import Foundation
 
+/// Antigravity over `agy acp`: it asks for permission itself, takes pictures, and switches
+/// its modes per session. Its model list, plan limits, skills and chat names stay one-shot
+/// reads of the CLI.
 final class AntigravityClient: AgentClient, @unchecked Sendable {
   let provider = AgentId.antigravity
 
   let capabilities: AgentCapabilities = [
-    .modelSelection, .modelSwitching, .effortReset, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
-    .autoApproval, .interrupt, .rereadableTranscript, .permissions, .permissionMessage,
+    .modelSelection, .modelSwitching, .reasoningEffort, .resumeSession, .workingDirectory, .attachments,
+    .images, .interrupt, .rereadableTranscript, .permissions,
     .usageLimits, .folderMoving, .commands, .planMode, .computerUse,
   ]
 
-  static let initDeadline: TimeInterval = 25
+  static let skipMode = "skip"
 
   private let lock = NSLock()
-  private var sessions: [String: LiveSession] = [:]
   private var skillsByFolder: [String: (read: Date, skills: [AgentCommand])] = [:]
-  private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private let executableOverride: String?
-  private let transcriptRoot: URL
-  private let hooksFile: URL
-  private let scriptFile: URL
-  private let gateDirectory: URL
-  private var gate: AntigravityPermissionGate?
-  private var gateTried = false
-  private var asks: [String: PendingAsk] = [:]
-  private var conversationResolver: (@Sendable (String) -> UUID?)?
+  private let acp: ModeSplitClient
 
-  init(
-    executable: String? = nil,
-    transcriptRoot: URL = AntigravityTranscript.defaultRoot,
-    hooksFile: URL = AntigravityPermissionGate.defaultHooksFile,
-    scriptFile: URL = AntigravityPermissionGate.defaultScriptFile,
-    gateDirectory: URL = FileManager.default.temporaryDirectory
-      .appendingPathComponent("boltty-agy-gate-\(getpid())")
-  ) {
+  init(executable: String? = nil, transcriptRoot: URL = AntigravityTranscript.defaultRoot) {
     executableOverride = executable
-    self.transcriptRoot = transcriptRoot
-    self.hooksFile = hooksFile
-    self.scriptFile = scriptFile
-    self.gateDirectory = gateDirectory
-  }
-
-  func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?) {
-    lock.withLock { conversationResolver = resolve }
-  }
-
-  private struct PendingAsk {
-    let sessionID: String
-    let always: String
-  }
-
-  private final class LiveSession: @unchecked Sendable {
-    var id: String?
-    var directory: String
-    var model: ModelSelection?
-    var effort: String?
-    var autoApprove: Bool
-    var process: JSONLineProcess?
-    var pendingMessageID: String?
-    var sentMessageIDs: Set<String> = []
-    var stopping = false
-    var initWaiter: CheckedContinuation<String, Error>?
-    var initialized = false
-    var granted: Set<String> = []
-    var planning = false
-    var planFile: String?
-    var computerUseSocket: String?
-
-    init(id: String?, directory: String, model: ModelSelection?, effort: String?, autoApprove: Bool) {
-      self.id = id
-      self.directory = directory
-      self.model = model
-      self.effort = effort
-      self.autoApprove = autoApprove
-    }
+    acp = ModeSplitClient(
+      main: ACPClient(agent: .antigravity(transcriptRoot: transcriptRoot, skipsPermissions: false), executable: executable),
+      second: ACPClient(agent: .antigravity(transcriptRoot: transcriptRoot, skipsPermissions: true), executable: executable),
+      runsInSecond: { $0 == AntigravityClient.skipMode }
+    )
   }
 
   func probe() async -> AgentAvailability {
@@ -173,516 +126,69 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     }
   }
 
-  func createSession(id: String, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
-    guard let executable = locate() else { throw AgentClientError.notInstalled }
-    let session = LiveSession(
-      id: nil,
-      directory: options.directory,
-      model: options.model,
-      effort: options.effort,
-      autoApprove: options.autoApprove
-    )
-    session.planning = options.planMode
-    session.computerUseSocket = options.computerUseSocket
-    let remoteID = try await start(session, executable: executable)
-    lock.withLock { sessions[remoteID] = session }
-    return RemoteSessionInfo(
-      id: remoteID,
-      title: provider.shortDisplayName,
-      directory: options.directory,
-      model: options.model
-    )
-  }
-
-  func loadSession(id: String) async throws -> RemoteSessionSnapshot {
-    let live = lock.withLock { sessions[id] }
-    let disk: DiskTranscript?
-    do {
-      disk = try AntigravityTranscript.transcript(sessionID: id, in: transcriptRoot)
-    } catch {
-      throw AgentClientError.transport(String(describing: error))
-    }
-    guard let disk else { throw AgentClientError.sessionNotFound }
-    let working = lock.withLock { live?.pendingMessageID != nil }
-    return RemoteSessionSnapshot(
-      info: RemoteSessionInfo(
-        id: id,
-        title: provider.shortDisplayName,
-        directory: live?.directory ?? NSHomeDirectory(),
-        model: live?.model
-      ),
-      messages: disk.messages,
-      state: working ? .working : .idle,
-      openInteractions: []
-    )
-  }
-
-  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
-    let idle = try lock.withLock { () -> JSONLineProcess? in
-      let session: LiveSession
-      if let live = sessions[id] {
-        session = live
-      } else {
-        guard FileManager.default.fileExists(
-          atPath: AntigravityTranscript.url(sessionID: id, in: transcriptRoot).path
-        ) else { throw AgentClientError.sessionNotFound }
-        session = LiveSession(
-          id: id, directory: options.directory, model: nil, effort: nil, autoApprove: false)
-        sessions[id] = session
-      }
-      let flagsChanged = session.model?.modelID != options.model?.modelID
-        || session.effort != options.effort
-        || session.directory != options.directory
-        || (gate == nil && session.autoApprove != options.autoApprove)
-        || session.planning != options.planMode
-        || session.computerUseSocket != options.computerUseSocket
-      session.planning = options.planMode
-      session.computerUseSocket = options.computerUseSocket
-      session.directory = options.directory
-      session.model = options.model
-      session.effort = options.effort
-      session.autoApprove = options.autoApprove
-      guard flagsChanged, session.pendingMessageID == nil else { return nil }
-      defer { session.process = nil }
-      return session.process
-    }
-    idle?.closeInput()
-    idle?.terminate()
-  }
-
-  func messageExists(id: String, in sessionID: String) async throws -> Bool {
-    lock.withLock { sessions[sessionID]?.sentMessageIDs.contains(id) ?? false }
-  }
-
-  func send(
-    messageID: String,
-    text: String,
-    attachments: [OutgoingAttachment],
-    to sessionID: String
-  ) async throws {
-    guard let executable = locate() else { throw AgentClientError.notInstalled }
-    let session = try lock.withLock { () -> LiveSession in
-      if let session = sessions[sessionID] { return session }
-      guard FileManager.default.fileExists(
-        atPath: AntigravityTranscript.url(sessionID: sessionID, in: transcriptRoot).path
-      ) else { throw AgentClientError.sessionNotFound }
-      let session = LiveSession(
-        id: sessionID, directory: NSHomeDirectory(), model: nil, effort: nil, autoApprove: false
-      )
-      sessions[sessionID] = session
-      return session
-    }
-
-    if lock.withLock({ session.process?.isRunning != true }) {
-      _ = try await start(session, executable: executable)
-    }
-    guard let line = JSONObject.encode([
-      "event": "user",
-      "message": ["role": "user", "content": text],
-    ]) else {
-      throw AgentClientError.transport(String(localized: "That prompt could not be encoded."))
-    }
-
-    let process = lock.withLock { () -> JSONLineProcess? in
-      session.pendingMessageID = messageID
-      session.sentMessageIDs.insert(messageID)
-      session.granted.formUnion(AntigravityToolPolicy.readGrants(for: attachments))
-      session.stopping = false
-      return session.process
-    }
-    emit(.executionStateChanged(sessionID: sessionID, state: .working))
-    do {
-      guard let process else { throw AgentClientError.processExited(-1) }
-      try process.writeLine(line)
-    } catch {
-      lock.withLock {
-        session.pendingMessageID = nil
-        session.sentMessageIDs.remove(messageID)
-      }
-      emit(.executionStateChanged(sessionID: sessionID, state: .failed))
-      throw error
-    }
-  }
-
-  private func start(_ session: LiveSession, executable: String) async throws -> String {
-    let gate = preparedGate()
-    let (arguments, directory, socket) = lock.withLock {
-      (Self.arguments(for: session, gated: gate != nil), session.directory, session.computerUseSocket)
-    }
-    var environment = gate.map { [AntigravityPermissionGate.environmentKey: $0.directory.path] } ?? [:]
-    if let socket {
-      AntigravityComputerUse.installIfNeeded()
-      environment[AntigravityComputerUse.environmentKey] = socket
-    }
-    let process = JSONLineProcess(
-      executable: executable,
-      arguments: arguments,
-      directory: directory,
-      environment: environment,
-      category: "antigravity"
-    )
-    lock.withLock {
-      session.process = process
-      session.initialized = false
-    }
-    process.onExit = { [weak self] status, stderr in
-      guard let self else { return }
-      let waiter = self.lock.withLock { () -> CheckedContinuation<String, Error>? in
-        defer { session.initWaiter = nil }
-        return session.initWaiter
-      }
-      waiter?.resume(throwing: AgentClientError.serverStartFailed(
-        JSONLineProcess.exitDetail(status: status, stderr: stderr)
-      ))
-    }
-    try process.start()
-    Task { [weak self] in await self?.read(process, session: session) }
-
-    return try await withCheckedThrowingContinuation { continuation in
-      let named = lock.withLock { () -> String? in
-        if session.initialized, let id = session.id { return id }
-        session.initWaiter = continuation
-        return nil
-      }
-      if let named {
-        continuation.resume(returning: named)
-        return
-      }
-      DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.initDeadline) {
-        [weak self] in
-        guard let self else { return }
-        let waiter = self.lock.withLock { () -> CheckedContinuation<String, Error>? in
-          defer { session.initWaiter = nil }
-          return session.initWaiter
-        }
-        guard let waiter else { return }
-        process.terminate()
-        waiter.resume(throwing: AgentClientError.startupTimedOut)
-      }
-    }
-  }
-
-  private static func arguments(for session: LiveSession, gated: Bool) -> [String] {
-    var arguments = ["--input-format", "stream-json", "--output-format", "stream-json"]
-    if let model = session.model { arguments += ["--model", model.modelID] }
-    if let effort = session.effort { arguments += ["--effort", effort] }
-    if gated { arguments.append("--dangerously-skip-permissions") }
-    if session.planning {
-      arguments += ["--mode", "plan"]
-    } else if !gated, session.autoApprove {
-      arguments += ["--mode", "accept-edits"]
-    }
-    if let id = session.id { arguments += ["--conversation", id] }
-    arguments.append("--print=")
-    return arguments
-  }
-
-  private func read(_ process: JSONLineProcess, session: LiveSession) async {
-    var reply: ConversationMessage?
-
-    for await line in process.lines {
-      guard let frame = JSONObject(line: line) else { continue }
-      switch frame.string("event") {
-      case "init":
-        guard let id = frame.string("conversation_id") else { continue }
-        let waiter = lock.withLock { () -> CheckedContinuation<String, Error>? in
-          if session.id == nil { session.id = id }
-          session.initialized = true
-          defer { session.initWaiter = nil }
-          return session.initWaiter
-        }
-        waiter?.resume(returning: id)
-
-      case "step_update":
-        guard let step = frame.object("step_update"),
-              let (sessionID, messageID) = turn(of: session)
-        else { continue }
-        let replyID = "\(messageID)-reply"
-        if reply == nil {
-          reply = ConversationMessage(id: replyID, role: .agent, createdAt: Date())
-          emit(.messageUpdated(sessionID: sessionID, message: reply!))
-        }
-        switch step.string("step_type") {
-        case "agent_response":
-          guard let delta = step.string("text_delta"), !delta.isEmpty else { continue }
-          let partID = "\(replyID)-text-\(step.int("step_index") ?? 0)"
-          reply?.appendDelta(delta, toPart: partID, kind: .text)
-          emit(.partDelta(
-            sessionID: sessionID, messageID: replyID, partID: partID, kind: .text, delta: delta
-          ))
-
-        case "tool":
-          guard let name = step.string("tool_name") else { continue }
-          let state: AgentActivity.State = switch step.string("state") {
-          case "DONE": .completed
-          case "ERROR": .failed
-          default: .running
-          }
-          let call = step.object("tool_info")?.object("parameters")
-            .map(AntigravityTranscript.described)
-          let activity = AgentActivity(
-            id: "\(replyID)-tool-\(step.int("step_index") ?? 0)",
-            name: name,
-            summary: call?.summary,
-            state: state,
-            detail: call?.detail,
-            files: call?.files ?? []
-          )
-          reply?.upsert(.activity(activity))
-          emit(.partUpdated(sessionID: sessionID, messageID: replyID, part: .activity(activity)))
-          if state == .completed, let path = step.object("tool_info")?.object("parameters")?.string("Path"),
-             Self.isPlanFile(path) {
-            lock.withLock { session.planFile = path }
-          }
-
-        default:
-          continue
-        }
-
-      case "result":
-        guard let result = frame.object("result"),
-              let (sessionID, messageID) = turn(of: session)
-        else { continue }
-        let stopped = lock.withLock { session.stopping }
-        let failure = Self.failure(of: result, stopped: stopped)
-        if reply != nil || failure != nil {
-          var building = reply ?? ConversationMessage(
-            id: "\(messageID)-reply", role: .agent, createdAt: Date()
-          )
-          building.completedAt = Date()
-          building.failure = failure
-          emit(.messageUpdated(sessionID: sessionID, message: building))
-        }
-        let isFailed = failure?.name == Self.turnErrorName
-        if isFailed, let failure {
-          emit(.sessionFailed(sessionID: sessionID, failure: failure))
-        }
-        let planFile = lock.withLock { () -> String? in
-          defer { session.planFile = nil }
-          return session.planning ? session.planFile : nil
-        }
-        if failure == nil, let planFile, let markdown = try? String(contentsOfFile: planFile, encoding: .utf8) {
-          askAboutPlan(markdown, id: "plan-\(messageID)", in: sessionID)
-        }
-        emit(.executionStateChanged(sessionID: sessionID, state: isFailed ? .failed : .idle))
-        reply = nil
-        lock.withLock { session.pendingMessageID = nil }
-
-      default:
-        continue
-      }
-    }
-
-    let (sessionID, interrupted) = lock.withLock { () -> (String?, Bool) in
-      let interrupted = session.pendingMessageID != nil && !session.stopping
-      session.pendingMessageID = nil
-      if session.process === process { session.process = nil }
-      return (session.id, interrupted)
-    }
-    if let sessionID { settleAsks(of: sessionID, reason: "Antigravity stopped.") }
-    guard let sessionID, interrupted else { return }
-    emit(.sessionFailed(sessionID: sessionID, failure: MessageFailure(
-      name: "AntigravityExited", message: "`agy` stopped: \(process.exitDetail)"
-    )))
-    emit(.executionStateChanged(sessionID: sessionID, state: .failed))
+  static var brain: String {
+    (NSHomeDirectory() as NSString).appendingPathComponent(".gemini/antigravity-cli/brain")
   }
 
   static func isPlanFile(_ path: String) -> Bool {
     (path as NSString).pathExtension.lowercased() == "md"
-      && (path as NSString).standardizingPath.hasPrefix(AntigravityToolPolicy.brain + "/")
+      && (path as NSString).standardizingPath.hasPrefix(brain + "/")
   }
 
-  private func askAboutPlan(_ markdown: String, id: String, in sessionID: String) {
-    guard !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-          let conversationID = lock.withLock({ conversationResolver })?(sessionID)
-    else { return }
-    emit(.interactionAsked(PendingInteraction(
-      id: id,
-      conversationID: conversationID,
-      remoteSessionID: sessionID,
-      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: nil, endedTurn: true))
-    )))
+  func makeSessionID() -> String { acp.makeSessionID() }
+
+  func createSession(id: String, options: AgentSessionOptions) async throws -> RemoteSessionInfo {
+    try await acp.createSession(id: id, options: options)
   }
 
-  private func turn(of session: LiveSession) -> (String, String)? {
-    lock.withLock {
-      guard let id = session.id, let message = session.pendingMessageID else { return nil }
-      return (id, message)
-    }
+  func prepareSession(_ id: String, options: AgentSessionOptions) async throws {
+    try await acp.prepareSession(id, options: options)
   }
 
-  static let deniedName = "AntigravityDenied"
-  static let turnErrorName = "AntigravityTurnError"
+  func loadSession(id: String) async throws -> RemoteSessionSnapshot { try await acp.loadSession(id: id) }
 
-  static func failure(of result: JSONObject, stopped: Bool) -> MessageFailure? {
-    if result.string("status") != "SUCCESS" {
-      let error = result.string("error") ?? String(localized: "Antigravity ended the turn without a result.")
-      if stopped || error == "interrupted" { return MessageFailure(name: "aborted", message: error) }
-      return MessageFailure(name: turnErrorName, message: error)
-    }
-    let actions = result.array("denied_actions")
-    let denied = actions.compactMap { $0.string("display_name") ?? $0.string("action") }
-    guard !denied.isEmpty else { return nil }
-    let onlyEdits = actions.allSatisfy { $0.string("action") == "write_file" }
-    let remedy = onlyEdits
-      ? String(localized: "Turn on Auto Mode for this chat to allow edits, or allow them in Antigravity's settings (permissions.allow).")
-      : String(localized: "Allow them in Antigravity's settings (permissions.allow).")
-    return MessageFailure(
-      name: deniedName,
-      message: String(localized: "Antigravity cannot ask for permission when Boltty runs it, so it refused: \(denied.joined(separator: ", ")). \(remedy)")
-    )
+  func send(messageID: String, text: String, attachments: [OutgoingAttachment], to sessionID: String) async throws {
+    try await acp.send(messageID: messageID, text: text, attachments: attachments, to: sessionID)
   }
 
-  func stop(sessionID: String) async throws {
-    let process = lock.withLock { () -> JSONLineProcess? in
-      guard let session = sessions[sessionID], session.pendingMessageID != nil else { return nil }
-      session.stopping = true
-      return session.process
-    }
-    settleAsks(of: sessionID, reason: "The user stopped the turn.")
-    guard let process, process.isRunning else { return }
-    kill(process.processIdentifier, SIGINT)
+  func messageExists(id: String, in sessionID: String) async throws -> Bool {
+    try await acp.messageExists(id: id, in: sessionID)
   }
+
+  func stop(sessionID: String) async throws { try await acp.stop(sessionID: sessionID) }
 
   func answerQuestion(requestID: String, sessionID: String, answers: [[String]]) async throws {
-    throw AgentClientError.requestGone
+    try await acp.answerQuestion(requestID: requestID, sessionID: sessionID, answers: answers)
   }
 
   func rejectQuestion(requestID: String, sessionID: String) async throws {
-    throw AgentClientError.requestGone
+    try await acp.rejectQuestion(requestID: requestID, sessionID: sessionID)
   }
 
   func answerPermission(
-    requestID: String,
-    sessionID: String,
-    decision: PermissionDecision,
-    message: String?
+    requestID: String, sessionID: String, decision: PermissionDecision, message: String?
   ) async throws {
-    let (ask, gate) = lock.withLock { (asks.removeValue(forKey: requestID), self.gate) }
-    guard let ask, let gate else { throw AgentClientError.requestGone }
-    switch decision {
-    case .once:
-      gate.answer(requestID, decision: "allow")
-    case .always:
-      lock.withLock { _ = sessions[ask.sessionID]?.granted.insert(ask.always) }
-      gate.answer(requestID, decision: "allow")
-    case .reject:
-      gate.answer(requestID, decision: "deny", reason: Self.denialReason(message))
-    }
-    emit(.interactionResolved(
-      sessionID: ask.sessionID, requestID: requestID, resolution: .permission(decision)
-    ))
-    emit(.executionStateChanged(sessionID: ask.sessionID, state: .working))
+    try await acp.answerPermission(requestID: requestID, sessionID: sessionID, decision: decision, message: message)
   }
 
-  static func denialReason(_ message: String?) -> String {
-    guard let words = message?.trimmingCharacters(in: .whitespacesAndNewlines), !words.isEmpty
-    else { return "The user refused this." }
-    return "The user refused this and said: \(words)"
+  func answerPlan(requestID: String, sessionID: String, decision: PlanDecision, feedback: String?) async throws {
+    try await acp.answerPlan(requestID: requestID, sessionID: sessionID, decision: decision, feedback: feedback)
   }
 
-  private func preparedGate() -> AntigravityPermissionGate? {
-    lock.lock()
-    if gateTried { defer { lock.unlock() }; return gate }
-    gateTried = true
-    lock.unlock()
-    let gate = AntigravityPermissionGate(directory: gateDirectory)
-    do {
-      try AntigravityPermissionGate.install(hooksFile: hooksFile, scriptFile: scriptFile)
-      gate.onRequest = { [weak self] request in self?.handle(request) }
-      try gate.start()
-    } catch {
-      return nil
-    }
-    lock.withLock { self.gate = gate }
-    return gate
+  func events() -> AsyncStream<AgentEventEnvelope> { acp.events() }
+
+  func setPermissionMode(_ mode: String?, sessionID: String) async throws {
+    try await acp.setPermissionMode(mode, sessionID: sessionID)
   }
 
-  private func handle(_ request: AntigravityPermissionGate.Request) {
-    let found = lock.withLock { () -> (LiveSession, Set<String>, Bool, String)? in
-      guard let session = sessions[request.conversationID] else { return nil }
-      return (session, session.granted, session.autoApprove, session.directory)
-    }
-    guard let gate = lock.withLock({ self.gate }) else { return }
-    guard let (_, granted, autoApprove, directory) = found else {
-      gate.answer(request.id, decision: "deny", reason: "Boltty does not know this conversation.")
-      return
-    }
-    let verdict = AntigravityToolPolicy.verdict(
-      tool: request.tool,
-      arguments: request.arguments,
-      directory: request.workspace ?? directory,
-      autoApprove: autoApprove,
-      granted: granted
-    )
-    guard case let .ask(action, resources, always) = verdict else {
-      gate.answer(request.id, decision: "allow")
-      return
-    }
-    let sessionID = request.conversationID
-    guard let conversationID = lock.withLock({ conversationResolver })?(sessionID) else {
-      gate.answer(request.id, decision: "deny", reason: "Nobody in Boltty can answer this.")
-      return
-    }
-    lock.withLock { asks[request.id] = PendingAsk(sessionID: sessionID, always: always) }
-    emit(.interactionAsked(PendingInteraction(
-      id: request.id,
-      conversationID: conversationID,
-      remoteSessionID: sessionID,
-      kind: .permission(PermissionPrompt(
-        action: action,
-        resources: resources,
-        savePatterns: [],
-        toolCallID: nil
-      ))
-    )))
-    emit(.executionStateChanged(sessionID: sessionID, state: .waiting))
+  func missedAnything(sessionID: String) async -> Bool? { await acp.missedAnything(sessionID: sessionID) }
 
-    // The hook gives up before `agy` kills it; the card goes first.
-    DispatchQueue.global(qos: .utility).asyncAfter(
-      deadline: .now() + AntigravityPermissionGate.cardLifetime
-    ) { [weak self] in
-      guard let self, self.lock.withLock({ self.asks.removeValue(forKey: request.id) }) != nil
-      else { return }
-      gate.answer(request.id, decision: "deny", reason: "Nobody answered in time.")
-      self.emit(.interactionResolved(sessionID: sessionID, requestID: request.id, resolution: .expired))
-    }
-  }
+  func release(sessionID: String) async { await acp.release(sessionID: sessionID) }
 
-  private func settleAsks(of sessionID: String, reason: String) {
-    let (open, gate) = lock.withLock { () -> ([String], AntigravityPermissionGate?) in
-      let open = asks.filter { $0.value.sessionID == sessionID }.map(\.key)
-      open.forEach { asks.removeValue(forKey: $0) }
-      return (open, self.gate)
-    }
-    for id in open {
-      gate?.answer(id, decision: "deny", reason: reason)
-      emit(.interactionResolved(sessionID: sessionID, requestID: id, resolution: .expired))
-    }
-  }
+  func restartIdleProcess() async { await acp.restartIdleProcess() }
 
-  func setAutoApproval(_ enabled: Bool, sessionID: String) async throws {
-    let idle = lock.withLock { () -> JSONLineProcess? in
-      guard let session = sessions[sessionID], session.autoApprove != enabled else { return nil }
-      session.autoApprove = enabled
-      guard gate == nil, session.pendingMessageID == nil else { return nil }
-      defer { session.process = nil }
-      return session.process
-    }
-    idle?.closeInput()
-    idle?.terminate()
-  }
-
-  func events() -> AsyncStream<AgentEventEnvelope> {
-    AsyncStream { continuation in
-      lock.withLock { self.eventContinuation = continuation }
-    }
-  }
-
-  func release(sessionID: String) async {
-    guard let process = lock.withLock({ sessions.removeValue(forKey: sessionID)?.process }) else { return }
-    process.closeInput()
-    process.terminate()
+  func setConversationResolver(_ resolve: @escaping @Sendable (String) -> UUID?) {
+    acp.setConversationResolver(resolve)
   }
 
   func chatTitle(sessionID: String, material: ChatNaming.Material) async -> String? {
@@ -723,28 +229,53 @@ final class AntigravityClient: AgentClient, @unchecked Sendable {
     return nil
   }
 
-  func shutdown() async {
-    let (live, gate) = lock.withLock { () -> ([JSONLineProcess], AntigravityPermissionGate?) in
-      let processes = sessions.values.compactMap(\.process)
-      sessions.removeAll()
-      asks.removeAll()
-      return (processes, self.gate)
-    }
-    gate?.stop()
-    for process in live {
-      process.closeInput()
-      process.terminate()
-    }
-  }
+  func shutdown() async { await acp.shutdown() }
 
-  private func emit(_ event: AgentEvent) {
-    let continuation = lock.withLock { eventContinuation }
-    continuation?.yield(
-      AgentEventEnvelope(providerID: provider.rawValue, id: nil, sequence: nil, event: event)
-    )
+  /// Before `agy acp`, Boltty asked through a hook of its own and lent Computer Use through a
+  /// plugin; both are taken out of the person's Antigravity config.
+  static func removeOldGate() {
+    let manager = FileManager.default
+    let home = URL(fileURLWithPath: NSHomeDirectory())
+    let hooks = home.appendingPathComponent(".gemini/config/hooks.json")
+    if let data = try? Data(contentsOf: hooks),
+       var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+       object.removeValue(forKey: "boltty-permission-gate") != nil,
+       let written = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]) {
+      try? written.write(to: hooks, options: .atomic)
+    }
+    try? manager.removeItem(at: home.appendingPathComponent(".gemini/config/plugins/boltty"))
+    let support = manager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Boltty")
+    try? manager.removeItem(at: support.appendingPathComponent("antigravity-permission-gate.sh"))
+    try? manager.removeItem(at: support.appendingPathComponent("computer-use-bridge.sh"))
   }
 
   private func locate() -> String? {
     executableOverride ?? JSONLineProcess.locate(provider.program)
+  }
+}
+
+extension ACPAgent {
+  /// `--dangerously-skip-permissions` is a launch flag for the whole process: Skip
+  /// Permissions chats run in a second one.
+  static func antigravity(transcriptRoot: URL, skipsPermissions: Bool) -> ACPAgent {
+    var agent = ACPAgent(
+      provider: .antigravity,
+      displayName: "Antigravity",
+      arguments: skipsPermissions ? ["acp", "--dangerously-skip-permissions"] : ["acp"],
+      capabilities: [],
+      history: { try AntigravityTranscript.transcript(sessionID: $0, in: transcriptRoot) }
+    )
+    agent.effortConfigID = "thought_level"
+    agent.modelConfigID = "model"
+    agent.modeID = { options in
+      if options.planMode, !options.readOnly { return "plan" }
+      guard !options.readOnly, let mode = options.permissionMode, mode != AntigravityClient.skipMode else { return "default" }
+      return mode
+    }
+    agent.planFile = { input in
+      guard let path = input.string("Path"), AntigravityClient.isPlanFile(path) else { return nil }
+      return path
+    }
+    return agent
   }
 }

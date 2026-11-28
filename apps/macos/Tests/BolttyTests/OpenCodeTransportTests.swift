@@ -1125,16 +1125,10 @@ final class OpenCodeLiveEventShapeTests: XCTestCase {
 }
 
 final class OpenCodeAllowancesTests: XCTestCase {
-  func testAlwaysGoesOutAsOnceAndCoversTheChatsLaterAsks() {
-    var allowances = OpenCodeAllowances()
-    XCTAssertFalse(allowances.ask("p1", saving: ["bash:rm *"], in: "ses_a"))
-    XCTAssertEqual(allowances.decide(.always, requestID: "p1", sessionID: "ses_a"), .once)
-    XCTAssertTrue(allowances.ask("p2", saving: ["bash:rm *"], in: "ses_a"), "covered in this chat")
-    XCTAssertFalse(allowances.ask("p3", saving: ["bash:rm *"], in: "ses_b"), "not in another")
-    XCTAssertFalse(allowances.ask("p4", saving: ["bash:rm *", "bash:git push *"], in: "ses_a"),
-                   "a pattern not allowed still asks")
-    XCTAssertFalse(allowances.ask("p5", saving: [], in: "ses_a"), "an ask that saves nothing always asks")
-    XCTAssertEqual(allowances.decide(.reject, requestID: "p4", sessionID: "ses_a"), .reject)
+  func testAReadOnlyChatIsRefusedEveryChangeByRule() {
+    XCTAssertEqual(
+      Set(OpenCodeClient.readOnlyRules.map(\.action)), ["edit", "write", "patch", "shell"])
+    XCTAssertTrue(OpenCodeClient.readOnlyRules.allSatisfy { $0.effect == "deny" && $0.resource == "*" })
   }
 
   func testFoldersMacOSKeepsFromALaunchdServiceRunOnBolttysOwnServer() {

@@ -87,14 +87,24 @@ final class AppSettingsTests: XCTestCase {
     XCTAssertFalse(AppSettings.load(defaults: suite).checksForUpdates)
   }
 
-  func testAutoModeIsAskByDefaultAndRemembersEachAgent() {
+  func testEveryAgentAsksByDefaultAndEachRemembersItsMode() {
     let suite = defaults()
-    XCTAssertEqual(AppSettings.load(defaults: suite).autoApproveProviderIDs, [], "every agent asks")
+    XCTAssertEqual(AppSettings.load(defaults: suite).permissionModeByProvider, [:], "every agent asks")
 
     var settings = AppSettings.load(defaults: suite)
-    settings.autoApproveProviderIDs = ["claude", "agy"]
+    settings.permissionModeByProvider = ["claude": "acceptEdits", "codex": "fullAccess"]
     settings.save(defaults: suite)
-    XCTAssertEqual(AppSettings.load(defaults: suite).autoApproveProviderIDs, ["claude", "agy"])
+    XCTAssertEqual(
+      AppSettings.load(defaults: suite).permissionModeByProvider, ["claude": "acceptEdits", "codex": "fullAccess"])
+  }
+
+  func testTheOldAutoModeSwitchReadsAsEachAgentsOwnAuto() {
+    let suite = defaults()
+    suite.set(["claude", "grok"], forKey: "boltty.autoApproveByProvider")
+    let modes = AppSettings.load(defaults: suite).permissionModeByProvider
+    XCTAssertEqual(PermissionMode.resolved(modes["claude"], for: .claude)?.id, "auto")
+    XCTAssertEqual(PermissionMode.resolved(modes["grok"], for: .grok)?.id, "auto")
+    XCTAssertEqual(PermissionMode.resolved(modes["codex"], for: .codex)?.id, "ask")
   }
 
   func testTheLegacyHotkeyStringStillResolves() {
