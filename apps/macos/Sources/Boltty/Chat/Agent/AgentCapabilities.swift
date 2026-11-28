@@ -41,8 +41,6 @@ struct AgentCapabilities: OptionSet, Sendable, Hashable {
 
   static let planMode = AgentCapabilities(rawValue: 1 << 23)
 
-  static let planInReply = AgentCapabilities(rawValue: 1 << 24)
-
   static let forking = AgentCapabilities(rawValue: 1 << 25)
 
   static let fileUndo = AgentCapabilities(rawValue: 1 << 26)
@@ -125,10 +123,26 @@ struct PermissionMode: Equatable, Sendable, Identifiable {
     return ladder.first
   }
 
-  /// The word the model chip carries; the asking mode carries none, as in the CLIs.
-  static func chipWord(_ id: String?, for agent: AgentId?) -> String? {
-    guard let mode = resolved(id, for: agent), mode != ladder(for: agent).first else { return nil }
-    return mode.title
+  static let planID = "plan"
+  static let buildID = "build"
+
+  /// The ladder as the CLI's own key walks it, plan where the CLI puts it. OpenCode's two
+  /// are its agents, Build and Plan.
+  static func walk(for agent: AgentId?, plans: Bool) -> [PermissionMode] {
+    let plan = PermissionMode(id: planID, title: String(localized: "Plan"),
+                              summary: String(localized: "Explores and plans, and changes nothing until you approve the plan."))
+    var modes = ladder(for: agent)
+    if agent == .opencode {
+      modes = [PermissionMode(id: buildID, title: String(localized: "Build"),
+                              summary: String(localized: "Works with every tool OpenCode's config allows."))]
+    }
+    guard plans else { return modes }
+    switch agent {
+    case .claude: modes.insert(plan, at: min(2, modes.count))
+    case .antigravity: modes.insert(plan, at: min(3, modes.count))
+    default: modes.append(plan)
+    }
+    return modes
   }
 }
 

@@ -5,7 +5,7 @@ struct UsageSegments: Equatable {
   static let minGap: CGFloat = 1.5
   static let minSegment: CGFloat = 3
   static let gapShare: CGFloat = 0.3
-  static let grid: CGFloat = 0.5
+  static let minLength: CGFloat = 2
   static let fadeShare: CGFloat = 0.3
   static let maxFade: CGFloat = 48
   static let fadeStops = 24
@@ -21,21 +21,18 @@ struct UsageSegments: Equatable {
   }
 
   static func rects(in rect: CGRect, count: Int, closed: Bool = false) -> [CGRect] {
-    let count = fitting(count, width: rect.width)
+    let count = fitting(count, in: rect)
     guard count > 1 else { return [rect] }
+    let gap = gap(count: count, width: rect.width)
     if closed {
       let pitch = rect.width / CGFloat(count)
-      let gap = gap(count: count, width: rect.width)
       return (0..<count).map { index in
         CGRect(x: rect.minX + CGFloat(index) * pitch + gap / 2, y: rect.minY, width: pitch - gap, height: rect.height)
       }
     }
-    let gap = snapped(gap(count: count, width: rect.width))
-    let pitch = (rect.width + gap) / CGFloat(count)
+    let side = (rect.width - gap * CGFloat(count - 1)) / CGFloat(count)
     return (0..<count).map { index in
-      let start = snapped(rect.minX + CGFloat(index) * pitch)
-      let end = index == count - 1 ? rect.maxX : snapped(rect.minX + CGFloat(index + 1) * pitch - gap)
-      return CGRect(x: start, y: rect.minY, width: end - start, height: rect.height)
+      CGRect(x: rect.minX + CGFloat(index) * (side + gap), y: rect.minY, width: side, height: rect.height)
     }
   }
 
@@ -58,18 +55,14 @@ struct UsageSegments: Equatable {
     min(rect.width, rect.height) / 2
   }
 
-  private static func snapped(_ value: CGFloat) -> CGFloat {
-    (value / grid).rounded() * grid
-  }
-
   private static func gap(count: Int, width: CGFloat) -> CGFloat {
     min(max(width / CGFloat(count) * gapShare, minGap), maxGap)
   }
 
-  private static func fitting(_ count: Int, width: CGFloat) -> Int {
+  private static func fitting(_ count: Int, in rect: CGRect) -> Int {
     guard count > 1 else { return 1 }
-    let gap = gap(count: count, width: width)
-    let side = (width - gap * CGFloat(count - 1)) / CGFloat(count)
-    return side >= minSegment ? count : 1
+    let gap = gap(count: count, width: rect.width)
+    let side = (rect.width - gap * CGFloat(count - 1)) / CGFloat(count)
+    return side >= max(minSegment, rect.height * minLength) ? count : 1
   }
 }

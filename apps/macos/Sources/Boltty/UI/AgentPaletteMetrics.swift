@@ -301,9 +301,9 @@ enum AgentPaletteMetrics {
   }
   static var historyFootDiscInset: CGFloat { live(18) }
   static var historyLimitsWidth: CGFloat { live(80) }
-  static var historyLimitsBarWidth: CGFloat { live(48) }
-  static var historyLimitsBarHeight: CGFloat { live(5) }
-  static var historyLimitsBarGap: CGFloat { live(5) }
+  static var historyLimitsBarWidth: CGFloat { live(60) }
+  static var historyLimitsBarHeight: CGFloat { live(3) }
+  static var historyLimitsBarGap: CGFloat { live(4) }
   static let historyLimitsMaxBars = 2
   static var historyFootHeight: CGFloat { historyFootDiscInset + previewCloseDiameter + previewContentVerticalPadding }
 

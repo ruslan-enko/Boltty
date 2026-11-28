@@ -288,7 +288,7 @@ final class GrokPlanTests: XCTestCase {
     }
     XCTAssertEqual(asked.count, 1)
     XCTAssertEqual(asked.first?.id, "call-1", "the card is addressed by the tool call")
-    XCTAssertEqual(asked.first?.kind, .plan(PlanPrompt(markdown: Self.plan, toolCallID: "call-1")))
+    XCTAssertEqual(asked.first?.kind, .plan(PlanPrompt(markdown: Self.plan, toolCallID: "call-1", answers: [.approve, .requestChanges, .quit])))
     XCTAssertTrue(events.contains(.interactionResolved(
       sessionID: "ses_plan", requestID: "call-1", resolution: .plan(.cancelled))))
 
@@ -340,7 +340,7 @@ final class GrokPlanTests: XCTestCase {
 
     XCTAssertTrue(events.contains { event in
       if case let .interactionAsked(interaction) = event {
-        return interaction.kind == .plan(PlanPrompt(markdown: "", toolCallID: "call-1"))
+        return interaction.kind == .plan(PlanPrompt(markdown: "", toolCallID: "call-1", answers: [.approve, .requestChanges, .quit]))
       }
       return false
     })

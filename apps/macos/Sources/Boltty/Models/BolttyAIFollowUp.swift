@@ -72,7 +72,6 @@ struct BolttyAIModelMenu: Equatable, Sendable {
   var canResetEffort = true
   var permissionModes: [PermissionMode] = []
   var permissionMode: PermissionMode? = nil
-  var planMode: Bool? = nil
 }
 
 struct BolttyAISessionPreview: Equatable, Sendable {

@@ -1634,7 +1634,7 @@ final class BolttyAIBusyQueueTests: XCTestCase {
     _ = panel.textView(panel.field, doCommandBy: #selector(NSResponder.insertNewline(_:)))
     for _ in 0..<100 where conversations.answered.isEmpty { await Task.yield() }
 
-    XCTAssertEqual(conversations.answered.map(\.values), [["approved"]])
+    XCTAssertEqual(conversations.answered.map(\.values), [["approve"]])
   }
 
   func testReturnWithWordsRequestsChangesToAPlan() async throws {
@@ -1651,7 +1651,7 @@ final class BolttyAIBusyQueueTests: XCTestCase {
     for _ in 0..<100 where conversations.answered.isEmpty { await Task.yield() }
 
     XCTAssertNil(conversations.queued[id])
-    XCTAssertEqual(conversations.answered.map(\.values), [["cancelled", "smaller steps"]])
+    XCTAssertEqual(conversations.answered.map(\.values), [["requestChanges", "smaller steps"]])
   }
 
   func testRequestChangesClickedTakesTheComposersWords() async throws {
@@ -1667,7 +1667,7 @@ final class BolttyAIBusyQueueTests: XCTestCase {
     bar.pressForTesting(1)
     for _ in 0..<100 where conversations.answered.isEmpty { await Task.yield() }
 
-    XCTAssertEqual(conversations.answered.map(\.values), [["cancelled", "smaller steps"]])
+    XCTAssertEqual(conversations.answered.map(\.values), [["requestChanges", "smaller steps"]])
   }
 
   func testChangesThatWereNotDeliveredKeepTheirWords() async throws {
@@ -1683,7 +1683,7 @@ final class BolttyAIBusyQueueTests: XCTestCase {
     _ = panel.textView(panel.field, doCommandBy: #selector(NSResponder.insertNewline(_:)))
     for _ in 0..<100 where panel.visibleErrorForTesting == nil { await Task.yield() }
 
-    XCTAssertEqual(conversations.answered.map(\.values), [["cancelled", "smaller steps"]])
+    XCTAssertEqual(conversations.answered.map(\.values), [["requestChanges", "smaller steps"]])
     XCTAssertEqual(panel.currentDraft.typedText, "smaller steps")
   }
 

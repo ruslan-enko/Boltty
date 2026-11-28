@@ -360,6 +360,12 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   static let planTool = "ExitPlanMode"
 
+  /// As the CLI asks: bypass where its process may enter it, else auto, then asking for edits.
+  static func planAnswers(launchedWith launch: AgentSessionOptions) -> [PlanAnswer] {
+    let first: PlanAnswer = launch.permissionMode == bypassMode && !launch.readOnly ? .bypass : .useAuto
+    return [first, .approveEdits, .keepPlanning]
+  }
+
   func answerPlan(
     requestID: String,
     sessionID: String,
@@ -838,7 +844,10 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
         id: requestID,
         conversationID: conversationID,
         remoteSessionID: session.id,
-        kind: .plan(PlanPrompt(markdown: markdown, toolCallID: request.string("tool_use_id")))
+        kind: .plan(PlanPrompt(
+          markdown: markdown, toolCallID: request.string("tool_use_id"),
+          answers: Self.planAnswers(launchedWith: session.options)
+        ))
       )))
       return
     }

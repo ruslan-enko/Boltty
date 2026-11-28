@@ -296,10 +296,9 @@ final class ChatWorkspaceCoordinator {
   ) -> Conversation {
     let provider = providerID ?? defaultProviderID()
     let start = newChatSettings(for: provider)
-    let named = AgentCommand.leading(in: prompt).map { $0.name == AgentCommand.plan.name ? $0.rest : prompt } ?? prompt
     let conversation = store.createConversation(
       id: id,
-      title: ConversationEngine.title(from: named),
+      title: ConversationEngine.title(from: prompt),
       workingDirectory: workingDirectory ?? store.defaultWorkingDirectory(),
       providerID: provider,
       model: start.model,
@@ -412,7 +411,7 @@ final class ChatWorkspaceCoordinator {
   private func sendPanelPrompt(
     _ request: String, pictures: [ConversationAttachment] = [], to id: UUID
   ) {
-    let prompt = takePlanRequest(request, in: id)
+    let prompt = request
     guard !prompt.isEmpty || !pictures.isEmpty else { return }
     takeComputerUse(prompt, in: id)
     pendingPanelPrompts[id] = (prompt, store.transcript(id: id).messages.count, Date())
@@ -440,25 +439,12 @@ final class ChatWorkspaceCoordinator {
     }
   }
 
-  private func takePlanRequest(_ prompt: String, in id: UUID) -> String {
-    guard let (name, rest) = AgentCommand.leading(in: prompt), name == AgentCommand.plan.name,
-          let conversation = store.conversation(id: id),
-          engine.registry.capabilities(forProviderID: conversation.providerID).contains(.planMode)
-    else { return prompt }
-    store.setPlanMode(true, for: id)
-    return rest
-  }
-
   private func takeComputerUse(_ prompt: String, in id: UUID) {
     guard ComputerUseMention.isAsked(in: prompt),
           let conversation = store.conversation(id: id), !conversation.computerUse,
           engine.mayUseComputer(conversation)
     else { return }
     store.setComputerUse(true, for: id)
-  }
-
-  func setPlanMode(_ enabled: Bool, for id: UUID) {
-    engine.setPlanMode(enabled, for: id)
   }
 
   @discardableResult
@@ -534,7 +520,6 @@ final class ChatWorkspaceCoordinator {
         status = String(localized: "Done")
         kind = .finished
         automaticSends[conversation.id] = nil
-        engine.askAboutReplyPlan(in: conversation.id)
         if !conversation.isAskBoltty { onTurnFinished?(conversation) }
       case .waiting:
         automaticSends[conversation.id] = nil

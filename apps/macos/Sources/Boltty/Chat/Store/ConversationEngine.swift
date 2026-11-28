@@ -92,17 +92,30 @@ final class ConversationEngine: ObservableObject {
     return modelsByProvider[providerID] ?? []
   }
 
+  /// The agent's modes as its CLI walks them, plan among them where it plans.
   func permissionModes(for conversationID: UUID) -> [PermissionMode] {
     guard let conversation = store.conversation(id: conversationID), !conversation.readOnly else { return [] }
-    return PermissionMode.ladder(for: AgentId(rawValue: conversation.providerID))
+    return PermissionMode.walk(
+      for: AgentId(rawValue: conversation.providerID),
+      plans: registry.capabilities(forProviderID: conversation.providerID).contains(.planMode)
+    )
   }
 
   func permissionMode(for conversationID: UUID) -> PermissionMode? {
     guard let conversation = store.conversation(id: conversationID), !conversation.readOnly else { return nil }
+    let walk = permissionModes(for: conversationID)
+    if conversation.planMode, let plan = walk.first(where: { $0.id == PermissionMode.planID }) { return plan }
     return PermissionMode.resolved(conversation.permissionMode, for: AgentId(rawValue: conversation.providerID))
+      ?? walk.first
   }
 
   func setPermissionMode(_ mode: String?, for conversationID: UUID) async {
+    if mode == PermissionMode.planID {
+      store.setPlanMode(true, for: conversationID)
+      return
+    }
+    store.setPlanMode(false, for: conversationID)
+    guard mode != PermissionMode.buildID else { return }
     store.setPermissionMode(mode, for: conversationID)
     guard let remote = store.conversation(id: conversationID)?.remoteSessionID,
           let client = client(for: conversationID)
@@ -899,10 +912,6 @@ final class ConversationEngine: ObservableObject {
     ask.answer.resume(returning: answer)
   }
 
-  func setPlanMode(_ enabled: Bool, for conversationID: UUID) {
-    store.setPlanMode(enabled, for: conversationID)
-  }
-
   func canUndoChanges(_ conversationID: UUID) -> Bool {
     guard let conversation = store.conversation(id: conversationID),
           !conversation.isAskBoltty, !store.isReadOnly, conversation.remoteSessionID != nil,
@@ -994,25 +1003,6 @@ final class ConversationEngine: ObservableObject {
     }
     let next = messages[(index + 1)...].firstIndex { $0.role == .user } ?? messages.endIndex
     return Array(messages[..<next])
-  }
-
-  func askAboutReplyPlan(in conversationID: UUID) {
-    guard let conversation = store.conversation(id: conversationID), conversation.planMode,
-          let remote = conversation.remoteSessionID,
-          registry.capabilities(forProviderID: conversation.providerID).contains(.planInReply)
-    else { return }
-    let transcript = store.transcript(id: conversationID)
-    guard let reply = transcript.messages.last, reply.role == .agent,
-          !reply.plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    else { return }
-    let id = "plan-\(reply.id)"
-    guard !transcript.interactions.contains(where: { $0.id == id }) else { return }
-    store.recordInteraction(PendingInteraction(
-      id: id,
-      conversationID: conversationID,
-      remoteSessionID: remote,
-      kind: .plan(PlanPrompt(markdown: reply.plainText, toolCallID: nil, endedTurn: true))
-    ))
   }
 
   func stop(conversationID: UUID) async {
@@ -1172,14 +1162,14 @@ final class ConversationEngine: ObservableObject {
   func reply(
     planID: String,
     in conversationID: UUID,
-    decision: PlanDecision,
+    answer: PlanAnswer,
     feedback: String? = nil
   ) async -> Bool {
     guard let remote = store.conversation(id: conversationID)?.remoteSessionID,
           let client = client(for: conversationID),
           store.beginSubmitting(interactionID: planID, in: conversationID)
     else { return false }
-    let words = feedback?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let words = answer.takesWords ? feedback?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" : ""
     let plan = store.transcript(id: conversationID).interactions
       .first { $0.id == planID }
       .flatMap { interaction -> PlanPrompt? in
@@ -1187,22 +1177,26 @@ final class ConversationEngine: ObservableObject {
         return nil
       }
     do {
+      if let mode = answer.mode {
+        store.setPermissionMode(mode, for: conversationID)
+        try? await client.setPermissionMode(mode, sessionID: remote)
+      }
       if plan?.isAnsweredByMessage != true {
         try await client.answerPlan(
           requestID: planID,
           sessionID: remote,
-          decision: decision,
-          feedback: decision == .cancelled && !words.isEmpty ? words : nil
+          decision: answer.decision,
+          feedback: words.isEmpty ? nil : words
         )
       }
-      store.resolveInteraction(id: planID, in: conversationID, with: .plan(decision))
+      store.resolveInteraction(id: planID, in: conversationID, with: .plan(answer.decision))
       notices[conversationID] = nil
-      if decision != .cancelled { store.setPlanMode(false, for: conversationID) }
+      if answer.decision == .approved { store.setPlanMode(false, for: conversationID) }
       if plan?.isAnsweredByMessage == true {
-        switch decision {
-        case .approved: await send(text: PlanPrompt.approval, in: conversationID)
-        case .cancelled where !words.isEmpty: await send(text: words, in: conversationID)
-        default: break
+        if let message = answer.message {
+          await send(text: message, in: conversationID)
+        } else if !words.isEmpty {
+          await send(text: words, in: conversationID)
         }
       }
       return true

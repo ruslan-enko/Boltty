@@ -468,7 +468,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
       id: id,
       conversationID: conversationID,
       remoteSessionID: threadID,
-      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: id, endedTurn: true))
+      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: id, endedTurn: true, answers: [.implement, .stayInPlan]))
     )))
   }
 

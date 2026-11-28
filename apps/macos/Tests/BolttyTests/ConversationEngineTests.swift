@@ -822,7 +822,7 @@ final class ConversationEngineTests: XCTestCase {
     XCTAssertEqual(question.kind, .plan)
     XCTAssertEqual(question.header, "Rename the tray")
     XCTAssertEqual(question.options.map(\.label), ["Approve", "Request Changes", "Quit"])
-    XCTAssertEqual(question.options.map(\.value), ["approved", "cancelled", "abandoned"])
+    XCTAssertEqual(question.options.map(\.value), ["approve", "requestChanges", "quit"])
     XCTAssertEqual(question.copyText, Self.plan)
     let preview = try XCTUnwrap(coordinator.preview(for: id))
     XCTAssertEqual(preview.messages.filter { $0.plainText == Self.plan }.count, 1,
@@ -835,7 +835,7 @@ final class ConversationEngineTests: XCTestCase {
 
     XCTAssertEqual(question.prompt, "No plan written yet")
     XCTAssertEqual(question.header, "Plan")
-    XCTAssertEqual(question.options.map(\.value), ["approved", "cancelled", "abandoned"])
+    XCTAssertEqual(question.options.map(\.value), ["approve", "requestChanges", "quit"])
     XCTAssertNil(question.copyText, "nothing to copy")
   }
 
@@ -843,7 +843,7 @@ final class ConversationEngineTests: XCTestCase {
     let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
     let (id, _, _) = try await askedPlan(coordinator)
 
-    let sent = await engine.reply(planID: "call-1", in: id, decision: .approved, feedback: "stray")
+    let sent = await engine.reply(planID: "call-1", in: id, answer: .approve, feedback: "stray")
 
     XCTAssertTrue(sent)
     XCTAssertEqual(client.planReplies.map(\.decision), [.approved])
@@ -869,7 +869,7 @@ final class ConversationEngineTests: XCTestCase {
     let coordinator = ChatWorkspaceCoordinator(store: store, engine: engine)
     let (_, _, question) = try await askedPlan(coordinator)
 
-    let sent = try await coordinator.answer(question, with: ["abandoned", "never mind"])
+    let sent = try await coordinator.answer(question, with: ["quit", "never mind"])
 
     XCTAssertTrue(sent)
     XCTAssertEqual(client.planReplies.map(\.decision), [.abandoned])
@@ -897,7 +897,7 @@ final class ConversationEngineTests: XCTestCase {
     client.planError = .requestGone
     client.snapshots[remote] = snapshot(remote: remote, state: .idle)
 
-    let sent = try await coordinator.answer(question, with: ["approved"])
+    let sent = try await coordinator.answer(question, with: ["approve"])
 
     XCTAssertFalse(sent)
     XCTAssertEqual(store.transcript(id: id).interactions.first?.resolution, .expired)

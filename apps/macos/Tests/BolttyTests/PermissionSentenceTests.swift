@@ -615,9 +615,9 @@ final class PlanCardTests: XCTestCase {
       header: PlanPrompt(markdown: markdown).title,
       prompt: empty ? PlanPrompt.emptyText : "",
       options: [
-        .init(label: "Approve", detail: nil, value: "approved"),
-        .init(label: "Request Changes", detail: nil, value: "cancelled"),
-        .init(label: "Quit", detail: nil, value: "abandoned"),
+        .init(label: "Approve", detail: nil, value: "approve"),
+        .init(label: "Request Changes", detail: nil, value: "requestChanges"),
+        .init(label: "Quit", detail: nil, value: "quit"),
       ],
       allowsMultiple: false, allowsCustom: false,
       copyText: empty ? nil : markdown
@@ -672,7 +672,7 @@ final class PlanCardTests: XCTestCase {
     bar.pressForTesting(0)
     bar.pressForTesting(1)
     bar.pressForTesting(2)
-    XCTAssertEqual(sent, [["approved"], ["cancelled"], ["abandoned"]])
+    XCTAssertEqual(sent, [["approve"], ["requestChanges"], ["quit"]])
   }
 
   func testCopyCopiesThePlanAndAnswersNothing() throws {
@@ -707,7 +707,7 @@ final class PlanCardTests: XCTestCase {
     let plan = Self.plan()
     XCTAssertTrue(plan.takesWordsAsRefusal)
     XCTAssertFalse(plan.answersByNumber)
-    XCTAssertEqual(plan.refusing(with: "smaller"), ["cancelled", "smaller"])
+    XCTAssertEqual(plan.refusing(with: "smaller"), ["requestChanges", "smaller"])
     XCTAssertEqual(plan.refusalWords, "Request Changes", "as the button says it")
     XCTAssertEqual(
       AgentPaletteView.composerPlaceholder(for: BolttyAISessionPreview(

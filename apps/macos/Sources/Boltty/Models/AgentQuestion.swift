@@ -56,16 +56,24 @@ struct AgentQuestion: Equatable, Sendable {
     !allowsCustom && !takesWordsAsRefusal && (1...9).contains(options.count)
   }
 
-  var takesWordsAsRefusal: Bool { kind == .permission || kind == .plan }
+  var takesWordsAsRefusal: Bool { kind == .permission || planWordsOption != nil }
 
-  func refusing(with words: String) -> [String] {
-    kind == .plan ? [PlanDecision.cancelled.rawValue, words] : Self.refusal(saying: words)
+  /// The plan's answer that carries words, where its CLI offers one.
+  var planWordsOption: Option? {
+    guard kind == .plan else { return nil }
+    return options.first { PlanAnswer(rawValue: $0.value)?.takesWords == true }
   }
 
-  var refusalWords: String { kind == .plan ? String(localized: "Request Changes") : String(localized: "Deny and send") }
+  func refusing(with words: String) -> [String] {
+    if let option = planWordsOption { return [option.value, words] }
+    return Self.refusal(saying: words)
+  }
+
+  var refusalWords: String { planWordsOption?.label ?? String(localized: "Deny and send") }
 
   var returnReachableCount: Int {
-    kind == .plan ? max(options.count - 1, 1) : options.count
+    guard kind == .plan else { return options.count }
+    return max(options.filter { PlanAnswer(rawValue: $0.value)?.decision != .abandoned }.count, 1)
   }
 
   var takesWordsAsAnswer: Bool { kind == .question && allowsCustom }

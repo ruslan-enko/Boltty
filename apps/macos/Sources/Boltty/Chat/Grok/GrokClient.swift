@@ -441,7 +441,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
        let conversationID = lock.withLock({ conversationResolver })?(sessionID) {
       emit(.interactionAsked(PendingInteraction(
         id: "plan-\(UUID().uuidString)", conversationID: conversationID, remoteSessionID: sessionID,
-        kind: .plan(PlanPrompt(markdown: markdown, toolCallID: nil, endedTurn: true))
+        kind: .plan(PlanPrompt(markdown: markdown, toolCallID: nil, endedTurn: true, answers: [.proceed]))
       )))
     }
     let reply: ConversationMessage? = lock.withLock {
@@ -907,7 +907,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       id: requestID,
       conversationID: conversationID,
       remoteSessionID: sessionID,
-      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: toolCallID))
+      kind: .plan(PlanPrompt(markdown: markdown, toolCallID: toolCallID, answers: [.approve, .requestChanges, .quit]))
     )))
   }
 
