@@ -260,8 +260,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self?.requirePalette()?.show()
       }
     }
-    let asks = chat.store.$transcripts
-      .map { NotchMascotStatus.asks(in: $0) }
+    let store = chat.store
+    let asks = store.objectWillChange
+      .receive(on: RunLoop.main)
+      .prepend(())
+      .map { [weak store] in NotchMascotStatus.asks(in: store?.transcripts ?? [:]) }
       .removeDuplicates()
     chat.store.$conversations.combineLatest(model.$settings, asks)
       .sink { [weak notch] conversations, settings, waitingOn in

@@ -58,6 +58,21 @@ reap_servers() {
   done < "$ledger"
 }
 
+# A Boltty killed outright never runs the trap: its server is left with launchd as
+# its parent, in a throwaway home holding a staged copy under a bundle id of its own.
+reap_orphans() {
+  local server home id
+  for server in $(pgrep -x opencode 2>/dev/null); do
+    [[ "$(ps -o ppid= -p "$server" 2>/dev/null | tr -d ' ')" == 1 ]] || continue
+    home="$(ps eww -o command= -p "$server" 2>/dev/null | tr ' ' '\n' | sed -n 's/^HOME=//p' | head -1)"
+    [[ -n "$home" && "$home" != "$HOME" ]] || continue
+    id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$home/Boltty.app/Contents/Info.plist" 2>/dev/null || true)"
+    [[ "$id" == com.boltty.* && "$id" != com.boltty.app ]] || continue
+    print "[i] reaping OpenCode server $server left by a staged copy that was killed"
+    kill "$server" 2>/dev/null || true
+  done
+}
+
 cleanup() {
   if (( keep )); then
     print "[i] kept: home=$home_dir domain=$bundle_id"
@@ -68,6 +83,8 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+trap 'exit 130' INT TERM HUP
+reap_orphans
 
 print "[i] isolated home:   $home_dir"
 print "[i] isolated domain: $bundle_id"

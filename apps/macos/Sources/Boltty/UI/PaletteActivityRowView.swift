@@ -190,7 +190,7 @@ final class PaletteActivityRowView: NSView {
     well.isHidden = detail.isHidden
     detail.attributedStringValue = detail.isHidden
       ? NSAttributedString()
-      : Self.detailText(value.detail ?? "")
+      : Self.detailText(value.detail ?? "", hiddenLines: value.hiddenLines ?? 0)
     setAccessibilityLabel(headline.stringValue)
     setAccessibilityValue(expanded ? String(localized: "expanded") : String(localized: "collapsed"))
     needsLayout = true
@@ -203,22 +203,23 @@ final class PaletteActivityRowView: NSView {
     needsLayout = true
   }
 
-  static func shown(_ detail: String) -> String {
+  static func shown(_ detail: String, hiddenLines: Int = 0) -> String {
     let trimmed = detail.trimmingCharacters(in: .whitespacesAndNewlines)
     let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
-    guard lines.count > AgentPaletteMetrics.previewActivityDetailLineCap else { return trimmed }
-    let kept = lines.prefix(AgentPaletteMetrics.previewActivityDetailLineCap)
-      .joined(separator: "\n")
-    return kept + "\n… " + String(localized: "\(lines.count - AgentPaletteMetrics.previewActivityDetailLineCap) more lines")
+    let cap = AgentPaletteMetrics.previewActivityDetailLineCap
+    let more = max(0, lines.count - cap) + hiddenLines
+    guard more > 0 else { return trimmed }
+    let kept = lines.prefix(cap).joined(separator: "\n")
+    return kept + "\n… " + String(localized: "\(more) more lines")
   }
 
-  private static func detailText(_ raw: String) -> NSAttributedString {
+  private static func detailText(_ raw: String, hiddenLines: Int = 0) -> NSAttributedString {
     let paragraph = NSMutableParagraphStyle()
     paragraph.lineBreakMode = .byWordWrapping
     paragraph.minimumLineHeight = AgentPaletteMetrics.previewActivityDetailLineHeight
     paragraph.maximumLineHeight = AgentPaletteMetrics.previewActivityDetailLineHeight
     return NSAttributedString(
-      string: shown(raw),
+      string: shown(raw, hiddenLines: hiddenLines),
       attributes: [
         .font: NSFont.monospacedSystemFont(
           ofSize: AgentPaletteMetrics.previewActivityDetailFontSize, weight: .regular
@@ -298,7 +299,7 @@ final class PaletteActivityRowView: NSView {
         + CGFloat(activity.plan?.count ?? 0) * AgentPaletteMetrics.previewActivityRowHeight
     }
     guard isExpanded, opens(activity) else { return head }
-    let measured = ceil(detailText(activity.detail ?? "").boundingRect(
+    let measured = ceil(detailText(activity.detail ?? "", hiddenLines: activity.hiddenLines ?? 0).boundingRect(
       with: NSSize(width: detailWidth(in: width), height: .greatestFiniteMagnitude),
       options: [.usesLineFragmentOrigin, .usesFontLeading]
     ).height)

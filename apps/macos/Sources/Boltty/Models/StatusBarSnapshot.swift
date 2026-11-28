@@ -50,6 +50,7 @@ enum BolttyAISessionList {
   ) -> [BolttyAISessionItem] {
     let rows = conversations.filter {
       !$0.isAskBoltty || transcripts[$0.id]?.messages.isEmpty == false
+        || $0.sentFiles.contains { $0.asked != nil }
     }.map { conversation in
       let agent = AgentId(rawValue: conversation.providerID) ?? .custom
       let transcript = transcripts[conversation.id] ?? ConversationTranscript()
@@ -181,11 +182,19 @@ enum BolttyAISessionList {
     transcripts: [UUID: ConversationTranscript] = [:],
     query: String
   ) -> [BolttyAISessionItem] {
+    filter(rows, transcript: { transcripts[$0] }, query: query)
+  }
+
+  static func filter(
+    _ rows: [BolttyAISessionItem],
+    transcript: (UUID) -> ConversationTranscript?,
+    query: String
+  ) -> [BolttyAISessionItem] {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return rows }
     return rows.filter { row in
       if row.title.localizedCaseInsensitiveContains(trimmed) { return true }
-      if let transcript = transcripts[row.id] {
+      if let transcript = transcript(row.id) {
         return transcript.messages.reversed().contains { $0.containsText(trimmed) }
       }
       return row.subtitle.localizedCaseInsensitiveContains(trimmed)

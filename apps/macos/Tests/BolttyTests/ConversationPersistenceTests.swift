@@ -20,6 +20,43 @@ final class ConversationPersistenceTests: XCTestCase {
     ConversationStore(persistence: ConversationPersistence(root: root))
   }
 
+  func testAChatUntouchedForDaysStaysOnDiskUntilAskedFor() throws {
+    let longAgo = Date().addingTimeInterval(-10 * 24 * 60 * 60)
+    let first = ConversationStore(persistence: ConversationPersistence(root: root), clock: { longAgo })
+    let conversation = first.createConversation(title: "Old", workingDirectory: "/tmp")
+    first.appendUserMessage(id: "m", text: "an old question", attachments: [], to: conversation.id)
+    first.close()
+
+    let second = newStore()
+    defer { second.close() }
+    XCTAssertNil(second.transcripts[conversation.id], "an old chat is not read at launch")
+    XCTAssertEqual(second.transcript(id: conversation.id).messages.first?.plainText, "an old question")
+    second.letColdTranscriptsGo()
+    XCTAssertNil(second.transcripts[conversation.id])
+    XCTAssertEqual(second.transcript(id: conversation.id).messages.count, 1, "read again when asked")
+  }
+
+  func testOnlyWhatIsShownOfReasoningAndToolOutputIsKept() {
+    let output = (1...60).map { "line \($0)" }.joined(separator: "\n")
+    var message = ConversationMessage(id: "a", role: .agent, createdAt: Date())
+    message.parts = [
+      .reasoning(TextPart(id: "r", kind: .reasoning, text: String(repeating: "thinking ", count: 200))),
+      .activity(AgentActivity(id: "t", name: "Bash", detail: output)),
+    ]
+
+    message.keepOnlyWhatIsShown()
+
+    guard case let .reasoning(thought) = message.parts[0], case let .activity(tool) = message.parts[1]
+    else { return XCTFail("parts changed kind") }
+    XCTAssertEqual(thought.text.count, ConversationMessage.keptReasoning)
+    XCTAssertEqual(tool.detail?.split(separator: "\n").count, AgentActivity.keptDetailLines)
+    XCTAssertEqual(tool.hiddenLines, 20)
+    XCTAssertEqual(
+      PaletteActivityRowView.shown(tool.detail ?? "", hiddenLines: tool.hiddenLines ?? 0)
+        .split(separator: "\n").last,
+      "… 20 more lines")
+  }
+
   func testPanelDraftKeepsFileChipsAfterTheOriginalIsDeletedAndRelaunches() throws {
     let first = newStore()
     let conversation = first.createConversation(title: "Files", workingDirectory: "/tmp")

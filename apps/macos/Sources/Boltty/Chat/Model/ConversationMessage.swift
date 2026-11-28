@@ -53,20 +53,40 @@ struct ConversationMessage: Identifiable, Codable, Equatable, Sendable {
   }
 
   mutating func appendDelta(_ delta: String, toPart partID: String, kind: ConversationPart.TextKind) {
-    if let index = parts.firstIndex(where: { $0.id == partID }) {
+    if let index = parts.lastIndex(where: { $0.id == partID }) {
+      // The part is taken out before it grows, so its text is not copied on every delta.
       guard case var .text(existing) = parts[index], existing.kind == kind else {
-        if case var .reasoning(existing) = parts[index], kind == .reasoning {
+        if case var .reasoning(existing) = parts[index], kind == .reasoning,
+           existing.text.count < Self.keptReasoning {
           existing.text += delta
           parts[index] = .reasoning(existing)
         }
         return
       }
+      parts[index] = .text(TextPart(id: partID, kind: kind, text: ""))
       existing.text += delta
       parts[index] = .text(existing)
       return
     }
     let part = TextPart(id: partID, kind: kind, text: delta)
     parts.append(kind == .reasoning ? .reasoning(part) : .text(part))
+  }
+
+  static let keptReasoning = 80
+
+  mutating func keepOnlyWhatIsShown() {
+    for index in parts.indices {
+      switch parts[index] {
+      case var .reasoning(part) where part.text.count > Self.keptReasoning:
+        part.text = String(part.text.prefix(Self.keptReasoning))
+        parts[index] = .reasoning(part)
+      case var .activity(activity) where activity.detailIsLong:
+        activity.keepOnlyShownDetail()
+        parts[index] = .activity(activity)
+      default:
+        break
+      }
+    }
   }
 
   mutating func removePart(id partID: String) {
@@ -115,7 +135,10 @@ enum ConversationPart: Identifiable, Codable, Equatable, Sendable {
     }
     if new.name.isEmpty { new.name = old.name }
     if new.summary == nil { new.summary = old.summary }
-    if new.detail == nil { new.detail = old.detail }
+    if new.detail == nil {
+      new.detail = old.detail
+      new.hiddenLines = old.hiddenLines
+    }
     if new.files.isEmpty { new.files = old.files }
     if new.startedAt == nil { new.startedAt = old.startedAt }
     if new.endedAt == nil { new.endedAt = old.endedAt }
@@ -148,6 +171,7 @@ struct AgentActivity: Identifiable, Codable, Equatable, Sendable {
   var startedAt: Date?
   var endedAt: Date?
   var plan: [PlanStep]?
+  var hiddenLines: Int?
 
   init(
     id: String,
@@ -169,6 +193,25 @@ struct AgentActivity: Identifiable, Codable, Equatable, Sendable {
     self.startedAt = startedAt
     self.endedAt = endedAt
     self.plan = plan
+  }
+
+  static let keptDetailLines = 40
+  static let keptDetailCharacters = 16_000
+
+  var detailIsLong: Bool {
+    guard let detail else { return false }
+    return detail.utf8.count > Self.keptDetailCharacters
+      || detail.utf8.lazy.filter { $0 == 0x0A }.count >= Self.keptDetailLines
+  }
+
+  mutating func keepOnlyShownDetail() {
+    guard let whole = detail?.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+    let lines = whole.split(separator: "\n", omittingEmptySubsequences: false)
+    var kept = lines.prefix(Self.keptDetailLines).joined(separator: "\n")
+    if kept.count > Self.keptDetailCharacters { kept = String(kept.prefix(Self.keptDetailCharacters)) }
+    detail = kept
+    let hidden = max(0, lines.count - Self.keptDetailLines)
+    if hidden > 0 { hiddenLines = (hiddenLines ?? 0) + hidden }
   }
 
   var headline: String {

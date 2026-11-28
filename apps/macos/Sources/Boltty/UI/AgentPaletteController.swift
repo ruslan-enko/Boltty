@@ -126,6 +126,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panel.contentView = panelView
     panel.onKeyDown = { [weak panelView] in panelView?.routeKeyFromReadingText($0) ?? false }
     panel.onPressEnded = { [weak panelView] in panelView?.returnFocusAfterReadingPress() }
+    panelView.searchTranscript = { [weak self] in self?.conversations?.transcriptForSearch($0) }
     Motion.applyTimeScale(to: panel)
     BackgroundCursor.enable()
 
@@ -722,6 +723,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
     panelView.closeLightbox(animated: false)
     panelView.suspendChatAnimations()
     conversations?.setAddressedConversation(nil)
+    conversations?.panelDidHide()
     stopObservingPreview()
     cancelPendingVoiceSubmit()
     answerTask?.cancel()

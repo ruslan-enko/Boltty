@@ -75,6 +75,8 @@ final class ACPClient: AgentClient, @unchecked Sendable {
   private var asks: [String: PendingAsk] = [:]
   private var conversationResolver: (@Sendable (String) -> UUID?)?
   private let executableOverride: String?
+  var idleExitDelay: TimeInterval = 600
+  private var restToken: UUID?
 
   init(agent: ACPAgent = .grok, executable: String? = nil) {
     self.agent = agent
@@ -362,6 +364,11 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       }
     }
     await applyLeniently(model: wanted?.model, effort: wanted?.effort, to: id)
+    // A process let go at rest forgets the session's mode with it.
+    if let wanted {
+      if agent.modeID(wanted) != "default" { try? await set(mode: agent.modeID(wanted), on: id) }
+      if Self.alwaysApproves(wanted) { try? await set(alwaysApproving: true, on: id) }
+    }
   }
 
   func messageExists(id: String, in sessionID: String) async throws -> Bool {
@@ -642,10 +649,32 @@ final class ACPClient: AgentClient, @unchecked Sendable {
       self.readerTask = task
     }
 
-    return try await request("initialize", params: [
+    let answer = try await request("initialize", params: [
       "protocolVersion": 1,
       "clientCapabilities": ["fs": ["readTextFile": false, "writeTextFile": false]]
     ])
+    scheduleRest()
+    return answer
+  }
+
+  private func scheduleRest() {
+    let token = UUID()
+    lock.withLock { restToken = token }
+    let delay = idleExitDelay
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(delay))
+      await self?.restIfUnused(token)
+    }
+  }
+
+  private func restIfUnused(_ token: UUID) async {
+    let unused = lock.withLock {
+      restToken == token && process != nil && pending.isEmpty && permissions.isEmpty
+        && plans.isEmpty && asks.isEmpty && !sessions.values.contains { $0.pendingMessageID != nil }
+    }
+    guard unused else { return }
+    log.debug("letting the idle \(self.provider.rawValue, privacy: .public) process go")
+    await shutdown()
   }
 
   private func read(_ process: JSONLineProcess) async {
@@ -1124,6 +1153,7 @@ final class ACPClient: AgentClient, @unchecked Sendable {
     continuation?.yield(
       AgentEventEnvelope(providerID: provider.rawValue, id: nil, sequence: nil, event: event)
     )
+    if case let .executionStateChanged(_, state) = event, !state.blocksSending { scheduleRest() }
   }
 
   private func locate() -> String? {

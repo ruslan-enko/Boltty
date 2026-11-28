@@ -489,6 +489,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
 
   private var sessionItems: [BolttyAISessionItem] = []
   private var sessionTranscripts: [UUID: ConversationTranscript] = [:]
+  var searchTranscript: ((UUID) -> ConversationTranscript?)?
   private var resultItems: [BolttyAISessionItem] = []
   private var resultSections: [AgentHistory.Section] = []
   private(set) var activeHistoryAgent: AgentId?
@@ -1761,9 +1762,11 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       newItems = newSections.flatMap(\.items)
     } else {
       newSections = []
+      let kept = sessionTranscripts
+      let search = searchTranscript
       newItems = BolttyAISessionList.filter(
         listedSessionItems,
-        transcripts: sessionTranscripts,
+        transcript: { kept[$0] ?? search?($0) },
         query: resultsQuery
       )
     }

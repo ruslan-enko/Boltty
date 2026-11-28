@@ -117,6 +117,7 @@ final class MascotClock {
 final class MascotNSView: NSView {
   private let canvas = MascotCanvas()
   private var skipsThisDraw = false
+  private var lastPointer: (x: Double, y: Double, strength: Double)?
 
   private var phase: Double
   private var palette: MascotPalette
@@ -330,11 +331,12 @@ final class MascotNSView: NSView {
 extension MascotNSView {
   func advance(_ elapsed: Double) {
     guard !reduceMotion else { render(); return }
-    if let pointer = pointerOffset() {
-      motion.setPointer(x: pointer.x, y: pointer.y, strength: pointer.strength)
-    } else {
-      motion.setPointer(x: 0, y: 0, strength: 0)
-    }
+    let pointer = pointerOffset() ?? (x: 0, y: 0, strength: 0)
+    motion.setPointer(x: pointer.x, y: pointer.y, strength: pointer.strength)
+    let pointerMoved = lastPointer.map {
+      $0.x != pointer.x || $0.y != pointer.y || $0.strength != pointer.strength
+    } ?? true
+    lastPointer = pointer
     let beats = motion.beats
     motion.update(elapsed)
     if motion.beats != beats { onBeat?(motion.lastBeatIsBig) }
@@ -345,7 +347,7 @@ extension MascotNSView {
       changesAwake = isWaking
       settled = stepWake(elapsed)
     }
-    if bounds.width < MascotRenderer.largeFaceSide, !motion.isActing, !changesAwake {
+    if bounds.width < MascotRenderer.largeFaceSide || !pointerMoved, !motion.isActing, !changesAwake {
       skipsThisDraw.toggle()
       if skipsThisDraw { return }
     }

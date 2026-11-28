@@ -32,6 +32,8 @@ final class CodexClient: AgentClient, @unchecked Sendable {
   private var unloadTokens: [String: UUID] = [:]
   private var skillsByFolder: [String: (read: Date, skills: [Skill])] = [:]
   var idleUnloadDelay: TimeInterval = 600
+  var idleExitDelay: TimeInterval = 600
+  private var restToken: UUID?
   private var eventContinuation: AsyncStream<AgentEventEnvelope>.Continuation?
   private var conversationResolver: (@Sendable (String) -> UUID?)?
 
@@ -321,6 +323,32 @@ final class CodexClient: AgentClient, @unchecked Sendable {
     lock.withLock {
       if unloadTokens[threadID] == token { threads[threadID]?.loadedOn = nil }
     }
+    scheduleRest()
+  }
+
+  private func scheduleRest() {
+    let token = UUID()
+    lock.withLock { restToken = token }
+    let delay = idleExitDelay
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(delay))
+      self?.restIfUnused(token)
+    }
+  }
+
+  private func restIfUnused(_ token: UUID) {
+    let running = lock.withLock { () -> JSONLineProcess? in
+      guard restToken == token, let running = process, pending.isEmpty, approvals.isEmpty,
+            !threads.values.contains(where: { $0.loadedOn != nil || $0.currentTurnID != nil })
+      else { return nil }
+      process = nil
+      startTask = nil
+      return running
+    }
+    guard let running else { return }
+    log.debug("letting the idle app-server go")
+    running.closeInput()
+    running.terminate()
   }
 
   private func ensureThread(id: String, on server: JSONLineProcess) async throws {
@@ -700,6 +728,7 @@ final class CodexClient: AgentClient, @unchecked Sendable {
           on: started
         )
         notify("initialized", params: [:], on: started)
+        scheduleRest()
         return started
       }
       startTask = task

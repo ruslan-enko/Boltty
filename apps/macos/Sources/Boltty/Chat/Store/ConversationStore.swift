@@ -4,7 +4,11 @@ import Foundation
 @MainActor
 final class ConversationStore: ObservableObject {
   @Published private(set) var conversations: [Conversation] = []
-  @Published private(set) var transcripts: [UUID: ConversationTranscript] = [:]
+  private var warmTranscripts: [UUID: ConversationTranscript] = [:]
+  private var coldTranscripts: [UUID: ConversationTranscript] = [:]
+  static let warmAge: TimeInterval = 3 * 24 * 60 * 60
+
+  var transcripts: [UUID: ConversationTranscript] { warmTranscripts }
   @Published var selectedConversationID: UUID?
   @Published private(set) var damagedConversationIDs: Set<UUID> = []
 
@@ -27,9 +31,9 @@ final class ConversationStore: ObservableObject {
   ) {
     self.persistence = persistence
     self.clock = clock
-    let loaded = persistence.load()
+    let loaded = persistence.load(warmSince: clock().addingTimeInterval(-Self.warmAge))
     conversations = loaded.conversations
-    transcripts = loaded.transcripts
+    warmTranscripts = loaded.transcripts
     selectedConversationID = loaded.selectedConversationID
     damagedConversationIDs = Set(loaded.damaged)
     for index in conversations.indices where conversations[index].lastKnownState.blocksSending {
@@ -40,7 +44,7 @@ final class ConversationStore: ObservableObject {
         transcript.interactions[asked].resolution = transcript.interactions[asked].goneResolution
         transcript.interactions[asked].isSubmitting = false
       }
-      transcripts[id] = transcript
+      setTranscript(transcript, for: id)
     }
   }
 
@@ -56,7 +60,20 @@ final class ConversationStore: ObservableObject {
   }
 
   func transcript(id: UUID) -> ConversationTranscript {
-    transcripts[id] ?? ConversationTranscript()
+    if let warm = warmTranscripts[id] { return warm }
+    if let cold = coldTranscripts[id] { return cold }
+    guard conversation(id: id) != nil else { return ConversationTranscript() }
+    switch persistence.loadTranscript(id) {
+    case let .read(transcript):
+      coldTranscripts[id] = transcript
+      return transcript
+    case .damaged:
+      DispatchQueue.main.async { [weak self] in self?.damagedConversationIDs.insert(id) }
+      coldTranscripts[id] = ConversationTranscript()
+      return ConversationTranscript()
+    case .absent:
+      return ConversationTranscript()
+    }
   }
 
   var selectedConversation: Conversation? {
@@ -114,7 +131,7 @@ final class ConversationStore: ObservableObject {
     conversation.readOnly = readOnly
     conversation.isAskBoltty = isAskBoltty
     conversations.append(conversation)
-    transcripts[conversation.id] = ConversationTranscript()
+    setTranscript(ConversationTranscript(), for: conversation.id)
     saveIndexNow()
     return conversation
   }
@@ -148,7 +165,7 @@ final class ConversationStore: ObservableObject {
 
   func deleteConversation(id: UUID) {
     conversations.removeAll { $0.id == id }
-    transcripts[id] = nil
+    forgetTranscript(id)
     damagedConversationIDs.remove(id)
     if selectedConversationID == id {
       selectedConversationID = orderedConversations.first?.id
@@ -161,7 +178,7 @@ final class ConversationStore: ObservableObject {
     guard let conversation = conversations.first(where: { $0.id == id }) else { return }
     flushPendingSaves()
     conversations.removeAll { $0.id == id }
-    transcripts[id] = nil
+    forgetTranscript(id)
     damagedConversationIDs.remove(id)
     if selectedConversationID == id {
       selectedConversationID = orderedConversations.first?.id
@@ -184,7 +201,9 @@ final class ConversationStore: ObservableObject {
     guard !cleared.isEmpty else { return 0 }
     flushPendingSaves()
     conversations.removeAll()
-    transcripts.removeAll()
+    objectWillChange.send()
+    warmTranscripts.removeAll()
+    coldTranscripts.removeAll()
     damagedConversationIDs.removeAll()
     selectedConversationID = nil
     persistence.trashConversations(cleared)
@@ -203,7 +222,7 @@ final class ConversationStore: ObservableObject {
     let ids = Set(old.map(\.id))
     conversations.removeAll { ids.contains($0.id) }
     for id in ids {
-      transcripts[id] = nil
+      forgetTranscript(id)
       damagedConversationIDs.remove(id)
     }
     if let selected = selectedConversationID, ids.contains(selected) { selectedConversationID = nil }
@@ -296,7 +315,7 @@ final class ConversationStore: ObservableObject {
       $0.permissionMode = permissionMode
       $0.lastKnownState = .idle
     }
-    transcripts[id] = ConversationTranscript()
+    setTranscript(ConversationTranscript(), for: id)
     saveTranscriptNow(id)
   }
 
@@ -409,7 +428,7 @@ final class ConversationStore: ObservableObject {
   ) {
     var transcript = transcript(id: conversationID)
     transcript.messages.removeAll { $0.id == messageID }
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     update(conversationID) { conversation in
       conversation.draft = conversation.draft.isEmpty ? text : text + "\n" + conversation.draft
       let staged = Set(conversation.draftAttachments.map(\.id))
@@ -422,6 +441,8 @@ final class ConversationStore: ObservableObject {
 
   func upsert(_ message: ConversationMessage, in conversationID: UUID) {
     var transcript = transcript(id: conversationID)
+    var message = message
+    message.keepOnlyWhatIsShown()
     if let index = transcript.messages.firstIndex(where: { $0.id == message.id }) {
       var merged = message
       if merged.parts.isEmpty { merged.parts = transcript.messages[index].parts }
@@ -430,7 +451,7 @@ final class ConversationStore: ObservableObject {
       transcript.messages.append(message)
       transcript.messages.sort { $0.createdAt < $1.createdAt }
     }
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     touch(conversationID)
   }
 
@@ -439,6 +460,11 @@ final class ConversationStore: ObservableObject {
     in conversationID: UUID,
     openInteractions: [PendingInteraction]
   ) {
+    let messages = messages.map { message -> ConversationMessage in
+      var kept = message
+      kept.keepOnlyWhatIsShown()
+      return kept
+    }
     var transcript = transcript(id: conversationID)
     var byID = Dictionary(transcript.messages.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     var merged: [ConversationMessage] = []
@@ -473,7 +499,7 @@ final class ConversationStore: ObservableObject {
         transcript.interactions.append(interaction)
       }
     }
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     damagedConversationIDs.remove(conversationID)
     saveTranscriptNow(conversationID)
   }
@@ -486,7 +512,7 @@ final class ConversationStore: ObservableObject {
     } else {
       transcript.interactions.append(interaction)
     }
-    transcripts[interaction.conversationID] = transcript
+    setTranscript(transcript, for: interaction.conversationID)
     if case let .plan(plan) = interaction.kind, plan.isAnsweredByMessage {
       flagUnread(interaction.conversationID)
       saveTranscriptNow(interaction.conversationID)
@@ -503,7 +529,7 @@ final class ConversationStore: ObservableObject {
           transcript.interactions[index].acceptsInput
     else { return false }
     transcript.interactions[index].isSubmitting = true
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     return true
   }
 
@@ -522,7 +548,7 @@ final class ConversationStore: ObservableObject {
         ? transcript.interactions[index].goneResolution
         : resolution
     }
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     if transcript.openInteraction == nil,
        conversation(id: conversationID)?.lastKnownState == .waiting {
       setExecutionState(.working, for: conversationID)
@@ -537,7 +563,7 @@ final class ConversationStore: ObservableObject {
     else { return }
     transcript.interactions[index].isSubmitting = false
     transcript.interactions[index].resolution = transcript.interactions[index].goneResolution
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     saveTranscriptNow(conversationID)
   }
 
@@ -549,7 +575,7 @@ final class ConversationStore: ObservableObject {
       transcript.interactions[index].resolution = .askGone
       transcript.interactions[index].isSubmitting = false
     }
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     saveTranscriptNow(conversationID)
   }
 
@@ -563,7 +589,7 @@ final class ConversationStore: ObservableObject {
           transcript.interactions[index].isLate
     else { return false }
     transcript.interactions[index].resolution = .answered(answers)
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     saveTranscriptNow(conversationID)
     return true
   }
@@ -584,7 +610,7 @@ final class ConversationStore: ObservableObject {
       changed = true
     }
     guard changed else { return }
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
     saveTranscriptNow(conversationID)
   }
 
@@ -594,7 +620,7 @@ final class ConversationStore: ObservableObject {
       return
     }
     transcript.interactions[index].isSubmitting = false
-    transcripts[conversationID] = transcript
+    setTranscript(transcript, for: conversationID)
   }
 
   @discardableResult
@@ -640,7 +666,7 @@ final class ConversationStore: ObservableObject {
     case let .messageRemoved(_, messageID):
       var transcript = transcript(id: id)
       transcript.messages.removeAll { $0.id == messageID }
-      transcripts[id] = transcript
+      setTranscript(transcript, for: id)
       touch(id)
 
     case let .partUpdated(_, messageID, part):
@@ -690,7 +716,7 @@ final class ConversationStore: ObservableObject {
         transcript.interactions[index].resolution = .expired
         transcript.interactions[index].isSubmitting = false
       }
-      transcripts[id] = transcript
+      setTranscript(transcript, for: id)
       setExecutionState(.idle, for: id)
       update(id) { $0.remoteSessionID = nil }
       saveTranscriptNow(id)
@@ -710,16 +736,21 @@ final class ConversationStore: ObservableObject {
     in conversationID: UUID,
     _ body: (inout ConversationMessage) -> Void
   ) {
-    var transcript = transcript(id: conversationID)
-    if let index = transcript.messages.firstIndex(where: { $0.id == messageID }) {
-      body(&transcript.messages[index])
+    if warmTranscripts[conversationID] == nil {
+      setTranscript(transcript(id: conversationID), for: conversationID)
+    } else {
+      objectWillChange.send()
+    }
+    if let index = warmTranscripts[conversationID]!.messages.lastIndex(where: { $0.id == messageID }) {
+      body(&warmTranscripts[conversationID]!.messages[index])
+      warmTranscripts[conversationID]!.messages[index].keepOnlyWhatIsShown()
     } else {
       var message = ConversationMessage(id: messageID, role: .agent, createdAt: clock())
       body(&message)
-      transcript.messages.append(message)
-      transcript.messages.sort { $0.createdAt < $1.createdAt }
+      message.keepOnlyWhatIsShown()
+      warmTranscripts[conversationID]!.messages.append(message)
+      warmTranscripts[conversationID]!.messages.sort { $0.createdAt < $1.createdAt }
     }
-    transcripts[conversationID] = transcript
     touch(conversationID)
   }
 
@@ -744,6 +775,22 @@ final class ConversationStore: ObservableObject {
   private func updateWithoutTouching(_ id: UUID, _ body: (inout Conversation) -> Void) {
     guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
     body(&conversations[index])
+  }
+
+  private func setTranscript(_ transcript: ConversationTranscript, for id: UUID) {
+    objectWillChange.send()
+    warmTranscripts[id] = transcript
+    coldTranscripts[id] = nil
+  }
+
+  private func forgetTranscript(_ id: UUID) {
+    objectWillChange.send()
+    warmTranscripts[id] = nil
+    coldTranscripts[id] = nil
+  }
+
+  func letColdTranscriptsGo() {
+    coldTranscripts.removeAll()
   }
 
   private func touch(_ id: UUID) {
