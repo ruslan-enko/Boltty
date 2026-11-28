@@ -51,22 +51,13 @@ final class GlassPillLabelButton: PaletteIconButton {
     didSet { invalidateIntrinsicContentSize() }
   }
 
-  var trailingKey = "" {
-    didSet { applyTitle(); invalidateIntrinsicContentSize() }
-  }
-
   private func applyTitle() {
     let colour = !isEnabled ? PaletteInk.tertiary : isHovered ? hoverTint : restingTint
     let words = NSMutableAttributedString()
-    let key: [NSAttributedString.Key: Any] = [
-      .font: roundedAppFont(size: titleFontSize, weight: .medium),
-      .foregroundColor: PaletteInk.tertiary,
-    ]
     words.append(NSAttributedString(
       string: word,
       attributes: [.font: roundedAppFont(size: titleFontSize), .foregroundColor: colour]
     ))
-    if !trailingKey.isEmpty { words.append(NSAttributedString(string: "  " + trailingKey, attributes: key)) }
     attributedTitle = words
   }
 

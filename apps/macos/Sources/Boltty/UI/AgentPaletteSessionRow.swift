@@ -200,12 +200,9 @@ final class BolttyAISessionRowView: NSView {
     needsLayout = true
   }
 
-  private let shimmer = CALayer()
-  private let shimmerWords = CALayer()
-  private let shimmerBand = CAGradientLayer()
+  private let shimmer = ShimmerBand()
   private var shimmerCut: (text: String, size: NSSize)?
   private var shimmerPaint: (agent: AgentId, still: Bool)?
-  private var sweptWidth: CGFloat = 0
   private(set) var isShowingWorking = false
 
   private func syncWorking() {
@@ -216,19 +213,12 @@ final class BolttyAISessionRowView: NSView {
     }
     isShowingWorking = working
     if working {
-      if shimmer.superlayer == nil, let host = background.layer {
-        shimmer.mask = shimmerWords
-        shimmerBand.startPoint = CGPoint(x: 0, y: 0.5)
-        shimmerBand.endPoint = CGPoint(x: 1, y: 0.5)
-        shimmer.addSublayer(shimmerBand)
-        host.addSublayer(shimmer)
-      }
+      if shimmer.superlayer == nil, let host = background.layer { host.addSublayer(shimmer) }
       shimmer.isHidden = false
       needsLayout = true
     } else {
       shimmer.isHidden = true
-      shimmerBand.removeAnimation(forKey: "sweep")
-      sweptWidth = 0
+      shimmer.stopSweep()
     }
   }
 
@@ -237,44 +227,17 @@ final class BolttyAISessionRowView: NSView {
     let frame = titleLabel.frame
     let words = min(frame.width, ceil(titleLabel.attributedStringValue.size().width) + 4)
     let still = MotionPreferences.reduceMotion
-    let band = still
-      ? words
-      : max(AgentPaletteMetrics.resultsShimmerMinimumBand, words * AgentPaletteMetrics.resultsShimmerBandShare)
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    shimmer.frame = frame
-    shimmerWords.frame = shimmer.bounds
-    shimmerBand.frame = CGRect(x: still ? 0 : -band, y: 0, width: band, height: frame.height)
-    shimmerBand.opacity = still ? Float(AgentPaletteMetrics.resultsWorkingStillOpacity) : 1
-    paintShimmer(still: still)
-    CATransaction.commit()
+    if shimmerPaint?.agent != item.agent || shimmerPaint?.still != still {
+      shimmerPaint = (item.agent, still)
+      shimmer.paint(MascotPalette.face(for: item.agent).arrivalLight, still: still)
+    }
+    let travel = shimmer.lay(in: frame, wordsWidth: words, still: still)
     cutShimmerWords()
     if still {
-      shimmerBand.removeAnimation(forKey: "sweep")
-      sweptWidth = 0
-    } else {
-      startSweepIfNeeded(across: words + band)
+      shimmer.stopSweep()
+    } else if window != nil {
+      shimmer.sweep(across: travel, phase: shimmerPhase())
     }
-  }
-
-  private func paintShimmer(still: Bool) {
-    guard shimmerPaint?.agent != item.agent || shimmerPaint?.still != still else { return }
-    shimmerPaint = (item.agent, still)
-    let light = MascotPalette.face(for: item.agent).arrivalLight
-    guard let first = light.first, let last = light.last else { return }
-    if still {
-      shimmerBand.colors = OklabGradient.cgColors(light)
-      shimmerBand.locations = nil
-      return
-    }
-    shimmerBand.colors = OklabGradient.cgColors(
-      [first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)]
-    )
-    let inner = AgentPaletteMetrics.resultsShimmerFade
-    let steps = max(1, light.count - 1)
-    shimmerBand.locations = OklabGradient.numbers([0] + light.indices.map {
-      inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
-    } + [1])
   }
 
   private func cutShimmerWords() {
@@ -288,31 +251,8 @@ final class BolttyAISessionRowView: NSView {
     titleLabel.textColor = .white
     titleLabel.cacheDisplay(in: titleLabel.bounds, to: rep)
     titleLabel.textColor = ink
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    shimmerWords.contents = rep.cgImage
-    shimmerWords.contentsScale = window?.backingScaleFactor ?? 2
-    CATransaction.commit()
+    shimmer.cut(rep.cgImage, scale: window?.backingScaleFactor ?? 2)
     shimmerCut = (text, size)
-  }
-
-  private func startSweepIfNeeded(across travel: CGFloat) {
-    guard window != nil else { return }
-    if abs(travel - sweptWidth) > 0.5 { shimmerBand.removeAnimation(forKey: "sweep") }
-    guard shimmerBand.animation(forKey: "sweep") == nil else { return }
-    sweptWidth = travel
-    let sweep = CABasicAnimation(keyPath: "transform.translation.x")
-    sweep.fromValue = 0
-    sweep.toValue = travel
-    sweep.duration = AgentPaletteMetrics.resultsShimmerSweepDuration
-    sweep.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-    sweep.fillMode = .both
-    let cycle = CAAnimationGroup()
-    cycle.animations = [sweep]
-    cycle.duration = sweep.duration + AgentPaletteMetrics.resultsShimmerRest
-    cycle.repeatCount = .infinity
-    cycle.timeOffset = shimmerPhase() * cycle.duration
-    shimmerBand.add(cycle, forKey: "sweep")
   }
 
   private func shimmerPhase() -> Double {

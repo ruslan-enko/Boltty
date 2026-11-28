@@ -173,26 +173,10 @@ private struct AskBolttyAgentPicker: View {
       }
       .accessibilityIdentifier("boltty.settings.talkAgent")
     } else {
-      ChoiceStrip(title: nil, identifier: "boltty.settings.talkAgent") {
-      if model.askBolttyAgents.count > 1 {
-        RingedChoice(title: String(localized: "Automatic"), isChosen: automatic, isRinged: false) {
-          guard !automatic else { return }
-          withAnimation(SettingsMotion.quick) { model.chooseAskBolttyAgent(nil) }
-        } picture: { _ in
-          FaceCluster(looks: model.askBolttyAgents.map { model.mascotLook(for: $0) }, diameter: 52)
-        }
-        .accessibilityIdentifier("boltty.settings.talkAgent.automatic")
-      }
-      ForEach(model.askBolttyAgents, id: \.rawValue) { agent in
-        RingedChoice(title: agent.shortDisplayName, isChosen: chosen == agent, isRinged: false) {
-          guard agent != chosen else { return }
-          withAnimation(SettingsMotion.quick) { model.chooseAskBolttyAgent(agent) }
-        } picture: { _ in
-          MascotStill(look: model.mascotLook(for: agent), size: 52)
-        }
-        .accessibilityIdentifier("boltty.settings.talkAgent.\(agent.rawValue)")
-      }
-      }
+      AgentChoiceStrip(
+        model: model, identifier: "boltty.settings.talkAgent", agents: model.askBolttyAgents,
+        offersAutomatic: model.askBolttyAgents.count > 1, isAutomatic: automatic, chosen: chosen
+      ) { model.chooseAskBolttyAgent($0) }
     }
   }
 }

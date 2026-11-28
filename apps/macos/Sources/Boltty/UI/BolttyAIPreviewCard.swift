@@ -1692,7 +1692,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   private let copyButton = PaletteIconButton()
-  private var copyResetWork: DispatchWorkItem?
+  private lazy var copying = CopyConfirmation { [weak self] copied in self?.applyCopyGlyph(copied ? .check : .copy) }
   private let speakButton = PaletteIconButton()
   var onSpeak: ((ConversationMessage) -> Void)? {
     didSet { syncAnswerActions() }
@@ -2028,16 +2028,7 @@ final class PaletteChatMessageView: NSView {
   }
 
   @objc private func copyText(_ sender: NSButton) {
-    let value = message.copyableText
-    guard !value.isEmpty else { return }
-    let pasteboard = NSPasteboard.general
-    pasteboard.clearContents()
-    pasteboard.setString(value, forType: .string)
-    applyCopyGlyph(.check)
-    copyResetWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph(.copy) }
-    copyResetWork = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
+    copying.copy(message.copyableText)
   }
 
   func apply(_ value: ConversationMessage, folded: Bool = false, offersCopy: Bool = false) {
@@ -2800,7 +2791,7 @@ final class PaletteTurnHeaderView: NSView {
     label.stringValue = value.text()
     chevron.isHidden = value.isRunning
     button.isEnabled = !value.isRunning
-    chevron.image = (value.isCollapsed ? BolttyIcon.chevronRight : .chevronDown).image(
+    chevron.image = BolttyIcon.disclosure(isOpen: !value.isCollapsed).image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize),
       description: value.isCollapsed ? String(localized: "Show the work") : String(localized: "Hide the work")
     )

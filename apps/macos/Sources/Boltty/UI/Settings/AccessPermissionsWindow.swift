@@ -162,10 +162,7 @@ private struct AccessPermissionRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      BolttyIconView(icon: kind.icon, size: 20)
-        .foregroundStyle(.white)
-        .frame(width: 30, height: 30)
-        .background(kind.tint.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+      AccessKindBadge(kind: kind, size: .row)
       VStack(alignment: .leading, spacing: 2) {
         Text(kind.title)
         Text(kind.purpose)
@@ -174,7 +171,7 @@ private struct AccessPermissionRow: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 8)
-      trailing
+      AccessActionControl(status: status, isAsking: isAsking, action: action)
     }
     .padding(.vertical, 8)
     .padding(.horizontal, 4)
@@ -182,26 +179,54 @@ private struct AccessPermissionRow: View {
     .accessibilityIdentifier("boltty.access.\(kind.rawValue)")
   }
 
-  @ViewBuilder
-  private var trailing: some View {
-    if isAsking {
+}
+
+struct AccessKindBadge: View {
+  enum Size {
+    case row, tile
+
+    var side: CGFloat { self == .row ? 30 : 48 }
+    var icon: CGFloat { self == .row ? 20 : 28 }
+    var corner: CGFloat { self == .row ? 7 : 13 }
+  }
+
+  let kind: AccessKind
+  let size: Size
+
+  var body: some View {
+    BolttyIconView(icon: kind.icon, size: size.icon)
+      .foregroundStyle(.white)
+      .frame(width: size.side, height: size.side)
+      .background(kind.tint.gradient, in: RoundedRectangle(cornerRadius: size.corner, style: .continuous))
+  }
+}
+
+struct AccessActionControl: View {
+  let status: AccessStatus?
+  let isAsking: Bool
+  var isCompact = false
+  let action: () -> Void
+
+  var body: some View {
+    if isAsking || status == nil {
       ProgressView().controlSize(.small)
     } else {
       switch status {
       case .allowed:
-        BolttyIconView(icon: .checkCircle, size: 22)
+        BolttyIconView(icon: .checkCircle, size: isCompact ? 20 : 22)
           .foregroundStyle(.green)
           .help("Allowed")
+          .accessibilityLabel("Allowed")
           .transition(.scale.combined(with: .opacity))
       case .refused:
         Button("Open Settings…", action: action)
           .buttonStyle(.glass)
+          .controlSize(isCompact ? .small : .regular)
           .help("macOS asks only once — this opens the pane where it is changed")
-      case .notAsked:
+      default:
         Button("Allow", action: action)
           .buttonStyle(.glass)
-      case nil:
-        ProgressView().controlSize(.small)
+          .controlSize(isCompact ? .small : .regular)
       }
     }
   }

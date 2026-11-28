@@ -13,7 +13,7 @@ final class BolttyAIFailureCard: NSView {
   private let disclosure = PaletteDisclosureButton()
   private let detailsText = NSTextField(wrappingLabelWithString: "")
   private let copyButton = PaletteIconButton()
-  private var copyResetWork: DispatchWorkItem?
+  private lazy var copying = CopyConfirmation { [weak self] copied in self?.applyCopyGlyph(copied ? .check : .copy) }
   private let detailsBox = NSView()
   private let column = NSStackView()
   private let controls = NSStackView()
@@ -223,7 +223,7 @@ final class BolttyAIFailureCard: NSView {
   private func applyDisclosure() {
     let open = !detailsBox.isHidden
     disclosure.title = String(localized: "Details")
-    disclosure.image = (open ? BolttyIcon.chevronDown : .chevronRight)
+    disclosure.image = BolttyIcon.disclosure(isOpen: open)
       .image(size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize))
     disclosure.setAccessibilityValue(open ? String(localized: "expanded") : String(localized: "collapsed"))
   }
@@ -244,14 +244,7 @@ final class BolttyAIFailureCard: NSView {
 
   @objc private func copyDetails(_ sender: NSButton) {
     guard let details = report?.details else { return }
-    let pasteboard = NSPasteboard.general
-    pasteboard.clearContents()
-    pasteboard.setString(details, forType: .string)
-    applyCopyGlyph(.check)
-    copyResetWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph(.copy) }
-    copyResetWork = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
+    copying.copy(details)
   }
 }
 

@@ -210,16 +210,20 @@ struct SettingsAgentTitle: View {
   @ObservedObject var model: BolttyAISettingsModel
   let agent: AgentId
   var subtitle: String?
+  var isDimmed = false
+  var subtitleLines: Int?
 
   var body: some View {
     HStack(spacing: 12) {
       MascotStill(look: model.mascotLook(for: agent), size: 30)
+        .opacity(isDimmed ? 0.45 : 1)
       VStack(alignment: .leading, spacing: 2) {
         Text(agent.displayName)
         if let subtitle {
           Text((try? AttributedString(markdown: subtitle)) ?? AttributedString(subtitle))
             .font(BolttyInterfaceTypography.callout)
             .foregroundStyle(.secondary)
+            .lineLimit(subtitleLines)
         }
       }
     }

@@ -242,10 +242,9 @@ final class ShortcutRecorderButton: NSButton {
   }
 
   static func glyphs(for flags: NSEvent.ModifierFlags) -> String {
-    [(NSEvent.ModifierFlags.control, "⌃"), (.option, "⌥"), (.shift, "⇧"), (.command, "⌘")]
-      .filter { flags.contains($0.0) }
-      .map(\.1)
-      .joined()
+    KeyChordSymbols.modifiers(
+      control: flags.contains(.control), option: flags.contains(.option),
+      shift: flags.contains(.shift), command: flags.contains(.command))
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
