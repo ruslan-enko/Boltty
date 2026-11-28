@@ -340,25 +340,10 @@ private struct NewChatsPicker: View {
 
   var body: some View {
     let automatic = model.routesAutomatically
-    ChoiceStrip(title: nil, identifier: "boltty.settings.newChats") {
-      RingedChoice(title: String(localized: "Automatic"), isChosen: automatic, isRinged: false) {
-        guard !automatic else { return }
-        withAnimation(SettingsMotion.quick) { model.sendNewChats(to: nil) }
-      } picture: { _ in
-        FaceCluster(looks: model.enabledAdapters.map { model.mascotLook(for: $0) }, diameter: 52)
-      }
-      .accessibilityIdentifier("boltty.settings.newChats.automatic")
-      ForEach(model.enabledAdapters, id: \.rawValue) { agent in
-        let chosen = !automatic && model.defaultAgent == agent
-        RingedChoice(title: agent.shortDisplayName, isChosen: chosen, isRinged: false) {
-          guard !chosen else { return }
-          withAnimation(SettingsMotion.quick) { model.sendNewChats(to: agent) }
-        } picture: { _ in
-          MascotStill(look: model.mascotLook(for: agent), size: 52)
-        }
-        .accessibilityIdentifier("boltty.settings.newChats.\(agent.rawValue)")
-      }
-    }
+    AgentChoiceStrip(
+      model: model, identifier: "boltty.settings.newChats", agents: model.enabledAdapters,
+      isAutomatic: automatic, chosen: automatic ? nil : model.defaultAgent
+    ) { model.sendNewChats(to: $0) }
   }
 
   static func note(_ model: BolttyAISettingsModel) -> String {
@@ -367,6 +352,40 @@ private struct NewChatsPicker: View {
     return model.routesAutomatically
       ? String(localized: "Automatic gives a new chat to whoever has the most of their plan left: now \(next.shortDisplayName). If it cannot answer, the next one does. \(once)")
       : String(localized: "Every new chat goes to \(next.shortDisplayName). \(once)")
+  }
+}
+
+struct AgentChoiceStrip: View {
+  @ObservedObject var model: BolttyAISettingsModel
+  let identifier: String
+  let agents: [AgentId]
+  var offersAutomatic = true
+  let isAutomatic: Bool
+  let chosen: AgentId?
+  let choose: (AgentId?) -> Void
+
+  var body: some View {
+    ChoiceStrip(title: nil, identifier: identifier) {
+      if offersAutomatic {
+        RingedChoice(title: String(localized: "Automatic"), isChosen: isAutomatic, isRinged: false) {
+          guard !isAutomatic else { return }
+          withAnimation(SettingsMotion.quick) { choose(nil) }
+        } picture: { _ in
+          FaceCluster(looks: agents.map { model.mascotLook(for: $0) }, diameter: 52)
+        }
+        .accessibilityIdentifier("\(identifier).automatic")
+      }
+      ForEach(agents, id: \.rawValue) { agent in
+        let isChosen = !isAutomatic && chosen == agent
+        RingedChoice(title: agent.shortDisplayName, isChosen: isChosen, isRinged: false) {
+          guard !isChosen else { return }
+          withAnimation(SettingsMotion.quick) { choose(agent) }
+        } picture: { _ in
+          MascotStill(look: model.mascotLook(for: agent), size: 52)
+        }
+        .accessibilityIdentifier("\(identifier).\(agent.rawValue)")
+      }
+    }
   }
 }
 
@@ -403,15 +422,8 @@ private struct AgentSettingsListRow: View {
     HStack(spacing: 12) {
       Button(action: open) {
         HStack(spacing: 12) {
-          MascotStill(look: model.mascotLook(for: row.agent), size: 30)
-            .opacity(row.isReady ? 1 : 0.45)
-          VStack(alignment: .leading, spacing: 2) {
-            Text(row.agent.displayName)
-            Text((try? AttributedString(markdown: row.summary)) ?? AttributedString(row.summary))
-              .font(BolttyInterfaceTypography.callout)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-          }
+          SettingsAgentTitle(
+            model: model, agent: row.agent, subtitle: row.summary, isDimmed: !row.isReady, subtitleLines: 1)
           Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
@@ -697,11 +709,8 @@ struct UsageSettingsPage: View {
         subtitle: String(localized: "Signed out. Run `\(command)` in a terminal, then refresh.")
       )
       Spacer()
-      Button("Copy Command") {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(command, forType: .string)
-      }
-      .help("Copy “\(command)”")
+      CopyCommandButton(command: command)
+        .help("Copy “\(command)”")
       .accessibilityIdentifier("boltty.settings.usage.\(agent.rawValue).copySignIn")
     }
   }
@@ -742,38 +751,26 @@ private struct UsageLimitCard: View {
   }
 }
 
-struct UsageMeter: View {
+struct UsageMeter: NSViewRepresentable {
   let fraction: Double
   var segments = 1
   var height: CGFloat = 4
 
-  var body: some View {
-    Canvas { context, size in
-      let whole = CGRect(origin: .zero, size: size)
-      let shapes = UsageSegments.rects(in: whole, count: segments).map {
-        Path(roundedRect: $0, cornerRadius: UsageSegments.cornerRadius(of: $0))
-      }
-      for shape in shapes { context.fill(shape, with: .color(.primary.opacity(0.08))) }
-      let used = CGFloat(min(max(fraction, 0), 1))
-      guard used > 0 else { return }
-      let reach = max(size.width * used, size.height)
-      let fade = UsageSegments.fade(reach: reach, length: size.width)
-      var inside = context
-      inside.clip(to: shapes.reduce(into: Path()) { $0.addPath($1) })
-      inside.fill(Path(CGRect(x: 0, y: 0, width: reach - fade, height: size.height)), with: .color(.bolttyAccent))
-      if fade > 0 {
-        let stops = UsageSegments.fadeLocations.map {
-          Gradient.Stop(color: .bolttyAccent.opacity(UsageSegments.opacity(at: $0)), location: $0)
-        }
-        inside.fill(
-          Path(CGRect(x: reach - fade, y: 0, width: fade, height: size.height)),
-          with: .linearGradient(
-            Gradient(stops: stops),
-            startPoint: CGPoint(x: reach - fade, y: size.height / 2),
-            endPoint: CGPoint(x: reach, y: size.height / 2)))
-      }
-    }
-    .frame(height: height)
+  func makeNSView(context: Context) -> SegmentedUsageMeter {
+    let meter = SegmentedUsageMeter()
+    meter.translatesAutoresizingMaskIntoConstraints = false
+    meter.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    meter.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    return meter
+  }
+
+  func updateNSView(_ meter: SegmentedUsageMeter, context: Context) {
+    meter.segments = segments
+    meter.used = fraction
+  }
+
+  func sizeThatFits(_ proposal: ProposedViewSize, nsView: SegmentedUsageMeter, context: Context) -> CGSize? {
+    CGSize(width: proposal.width ?? 100, height: height)
   }
 }
 

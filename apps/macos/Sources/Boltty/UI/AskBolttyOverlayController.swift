@@ -103,9 +103,7 @@ final class AskBolttyOverlayController {
   static let typingSpeed: Double = 38
   static let bobHeight: CGFloat = 2.5
   private var bubbleSize: CGSize = .zero
-  private let shimmer = CALayer()
-  private let shimmerWords = CALayer()
-  private let shimmerBand = CAGradientLayer()
+  private let shimmer = ShimmerBand()
   private var shimmerCut: String?
 
   var isVisible: Bool { panel?.isVisible == true }
@@ -541,11 +539,7 @@ final class AskBolttyOverlayController {
     answerWords.wrapWidth = Self.bubbleMaxTextWidth
     answerWords.colors = VoiceEdgeGlowLayout.rayColors(from: look.palette)
     content.addSubview(answerWords)
-    shimmer.mask = shimmerWords
     shimmer.isHidden = true
-    shimmerBand.startPoint = CGPoint(x: 0, y: 0.5)
-    shimmerBand.endPoint = CGPoint(x: 1, y: 0.5)
-    shimmer.addSublayer(shimmerBand)
     answerWords.wantsLayer = true
     answerWords.layer?.addSublayer(shimmer)
     paintShimmer(look)
@@ -779,52 +773,23 @@ final class AskBolttyOverlayController {
   private func syncShimmer(_ quiet: Bool) {
     guard quiet, !text.isEmpty, !MotionPreferences.reduceMotion else {
       shimmer.isHidden = true
-      shimmerBand.removeAnimation(forKey: "sweep")
+      shimmer.stopSweep()
       return
     }
-    let pad = AgentPaletteMetrics.listeningWordBlur
     let words = answerWords.measure(width: Self.bubbleMaxTextWidth).widest
-    let band = max(
-      AgentPaletteMetrics.resultsShimmerMinimumBand, words * AgentPaletteMetrics.resultsShimmerBandShare)
-    CATransaction.begin()
-    CATransaction.setDisableActions(true)
-    shimmer.frame = answerWords.bounds
-    shimmerWords.frame = shimmer.bounds
-    shimmerBand.frame = CGRect(x: pad - band, y: 0, width: band, height: shimmer.bounds.height)
+    let travel = shimmer.lay(
+      in: answerWords.bounds, wordsWidth: words, leading: AgentPaletteMetrics.listeningWordBlur)
     if shimmerCut != text {
-      shimmerWords.contents = answerWords.settledWords(scale: backingScale)
-      shimmerWords.contentsScale = backingScale
+      shimmer.cut(answerWords.settledWords(scale: backingScale), scale: backingScale)
       shimmerCut = text
-      shimmerBand.removeAnimation(forKey: "sweep")
+      shimmer.stopSweep()
     }
-    CATransaction.commit()
     shimmer.isHidden = false
-    guard shimmerBand.animation(forKey: "sweep") == nil else { return }
-    let sweep = CABasicAnimation(keyPath: "transform.translation.x")
-    sweep.fromValue = 0
-    sweep.toValue = words + band
-    sweep.duration = AgentPaletteMetrics.resultsShimmerSweepDuration
-    sweep.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-    sweep.fillMode = .both
-    let cycle = CAAnimationGroup()
-    cycle.animations = [sweep]
-    cycle.duration = sweep.duration + AgentPaletteMetrics.resultsShimmerRest
-    cycle.repeatCount = .infinity
-    cycle.beginTime = CACurrentMediaTime() + AgentPaletteMetrics.listeningWordArrival * 0.7
-    shimmerBand.add(cycle, forKey: "sweep")
+    shimmer.sweep(across: travel, delay: AgentPaletteMetrics.listeningWordArrival * 0.7)
   }
 
   private func paintShimmer(_ look: MascotLook) {
-    let light = look.palette.arrivalLight
-    guard let first = light.first, let last = light.last else { return }
-    shimmerBand.colors = OklabGradient.cgColors(
-      [first.withAlphaComponent(0)] + light + [last.withAlphaComponent(0)]
-    )
-    let inner = AgentPaletteMetrics.resultsShimmerFade
-    let steps = max(1, light.count - 1)
-    shimmerBand.locations = OklabGradient.numbers([0] + light.indices.map {
-      inner + (1 - 2 * inner) * CGFloat($0) / CGFloat(steps)
-    } + [1])
+    shimmer.paint(look.palette.arrivalLight)
   }
 
   static func carried(from old: String, into new: String) -> Int {

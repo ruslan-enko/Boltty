@@ -61,6 +61,8 @@ enum BolttyIcon: String, CaseIterable {
   case keyDelete = "key-delete"
   case keyTab = "key-tab"
 
+  static func disclosure(isOpen: Bool) -> BolttyIcon { isOpen ? .chevronDown : .chevronRight }
+
   func image(size: CGFloat, description: String? = nil) -> NSImage? {
     guard
       let url = Bundle.main.url(forResource: rawValue, withExtension: "svg", subdirectory: "Icons"),

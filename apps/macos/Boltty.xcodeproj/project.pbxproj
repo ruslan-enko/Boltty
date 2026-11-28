@@ -14,6 +14,7 @@
 		01FF88F240C9E7B4C694CA7D /* MacControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D9C720A2C70315E2ECB2B3 /* MacControl.swift */; };
 		03CBC4645BE5A4369B4C43D7 /* Deadline.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2994F3D5BF814BDBFDC8C9B /* Deadline.swift */; };
 		040F2F69DC476FD828CB1CC9 /* AskBolttyBlipsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8C8EE18B6FB0437912D392 /* AskBolttyBlipsTests.swift */; };
+		04856C0439B17007399227BF /* CopyConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37ED8543FD1E3D6007241DC9 /* CopyConfirmation.swift */; };
 		04AFCE18301B400B79062602 /* AgentPaletteInstallHints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A94638B89B61B01E7833DBE /* AgentPaletteInstallHints.swift */; };
 		067621B3203AC6778B1F118A /* FileDigest.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2FA4FDBB01F653BA5972DC /* FileDigest.swift */; };
 		068EA3A8E184F566ACF41C3A /* AgentCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FCDB27F3373375F86B0DBA /* AgentCommandTests.swift */; };
@@ -296,6 +297,7 @@
 		CFFB378A217FEDC181F7BF85 /* HotkeyBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0AA9540C316BC09F651135 /* HotkeyBinding.swift */; };
 		D11B919C35912F03CC22FFC0 /* SegmentedUsageMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4851EA9952E24796FBC2BA1D /* SegmentedUsageMeter.swift */; };
 		D1215D8ABEBDF663E72E5035 /* GrokSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE5380B89E5B8ACBF100B178 /* GrokSessionStore.swift */; };
+		D188F9847794156201FF6A34 /* ShimmerBand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE2CEAE50AA52F971492941 /* ShimmerBand.swift */; };
 		D1EE766B46C2232E50B4D953 /* OpenCodeDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37393B2EDC2ABEB81DF2065F /* OpenCodeDTO.swift */; };
 		D2735D750207FDBBEAB3D81D /* BolttyIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E887A001098AB79849B0EF9 /* BolttyIconView.swift */; };
 		D317211E55CD8FE3A4DECC99 /* ClaudeCodeWakeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 898B251F3E571432754F920A /* ClaudeCodeWakeTests.swift */; };
@@ -437,6 +439,7 @@
 		28DBEA79C303B9C29E8C5971 /* BilingualTranscriptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BilingualTranscriptTests.swift; sourceTree = "<group>"; };
 		2A41277421C7FEF2E94156F0 /* BolttyAIFollowUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BolttyAIFollowUp.swift; sourceTree = "<group>"; };
 		2A825D0BDA6B61B02591B454 /* Boltty-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Boltty-Bridging-Header.h"; sourceTree = "<group>"; };
+		2AE2CEAE50AA52F971492941 /* ShimmerBand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimmerBand.swift; sourceTree = "<group>"; };
 		2BDE8E44ECC401AE53547A72 /* FileMention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileMention.swift; sourceTree = "<group>"; };
 		2D947D58DE45A832815F2FCE /* ISO8601Stamp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISO8601Stamp.swift; sourceTree = "<group>"; };
 		2DB04C3C5B9A85AF075ADA83 /* ConversationPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationPersistenceTests.swift; sourceTree = "<group>"; };
@@ -460,6 +463,7 @@
 		374D78531806A173D2369A9C /* ClaudeCodeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeSession.swift; sourceTree = "<group>"; };
 		3753766B6E76DDA8240341FF /* PaletteAskedRegionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteAskedRegionView.swift; sourceTree = "<group>"; };
 		37B150EECF419B1FAACA3BC0 /* PaletteNoticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteNoticeView.swift; sourceTree = "<group>"; };
+		37ED8543FD1E3D6007241DC9 /* CopyConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyConfirmation.swift; sourceTree = "<group>"; };
 		37FE0089A218D7229D3E597A /* VoiceGlowPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceGlowPhase.swift; sourceTree = "<group>"; };
 		384C85E8B2EC689CCF6B5C6A /* MascotShapeContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotShapeContactSheet.swift; sourceTree = "<group>"; };
 		38577C65A950939B7E9BD2CB /* MascotRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotRenderer.swift; sourceTree = "<group>"; };
@@ -1240,6 +1244,7 @@
 				D86DE02654E768427DBE5C8B /* PaletteEffectShaders.metal */,
 				BBBA0E08F373D6874843EC51 /* PaletteEffectUniforms.h */,
 				6D666DF783D04D1A4FD1492E /* ScrollEdgeBlur.swift */,
+				2AE2CEAE50AA52F971492941 /* ShimmerBand.swift */,
 			);
 			path = Effects;
 			sourceTree = "<group>";
@@ -1282,6 +1287,7 @@
 				A721ACBD18047573D0E6AE5D /* BolttyBrandMark.swift */,
 				C038304FB66D8591A96B1BAC /* BolttyIcon.swift */,
 				227ADF41DFE89B8DC1BA2482 /* ComputerUseIndicator.swift */,
+				37ED8543FD1E3D6007241DC9 /* CopyConfirmation.swift */,
 				5AA12ED1E33F83D8CD3FD6D5 /* FirstRunShowController.swift */,
 				133BB04B372E63818A1F85FD /* HistoryLimitsCapsule.swift */,
 				CCF0B04B7E2F1122C29A2E7A /* KeyablePanel.swift */,
@@ -1605,6 +1611,7 @@
 				9D3DEE56848E8B25BC91147A /* ConversationMessage.swift in Sources */,
 				51C646423DF88453F8D3B3CE /* ConversationPersistence.swift in Sources */,
 				532F00370C47CE58067F5E6B /* ConversationStore.swift in Sources */,
+				04856C0439B17007399227BF /* CopyConfirmation.swift in Sources */,
 				03CBC4645BE5A4369B4C43D7 /* Deadline.swift in Sources */,
 				FB9F842A45354C875E2BD9D6 /* DictationCatalog.swift in Sources */,
 				AFD5E0941D3806D8969D935A /* DictationEngine.swift in Sources */,
@@ -1703,6 +1710,7 @@
 				5CB6CD1183321DB21E54E8E1 /* SettingsPages.swift in Sources */,
 				08F3C127503B703555A77A87 /* SettingsStage.swift in Sources */,
 				74D4A429E0052C3D0ED03BB1 /* SetupWindow.swift in Sources */,
+				D188F9847794156201FF6A34 /* ShimmerBand.swift in Sources */,
 				E13AE36996ED5A206D0BF1F3 /* ShortcutBinding.swift in Sources */,
 				B9978DEEEDEC8D141ECA03E4 /* ShortcutBindingStore.swift in Sources */,
 				7427CB8CBE716A862417EFF7 /* ShortcutRecorderCapsule.swift in Sources */,

@@ -20,3 +20,18 @@ struct BolttyIconView: View {
       .frame(width: size, height: size)
   }
 }
+
+struct Keycap: NSViewRepresentable {
+  let key: String
+  var side: CGFloat = AgentPaletteMetrics.helpKeycapSize
+
+  func makeNSView(context: Context) -> PaletteKeycapView {
+    PaletteKeycapView(key: key, side: side, ink: PaletteInk.primary)
+  }
+
+  func updateNSView(_ view: PaletteKeycapView, context: Context) {}
+
+  func sizeThatFits(_ proposal: ProposedViewSize, nsView: PaletteKeycapView, context: Context) -> CGSize? {
+    nsView.fittingSize
+  }
+}

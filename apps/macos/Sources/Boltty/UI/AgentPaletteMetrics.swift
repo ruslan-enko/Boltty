@@ -746,7 +746,6 @@ enum AgentPaletteMetrics {
   static let helpTextMaxWidth: CGFloat = 280
   static let helpKeysGap: CGFloat = 16
   static var helpKeycapSize: CGFloat { live(18) }
-  static let helpKeycapCornerRadius: CGFloat = 4
   static let helpKeycapSpacing: CGFloat = 3
   static let helpKeyWordsGap: CGFloat = 6
   static let regionKeyHintsGap: CGFloat = 10

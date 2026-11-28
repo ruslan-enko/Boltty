@@ -507,7 +507,9 @@ final class BolttyAIApprovalBar: NSView {
   private let copyText: String?
   private let returnReach: Int
   private let copyButton = GlassPillLabelButton(frame: .zero)
-  private var copyReset: DispatchWorkItem?
+  private lazy var copying = CopyConfirmation { [weak self] copied in
+    self?.copyButton.title = copied ? Self.copiedTitle : Self.copyTitle
+  }
   private let row = NSStackView()
   private let spacer = NSView()
   private let note = NSTextField(wrappingLabelWithString: "")
@@ -668,14 +670,7 @@ final class BolttyAIApprovalBar: NSView {
 
   @objc private func copyPressed() {
     guard let copyText else { return }
-    let pasteboard = NSPasteboard.general
-    pasteboard.clearContents()
-    pasteboard.setString(copyText, forType: .string)
-    copyButton.title = Self.copiedTitle
-    copyReset?.cancel()
-    let reset = DispatchWorkItem { [weak self] in self?.copyButton.title = Self.copyTitle }
-    copyReset = reset
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: reset)
+    copying.copy(copyText)
   }
 
   private static func makeButton(at index: Int) -> NSButton {

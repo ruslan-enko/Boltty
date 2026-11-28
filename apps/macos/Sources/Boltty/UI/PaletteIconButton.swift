@@ -568,13 +568,10 @@ private final class PaletteHelpTag: NSView {
   }
 }
 
-private final class PaletteKeycapView: NSView {
+final class PaletteKeycapView: NSView {
   private let glass = NSGlassEffectView()
 
-  private let isRound: Bool
-
-  init(key: String, isRound: Bool = false, isOnLight: Bool = false) {
-    self.isRound = isRound
+  init(key: String, side: CGFloat = AgentPaletteMetrics.helpKeycapSize, isOnLight: Bool = false, ink: NSColor? = nil) {
     super.init(frame: .zero)
     translatesAutoresizingMaskIntoConstraints = false
     glass.style = .regular
@@ -585,9 +582,10 @@ private final class PaletteKeycapView: NSView {
     } else {
       addSubview(glass)
     }
-    let inkColour = isOnLight ? AgentPaletteMetrics.keyHintsFilledInk : PaletteInk.secondary
-    let font = roundedAppFont(size: AgentPaletteMetrics.typeFootnote)
-    let size = AgentPaletteMetrics.helpKeycapSize
+    let inkColour = ink ?? (isOnLight ? AgentPaletteMetrics.keyHintsFilledInk : PaletteInk.secondary)
+    let scale = side / AgentPaletteMetrics.helpKeycapSize
+    let font = roundedAppFont(size: (AgentPaletteMetrics.typeFootnote * scale).rounded())
+    let size = side
     var constraints = [
       heightAnchor.constraint(equalToConstant: size),
       widthAnchor.constraint(greaterThanOrEqualToConstant: size),
@@ -597,7 +595,7 @@ private final class PaletteKeycapView: NSView {
         return snug
       }(),
     ]
-    if let image = Self.icons[key]?.image(size: font.pointSize + 2, description: key) {
+    if let image = Self.icons[key]?.image(size: font.pointSize + (2 * scale).rounded(), description: key) {
       let mark = NSImageView(image: image)
       mark.contentTintColor = inkColour
       mark.translatesAutoresizingMaskIntoConstraints = false
@@ -616,7 +614,7 @@ private final class PaletteKeycapView: NSView {
         mark.topAnchor.constraint(equalTo: topAnchor),
         mark.bottomAnchor.constraint(equalTo: bottomAnchor),
         widthAnchor.constraint(
-          greaterThanOrEqualToConstant: ceil(mark.inkWidth) + AgentPaletteMetrics.helpKeycapInset * 2),
+          greaterThanOrEqualToConstant: ceil(mark.inkWidth) + (AgentPaletteMetrics.helpKeycapInset * scale).rounded() * 2),
       ]
     }
     NSLayoutConstraint.activate(constraints)
@@ -626,7 +624,7 @@ private final class PaletteKeycapView: NSView {
   override func layout() {
     super.layout()
     glass.frame = bounds
-    let corner = isRound ? bounds.height / 2 : AgentPaletteMetrics.helpKeycapCornerRadius
+    let corner = bounds.height / 2
     glass.cornerRadius = corner
     layer?.applyPaletteCorner(radius: corner)
   }
@@ -867,7 +865,7 @@ final class PaletteKeyHints: NSView {
     words.textColor = isOnLight ? AgentPaletteMetrics.keyHintsFilledInk : PaletteInk.primary
     words.isSelectable = false
     let caps = hint.key.map(PaletteHelpPresenter.keys(of:))?.map {
-      PaletteKeycapView(key: $0, isRound: true, isOnLight: isOnLight)
+      PaletteKeycapView(key: $0, isOnLight: isOnLight)
     } ?? []
     let item = NSStackView(views: caps + [words])
     item.orientation = .horizontal

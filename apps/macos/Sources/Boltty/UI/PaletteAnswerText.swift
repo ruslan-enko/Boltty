@@ -782,7 +782,7 @@ final class PaletteCodeBlockView: NSView {
   private let copyButton = PaletteIconButton()
   private(set) var code = ""
   private var heightConstraint: NSLayoutConstraint!
-  private var copyResetWork: DispatchWorkItem?
+  private lazy var copying = CopyConfirmation { [weak self] copied in self?.applyCopyGlyph(copied ? .check : .copy) }
   var isCopyVisibleForTesting: Bool { !copyButton.isHidden }
 
   init() {
@@ -847,14 +847,7 @@ final class PaletteCodeBlockView: NSView {
   override func mouseExited(with event: NSEvent) { copyButton.isHidden = true }
 
   @objc private func copyCode() {
-    guard !code.isEmpty else { return }
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(code, forType: .string)
-    applyCopyGlyph(.check)
-    copyResetWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in self?.applyCopyGlyph(.copy) }
-    copyResetWork = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: work)
+    copying.copy(code)
   }
 
   private func applyCopyGlyph(_ icon: BolttyIcon) {

@@ -503,12 +503,7 @@ private struct SetupKeycaps: View {
   var body: some View {
     HStack(spacing: 10) {
       ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
-        Text(cap)
-          .font(.system(size: cap.count > 1 ? 17 : 24, weight: .medium, design: .rounded))
-          .frame(minWidth: 54, minHeight: 54)
-          .padding(.horizontal, cap.count > 1 ? 14 : 0)
-          .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-          .contentTransition(.opacity)
+        Keycap(key: cap, side: 54).id(cap).transition(.opacity)
       }
     }
     .animation(SettingsMotion.quick, value: caps)
@@ -547,14 +542,12 @@ private struct SetupAccessTile: View {
   var body: some View {
     SetupTile(isOn: status == .allowed) {
       VStack(spacing: 10) {
-        BolttyIconView(icon: kind.icon, size: 28)
-          .foregroundStyle(.white)
-          .frame(width: 48, height: 48)
-          .background(kind.tint.gradient, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        AccessKindBadge(kind: kind, size: .tile)
         Text(kind.title)
           .font(.system(size: 15, weight: .semibold, design: .rounded))
           .frame(height: 20)
-        trailing.frame(height: 26)
+        AccessActionControl(status: status, isAsking: isAsking, isCompact: true, action: action)
+          .frame(height: 26)
       }
     }
     .help(kind.purpose)
@@ -562,28 +555,6 @@ private struct SetupAccessTile: View {
     .accessibilityIdentifier("boltty.access.\(kind.rawValue)")
   }
 
-  @ViewBuilder
-  private var trailing: some View {
-    if isAsking || status == nil {
-      ProgressView().controlSize(.small)
-    } else {
-      switch status {
-      case .allowed:
-        Text("Allowed")
-          .font(.system(size: 12, design: .rounded))
-          .foregroundStyle(.secondary)
-          .transition(.opacity)
-      case .refused:
-        Button("Open Settings…", action: action)
-          .buttonStyle(.glass)
-          .controlSize(.small)
-      default:
-        Button("Allow", action: action)
-          .buttonStyle(.glass)
-          .controlSize(.small)
-      }
-    }
-  }
 }
 
 private final class SetupCardWindow: NSWindow {

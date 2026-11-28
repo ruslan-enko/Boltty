@@ -174,7 +174,7 @@ final class PaletteActivityRowView: NSView {
     let opens = Self.opens(value)
     chevron.isHidden = !opens
     button.isEnabled = opens
-    chevron.image = (expanded ? BolttyIcon.chevronDown : .chevronRight).image(
+    chevron.image = BolttyIcon.disclosure(isOpen: expanded).image(
       size: AgentPaletteMetrics.iconSide(AgentPaletteMetrics.previewActivityChevronPointSize),
       description: expanded ? String(localized: "Hide output") : String(localized: "Show output")
     )

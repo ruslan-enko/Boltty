@@ -1326,8 +1326,8 @@ so in the orb ("No sound is reaching the microphone…",
   A click or Escape takes it sooner; the panel opening does too. What it drew
   outlasts it, until a click or Escape.
 - "Thinking…" beside the face wears the shimmer a working
-  row has in the chat list: a band of the face's arrival light across the
-  words; under Reduce Motion they stay plain.
+  row has in the chat list (`ShimmerBand`, one layer for both): a band of the
+  face's arrival light across the words; under Reduce Motion they stay plain.
 - The overlay is one `PassivePanel`; frames are snapped to pixels so the face's
   drawable never reallocates.
 - Ask Boltty chats raise no banner, unread mark or notch line. They are kept, as
@@ -1866,6 +1866,11 @@ processes, so it is Boltty's to give.
   system's glass with black density over it (`helpDensity`), as a Mac's
   popovers and menus are glass; a flat `#202020` read as a grey patch on the
   shell.
+- **A key is drawn one way** (`PaletteKeycapView`, `Keycap` in SwiftUI): a round
+  cap of the system's glass, a Boltty icon for ⌘ ⌥ ⌃ ⇧ ↵ ⌫ ⇥, at any size —
+  help tags, the key hints capsule and the first run's keys alike.
+- **Copy shows a check for 1.2 s** wherever it stands (`CopyConfirmation`); a
+  pill that says it in words says "Copied" for as long.
 
 ## Keyboard shortcuts and the hotkey
 
