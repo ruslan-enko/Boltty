@@ -2,6 +2,21 @@
 
 What changed from release to release. The newest is at the top.
 
+## 0.16.0
+
+**Lighter on the Mac**
+- An agent's process goes after 10 minutes at rest and comes back with the next
+  message, so a quiet Claude Code chat no longer holds ~250 MB until Boltty quits.
+- Only recent chats are read at launch; older ones are read when opened.
+  Transcripts keep only what is shown, and the face at rest draws less often.
+
+**Interface**
+- Keys look the same everywhere: round glass keycaps, as in Ask Boltty's hints,
+  on help tags and in setup.
+- Copying shows a check for the same moment everywhere.
+- Setup and the permissions window show an allowed permission the same way, with
+  a check.
+
 ## 0.15.0
 
 **Permissions**
