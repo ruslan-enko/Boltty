@@ -22,6 +22,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   private let executableOverride: String?
   private let throwawayDeadline: TimeInterval
+  var idleReleaseDelay: TimeInterval = 600
 
   init(executable: String? = nil, throwawayDeadline: TimeInterval = 25) {
     self.executableOverride = executable
@@ -471,6 +472,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   func shutdown() async {
     let live = lock.withLock { Array(sessions.values) }
     for session in live {
+      session.replaceIdleRelease(with: nil)
       session.readerTask?.cancel()
       session.process.closeInput()
       session.process.terminate()
@@ -485,6 +487,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
   private func endProcess(of sessionID: String) {
     guard let session = lock.withLock({ sessions.removeValue(forKey: sessionID) }) else { return }
+    session.replaceIdleRelease(with: nil)
     session.readerTask?.cancel()
     session.process.closeInput()
     session.process.terminate()
@@ -581,6 +584,7 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
 
     try process.start()
     lock.withLock { sessions[id] = session }
+    releaseWhenIdle(session)
     session.readerTask = Task { [weak self] in
       for await line in process.lines {
         guard let self else { return }
@@ -780,6 +784,9 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
       case "init" where session.executionState != .working:
         session.executionState = .working
         emit(.executionStateChanged(sessionID: session.id, state: .working))
+      case "background_tasks_changed":
+        session.backgroundTaskCount = frame.array("tasks").count
+        releaseWhenIdle(session)
       default:
         break
       }
@@ -1014,6 +1021,26 @@ final class ClaudeCodeClient: AgentClient, @unchecked Sendable {
   private func emit(_ event: AgentEvent) {
     let continuation = lock.withLock { eventContinuation }
     continuation?.yield(AgentEventEnvelope(providerID: provider.rawValue, event: event))
+    if case let .executionStateChanged(sessionID, _) = event,
+       let session = lock.withLock({ sessions[sessionID] }) {
+      releaseWhenIdle(session)
+    }
+  }
+
+  private func releaseWhenIdle(_ session: LiveSession) {
+    guard session.isAtRest else {
+      session.replaceIdleRelease(with: nil)
+      return
+    }
+    let delay = idleReleaseDelay
+    session.replaceIdleRelease(with: Task { [weak self, weak session] in
+      try? await Task.sleep(for: .seconds(delay))
+      guard !Task.isCancelled, let self, let session, session.isAtRest,
+            self.lock.withLock({ self.sessions[session.id] === session })
+      else { return }
+      self.log.debug("letting the idle process of \(session.id, privacy: .public) go")
+      self.endProcess(of: session.id)
+    })
   }
 
   static func resources(forTool tool: String, input: JSONObject) -> [String] {

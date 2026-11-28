@@ -7,6 +7,10 @@ protocol BolttyAIConversations: AnyObject {
 
   func sessionTranscripts() -> [UUID: ConversationTranscript]
 
+  func transcriptForSearch(_ id: UUID) -> ConversationTranscript?
+
+  func panelDidHide()
+
   var conversationsChanged: AnyPublisher<Void, Never> { get }
 
   func conversation(id: UUID) -> Conversation?
@@ -128,6 +132,8 @@ extension BolttyAIConversations {
   var usageChanged: AnyPublisher<Void, Never> { Empty().eraseToAnyPublisher() }
 
   func sessionTranscripts() -> [UUID: ConversationTranscript] { [:] }
+  func transcriptForSearch(_ id: UUID) -> ConversationTranscript? { nil }
+  func panelDidHide() {}
 
   func listedProviderIDs() -> [String] { [] }
 
@@ -187,6 +193,14 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
 
   func sessionTranscripts() -> [UUID: ConversationTranscript] {
     store.transcripts
+  }
+
+  func transcriptForSearch(_ id: UUID) -> ConversationTranscript? {
+    store.transcript(id: id)
+  }
+
+  func panelDidHide() {
+    store.letColdTranscriptsGo()
   }
 
   func conversation(id: UUID) -> Conversation? {

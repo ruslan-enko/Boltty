@@ -31,6 +31,8 @@ extension ClaudeCodeClient {
     private var toolHome: [String: String] = [:]
     private var control: [String: CheckedContinuation<JSONObject, Error>] = [:]
     private var controlCounter = 0
+    private var storedBackgroundTasks = 0
+    private var idleRelease: Task<Void, Never>?
 
     init(id: String, options: AgentSessionOptions, process: JSONLineProcess) {
       self.id = id
@@ -56,6 +58,23 @@ extension ClaudeCodeClient {
     }
 
     var sentMessageIDs: Set<String> { lock.withLock { sent } }
+
+    var backgroundTaskCount: Int {
+      get { lock.withLock { storedBackgroundTasks } }
+      set { lock.withLock { storedBackgroundTasks = newValue } }
+    }
+
+    func replaceIdleRelease(with task: Task<Void, Never>?) {
+      let old = lock.withLock { () -> Task<Void, Never>? in
+        defer { idleRelease = task }
+        return idleRelease
+      }
+      old?.cancel()
+    }
+
+    var isAtRest: Bool {
+      lock.withLock { !storedState.blocksSending && permissions.isEmpty && storedBackgroundTasks == 0 }
+    }
 
     func rememberOutgoing(messageID: String, text: String) {
       lock.withLock { _ = sent.insert(messageID) }

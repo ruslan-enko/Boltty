@@ -15,7 +15,7 @@ final class ConversationEngine: ObservableObject {
   @Published private(set) var historyByProvider: [String: AgentActivityHistory] = [:]
   @Published private(set) var contextByConversation: [UUID: AgentContextUsage] = [:]
   private var usageReadAt: Date?
-  static let usageRefreshInterval: TimeInterval = 60
+  static let usageRefreshInterval: TimeInterval = 5 * 60
   @Published private(set) var hasProbed = false
 
   private var eventTasks: [Task<Void, Never>] = []
@@ -414,6 +414,7 @@ final class ConversationEngine: ObservableObject {
        let conversation = store.conversation(
          remoteSessionID: sessionID, providerID: envelope.providerID) {
       if state == .idle { nameIfDue(conversation.id) }
+      usageReadAt = nil
       let id = conversation.id
       Task { [weak self] in await self?.refreshContext(conversationID: id) }
     }

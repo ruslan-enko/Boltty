@@ -49,6 +49,14 @@ every agent, at most once a minute. A CLI updated under a process kept running (
 app-server, Grok's stdio, Boltty's own OpenCode server) restarts it once nothing of
 its is running or waiting (`restartOutdatedProcesses`, by `--version`).
 
+**A process at rest is let go.** Each `claude` holds ~250 MB and its MCP servers, so a
+Claude Code chat with no turn, card or background command for 10 minutes loses its
+process (`idleReleaseDelay`) and the next message resumes it: "Always Allow" rules of
+that process go with it. Codex's app-server goes 10 minutes after its last thread is
+unsubscribed, the ACP processes (Grok, Antigravity) 10 minutes after the last turn
+(`idleExitDelay`); a reload puts the session's mode back. Plan limits are read at most
+every 5 minutes, and again after a turn ends (`usageRefreshInterval`).
+
 **What each agent can do is declared, not assumed.** `AgentCapabilities` is
 what the UI reads. A model menu, a permission card, an attach button and a stop
 button each appear only where the adapter can carry the action out. A control
@@ -179,7 +187,14 @@ no adapter; never offer a toggle for them.
 | Agent choice | ⇧Tab on the first screen walks ready, enabled agents (`AgentHistory.tabOrder`); `nil` is automatic routing: the agent with the most of its plan left (*Who takes a new chat*), or always one agent when Settings › Agents says so. Fixed once the conversation has a session. An agent the person chose that stops being ready is refused out loud, never swapped |
 | Tab on the first screen | Walks folder → microphone → text; Space presses the focused icon, which stands on a flat fill (`keyboardTargetFill`): a brighter ink alone was not seen |
 | Working folder | New chats start in `$HOME`, or, opened over Finder, in its front window's folder (`FinderSelectionService.frontFolder`, with Settings › General's Finder switch). Boltty is a Siri replacement first, not a tool for one repository. Chosen with the folder chip; once the session exists, changed only where the agent declares `.folderMoving` (all but Grok), applied before the next send |
-| Persistence | Conversations persist and are never replayed or re-executed. Kept forever unless Settings › General › Keep chats says otherwise (`boltty.history.keepDays`: 7, 14, 30, 182, 365; absent is Forever): a chat untouched for longer goes to the Trash, at launch, every 6 h and on a change (which asks first when it moves any); one working, waiting or open in the panel stays. Pasted files (`Boltty/Pasteboard`) go a week after no stored chat shows them (`ConversationStore.filesInUse`). A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
+| Persistence | Conversations persist and are never replayed or re-executed. Kept forever unless Settings › General › Keep chats says otherwise (`boltty.history.keepDays`: 7, 14, 30, 182, 365; absent is Forever): a chat untouched for longer goes to the Trash, at launch, every 6 h and on a change (which asks first when it moves any); one working, waiting or open in the panel stays. Only chats touched in the last 3 days,
+or working, waiting or chosen, are read at launch (`ConversationStore.warmAge`); the
+rest are read from disk when asked for and let go when the panel hides
+(`letColdTranscriptsGo`). A transcript keeps only what is shown: 80 characters of
+reasoning, a tool's output to 40 lines and 16 000 characters, the rest counted
+(`keepOnlyWhatIsShown`, `AgentActivity.hiddenLines`); the CLI's record has it all.
+Streamed deltas change the transcript in place (`warmTranscripts` is not `@Published`;
+changes send `objectWillChange`). Pasted files (`Boltty/Pasteboard`) go a week after no stored chat shows them (`ConversationStore.filesInUse`). A chat stored mid-turn (working or waiting) comes back `interrupted`, not `idle`, with its open permissions and plans expired and its questions late (*The permission card*) |
 | One writer | `ConversationPersistence` takes a `flock` on `owner.lock`; a second Boltty runs read-only and the tray says so. It starts no session or turn (`ConversationEngine.secondCopyRefusal`) and never stores a fallback chord |
 | Closing | Closing a window backgrounds it. ⌘Q is **Close Boltty**: windows go, Boltty drops to `.accessory`, work continues. A real quit is only *Quit Boltty* (tray or app menu), with no chord; it stops every turn and adapter on an 8 s deadline, waiting for each turn's stop (3 s timer), not the first to answer |
 | Dock click | Brings Settings forward, never the panel |
@@ -1660,7 +1675,9 @@ processes, so it is Boltty's to give.
   speaks, the preferred agent's face is used; Boltty has no face of its own,
   but in the first-run film (the hexagon in Daybreak).
 - One `MTKView` per face, one shared pipeline, drawn on demand from the shared
-  60 Hz `MascotClock` timer (a display link measured worse). `currentDrawable`
+  60 Hz `MascotClock` timer (a display link measured worse). A face at rest (no
+  action, no wake, pointer still) draws every other tick: at 60 the panel's face
+  cost 7–8% of a core. `currentDrawable`
   only inside `draw(in:)`. Nothing on the canvas may force an offscreen pass (no
   filter, mask, `masksToBounds`). Two rays a pixel live, four for stills; the first screen's
   face is drawn at twice the screen's scale (`promptMascotSupersampling`); extra
@@ -2054,7 +2071,8 @@ processes, so it is Boltty's to give.
 - No Swift packages.
 - `scripts/run-isolated.sh` runs a build with a throwaway `HOME` and a re-stamped
   bundle id, reaping any OpenCode server it started (by `HOME`, never by name —
-  the user's service is never touched).
+  the user's service is never touched). A staged copy killed outright leaves its server
+  to launchd; the next run reaps those, told by the staged app's bundle id.
 
 ## Communication
 

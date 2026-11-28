@@ -102,7 +102,35 @@ final class ConversationPersistence {
     var damaged: [UUID] = []
   }
 
-  func load() -> LoadedState {
+  enum TranscriptRead {
+    case read(ConversationTranscript)
+    case absent
+    case damaged
+  }
+
+  func loadTranscript(_ id: UUID) -> TranscriptRead {
+    let url = transcriptURL(id)
+    guard let data = try? Data(contentsOf: url) else { return .absent }
+    guard let file = try? decoder.decode(TranscriptFile.self, from: data) else {
+      log.error("transcript for \(id.uuidString) unreadable; quarantining")
+      quarantine(url)
+      return .damaged
+    }
+    return .read(Self.kept(file))
+  }
+
+  private static func kept(_ file: TranscriptFile) -> ConversationTranscript {
+    ConversationTranscript(
+      messages: file.messages.map { message in
+        var kept = message
+        kept.keepOnlyWhatIsShown()
+        return kept
+      },
+      interactions: file.interactions
+    )
+  }
+
+  func load(warmSince: Date = .distantPast) -> LoadedState {
     var state = LoadedState()
     // Every case that starts empty sets the index aside first: the next save
     // writes over it.
@@ -133,7 +161,9 @@ final class ConversationPersistence {
       log.error("conversation index listed \(dropped) duplicate id(s); keeping the first of each")
     }
     state.selectedConversationID = index.selectedConversationID
-    for conversation in state.conversations {
+    for conversation in state.conversations
+    where conversation.updatedAt >= warmSince || conversation.lastKnownState != .idle
+      || conversation.id == state.selectedConversationID {
       let url = transcriptURL(conversation.id)
       guard let data = try? Data(contentsOf: url) else {
         state.transcripts[conversation.id] = ConversationTranscript()
@@ -141,10 +171,7 @@ final class ConversationPersistence {
       }
       do {
         let file = try decoder.decode(TranscriptFile.self, from: data)
-        state.transcripts[conversation.id] = ConversationTranscript(
-          messages: file.messages,
-          interactions: file.interactions
-        )
+        state.transcripts[conversation.id] = Self.kept(file)
       } catch {
         log.error("transcript for \(conversation.id.uuidString) unreadable; quarantining")
         quarantine(url)
