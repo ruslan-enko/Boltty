@@ -6,9 +6,6 @@ struct AgentCommand: Sendable, Equatable, Hashable {
   let argumentHint: String?
 
   var invocation: String { "/" + name }
-
-  static let plan = AgentCommand(
-    name: "plan", summary: String(localized: "Plan first, change nothing until you approve"), argumentHint: nil)
 }
 
 extension AgentCommand {

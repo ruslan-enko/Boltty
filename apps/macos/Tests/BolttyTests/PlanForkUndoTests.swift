@@ -38,6 +38,27 @@ final class PlanModeTests: XCTestCase {
     XCTAssertEqual(agent.modeID(AgentSessionOptions(directory: "/", permissionMode: "auto", planMode: true)), "plan")
     XCTAssertEqual(agent.modeID(AgentSessionOptions(directory: "/", permissionMode: "auto", readOnly: true)), "default")
   }
+
+  func testPlanStandsInEachLadderWhereItsCLIPutsIt() {
+    func ids(_ agent: AgentId) -> [String] { PermissionMode.walk(for: agent, plans: true).map(\.id) }
+    XCTAssertEqual(ids(.claude), ["default", "acceptEdits", "plan", "auto", "bypassPermissions"])
+    XCTAssertEqual(ids(.antigravity), ["default", "accept-edits", "auto", "plan", "skip"])
+    XCTAssertEqual(ids(.codex), ["ask", "approveForMe", "fullAccess", "plan"])
+    XCTAssertEqual(ids(.opencode), ["build", "plan"])
+    XCTAssertFalse(PermissionMode.ladder(for: .claude).contains { $0.id == PermissionMode.planID },
+                   "Settings chooses no plan")
+  }
+
+  func testEachCLIAnswersAPlanInItsOwnWords() {
+    XCTAssertEqual(ClaudeCodeClient.planAnswers(launchedWith: AgentSessionOptions(directory: "/")),
+                   [.useAuto, .approveEdits, .keepPlanning])
+    XCTAssertEqual(
+      ClaudeCodeClient.planAnswers(launchedWith: AgentSessionOptions(directory: "/", permissionMode: "bypassPermissions")),
+      [.bypass, .approveEdits, .keepPlanning])
+    XCTAssertEqual(PlanAnswer.implement.message, "Implement the plan.")
+    XCTAssertEqual(PlanAnswer.quit.decision, .abandoned)
+    XCTAssertEqual(PlanAnswer.useAuto.mode, "auto")
+  }
 }
 
 @MainActor

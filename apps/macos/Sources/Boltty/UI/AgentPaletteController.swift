@@ -1288,8 +1288,7 @@ final class AgentPaletteController: NSWindowController, NSWindowDelegate {
       content,
       chooseModel: { [weak self] option in self?.conversations?.chooseModel(option, for: id) },
       chooseEffort: { [weak self] effort in self?.conversations?.chooseEffort(effort, for: id) },
-      setPermissionMode: { [weak self] mode in self?.conversations?.setPermissionMode(mode, for: id) },
-      setPlanMode: { [weak self] enabled in self?.conversations?.setPlanMode(enabled, for: id) }
+      setPermissionMode: { [weak self] mode in self?.conversations?.setPermissionMode(mode, for: id) }
     )
   }
 

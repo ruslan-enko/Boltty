@@ -7,8 +7,7 @@ enum ModelMenu {
     _ content: BolttyAIModelMenu,
     chooseModel: @escaping (AgentModelOption) -> Void,
     chooseEffort: @escaping (String?) -> Void,
-    setPermissionMode: @escaping (String) -> Void,
-    setPlanMode: @escaping (Bool) -> Void = { _ in }
+    setPermissionMode: @escaping (String) -> Void
   ) -> NSMenu {
     let menu = NSMenu(title: "Model")
     menu.autoenablesItems = false
@@ -34,16 +33,8 @@ enum ModelMenu {
       }
     }
 
-    if let on = content.planMode {
-      if menu.numberOfItems > 0 { menu.addItem(.separator()) }
-      let plan = item(title: String(localized: "Plan First"), isOn: on) { setPlanMode(!on) }
-      plan.subtitle = String(localized: "Changes nothing until you approve its plan")
-      plan.setAccessibilityIdentifier("boltty.ask.planMode")
-      menu.addItem(plan)
-    }
-
     if content.permissionModes.count > 1 {
-      menu.addItem(.sectionHeader(title: String(localized: "Permissions")))
+      menu.addItem(.sectionHeader(title: String(localized: "Mode")))
       for mode in content.permissionModes {
         let row = item(title: mode.title, isOn: mode == content.permissionMode) { setPermissionMode(mode.id) }
         row.subtitle = mode.summary

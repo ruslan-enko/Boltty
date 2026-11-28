@@ -42,8 +42,6 @@ protocol BolttyAIConversations: AnyObject {
 
   func commands(providerID: String, folder: String) async -> [AgentCommand]
 
-  func setPlanMode(_ enabled: Bool, for id: UUID)
-
   func canFork(_ id: UUID) -> Bool
   func fork(_ id: UUID, after messageID: String?) -> UUID?
 
@@ -116,7 +114,6 @@ extension BolttyAIConversations {
   func deleteChat(id: UUID) async {}
   func usage(providerID: String) -> AgentUsage? { nil }
   func commands(providerID: String, folder: String) async -> [AgentCommand] { [] }
-  func setPlanMode(_ enabled: Bool, for id: UUID) {}
   func canFork(_ id: UUID) -> Bool { false }
   func fork(_ id: UUID, after messageID: String?) -> UUID? { nil }
   func previewUndo(_ id: UUID, from questionID: String) async -> Result<FileUndo, Error> {
@@ -283,12 +280,10 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
 
   func commands(providerID: String, folder: String) async -> [AgentCommand] {
     let capabilities = engine.registry.capabilities(forProviderID: providerID)
-    let own = capabilities.contains(.planMode) ? [AgentCommand.plan] : []
     guard capabilities.contains(.commands),
           let client = engine.registry.client(forProviderID: providerID)
-    else { return own }
-    let listed = await client.commands(folder: folder).filter { $0.name != AgentCommand.plan.name }
-    return own + listed
+    else { return [] }
+    return await client.commands(folder: folder)
   }
 
   func usage(providerID: String) -> AgentUsage? { engine.usageByProvider[providerID] }
@@ -348,8 +343,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
       effort: conversation.reasoningEffort,
       canResetEffort: capabilities.contains(.effortReset),
       permissionModes: engine.permissionModes(for: id),
-      permissionMode: engine.permissionMode(for: id),
-      planMode: capabilities.contains(.planMode) && !conversation.readOnly ? conversation.planMode : nil
+      permissionMode: engine.permissionMode(for: id)
     )
   }
 
@@ -561,12 +555,12 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         decision: decision
       )
     case .plan:
-      guard let decision = values.first.flatMap(PlanDecision.init(rawValue:)) else { return false }
+      guard let answer = values.first.flatMap(PlanAnswer.init(rawValue:)) else { return false }
       return await engine.reply(
         planID: question.requestID,
         in: conversationID,
-        decision: decision,
-        feedback: decision == .cancelled ? values.dropFirst().first : nil
+        answer: answer,
+        feedback: values.dropFirst().first
       )
     }
   }
@@ -661,12 +655,7 @@ extension ChatWorkspaceCoordinator: BolttyAIConversations {
         requestID: interaction.id,
         header: plan.title,
         prompt: empty ? PlanPrompt.emptyText : "",
-        options: [
-          AgentQuestion.Option(label: String(localized: "Approve"), detail: nil, value: PlanDecision.approved.rawValue),
-          AgentQuestion.Option(
-            label: String(localized: "Request Changes"), detail: nil, value: PlanDecision.cancelled.rawValue),
-          AgentQuestion.Option(label: String(localized: "Quit"), detail: nil, value: PlanDecision.abandoned.rawValue),
-        ],
+        options: plan.offered.map { AgentQuestion.Option(label: $0.title, detail: nil, value: $0.rawValue) },
         allowsMultiple: false,
         allowsCustom: false,
         copyText: empty ? nil : plan.markdown

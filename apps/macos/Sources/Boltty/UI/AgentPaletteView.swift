@@ -1253,7 +1253,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
   static let chatComposerPlaceholder = String(localized: "Reply…", comment: "The open chat's empty composer")
 
   static func composerPlaceholder(for preview: BolttyAISessionPreview) -> String {
-    if preview.question?.kind == .plan {
+    if preview.question?.planWordsOption != nil {
       return String(localized: "Or tell \(preview.agent.shortDisplayName) what to change")
     }
     if preview.question?.takesWordsAsRefusal == true {
@@ -1709,7 +1709,7 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
       previewCard.onAnswer = { [weak self] question, answers in
         guard let self, let id = self.addressedPreview?.id else { return }
         let typed = self.field.draft.typedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if question.kind == .plan, answers == [PlanDecision.cancelled.rawValue], !typed.isEmpty {
+        if let words = question.planWordsOption, answers == [words.value], !typed.isEmpty {
           self.onAnswerQuestion?(id, question, question.refusing(with: typed))
           return
         }
@@ -2282,6 +2282,10 @@ final class AgentPaletteView: NSView, PaletteHelpRoomProviding, LightboxHosting 
         }
         if !typed.isEmpty, question.takesWordsAsRefusal {
           onAnswerQuestion?(addressedPreview.id, question, question.refusing(with: typed))
+          return
+        }
+        if !typed.isEmpty, question.kind == .plan {
+          onSubmit?(field.draft)
           return
         }
         if typed.isEmpty, previewCard.confirmOptions() { return }

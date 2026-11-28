@@ -118,17 +118,24 @@ that differ (always, the first time after a relaunch) and
 `AgentClient.prepareSession` closes the gap, never during a turn. A refusal keeps the
 words in the composer and says why. Declared as `.modelSwitching`.
 
-**Plan first.** `Conversation.planMode` asks that the chat's next turn plan and
-change nothing until the plan is approved; the engine applies it with the rest
-(`AgentSessionOptions.planMode`, `.planMode`). Turned on by `/plan` opening a
-request (Boltty's own first row of the `/` list, taken out of the words in
-`ChatWorkspaceCoordinator.takePlanRequest`) or Plan First in the model chip's
-menu; never in a read-only chat. The plan is one card (`PendingInteraction.Kind.plan`:
-Approve / Request Changes / Quit). Where the CLI waits on it (Claude Code, Grok)
-the card holds the turn; where the plan ends the turn (Codex's plan item, Antigravity's plan
-file, OpenCode's reply, `.planInReply`) it holds nothing up (`PlanPrompt.endedTurn`), Approve sends
-"Implement the plan." and Request Changes the words, as the next message, and
-another message lets it go. Approve and Quit turn plan mode off.
+**Plan is a mode, as in each CLI.** `Conversation.planMode` asks that the chat's
+next turn plan and change nothing until the plan is approved; the engine applies it
+with the rest (`AgentSessionOptions.planMode`, `.planMode`). It is a rung of the chat's
+modes where the CLI's own key walks it (`PermissionMode.walk`): Claude Code after
+Accept Edits, Antigravity after Auto, last for Codex and Grok, and OpenCode's Build ·
+Plan, its two agents. Chosen in the model chip's menu or by ⇧Tab; never in a read-only
+chat, never in Settings, and no `/plan` or switch of Boltty's own. The plan is one card
+(`PendingInteraction.Kind.plan`) with the answers its CLI offers, in its words
+(`PlanAnswer`, `PlanPrompt.answers`): Claude Code "Yes, and Use Auto Mode" (or Bypass
+Permissions, in a process launched for it) · "Yes, Manually Approve Edits" · "No, Keep
+Planning", the work going on in the mode chosen; Codex "Yes, Implement This Plan" ·
+"No, Stay in Plan Mode"; Grok Approve · Request Changes · Quit; Antigravity Proceed.
+Where the CLI waits on it (Claude Code, Grok) the card holds the turn; where the plan
+ends the turn (Codex's plan item, Antigravity's plan file) it holds nothing up
+(`PlanPrompt.endedTurn`): Codex's yes sends its own "Implement the plan.", Antigravity's
+Proceed its own "The user has approved this document.", words go as the next message,
+and another message lets it go. OpenCode's plan is its reply and has no card: Build is
+chosen as in its TUI. An approval turns plan mode off; nothing else does.
 
 **Forks.** Fork from Here (an answer's right click) and Fork Chat (a list row's)
 make a new chat that goes on from the end of that turn, where the agent declares
@@ -201,7 +208,7 @@ changes send `objectWillChange`). Pasted files (`Boltty/Pasteboard`) go a week a
 | Launch order | Hotkey, menu, tray, `.accessory` — then load conversations, so ⌥Space works from the first moment |
 | Execution states | `idle`, `working`, `waiting`, `failed`, `interrupted`, `rateLimited` |
 | Progress words | `Working`, `Thinking`, `<verb> <object>` for tool events, `Needs your approval`, `Needs your answer`, `Listening`. Reasoning traces are never shown |
-| Permissions | Each agent's own modes, in its CLI's words and order (`PermissionMode.ladder`), and nothing of Boltty's: Claude Code Ask · Accept Edits · Auto · Bypass Permissions; Codex Ask for Approval · Approve for Me · Full Access (its app's own presets); Grok Ask · Auto-review · Always Approve; Antigravity Default · Skip Permissions; OpenCode none (Build does what its config says). The first asks and is the default; chosen on each agent's page in Settings › Agents, copied into each new chat, switched per chat in the model chip's menu or by ⇧Tab in an open chat. Everything-without-asking is a mode like any other: chosen, it is chosen. A read-only chat runs none of them. Plan First stays apart |
+| Permissions | Each agent's own modes, in its CLI's words and order (`PermissionMode.ladder`), and nothing of Boltty's: Claude Code Ask · Accept Edits · Auto · Bypass Permissions; Codex Ask for Approval · Approve for Me · Full Access (its app's own presets); Grok Ask · Auto-review · Always Approve; Antigravity Default · Accept Edits · Auto · Skip Permissions; OpenCode none (Build does what its config says). The first asks and is the default; chosen on each agent's page in Settings › Agents, copied into each new chat, switched per chat in the model chip's menu or by ⇧Tab in an open chat. Everything-without-asking is a mode like any other: chosen, it is chosen. A read-only chat runs none of them. Plan is among them in the chat, not in Settings (*Plan is a mode*) |
 | History | Boltty's own conversations only. CLI sessions started in a terminal are not listed or adopted |
 | Settings holds only what exists | A stored value with no control is removed. Removed keys stay inert on disk: never rewritten, never deleted |
 | Updates | Asked, then installed by Boltty's own `UpdateInstaller`. No installer framework, no signing key to guard |
@@ -487,7 +494,8 @@ implementation first. Versions say what was measured.
   live); plans are `x.ai/exit_plan_mode` with `planContent`, answered
   `approved` / `cancelled` (+ `feedback`) / `abandoned`. A plan is
   `PendingInteraction.Kind.plan`, drawn as the turn's text with Approve /
-  Request Changes / Quit.
+  Request Changes / Quit, Grok's own three; Quit leaves plan mode on, as it does in
+  Grok.
 - An MCP server's ask is `_x.ai/mcp/elicit`, answered `{outcome: accept|decline,
   content}`; any other shape is a cancel (1.0.92).
 - `_x.ai/billing` gives the plan's `creditUsagePercent`.
@@ -756,8 +764,8 @@ The loop that must keep working:
   group's inks; a long name gives way at its end, never the effort after it,
   and the padding in its pill holds. Its menu (`ModelMenu`) is the
   models (under their providers when there are several, in submenus past 14), the
-  chosen model's efforts, and the agent's permission modes with its CLI's words for
-  each. A mode other than the first is a word on the chip ("Opus · High · Auto"), as
+  chosen model's efforts, and the agent's modes, Plan among them, with its CLI's words
+  for each. A mode other than the first is a word on the chip ("Opus · High · Plan"), as
   the CLIs say theirs; ⇧Tab in an open chat walks them. A choice waits for the
   next message, whatever is running. The first screen has no chip: a new chat starts
   on Settings' choice.
@@ -1557,7 +1565,7 @@ processes, so it is Boltty's to give.
   otherwise (5-hour 5, weekly 7, 30-day 30), each a capsule (a ring's arcs with round
   ends), the fill running across them and fading out over its last 30% (48 pt at
   most) on a smootherstep, across segment edges (`UsageSegments`, `SegmentedUsageMeter`, `UsageMeter(segments:)`).
-  Segments shorter than 3 pt give way to one bar; a window of no length (OpenCode's
+  Segments are equal capsules, at least twice as long as they are high and 3 pt, else one bar; a window of no length (OpenCode's
   named ones, a budget) is one bar.
 - **Usage**: plan windows per agent (each: how much is used and when it
   comes back, as the composer's ring counts it — never what is left; the bar

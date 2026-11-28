@@ -140,10 +140,12 @@ struct PlanPrompt: Codable, Equatable, Sendable {
   var toolCallID: String?
   /// Optional so plans stored before it still read.
   var endedTurn: Bool?
+  /// The answers the agent's own CLI offers, in its order; absent on plans stored before.
+  var answers: [PlanAnswer]?
 
   var isAnsweredByMessage: Bool { endedTurn == true }
 
-  static let approval = "Implement the plan."
+  var offered: [PlanAnswer] { answers ?? [.approve, .requestChanges, .quit] }
 
   var title: String {
     for line in markdown.split(separator: "\n", omittingEmptySubsequences: true) {
@@ -162,4 +164,57 @@ enum PlanDecision: String, Codable, Equatable, Sendable {
   case approved
   case cancelled
   case abandoned
+}
+
+/// A plan's answer in its CLI's words. Claude Code's approvals name the mode the work goes on in.
+enum PlanAnswer: String, Codable, Equatable, Sendable {
+  case approve, requestChanges, quit
+  case implement, stayInPlan
+  case bypass, useAuto, acceptEdits, approveEdits, keepPlanning
+  case proceed
+
+  var decision: PlanDecision {
+    switch self {
+    case .approve, .implement, .bypass, .useAuto, .acceptEdits, .approveEdits, .proceed: .approved
+    case .requestChanges, .stayInPlan, .keepPlanning: .cancelled
+    case .quit: .abandoned
+    }
+  }
+
+  var takesWords: Bool { decision == .cancelled }
+
+  var mode: String? {
+    switch self {
+    case .bypass: ClaudeCodeClient.bypassMode
+    case .useAuto: "auto"
+    case .acceptEdits: "acceptEdits"
+    case .approveEdits: "default"
+    default: nil
+    }
+  }
+
+  /// What goes as the next message where the plan ended the turn.
+  var message: String? {
+    switch self {
+    case .implement: "Implement the plan."
+    case .proceed: "The user has approved this document."
+    default: nil
+    }
+  }
+
+  var title: String {
+    switch self {
+    case .approve: String(localized: "Approve")
+    case .requestChanges: String(localized: "Request Changes")
+    case .quit: String(localized: "Quit")
+    case .implement: String(localized: "Yes, Implement This Plan")
+    case .stayInPlan: String(localized: "No, Stay in Plan Mode")
+    case .bypass: String(localized: "Yes, and Bypass Permissions")
+    case .useAuto: String(localized: "Yes, and Use Auto Mode")
+    case .acceptEdits: String(localized: "Yes, Auto-Accept Edits")
+    case .approveEdits: String(localized: "Yes, Manually Approve Edits")
+    case .keepPlanning: String(localized: "No, Keep Planning")
+    case .proceed: String(localized: "Proceed")
+    }
+  }
 }

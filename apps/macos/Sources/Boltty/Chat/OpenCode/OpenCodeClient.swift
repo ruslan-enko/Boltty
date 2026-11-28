@@ -8,7 +8,7 @@ final class OpenCodeClient: AgentClient, @unchecked Sendable {
     .modelSelection, .modelSwitching, .effortReset, .permissions, .questions, .attachments, .images,
     .interrupt, .resumeSession, .workingDirectory, .rereadableTranscript,
     .activityHistory, .permissionMessage, .steering, .reasoningEffort, .usageLimits,
-    .folderMoving, .commands, .planMode, .planInReply, .forking, .fileUndo, .computerUse
+    .folderMoving, .commands, .planMode, .forking, .fileUndo, .computerUse
   ]
 
   private let server: OpenCodeServer
